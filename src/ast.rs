@@ -2,7 +2,6 @@
 АСТ
  */
 use std::collections::HashMap;
-use crate::address::Address;
 use crate::lexer::Token;
 
 pub enum Node {
@@ -16,107 +15,116 @@ pub enum Node {
         value: Token,
     },
     Bin {
-        left: Node,
-        right: Node,
+        left: Box<Node>,
+        right: Box<Node>,
         op: Token,
     },
     Unary {
-        value: Node,
+        value: Box<Node>,
         op: Token
     },
     If {
-        logical: Node,
-        body: Node,
-        elseif: Option<Node>
+        location: Token,
+        logical: Box<Node>,
+        body: Box<Node>,
+        elseif: Option<Box<Node>>
     },
     While {
-        logical: Node,
-        body: Node,
+        location: Token,
+        logical: Box<Node>,
+        body: Box<Node>,
     },
     Define {
+        previous: Box<Node>,
         name: Token,
-        value: Node,
+        value: Box<Node>,
     },
     Assign {
+        previous: Box<Node>,
         name: Token,
-        value: Node,
+        value: Box<Node>,
     },
     Get {
+        previous: Box<Node>,
         name: Token,
+        should_push: bool,
     },
     Call {
+        previous: Box<Node>,
         name: Token,
-        args: Vec<Node>,
+        args: Vec<Box<Node>>,
+        should_push: bool,
     },
     FnDeclaration {
         name: Token,
         full_name: Token,
         args: Vec<Token>,
-        body: Node,
+        body: Box<Node>,
     },
     AnFnDeclaration {
         args: Vec<Token>,
-        body: Node,
+        body: Box<Node>,
     },
     Break {
-        location: Address,
+        location: Token,
     },
     Continue {
-        location: Address,
+        location: Token,
     },
     Import {
         imports: Vec<Token>,
     },
     List {
-        location: Address,
-        value: Vec<Node>,
+        location: Token,
+        values: Vec<Box<Node>>,
     },
     Cond {
-        left: Node,
-        right: Node,
+        left: Box<Node>,
+        right: Box<Node>,
         op: Token,
     },
     Logical {
-        left: Node,
-        right: Node,
+        left: Box<Node>,
+        right: Box<Node>,
         op: Token,
     },
     Map {
-        location: Address,
-        value: HashMap<Node, Node>,
+        location: Token,
+        values: HashMap<Box<Node>, Box<Node>>,
     },
     Match {
-        matchable: Node,
-        cases: Vec<Node>,
-        default: Node,
+        location: Token,
+        matchable: Box<Node>,
+        cases: Vec<Box<Node>>,
+        default: Box<Node>,
     },
     Native {
         name: Token,
     },
     Instance {
         name: Token,
-        constructor: Vec<Node>,
+        constructor: Vec<Box<Node>>,
     },
     Ret {
-        location: Address,
-        value: Node,
+        location: Token,
+        value: Box<Node>,
     },
     Null {
-        location: Address,
+        location: Token,
     },
     Type {
         name: Token,
-        full_name: Token,
-        constructor: Vec<Node>,
-        body: Node,
+        fullname: Token,
+        constructor: Vec<Token>,
+        body: Box<Node>,
     },
     Unit {
         name: Token,
-        full_name: Token,
-        body: Node
+        fullname: Token,
+        body: Box<Node>
     },
     For {
-        iterable: Node,
+        iterable: Box<Node>,
         variable_name: Token,
     }
 }

@@ -3,6 +3,7 @@ mod address;
 mod colors;
 mod lexer;
 mod ast;
+mod visitor;
 /*
 fn a(a : bool) -> Result<String, String> {
     if a {
