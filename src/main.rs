@@ -4,6 +4,7 @@ mod colors;
 mod lexer;
 mod ast;
 mod visitor;
+mod parser;
 /*
 fn a(a : bool) -> Result<String, String> {
     if a {

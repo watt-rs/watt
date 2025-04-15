@@ -64,7 +64,14 @@ pub fn visit_node(node: Node) {
         Node::For { iterable, variable_name } => {
             visit_for(iterable, variable_name)
         }
+        Node::Block { body } => {
+            visit_block(body);
+        }
     }
+}
+
+pub fn visit_block(body: Vec<Box<Node>>) {
+
 }
 
 pub fn visit_number(value: Token) {

@@ -5,6 +5,9 @@ use std::collections::HashMap;
 use crate::lexer::Token;
 
 pub enum Node {
+    Block {
+        body: Vec<Box<Node>>,
+    },
     Number {
         value: Token,
     },
