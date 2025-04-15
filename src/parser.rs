@@ -1,4 +1,5 @@
-﻿use crate::address::Address;
+﻿use std::io::BufRead;
+use crate::address::Address;
 use crate::ast::Node;
 use crate::errors::{Error, ErrorType};
 use crate::lexer::{Token, TokenType};
@@ -15,7 +16,8 @@ impl Parser {
     }
 
     fn block(&mut self) -> Result<Node, Error> {
-        todo!()
+        self.consume(TokenType::Lbrace).map_err(|e| e)?;
+        // ...
     }
 
     fn parse(&mut self) -> Result<Node, Error> {
@@ -44,6 +46,32 @@ impl Parser {
                     "unexpected eof".to_string(),
                     String::from("check your code.")
                 ))
+            }
+        }
+    }
+
+    fn check(&self, tk_type: TokenType) -> bool {
+        match self.tokens.get(self.current as usize) {
+            Some(tk) => {
+                if tk.tk_type == tk_type {
+                    true
+                } else {
+                    false
+                }
+            },
+            None => {
+                false
+            }
+        }
+    }
+
+    fn peek(&self) -> Option<Token> {
+        match self.tokens.get(self.current as usize) {
+            Some(tk) => {
+                Some(tk.clone())
+            },
+            None => {
+                None
             }
         }
     }
