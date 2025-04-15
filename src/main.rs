@@ -2,7 +2,7 @@ mod errors;
 mod address;
 mod colors;
 mod lexer;
-
+mod ast;
 /*
 fn a(a : bool) -> Result<String, String> {
     if a {
