@@ -64,7 +64,7 @@ pub enum TokenType {
     From, // from
     Native, // native
     Pipe, // pipe
-    With // with
+    With, // with
 }
 
 /*
@@ -122,6 +122,9 @@ impl Lexer {
             (String::from("continue"), TokenType::Continue),
             (String::from("from"), TokenType::From),
             (String::from("to"), TokenType::To),
+            (String::from("true"), TokenType::Bool),
+            (String::from("false"), TokenType::Bool),
+            (String::from("null"), TokenType::Null),
         ]);
         Lexer {line: 1, current: 0, code, filename, tokens: vec![], keywords: map }
     }
@@ -342,7 +345,7 @@ impl Lexer {
         }
         self.advance();
         Ok(Token {
-            tk_type: TokenType::Number,
+            tk_type: TokenType::Text,
             value: text,
             address: Address::new(self.line, self.filename.clone()),
         })
@@ -352,7 +355,7 @@ impl Lexer {
         let mut text: String = String::from(start);
         let mut is_float: bool = false;
         while self.is_digit(self.peek()) {
-            if self.is_match('.') {
+            if self.peek() == '.' {
                 if is_float {
                     return Err(
                         Error::new(
@@ -371,7 +374,7 @@ impl Lexer {
             }
             text.push(self.advance());
             if self.is_at_end() {
-                
+                break
             }
         }
         Ok(Token {
@@ -386,7 +389,7 @@ impl Lexer {
         while self.is_id(self.peek()) {
             if self.is_match('\n') {
                 self.line += 1;
-                continue;
+                break;
             }
             text.push(self.advance());
             if self.is_at_end() {
