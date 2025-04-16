@@ -1,4 +1,5 @@
-﻿use crate::address::Address;
+﻿use std::collections::HashMap;
+use crate::address::Address;
 use crate::ast::Node;
 use crate::errors::{Error, ErrorType};
 use crate::lexer::{Token, TokenType};
@@ -154,14 +155,84 @@ impl Parser {
 
         while self.check(TokenType::Dot) {
             self.consume(TokenType::Dot)?;
+            let location = self.peek()?.address.clone();
             left = self.access_part(Option::Some(Box::new(left)))?;
             match left {
                 Node::Define => {
-                    Err(Error::new(
-
+                    return Err(Error::new(
+                        ErrorType::Parsing,
+                        location,
+                        "couldn't use define in expr.".to_string(),
+                        "check your code.".to_string(),
                     ))
                 }
+                Node::Assign => {
+                    return Err(Error::new(
+                        ErrorType::Parsing,
+                        location,
+                        "couldn't use assign in expr.".to_string(),
+                        "check your code.".to_string(),
+                    ))
+                }
+                _ => {}
             }
+        }
+
+        Ok(left)
+    }
+
+    fn access_statement(&mut self) -> Result<Node, Error> {
+        let mut left = self.access_part(Option::None)?;
+
+        while self.check(TokenType::Dot) {
+            self.consume(TokenType::Dot)?;
+            let location = self.peek()?.address.clone();
+            left = self.access_part(Option::Some(Box::new(left)))?;
+            match left {
+                Node::Define => {
+                    return Err(Error::new(
+                        ErrorType::Parsing,
+                        location,
+                        "couldn't use define in expr.".to_string(),
+                        "check your code.".to_string(),
+                    ))
+                }
+                Node::Assign => {
+                    return Err(Error::new(
+                        ErrorType::Parsing,
+                        location,
+                        "couldn't use assign in expr.".to_string(),
+                        "check your code.".to_string(),
+                    ))
+                }
+                _ => {}
+            }
+        }
+
+        match left {
+            Node::Get {previous, name, .. } => {
+                left = Node::Get {
+                    previous,
+                    name,
+                    should_push: true
+                }
+            }
+            Node::Call {previous, name, args, .. } => {
+                left = Node::Call {
+                    previous,
+                    name,
+                    args,
+                    should_push: true
+                }
+            }
+            Node::Instance {name, constructor, ..} => {
+                left = Node::Instance {
+                    name,
+                    constructor,
+                    should_push: true
+                }
+            }
+            _ => {}
         }
 
         Ok(left)
@@ -174,35 +245,46 @@ impl Parser {
         Ok(expr)
     }
 
+    fn anonymous_fn(&mut self) -> Result<Node, Error> {
+        let location = self.consume(TokenType::Fun)?;
+
+        let mut params: Vec<Token> = Vec::new();
+        if self.check(TokenType::Lparen) {
+            params = self.params()?;
+        }
+        self.consume(TokenType::Lbrace)?;
+        let body = self.block()?;
+        self.consume(TokenType::Rbrace)?;
+
+        Ok(Node::AnFnDeclaration {
+            location,
+            params,
+            body: Box::new(body)
+        })
+    }
+
+    fn lambda_fn(&mut self) -> Result<Node, Error> {
+        let location = self.consume(TokenType::Lambda)?;
+
+        let mut params: Vec<Token> = Vec::new();
+        if self.check(TokenType::Lparen) {
+            params = self.params()?;
+        }
+        self.consume(TokenType::Arrow)?;
+        let body = self.expr()?;
+
+        Ok(Node::AnFnDeclaration {
+            location,
+            params,
+            body: Box::new(body)
+        })
+    }
+
     fn primary(&mut self) -> Result<Node, Error> {
         match self.peek()?.tk_type {
             TokenType::Id | TokenType::New => {
                 let location = self.peek()?;
-                let access = self.access_expr()?;
-                if self.check(TokenType::Pipe) {
-                    let mut pipe = self.pipe()?;
-                    match pipe {
-                        Node::Call { .. } => {
-                            pipe = Node::Call {
-                                previous: pipe.previous,
-                                name: pipe.name,
-                                args: pipe.args,
-                                should_push: true,
-                            }
-                        }
-                        _ => {
-                            return Err(Error::new(
-                                ErrorType::Parsing,
-                                location.address,
-                                "invalid pipe expr.".to_string(),
-                                "call is one available expr in pipe.".to_string(),
-                            ))
-                        }
-                    }
-                    Ok(pipe)
-                } else {
-                    Ok(access)
-                }
+                Ok(self.access_expr()?)
             }
             TokenType::Number => {
                 Ok(Node::Number {
@@ -225,6 +307,9 @@ impl Parser {
             TokenType::Lbrace => {
                 Ok(self.map()?)
             }
+            TokenType::Lbracket => {
+                Ok(self.list()?)
+            }
             TokenType::Null => {
                 Ok(Node::Null {
                     location: self.consume(TokenType::Null)?
@@ -245,6 +330,63 @@ impl Parser {
                 format!("invalid token. {:?}:{:?}", self.peek()?.tk_type, self.peek()?.value),
                 "check your code.".to_string(),
             ))
+        }
+    }
+
+    fn list(&mut self) -> Result<Node, Error> {
+        let location = self.consume(TokenType::Lbracket)?;
+        if self.check(TokenType::Rbracket) {
+            self.consume(TokenType::Rbracket)?;
+            Ok(
+                Node::List {
+                    location,
+                    values: Vec::new()
+                }
+            )
+        } else {
+            let mut nodes: Vec<Box<Node>> = Vec::new();
+            nodes.push(Box::new(self.expr()?));
+            while self.check(TokenType::Comma) {
+                self.consume(TokenType::Comma)?;
+                nodes.push(Box::new(self.expr()?));
+            }
+            Ok(Node::List {
+                location,
+                values: nodes
+            })
+        }
+    }
+
+    fn key_value(&mut self) -> Result<(Box<Node>, Box<Node>), Error> {
+        let l = self.expr()?;
+        self.consume(TokenType::Colon);
+        let r = self.expr()?;
+        Ok((Box::new(l), Box::new(r)))
+    }
+
+    fn map(&mut self) -> Result<Node, Error> {
+        let location = self.consume(TokenType::Lbracket)?;
+        if self.check(TokenType::Rbracket) {
+            self.consume(TokenType::Rbracket)?;
+            Ok(
+                Node::Map {
+                    location,
+                    values: HashMap::new()
+                }
+            )
+        } else {
+            let mut nodes: HashMap<Box<Node>, Box<Node>> = HashMap::new();
+            let key = self.key_value()?;
+            nodes.insert(key.0, key.1);
+            while self.check(TokenType::Comma) {
+                self.consume(TokenType::Comma)?;
+                let key = self.key_value()?;
+                nodes.insert(key.0, key.1);
+            }
+            Ok(Node::Map {
+                location,
+                values: nodes
+            })
         }
     }
 

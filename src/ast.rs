@@ -62,11 +62,12 @@ pub enum Node {
     FnDeclaration {
         name: Token,
         full_name: Token,
-        args: Vec<Token>,
+        params: Vec<Token>,
         body: Box<Node>,
     },
     AnFnDeclaration {
-        args: Vec<Token>,
+        location: Token, // .
+        params: Vec<Token>,
         body: Box<Node>,
     },
     Break {
@@ -108,6 +109,7 @@ pub enum Node {
     Instance {
         name: Token,
         constructor: Vec<Box<Node>>,
+        should_push: bool,
     },
     Ret {
         location: Token,
