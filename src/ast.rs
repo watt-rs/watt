@@ -4,6 +4,7 @@
 use std::collections::HashMap;
 use crate::lexer::Token;
 
+#[derive(Debug, Clone)]
 pub enum Node {
     Block {
         body: Vec<Box<Node>>,
@@ -38,22 +39,22 @@ pub enum Node {
         body: Box<Node>,
     },
     Define {
-        previous: Box<Node>,
+        previous: Option<Box<Node>>,
         name: Token,
         value: Box<Node>,
     },
     Assign {
-        previous: Box<Node>,
+        previous: Option<Box<Node>>,
         name: Token,
         value: Box<Node>,
     },
     Get {
-        previous: Box<Node>,
+        previous: Option<Box<Node>>,
         name: Token,
         should_push: bool,
     },
     Call {
-        previous: Box<Node>,
+        previous: Option<Box<Node>>,
         name: Token,
         args: Vec<Box<Node>>,
         should_push: bool,

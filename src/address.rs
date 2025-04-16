@@ -1,8 +1,7 @@
 ﻿/*
 Структура адреса
  */
-#[derive(Debug)]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Address {
     line: u64,
     file: String,

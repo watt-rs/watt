@@ -98,11 +98,11 @@ pub fn visit_while(location: Token, logical: Box<Node>, body: Box<Node>) {
 
 }
 
-pub fn visit_define(previous: Box<Node>, name: Token, value: Box<Node>) {
+pub fn visit_define(previous: Option<Box<Node>>, name: Token, value: Box<Node>) {
 
 }
 
-pub fn visit_call(previous: Box<Node>, name: Token, args: Vec<Box<Node>>, should_push: bool) {
+pub fn visit_call(previous: Option<Box<Node>>, name: Token, args: Vec<Box<Node>>, should_push: bool) {
 
 }
 
@@ -178,10 +178,10 @@ pub fn visit_instance(name: Token, constructor: Vec<Box<Node>>) {
 
 }
 
-pub fn visit_assign(previous: Box<Node>, name: Token, value: Box<Node>) {
+pub fn visit_assign(previous: Option<Box<Node>>, name: Token, value: Box<Node>) {
 
 }
 
-pub fn visit_get(previous: Box<Node>, name: Token, should_push: bool) {
+pub fn visit_get(previous: Option<Box<Node>>, name: Token, should_push: bool) {
 
 }
