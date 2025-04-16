@@ -246,8 +246,7 @@ impl Parser {
     fn primary(&mut self) -> Result<Node, Error> {
         match self.peek()?.tk_type {
             TokenType::Id | TokenType::New => {
-                let location = self.peek()?;
-                Ok(self.access_expr()?)
+                Ok(self.access_statement()?)
             }
             TokenType::Number => {
                 Ok(Node::Number {
@@ -284,9 +283,9 @@ impl Parser {
             TokenType::Lambda => {
                 Ok(self.lambda_fn()?)
             }
-            TokenType::Match => {
-                Ok(self.match_expr()?)
-            }
+            // TokenType::Match => {
+            //     Ok(self.match_expr()?)
+            // }
             _ => Err(Error::new(
                 ErrorType::Parsing,
                 self.peek()?.address,
