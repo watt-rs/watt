@@ -1,6 +1,5 @@
-﻿use std::collections::HashMap;
-use crate::address::Address;
-use crate::ast::Node;
+﻿use crate::address::Address;
+use crate::ast::{set_should_push, Node};
 use crate::errors::{Error, ErrorType};
 use crate::lexer::{Token, TokenType};
 
@@ -66,6 +65,17 @@ impl Parser {
             format!("{:?}:{:?}", self.full_name_prefix, tk.value.clone()),
             tk.address.clone(),
         )
+    }
+
+    fn object_creation(&mut self) -> Result<Node, Error> {
+        self.consume(TokenType::New)?;
+        let name = self.consume(TokenType::Id)?;
+        let args = self.args()?;
+        Ok(Node::Instance {
+            name,
+            constructor: args,
+            should_push: true
+        })
     }
 
     fn access_part(&mut self, previous: Option<Box<Node>>) -> Result<Node, Error> {
@@ -150,7 +160,7 @@ impl Parser {
         }
     }
 
-    fn access_expr(&mut self) -> Result<Node, Error> {
+    fn access(&mut self) -> Result<Node, Error> {
         let mut left = self.access_part(Option::None)?;
 
         while self.check(TokenType::Dot) {
@@ -158,7 +168,7 @@ impl Parser {
             let location = self.peek()?.address.clone();
             left = self.access_part(Option::Some(Box::new(left)))?;
             match left {
-                Node::Define => {
+                Node::Define { .. } => {
                     return Err(Error::new(
                         ErrorType::Parsing,
                         location,
@@ -166,7 +176,7 @@ impl Parser {
                         "check your code.".to_string(),
                     ))
                 }
-                Node::Assign => {
+                Node::Assign { .. } => {
                     return Err(Error::new(
                         ErrorType::Parsing,
                         location,
@@ -178,64 +188,17 @@ impl Parser {
             }
         }
 
-        Ok(left)
+        Ok(left);
+    }
+
+    fn access_expr(&mut self) -> Result<Node, Error> {
+        Ok(self.access()?)
     }
 
     fn access_statement(&mut self) -> Result<Node, Error> {
-        let mut left = self.access_part(Option::None)?;
-
-        while self.check(TokenType::Dot) {
-            self.consume(TokenType::Dot)?;
-            let location = self.peek()?.address.clone();
-            left = self.access_part(Option::Some(Box::new(left)))?;
-            match left {
-                Node::Define => {
-                    return Err(Error::new(
-                        ErrorType::Parsing,
-                        location,
-                        "couldn't use define in expr.".to_string(),
-                        "check your code.".to_string(),
-                    ))
-                }
-                Node::Assign => {
-                    return Err(Error::new(
-                        ErrorType::Parsing,
-                        location,
-                        "couldn't use assign in expr.".to_string(),
-                        "check your code.".to_string(),
-                    ))
-                }
-                _ => {}
-            }
-        }
-
-        match left {
-            Node::Get {previous, name, .. } => {
-                left = Node::Get {
-                    previous,
-                    name,
-                    should_push: true
-                }
-            }
-            Node::Call {previous, name, args, .. } => {
-                left = Node::Call {
-                    previous,
-                    name,
-                    args,
-                    should_push: true
-                }
-            }
-            Node::Instance {name, constructor, ..} => {
-                left = Node::Instance {
-                    name,
-                    constructor,
-                    should_push: true
-                }
-            }
-            _ => {}
-        }
-
-        Ok(left)
+        let location = self.peek()?.address.clone();
+        let result = set_should_push(self.access()?, true, location)?;
+        Ok(result)
     }
 
     fn grouping(&mut self) -> Result<Node, Error> {
@@ -340,7 +303,7 @@ impl Parser {
             Ok(
                 Node::List {
                     location,
-                    values: Vec::new()
+                    values: Box::new(Vec::new())
                 }
             )
         } else {
@@ -352,7 +315,7 @@ impl Parser {
             }
             Ok(Node::List {
                 location,
-                values: nodes
+                values: Box::new(nodes)
             })
         }
     }
@@ -371,21 +334,21 @@ impl Parser {
             Ok(
                 Node::Map {
                     location,
-                    values: HashMap::new()
+                    values: Box::new(Vec::new())
                 }
             )
         } else {
-            let mut nodes: HashMap<Box<Node>, Box<Node>> = HashMap::new();
+            let mut nodes: Vec<(Box<Node>, Box<Node>)> = Vec::new();
             let key = self.key_value()?;
-            nodes.insert(key.0, key.1);
+            nodes.push((key.0, key.1));
             while self.check(TokenType::Comma) {
                 self.consume(TokenType::Comma)?;
                 let key = self.key_value()?;
-                nodes.insert(key.0, key.1);
+                nodes.push((key.0, key.1));
             }
             Ok(Node::Map {
                 location,
-                values: nodes
+                values: Box::new(nodes)
             })
         }
     }
@@ -479,6 +442,84 @@ impl Parser {
         self.logical()
     }
 
+    fn native(&mut self) -> Result<Node, Error> {
+        let name = self.consume(TokenType::Id)?;
+        self.consume(TokenType::Arrow)?;
+        Ok(Node::Native {
+            name
+        })
+    }
+
+    fn function(&mut self) -> Result<Node, Error> {
+        self.consume(TokenType::Fun)?;
+        let name = self.consume(TokenType::Id)?;
+
+        let mut params: Vec<Token> = Vec::new();
+        if self.check(TokenType::Lparen) {
+            params = self.params()?;
+        }
+        self.consume(TokenType::Lbrace)?;
+        let body = self.block()?;
+        self.consume(TokenType::Rbrace)?;
+
+        Ok(Node::FnDeclaration {
+            name: name.clone(),
+            full_name: Option::Some(
+                self.to_full_name(name.clone()),
+            ),
+            params,
+            body: Box::new(body)
+        })
+    }
+
+    fn type_stmt(&mut self) -> Result<Node, Error> {
+        self.consume(TokenType::Type)?;
+        let name = self.consume(TokenType::Id)?;
+
+        let mut constructor: Vec<Token> = Vec::new();
+        if self.check(TokenType::Lparen) {
+            constructor = self.params()?;
+        }
+        self.consume(TokenType::Lbrace)?;
+        let body = Vec::new();
+        while !self.is_at_end() && !self.check(TokenType::Rbrace) {
+            let location = self.peek()?;
+            let mut node = self.statement()?;
+            match node {
+                Node::FnDeclaration { name, params, body, .. } => {
+                    node = Node::FnDeclaration {
+                        name,
+                        full_name: None,
+                        params,
+                        body
+                    }
+                }
+                Node::Native { .. } |
+                Node::Get { .. } |
+                Node::Define { .. } |
+                Node::Assign { .. } => {}
+                _ => {
+                    return Err(Error::new(
+                        ErrorType::Parsing,
+                        location.address.clone(),
+                        format!("invalid node for type: {:?}:{:?}", location.tk_type.clone(), location.value.clone()),
+                        "check your code.".to_string(),
+                    ));
+                }
+            }
+        }
+        self.consume(TokenType::Rbrace)?;
+
+        Ok(Node::Type {
+            name: name.clone(),
+            full_name: Some(self.to_full_name(name.clone())),
+            constructor,
+            body: Box::new(Node::Block {
+                body
+            })
+        })
+    }
+
     fn statement(&mut self) -> Result<Node, Error> {
         todo!()
     }
@@ -545,6 +586,6 @@ impl Parser {
     }
 
     fn is_at_end(&self) -> bool {
-        return self.current as usize >= self.tokens.len();
+        self.current as usize >= self.tokens.len()
     }
 }

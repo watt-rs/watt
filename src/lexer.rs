@@ -8,7 +8,7 @@ use crate::errors::{Error, ErrorType};
 Тип токена
  */
 
-#[derive(Debug, Clone, Eq, PartialEq, Copy)]
+#[derive(Debug, Clone, Eq, PartialEq, Copy, Hash)]
 pub enum TokenType {
     Fun,
     Op, // +, -, *, /
@@ -70,7 +70,7 @@ pub enum TokenType {
 Токен
  */
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Token {
     pub tk_type: TokenType,
     pub value: String,

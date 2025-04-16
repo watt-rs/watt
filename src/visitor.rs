@@ -29,10 +29,10 @@ pub fn visit_node(node: Node) {
             visit_get(previous, name, should_push),
         Node::Call { previous, name, args, should_push } =>
             visit_call(previous, name, args, should_push),
-        Node::FnDeclaration { name, full_name, args, body } =>
-            visit_fn_decl(name, full_name, args, body),
-        Node::AnFnDeclaration { args, body } =>
-            visit_an_fn_decl(args, body),
+        Node::FnDeclaration { name, full_name, params, body } =>
+            visit_fn_decl(name, full_name, params, body),
+        Node::AnFnDeclaration { location, params, body } =>
+            visit_an_fn_decl(params, body),
         Node::Break { location } =>
             visit_break(location),
         Node::Continue { location } =>
@@ -51,16 +51,16 @@ pub fn visit_node(node: Node) {
             visit_match(location, matchable, cases, default),
         Node::Native { name } =>
             visit_native(name),
-        Node::Instance { name, constructor } =>
-            visit_instance(name, constructor),
+        Node::Instance { name, constructor, should_push } =>
+            visit_instance(name, constructor, should_push),
         Node::Ret { location, value } =>
             visit_ret(location, value),
         Node::Null { location } =>
             visit_null(location),
-        Node::Type { name, fullname, constructor, body } =>
-            visit_type(name, fullname, constructor, body),
-        Node::Unit { name, fullname, body } =>
-            visit_unit(name, fullname, body),
+        Node::Type { name, full_name, constructor, body } =>
+            visit_type(name, full_name, constructor, body),
+        Node::Unit { name, full_name, body } =>
+            visit_unit(name, full_name, body),
         Node::For { iterable, variable_name } => {
             visit_for(iterable, variable_name)
         }
@@ -106,7 +106,7 @@ pub fn visit_call(previous: Option<Box<Node>>, name: Token, args: Vec<Box<Node>>
 
 }
 
-pub fn visit_fn_decl(name: Token, full_name: Token, args: Vec<Token>, body: Box<Node>) {
+pub fn visit_fn_decl(name: Token, full_name: Option<Token>, args: Vec<Token>, body: Box<Node>) {
 
 }
 
@@ -122,11 +122,11 @@ pub fn visit_import(imports: Vec<Token>) {
 
 }
 
-pub fn visit_list(location: Token, list: Vec<Box<Node>>) {
+pub fn visit_list(location: Token, list: Box<Vec<Box<Node>>>) {
 
 }
 
-pub fn visit_map(location: Token, map: HashMap<Box<Node>, Box<Node>>) {
+pub fn visit_map(location: Token, map: Box<Vec<(Box<Node>, Box<Node>)>>) {
 
 }
 
@@ -138,11 +138,11 @@ pub fn visit_unary(value: Box<Node>, op: Token) {
 
 }
 
-pub fn visit_type(name: Token, fullname: Token, constructor: Vec<Token>, body: Box<Node>) {
+pub fn visit_type(name: Token, full_name: Option<Token>, constructor: Vec<Token>, body: Box<Node>) {
 
 }
 
-pub fn visit_unit(name: Token, fullname: Token, body: Box<Node>) {
+pub fn visit_unit(name: Token, full_name: Option<Token>, body: Box<Node>) {
 
 }
 
@@ -174,7 +174,7 @@ pub fn visit_null(location: Token) {
 
 }
 
-pub fn visit_instance(name: Token, constructor: Vec<Box<Node>>) {
+pub fn visit_instance(name: Token, constructor: Vec<Box<Node>>, should_push: bool) {
 
 }
 

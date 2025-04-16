@@ -1,10 +1,12 @@
 ﻿/*
 АСТ
  */
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
+use crate::address::Address;
+use crate::errors::{Error, ErrorType};
 use crate::lexer::Token;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Node {
     Block {
         body: Vec<Box<Node>>,
@@ -61,7 +63,7 @@ pub enum Node {
     },
     FnDeclaration {
         name: Token,
-        full_name: Token,
+        full_name: Option<Token>,
         params: Vec<Token>,
         body: Box<Node>,
     },
@@ -81,7 +83,7 @@ pub enum Node {
     },
     List {
         location: Token,
-        values: Vec<Box<Node>>,
+        values: Box<Vec<Box<Node>>>,
     },
     Cond {
         left: Box<Node>,
@@ -95,7 +97,7 @@ pub enum Node {
     },
     Map {
         location: Token,
-        values: HashMap<Box<Node>, Box<Node>>,
+        values: Box<Vec<(Box<Node>, Box<Node>)>>,
     },
     Match {
         location: Token,
@@ -120,17 +122,52 @@ pub enum Node {
     },
     Type {
         name: Token,
-        fullname: Token,
+        full_name: Option<Token>,
         constructor: Vec<Token>,
         body: Box<Node>,
     },
     Unit {
         name: Token,
-        fullname: Token,
+        full_name: Option<Token>,
         body: Box<Node>
     },
     For {
         iterable: Box<Node>,
         variable_name: Token,
+    }
+}
+
+pub fn set_should_push(node: Node, should_push: bool, address: Address) -> Result<Node, Error> {
+    match node {
+        Node::Get { previous, name, .. } => {
+            Ok(Node::Get {
+                previous,
+                name,
+                should_push,
+            })
+        },
+        Node::Call { previous, name, args, .. } => {
+            Ok(Node::Call {
+                previous,
+                name,
+                args,
+                should_push,
+            })
+        },
+        Node::Instance { name, constructor, .. } => {
+            Ok(Node::Instance {
+                name,
+                constructor,
+                should_push,
+            })
+        },
+        _ => {
+            Err(Error::new(
+                ErrorType::Parsing,
+                address,
+                format!("couldn't apply should_push changes to: {:?}", node).to_string(),
+                "check your code.".to_string()
+            ))
+        }
     }
 }
