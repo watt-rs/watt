@@ -25,7 +25,7 @@ fn main() {
 fn main() {
     let mut lexer = lexer::Lexer::new(
         "fun main() { io.println('Hello, world!') }".to_string(),
-        "test.wt".to_string()
+        "test.gko".to_string()
     );
     match (lexer.lex()) {
         Ok(tokens) => {

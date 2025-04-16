@@ -1,19 +1,19 @@
-﻿Crab - multi-paradigm, dynamic-typed, vm-interpreted programming language. 🦀
+﻿Geko - multi-paradigm, dynamic-typed, vm-interpreted programming language. 🦎
 
-Simple example is here. 🐚
+Simple example is here. 🍹
 
-```crab
-import 'crab::io'
+```geko
+import 'geko::io'
 
-type Crab {
+type Gecko {
     fn say_hello(name) {
         io.println('Hello, ' + name)
     }
 }
 
-crab := new Crab()
-crab.say_hello()  
+gecko := new Gecko()
+gecko.say_hello()  
 ```
 
-Crab is written in pure rust, what provides good
+Geko is written in pure rust, what provides good
 performance and experience 👋🌞
