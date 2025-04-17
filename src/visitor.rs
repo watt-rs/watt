@@ -50,8 +50,8 @@ pub fn visit_node(node: Node) {
             visit_map(location, values),
         Node::Match { location, matchable, cases, default } =>
             visit_match(location, matchable, cases, default),
-        Node::Native { name } =>
-            visit_native(name),
+        Node::Native { name, fn_name } =>
+            visit_native(name, fn_name),
         Node::Instance { name, constructor, should_push } =>
             visit_instance(name, constructor, should_push),
         Node::Ret { location, value } =>
@@ -155,7 +155,7 @@ pub fn visit_an_fn_decl(args: Vec<Token>, body: Box<Node>) {
 
 }
 
-pub fn visit_native(name: Token) {
+pub fn visit_native(name: Token, fn_name: Token) {
 
 }
 

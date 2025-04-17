@@ -108,6 +108,7 @@ pub enum Node {
     },
     Native {
         name: Token,
+        fn_name: Token
     },
     Instance {
         name: Token,

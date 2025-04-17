@@ -720,8 +720,63 @@ impl Parser {
         })
     }
 
+    fn native_stmt(&mut self) -> Result<Node, Error> {
+        self.consume(TokenType::Native)?;
+        let name = self.consume(TokenType::Id)?;
+        self.consume(TokenType::Arrow)?;
+        let fn_name = self.consume(TokenType::Text)?;
+        Ok(Node::Native {
+            name,
+            fn_name
+        })
+    }
+
     fn statement(&mut self) -> Result<Node, Error> {
-        todo!()
+        let tk = self.peek()?;
+        match tk.tk_type {
+            TokenType::Type => {
+                self.type_stmt()
+            },
+            TokenType::Unit => {
+                self.unit_stmt()
+            },
+            TokenType::If => {
+                self.if_stmt()
+            },
+            TokenType::New | TokenType::Id => {
+                self.access_expr()
+            },
+            TokenType::Match => {
+                todo!()
+            },
+            TokenType::Continue => {
+                self.continue_expr()
+            },
+            TokenType::Break => {
+                self.break_expr()
+            },
+            TokenType::Ret => {
+                self.return_expr()
+            },
+            TokenType::Fun => {
+                self.function_stmt()
+            },
+            TokenType::Native => {
+                self.native_stmt()
+            },
+            TokenType::Import => {
+                self.import_stmt()
+            }
+            _ => {
+                Err(Error::new(
+                    ErrorType::Parsing,
+                    tk.address,
+                    format!("unexpected token: {tk_type}:{tk_value}",
+                            tk_type=tk.value, tk_value=tk.value),
+                    "check your code.".to_string(),
+                ))
+            }
+        }
     }
 
     fn parse(&mut self) -> Result<Node, Error> {
