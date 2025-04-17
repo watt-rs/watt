@@ -1,7 +1,7 @@
-﻿use std::collections::HashMap;
-use crate::ast::Node;
-use crate::import::Import;
-use crate::lexer::Token;
+﻿use crate::import::Import;
+use crate::lexer::lexer::*;
+use crate::parser::ast::*;
+
 /*
 Визитор (компилятор)
  */

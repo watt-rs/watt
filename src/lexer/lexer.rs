@@ -1,7 +1,7 @@
 ﻿#![allow(non_upper_case_globals)]
 
 use std::collections::HashMap;
-use crate::address::Address;
+use crate::lexer::address::*;
 use crate::errors::{Error, ErrorType};
 
 /*

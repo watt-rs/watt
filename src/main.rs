@@ -1,37 +1,27 @@
-mod errors;
-mod address;
-mod colors;
-mod lexer;
-mod ast;
-mod visitor;
-mod parser;
-mod import;
 /*
-fn a(a : bool) -> Result<String, String> {
-    if a {
-        Result::Ok(String::from("Hello, world!"))
-    } else {
-        Result::Err(String::from("Error"))
-    }
-}
+Main modules
+ */
+mod errors;
+mod lexer;
+mod colors;
+mod visitor;
+mod import;
+mod parser;
 
-fn main() {
-    match a(true) {
-        Ok(s) => println!("{}", s),
-        Err(s) => println!("{}", s),
-    }
-}
-*/
+// imports
+use crate::lexer::lexer::Lexer;
+use crate::parser::parser::Parser;
 
+// main
 fn main() {
-    let mut lexer = lexer::Lexer::new(
+    let mut lexer = Lexer::new(
         "fun main() { io.println('Hello, world!') }".to_string(),
         "test.gko".to_string()
     );
     match lexer.lex() {
         Ok(tokens) => {
             println!("Tokens: {:?}", tokens.clone());
-            let mut parser = parser::Parser::new(
+            let mut parser = Parser::new(
                 tokens,
                 "test.gko".to_string(),
                 "test".to_string()

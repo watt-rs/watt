@@ -1,11 +1,11 @@
 ﻿/*
 АСТ
  */
-use std::collections::{BTreeMap, HashMap};
-use crate::address::Address;
+use crate::lexer::address::*;
 use crate::errors::{Error, ErrorType};
 use crate::import::Import;
-use crate::lexer::Token;
+use crate::lexer::lexer::*;
+use crate::parser::ast::*;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Node {

@@ -1,8 +1,10 @@
-﻿use crate::address::Address;
-use crate::ast::{set_should_push, Node};
+﻿#![allow(unused_qualifications)]
+
+use crate::lexer::address::*;
 use crate::errors::{Error, ErrorType};
 use crate::import::Import;
-use crate::lexer::{Token, TokenType};
+use crate::lexer::lexer::*;
+use crate::parser::ast::*;
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -322,7 +324,7 @@ impl Parser {
 
     fn key_value_expr(&mut self) -> Result<(Box<Node>, Box<Node>), Error> {
         let l = self.expr()?;
-        self.consume(TokenType::Colon);
+        self.consume(TokenType::Colon)?;
         let r = self.expr()?;
         Ok((Box::new(l), Box::new(r)))
     }
@@ -358,7 +360,7 @@ impl Parser {
         let _minus = String::from("-");
         match tk {
             Token { tk_type: TokenType::Op, value: _minus, .. } => {
-                self.consume(TokenType::Op);
+                self.consume(TokenType::Op)?;
                 Ok(Node::Unary {
                     op: self.peek()?,
                     value: Box::new(self.primary_expr()?)
@@ -532,6 +534,7 @@ impl Parser {
         })
     }
 
+    //noinspection ALL
     fn elif_stmt(&mut self) -> Result<Node, Error> {
         let location = self.consume(TokenType::Elif)?;
         let logical = self.expr()?;
@@ -562,6 +565,7 @@ impl Parser {
         }
     }
 
+    //noinspection ALL
     fn if_stmt(&mut self) -> Result<Node, Error> {
         let location = self.consume(TokenType::If)?;
         let logical = self.expr()?;
@@ -629,6 +633,7 @@ impl Parser {
         })
     }
 
+    //noinspection ALL
     fn type_stmt(&mut self) -> Result<Node, Error> {
         self.consume(TokenType::Type)?;
         let name = self.consume(TokenType::Id)?;
@@ -677,6 +682,7 @@ impl Parser {
         })
     }
 
+    //noinspection ALL
     fn unit_stmt(&mut self) -> Result<Node, Error> {
         self.consume(TokenType::Unit)?;
         let name = self.consume(TokenType::Id)?;
