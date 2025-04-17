@@ -4,9 +4,10 @@ Main modules
 mod errors;
 mod lexer;
 mod colors;
-mod visitor;
+mod compiler;
 mod import;
 mod parser;
+mod vm;
 
 // imports
 use crate::lexer::lexer::Lexer;
