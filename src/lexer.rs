@@ -59,8 +59,6 @@ pub enum TokenType {
     Continue, // continue
     Arrow, // ->
     Unit, // unit
-    To, // to
-    From, // from
     Native, // native
     Pipe, // pipe
     With, // with
@@ -118,8 +116,6 @@ impl Lexer {
             (String::from("for"), TokenType::For),
             (String::from("in"), TokenType::In),
             (String::from("continue"), TokenType::Continue),
-            (String::from("from"), TokenType::From),
-            (String::from("to"), TokenType::To),
             (String::from("true"), TokenType::Bool),
             (String::from("false"), TokenType::Bool),
             (String::from("null"), TokenType::Null),

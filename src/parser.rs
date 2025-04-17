@@ -1,6 +1,7 @@
 ﻿use crate::address::Address;
 use crate::ast::{set_should_push, Node};
 use crate::errors::{Error, ErrorType};
+use crate::import::Import;
 use crate::lexer::{Token, TokenType};
 
 struct Parser {
@@ -67,7 +68,7 @@ impl Parser {
         )
     }
 
-    fn object_creation(&mut self) -> Result<Node, Error> {
+    fn object_creation_expr(&mut self) -> Result<Node, Error> {
         self.consume(TokenType::New)?;
         let name = self.consume(TokenType::Id)?;
         let args = self.args()?;
@@ -136,36 +137,36 @@ impl Parser {
                         right: Box::new(self.expr()?),
                         op: Token::new(
                             TokenType::Op,
-                            op.clone(),
-                            loc.address.clone(),
+                            op,
+                            loc.address,
                         )
                     }),
                 });
             } else if self.check(TokenType::Lparen) {
                 return Ok(Node::Call {
-                    previous: previous.clone(),
+                    previous,
                     name: identifier.clone(),
                     args: self.args()?,
                     should_push: true
                 });
             } else {
                 return Ok(Node::Get {
-                    previous: previous.clone(),
+                    previous,
                     name: identifier.clone(),
                     should_push: true
                 })
             }
         } else {
-            Ok(self.object_creation()?)
+            Ok(self.object_creation_expr()?)
         }
     }
 
-    fn access(&mut self) -> Result<Node, Error> {
+    fn parse_access(&mut self) -> Result<Node, Error> {
         let mut left = self.access_part(Option::None)?;
 
         while self.check(TokenType::Dot) {
             self.consume(TokenType::Dot)?;
-            let location = self.peek()?.address.clone();
+            let location = self.peek()?.address;
             left = self.access_part(Option::Some(Box::new(left)))?;
             match left {
                 Node::Define { .. } => {
@@ -188,27 +189,27 @@ impl Parser {
             }
         }
 
-        Ok(left);
+        Ok(left)
     }
 
     fn access_expr(&mut self) -> Result<Node, Error> {
-        Ok(self.access()?)
+        Ok(self.parse_access()?)
     }
 
-    fn access_statement(&mut self) -> Result<Node, Error> {
-        let location = self.peek()?.address.clone();
-        let result = set_should_push(self.access()?, true, location)?;
+    fn access_stmt(&mut self) -> Result<Node, Error> {
+        let location = self.peek()?.address;
+        let result = set_should_push(self.parse_access()?, true, location)?;
         Ok(result)
     }
 
-    fn grouping(&mut self) -> Result<Node, Error> {
+    fn grouping_expr(&mut self) -> Result<Node, Error> {
         self.consume(TokenType::Lparen)?;
         let expr = self.expr()?;
         self.consume(TokenType::Rparen)?;
         Ok(expr)
     }
 
-    fn anonymous_fn(&mut self) -> Result<Node, Error> {
+    fn anonymous_fn_expr(&mut self) -> Result<Node, Error> {
         let location = self.consume(TokenType::Fun)?;
 
         let mut params: Vec<Token> = Vec::new();
@@ -226,7 +227,7 @@ impl Parser {
         })
     }
 
-    fn lambda_fn(&mut self) -> Result<Node, Error> {
+    fn lambda_fn_expr(&mut self) -> Result<Node, Error> {
         let location = self.consume(TokenType::Lambda)?;
 
         let mut params: Vec<Token> = Vec::new();
@@ -243,10 +244,10 @@ impl Parser {
         })
     }
 
-    fn primary(&mut self) -> Result<Node, Error> {
+    fn primary_expr(&mut self) -> Result<Node, Error> {
         match self.peek()?.tk_type {
             TokenType::Id | TokenType::New => {
-                Ok(self.access_statement()?)
+                Ok(self.access_expr()?)
             }
             TokenType::Number => {
                 Ok(Node::Number {
@@ -264,13 +265,13 @@ impl Parser {
                 })
             }
             TokenType::Lparen => {
-                Ok(self.grouping()?)
+                Ok(self.grouping_expr()?)
             }
             TokenType::Lbrace => {
-                Ok(self.map()?)
+                Ok(self.map_expr()?)
             }
             TokenType::Lbracket => {
-                Ok(self.list()?)
+                Ok(self.list_expr()?)
             }
             TokenType::Null => {
                 Ok(Node::Null {
@@ -278,10 +279,10 @@ impl Parser {
                 })
             }
             TokenType::Fun => {
-                Ok(self.anonymous_fn()?)
+                Ok(self.anonymous_fn_expr()?)
             }
             TokenType::Lambda => {
-                Ok(self.lambda_fn()?)
+                Ok(self.lambda_fn_expr()?)
             }
             // TokenType::Match => {
             //     Ok(self.match_expr()?)
@@ -295,7 +296,7 @@ impl Parser {
         }
     }
 
-    fn list(&mut self) -> Result<Node, Error> {
+    fn list_expr(&mut self) -> Result<Node, Error> {
         let location = self.consume(TokenType::Lbracket)?;
         if self.check(TokenType::Rbracket) {
             self.consume(TokenType::Rbracket)?;
@@ -319,14 +320,14 @@ impl Parser {
         }
     }
 
-    fn key_value(&mut self) -> Result<(Box<Node>, Box<Node>), Error> {
+    fn key_value_expr(&mut self) -> Result<(Box<Node>, Box<Node>), Error> {
         let l = self.expr()?;
         self.consume(TokenType::Colon);
         let r = self.expr()?;
         Ok((Box::new(l), Box::new(r)))
     }
 
-    fn map(&mut self) -> Result<Node, Error> {
+    fn map_expr(&mut self) -> Result<Node, Error> {
         let location = self.consume(TokenType::Lbracket)?;
         if self.check(TokenType::Rbracket) {
             self.consume(TokenType::Rbracket)?;
@@ -338,11 +339,11 @@ impl Parser {
             )
         } else {
             let mut nodes: Vec<(Box<Node>, Box<Node>)> = Vec::new();
-            let key = self.key_value()?;
+            let key = self.key_value_expr()?;
             nodes.push((key.0, key.1));
             while self.check(TokenType::Comma) {
                 self.consume(TokenType::Comma)?;
-                let key = self.key_value()?;
+                let key = self.key_value_expr()?;
                 nodes.push((key.0, key.1));
             }
             Ok(Node::Map {
@@ -352,7 +353,7 @@ impl Parser {
         }
     }
 
-    fn unary(&mut self) -> Result<Node, Error> {
+    fn unary_expr(&mut self) -> Result<Node, Error> {
         let tk = self.peek()?;
         let _minus = String::from("-");
         match tk {
@@ -360,22 +361,22 @@ impl Parser {
                 self.consume(TokenType::Op);
                 Ok(Node::Unary {
                     op: self.peek()?,
-                    value: Box::new(self.primary()?)
+                    value: Box::new(self.primary_expr()?)
                 })
             }
             _ => {
-                Ok(self.primary()?)
+                Ok(self.primary_expr()?)
             }
         }
     }
 
-    fn multiplicative(&mut self) -> Result<Node, Error> {
-        let mut left = self.unary()?;
+    fn multiplicative_expr(&mut self) -> Result<Node, Error> {
+        let mut left = self.unary_expr()?;
 
         while self.check(TokenType::Op) &&
             (self.peek()?.value == "*" || self.peek()?.value == "/") {
             let op = self.peek()?;
-            let right = self.unary()?;
+            let right = self.unary_expr()?;
             left = Node::Bin {
                 left: Box::new(left),
                 right: Box::new(right),
@@ -386,13 +387,13 @@ impl Parser {
         Ok(left)
     }
 
-    fn additive(&mut self) -> Result<Node, Error> {
-        let mut left = self.multiplicative()?;
+    fn additive_expr(&mut self) -> Result<Node, Error> {
+        let mut left = self.multiplicative_expr()?;
 
         while self.check(TokenType::Op) &&
             (self.peek()?.value == "+" || self.peek()?.value == "-") {
             let op = self.peek()?;
-            let right = self.multiplicative()?;
+            let right = self.multiplicative_expr()?;
             left = Node::Bin {
                 left: Box::new(left),
                 right: Box::new(right),
@@ -403,13 +404,13 @@ impl Parser {
         Ok(left)
     }
 
-    fn conditional(&mut self) -> Result<Node, Error> {
-        let mut left = self.additive()?;
+    fn conditional_expr(&mut self) -> Result<Node, Error> {
+        let mut left = self.additive_expr()?;
 
         if self.check(TokenType::Greater) || self.check(TokenType::Less)
             || self.check(TokenType::LessEq) || self.check(TokenType::GreaterEq) {
             let op = self.peek()?;
-            let right = self.additive()?;
+            let right = self.additive_expr()?;
             left = Node::Cond {
                 left: Box::new(left),
                 right: Box::new(right),
@@ -420,13 +421,13 @@ impl Parser {
         Ok(left)
     }
 
-    fn logical(&mut self) -> Result<Node, Error> {
-        let mut left = self.conditional()?;
+    fn logical_expr(&mut self) -> Result<Node, Error> {
+        let mut left = self.conditional_expr()?;
 
         while self.check(TokenType::And) ||
             self.check(TokenType::Or) {
             let op = self.peek()?;
-            let right = self.conditional()?;
+            let right = self.conditional_expr()?;
             left = Node::Logical {
                 left: Box::new(left),
                 right: Box::new(right),
@@ -438,18 +439,175 @@ impl Parser {
     }
 
     fn expr(&mut self) -> Result<Node, Error> {
-        self.logical()
+        self.logical_expr()
     }
 
-    fn native(&mut self) -> Result<Node, Error> {
-        let name = self.consume(TokenType::Id)?;
-        self.consume(TokenType::Arrow)?;
-        Ok(Node::Native {
-            name
+    fn continue_expr(&mut self) -> Result<Node, Error> {
+        let location = self.consume(TokenType::Continue)?;
+        Ok(Node::Continue {
+            location
         })
     }
 
-    fn function(&mut self) -> Result<Node, Error> {
+    fn break_expr(&mut self) -> Result<Node, Error> {
+        let location = self.consume(TokenType::Break)?;
+        Ok(Node::Break {
+            location
+        })
+    }
+
+    fn return_expr(&mut self) -> Result<Node, Error> {
+        let location = self.consume(TokenType::Ret)?;
+        let value = Box::new(self.expr()?);
+        Ok(Node::Ret {
+            location,
+            value
+        })
+    }
+
+    fn single_import(&mut self) -> Result<Import, Error> {
+        let name = self.consume(TokenType::Text)?;
+        if self.check(TokenType::With) {
+            self.consume(TokenType::With)?;
+            Ok(Import::new(
+                name.value,
+                Some(
+                    self.consume(TokenType::Text)?.value
+                )
+            ))
+        } else {
+            Ok(Import::new(
+                name.value,
+                None
+            ))
+        }
+    }
+
+    fn import_stmt(&mut self) -> Result<Node, Error> {
+        self.consume(TokenType::Import)?;
+        let mut imports = Vec::new();
+        if self.check(TokenType::Lparen) {
+            self.consume(TokenType::Lparen)?;
+            imports.push(self.single_import()?);
+            while self.check(TokenType::Comma) {
+                self.consume(TokenType::Comma)?;
+                imports.push(self.single_import()?);
+            }
+        }
+        else {
+            imports.push(self.single_import()?);
+        }
+        Ok(Node::Import {
+            imports
+        })
+    }
+
+    fn while_stmt(&mut self) -> Result<Node, Error> {
+        let location = self.consume(TokenType::While)?;
+        let logical = self.expr()?;
+        self.consume(TokenType::Lbrace)?;
+        let body = self.block()?;
+        self.consume(TokenType::Rbrace)?;
+        Ok(Node::While {
+            location,
+            logical: Box::new(logical),
+            body: Box::new(body)
+        })
+    }
+
+    fn else_stmt(&mut self) -> Result<Node, Error> {
+        let location = self.consume(TokenType::Else)?;
+        self.consume(TokenType::Lbrace)?;
+        let body = self.block()?;
+        self.consume(TokenType::Rbrace)?;
+        Ok(Node::If {
+            location: location.clone(),
+            logical: Box::new(Node::Bool { value: Token::new(
+                TokenType::Bool,
+                "true".to_string(),
+                location.address
+            )}),
+            body: Box::new(body),
+            elseif: None
+        })
+    }
+
+    fn elif_stmt(&mut self) -> Result<Node, Error> {
+        let location = self.consume(TokenType::Elif)?;
+        let logical = self.expr()?;
+        self.consume(TokenType::Lbrace)?;
+        let body = self.block()?;
+        self.consume(TokenType::Rbrace)?;
+        if self.check(TokenType::Elif) {
+            Ok(Node::If {
+                location,
+                logical: Box::new(logical),
+                body: Box::new(body),
+                elseif: Some(Box::new(self.elif_stmt()?))
+            })
+        } else if self.check(TokenType::Else) {
+            Ok(Node::If {
+                location,
+                logical: Box::new(logical),
+                body: Box::new(body),
+                elseif: Some(Box::new(self.else_stmt()?))
+            })
+        } else {
+            Ok(Node::If {
+                location,
+                logical: Box::new(logical),
+                body: Box::new(body),
+                elseif: None
+            })
+        }
+    }
+
+    fn if_stmt(&mut self) -> Result<Node, Error> {
+        let location = self.consume(TokenType::If)?;
+        let logical = self.expr()?;
+        self.consume(TokenType::Lbrace)?;
+        let body = self.block()?;
+        self.consume(TokenType::Rbrace)?;
+        if self.check(TokenType::Elif) {
+            Ok(Node::If {
+                location,
+                logical: Box::new(logical),
+                body: Box::new(body),
+                elseif: Some(Box::new(self.elif_stmt()?))
+            })
+        } else if self.check(TokenType::Else) {
+            Ok(Node::If {
+                location,
+                logical: Box::new(logical),
+                body: Box::new(body),
+                elseif: Some(Box::new(self.else_stmt()?))
+            })
+        } else {
+            Ok(Node::If {
+                location,
+                logical: Box::new(logical),
+                body: Box::new(body),
+                elseif: None
+            })
+        }
+    }
+
+    fn for_stmt(&mut self) -> Result<Node, Error> {
+        self.consume(TokenType::For)?;
+        let name = self.consume(TokenType::Id)?;
+        self.consume(TokenType::In)?;
+        let value = self.expr()?;
+        self.consume(TokenType::Lbrace)?;
+        let body = self.block()?;
+        self.consume(TokenType::Rbrace)?;
+        Ok(Node::For {
+            variable_name: name,
+            iterable: Box::new(value),
+            body: Box::new(body),
+        })
+    }
+
+    fn function_stmt(&mut self) -> Result<Node, Error> {
         self.consume(TokenType::Fun)?;
         let name = self.consume(TokenType::Id)?;
 
@@ -464,7 +622,7 @@ impl Parser {
         Ok(Node::FnDeclaration {
             name: name.clone(),
             full_name: Option::Some(
-                self.to_full_name(name.clone()),
+                self.to_full_name(name),
             ),
             params,
             body: Box::new(body)
@@ -500,8 +658,8 @@ impl Parser {
                 _ => {
                     return Err(Error::new(
                         ErrorType::Parsing,
-                        location.address.clone(),
-                        format!("invalid node for type: {:?}:{:?}", location.tk_type.clone(), location.value.clone()),
+                        location.address,
+                        format!("invalid node for type: {:?}:{:?}", location.tk_type, location.value),
                         "check your code.".to_string(),
                     ));
                 }
@@ -511,8 +669,51 @@ impl Parser {
 
         Ok(Node::Type {
             name: name.clone(),
-            full_name: Some(self.to_full_name(name.clone())),
+            full_name: Some(self.to_full_name(name)),
             constructor,
+            body: Box::new(Node::Block {
+                body
+            })
+        })
+    }
+
+    fn unit_stmt(&mut self) -> Result<Node, Error> {
+        self.consume(TokenType::Unit)?;
+        let name = self.consume(TokenType::Id)?;
+
+        self.consume(TokenType::Lbrace)?;
+        let body = Vec::new();
+        while !self.is_at_end() && !self.check(TokenType::Rbrace) {
+            let location = self.peek()?;
+            let mut node = self.statement()?;
+            match node {
+                Node::FnDeclaration { name, params, body, .. } => {
+                    node = Node::FnDeclaration {
+                        name,
+                        full_name: None,
+                        params,
+                        body
+                    }
+                }
+                Node::Native { .. } |
+                Node::Get { .. } |
+                Node::Define { .. } |
+                Node::Assign { .. } => {}
+                _ => {
+                    return Err(Error::new(
+                        ErrorType::Parsing,
+                        location.address,
+                        format!("invalid node for type: {:?}:{:?}", location.tk_type, location.value),
+                        "check your code.".to_string(),
+                    ));
+                }
+            }
+        }
+        self.consume(TokenType::Rbrace)?;
+
+        Ok(Node::Unit {
+            name: name.clone(),
+            full_name: Some(self.to_full_name(name)),
             body: Box::new(Node::Block {
                 body
             })

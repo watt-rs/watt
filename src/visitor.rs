@@ -1,5 +1,6 @@
 ﻿use std::collections::HashMap;
 use crate::ast::Node;
+use crate::import::Import;
 use crate::lexer::Token;
 /*
 Визитор (компилятор)
@@ -61,8 +62,8 @@ pub fn visit_node(node: Node) {
             visit_type(name, full_name, constructor, body),
         Node::Unit { name, full_name, body } =>
             visit_unit(name, full_name, body),
-        Node::For { iterable, variable_name } => {
-            visit_for(iterable, variable_name)
+        Node::For { iterable, variable_name, body } => {
+            visit_for(iterable, variable_name, body)
         }
         Node::Block { body } => {
             visit_block(body);
@@ -118,7 +119,7 @@ pub fn visit_continue(location: Token) {
 
 }
 
-pub fn visit_import(imports: Vec<Token>) {
+pub fn visit_import(imports: Vec<Import>) {
 
 }
 
@@ -130,7 +131,7 @@ pub fn visit_map(location: Token, map: Box<Vec<(Box<Node>, Box<Node>)>>) {
 
 }
 
-pub fn visit_for(iterable: Box<Node>, variable_name: Token) {
+pub fn visit_for(iterable: Box<Node>, variable_name: Token, body: Box<Node>) {
 
 }
 

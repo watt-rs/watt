@@ -4,6 +4,7 @@
 use std::collections::{BTreeMap, HashMap};
 use crate::address::Address;
 use crate::errors::{Error, ErrorType};
+use crate::import::Import;
 use crate::lexer::Token;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -79,7 +80,7 @@ pub enum Node {
         location: Token,
     },
     Import {
-        imports: Vec<Token>,
+        imports: Vec<Import>,
     },
     List {
         location: Token,
@@ -134,6 +135,7 @@ pub enum Node {
     For {
         iterable: Box<Node>,
         variable_name: Token,
+        body: Box<Node>
     }
 }
 
