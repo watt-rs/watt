@@ -357,9 +357,8 @@ impl Parser {
 
     fn unary_expr(&mut self) -> Result<Node, Error> {
         let tk = self.peek()?;
-        let _minus = String::from("-");
         match tk {
-            Token { tk_type: TokenType::Op, value: _minus, .. } => {
+            Token { tk_type: TokenType::Op, value, .. } if value == "?" || value == "!"  => {
                 self.consume(TokenType::Op)?;
                 Ok(Node::Unary {
                     op: self.peek()?,

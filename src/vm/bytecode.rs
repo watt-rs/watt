@@ -39,19 +39,19 @@ pub enum Opcode {
     },
     DefineFn {
         name: String,
-        full_name: String,
+        full_name: Option<String>,
         params: Vec<String>,
         body: Box<Chunk>,
     },
     DefineType {
         name: String,
-        full_name: String,
+        full_name: Option<String>,
         constructor: Vec<String>,
         body: Box<Chunk>,
     },
     DefineUnit {
         name: String,
-        full_name: String,
+        full_name: Option<String>,
         body: Box<Chunk>,
     },
     Define {
@@ -78,7 +78,9 @@ pub enum Opcode {
         name: String,
         args: Box<Chunk>,
     },
-    EnLoop,
+    EndLoop {
+        current_iteration: bool
+    },
     Closure {
         name: String,
     },

@@ -7,6 +7,7 @@ pub enum ErrorType {
     Parsing,
     Runtime,
     Semantic,
+    Compilation
 }
 
 /*

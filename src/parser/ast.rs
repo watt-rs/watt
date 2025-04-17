@@ -5,6 +5,7 @@ use crate::lexer::address::*;
 use crate::errors::{Error, ErrorType};
 use crate::import::Import;
 use crate::lexer::lexer::*;
+use crate::parser::ast::*;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Node {

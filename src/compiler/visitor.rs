@@ -1,5 +1,6 @@
 ﻿use std::collections::VecDeque;
-use crate::errors::Error;
+use std::fmt::format;
+use crate::errors::{Error, ErrorType};
 use crate::import::Import;
 use crate::lexer::lexer::*;
 use crate::parser::ast::*;
@@ -211,47 +212,106 @@ impl CompileVisitor {
 
     pub fn visit_define(&mut self, previous: Option<Box<Node>>, name: Token,
                         value: Box<Node>) -> Result<(), Error>  {
-
+        let mut has_previous = false;
+        if let Some(prev) = previous {
+            self.visit_node(*prev)?;
+            has_previous = true;
+        }
+        self.push_chunk();
+        self.visit_node(*value)?;
+        self.push(Opcode::Define {
+            name,
+            value: Chunk::new(self.pop_chunk()),
+            has_previous
+        });
+        Ok(())
     }
 
     pub fn visit_call(&mut self, previous: Option<Box<Node>>,
                       name: Token, args: Vec<Box<Node>>, should_push: bool) -> Result<(), Error>  {
-
+        let mut has_previous = false;
+        if let Some(prev) = previous {
+            self.visit_node(*prev)?;
+            has_previous = true;
+        }
+        self.push_chunk();
+        self.visit_block(args)?;
+        self.push(Opcode::Call {
+            name,
+            args: Chunk::new(self.pop_chunk()),
+            has_previous
+        });
+        Ok(())
     }
 
     pub fn visit_fn_decl(&mut self, name: Token, full_name: Option<Token>,
-                         args: Vec<Token>, body: Box<Node>) -> Result<(), Error>  {
-
+                         parameters: Vec<Token>, body: Box<Node>) -> Result<(), Error>  {
+        // full_name
+        let full_name = match full_name {
+            Some(name) => Some(name.value),
+            None => None
+        };
+        // params
+        let mut params = Vec::new();
+        for param in parameters {
+            params.push(param.value);
+        }
+        // body
+        self.push_chunk();
+        self.visit_node(*body)?;
+        self.push(Opcode::DefineFn {
+            name,
+            full_name,
+            params,
+            body: Chunk::new(self.pop_chunk())
+        });
+        Ok(())
     }
 
     pub fn visit_break(&mut self, location: Token) -> Result<(), Error>  {
-
+        self.push(Opcode::EndLoop {
+            current_iteration: false
+        })
     }
 
     pub fn visit_continue(&mut self, location: Token) -> Result<(), Error>  {
-
+        self.push(Opcode::EndLoop {
+            current_iteration: true
+        })
     }
 
     pub fn visit_import(&mut self, imports: Vec<Import>) -> Result<(), Error>  {
-
+        todo!()
     }
 
     pub fn visit_list(&mut self, location: Token, list: Box<Vec<Box<Node>>>) -> Result<(), Error>  {
-
+        todo!()
     }
 
     pub fn visit_map(&mut self, location: Token,
                      map: Box<Vec<(Box<Node>, Box<Node>)>>) -> Result<(), Error>  {
-
+        todo!()
     }
 
     pub fn visit_for(&mut self, iterable: Box<Node>,
                      variable_name: Token, body: Box<Node>) -> Result<(), Error>  {
-
+        todo!()
     }
 
     pub fn visit_unary(&mut self, value: Box<Node>, op: Token) -> Result<(), Error>  {
-
+        match op.value.as_str() {
+            "-" => self.push_instr(Opcode::Neg),
+            "!" => self.push_instr(Opcode::Bang),
+            _ => {
+                return Err(Error::new(
+                    ErrorType::Compilation,
+                    op.address,
+                    format!("undefined unary op: {:?}", op.value),
+                    "available: -, !".to_string()
+                ))
+            }
+        }
+        Ok(())
     }
 
     pub fn visit_type(&mut self, name: Token, full_name: Option<Token>,
