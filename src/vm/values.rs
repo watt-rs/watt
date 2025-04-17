@@ -6,7 +6,8 @@ pub enum Value {
     Integer(i64),
     Float(f64),
     Bool(bool),
-    String(String)
+    String(String),
+    Null
 }
 
 // sharable value

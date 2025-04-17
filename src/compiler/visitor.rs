@@ -221,7 +221,7 @@ impl CompileVisitor {
         self.visit_node(*value)?;
         self.push(Opcode::Define {
             name,
-            value: Chunk::new(self.pop_chunk()),
+            value: Box::new(Chunk::new(self.pop_chunk())),
             has_previous
         });
         Ok(())
@@ -238,8 +238,9 @@ impl CompileVisitor {
         self.visit_block(args)?;
         self.push(Opcode::Call {
             name,
-            args: Chunk::new(self.pop_chunk()),
-            has_previous
+            args: Box::new(Chunk::new(self.pop_chunk())),
+            has_previous,
+            should_push
         });
         Ok(())
     }
@@ -263,7 +264,7 @@ impl CompileVisitor {
             name,
             full_name,
             params,
-            body: Chunk::new(self.pop_chunk())
+            body: Box::new(Chunk::new(self.pop_chunk()))
         });
         Ok(())
     }
@@ -316,48 +317,111 @@ impl CompileVisitor {
 
     pub fn visit_type(&mut self, name: Token, full_name: Option<Token>,
                       constructor: Vec<Token>, body: Box<Node>) -> Result<(), Error>  {
-
+        // full_name
+        let full_name = match full_name {
+            Some(name) => Some(name.value),
+            None => None
+        };
+        // params
+        let mut _constructor = Vec::new();
+        for param in constructor {
+            _constructor.push(param.value);
+        }
+        // body
+        self.push_chunk();
+        self.visit_node(*body)?;
+        self.push(Opcode::DefineType {
+            name,
+            full_name,
+            constructor: _constructor,
+            body: Box::new(Chunk::new(self.pop_chunk()))
+        });
+        Ok(())
     }
 
     pub fn visit_unit(&mut self, name: Token, full_name: Option<Token>,
                       body: Box<Node>)  -> Result<(), Error> {
-
+        // full_name
+        let full_name = match full_name {
+            Some(name) => Some(name.value),
+            None => None
+        };
+        // body
+        self.push_chunk();
+        self.visit_node(*body)?;
+        self.push(Opcode::DefineUnit {
+            name,
+            full_name,
+            body: Box::new(Chunk::new(self.pop_chunk()))
+        });
+        Ok(())
     }
 
     pub fn visit_match(&mut self, location: Token, matchable: Box<Node>,
                        cases: Vec<Box<Node>>, default: Box<Node>) -> Result<(), Error>  {
-
+        todo!()
     }
 
     pub fn visit_an_fn_decl(&mut self, args: Vec<Token>, body: Box<Node>) -> Result<(), Error>  {
-
+        todo!()
     }
 
     pub fn visit_native(&mut self, name: Token, fn_name: Token) -> Result<(), Error>  {
-
+        todo!()
     }
 
     pub fn visit_cond(&mut self, left: Box<Node>,
                       right: Box<Node>, op: Token) -> Result<(), Error>  {
-
+        self.visit_node(*left)?;
+        self.visit_node(*right)?;
+        self.push_instr(Opcode::Cond {
+            op: op.value
+        });
+        Ok(())
     }
 
     pub fn visit_logical(&mut self, left: Box<Node>,
                          right: Box<Node>, op: Token) -> Result<(), Error>  {
-
+        self.visit_node(*left)?;
+        self.visit_node(*right)?;
+        self.push_instr(Opcode::Logic {
+            op: op.value
+        });
+        Ok(())
     }
 
     pub fn visit_ret(&mut self, location: Token, value: Box<Node>) -> Result<(), Error>  {
-
+        self.push_chunk();
+        self.visit_node(*value)?;
+        let chunk = self.pop_chunk();
+        self.push_instr(Opcode::Ret {
+            value: Box::new(Chunk::new(chunk))
+        });
+        Ok(())
     }
 
     pub fn visit_null(&mut self, location: Token) -> Result<(), Error>  {
-
+        self.push_instr(Opcode::Push {
+            value: Value::Null
+        });
+        Ok(())
     }
 
     pub fn visit_instance(&mut self, name: Token, constructor: Vec<Box<Node>>,
                           should_push: bool) -> Result<(), Error>  {
-
+        // constructor
+        self.push_chunk();
+        for arg in constructor {
+            self.visit_node(*arg)?;
+        }
+        let mut args = self.pop_chunk();
+        // instance
+        self.push_instr(Opcode::Instance {
+            name: name.value,
+            args: Box::new(Chunk::new(args)),
+            should_push
+        });
+        Ok(())
     }
 
     pub fn visit_assign(&mut self, previous: Option<Box<Node>>,

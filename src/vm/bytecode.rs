@@ -67,16 +67,19 @@ pub enum Opcode {
     Load {
         name: String,
         has_previous: bool,
+        should_push: bool,
     },
     Call {
         name: String,
         args: Box<Chunk>,
         has_previous: bool,
+        should_push: bool,
     },
     Duplicate,
     Instance {
         name: String,
         args: Box<Chunk>,
+        should_push: bool,
     },
     EndLoop {
         current_iteration: bool
@@ -85,6 +88,6 @@ pub enum Opcode {
         name: String,
     },
     Ret {
-        args: Box<Chunk>,
+        value: Box<Chunk>,
     }
 }
