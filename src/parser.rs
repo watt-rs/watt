@@ -4,7 +4,7 @@ use crate::errors::{Error, ErrorType};
 use crate::import::Import;
 use crate::lexer::{Token, TokenType};
 
-struct Parser {
+pub struct Parser {
     tokens: Vec<Token>,
     current: u128,
     filename: String,
@@ -12,14 +12,14 @@ struct Parser {
 }
 
 impl Parser {
-    fn new(filename: String, full_name_prefix: String) -> Parser {
-        Parser { tokens: vec![], current: 0, filename, full_name_prefix }
+    pub fn new(tokens: Vec<Token>, filename: String, full_name_prefix: String) -> Parser {
+        Parser { tokens, current: 0, filename, full_name_prefix }
     }
 
     fn block(&mut self) -> Result<Node, Error> {
         let mut nodes: Vec<Box<Node>> = Vec::new();
 
-        while !self.is_at_end() && !self.check(TokenType::Lbrace) {
+        while !self.is_at_end() && !self.check(TokenType::Rbrace) {
             nodes.push(Box::new(self.statement()?));
         }
 
@@ -771,15 +771,15 @@ impl Parser {
                 Err(Error::new(
                     ErrorType::Parsing,
                     tk.address,
-                    format!("unexpected token: {tk_type}:{tk_value}",
-                            tk_type=tk.value, tk_value=tk.value),
+                    format!("unexpected token: {:?}:{tk_value}",
+                            tk.tk_type, tk_value=tk.value),
                     "check your code.".to_string(),
                 ))
             }
         }
     }
 
-    fn parse(&mut self) -> Result<Node, Error> {
+    pub fn parse(&mut self) -> Result<Node, Error> {
         self.block()
     }
 

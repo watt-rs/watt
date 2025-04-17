@@ -28,9 +28,22 @@ fn main() {
         "fun main() { io.println('Hello, world!') }".to_string(),
         "test.gko".to_string()
     );
-    match (lexer.lex()) {
+    match lexer.lex() {
         Ok(tokens) => {
-            println!("Tokens: {:?}", tokens);
+            println!("Tokens: {:?}", tokens.clone());
+            let mut parser = parser::Parser::new(
+                tokens,
+                "test.gko".to_string(),
+                "test".to_string()
+            );
+            match parser.parse() {
+                Ok(ast) => {
+                    println!("AST: {:?}", ast);
+                }
+                Err(err) => {
+                    err.print()
+                }
+            }
         }
         Err(err) => {
             err.print();
