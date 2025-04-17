@@ -1,7 +1,7 @@
 ﻿use std::sync::{Arc, Mutex};
 
 // value
-#[derive!(Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Debug)]
 pub enum Value {
     Integer(i64),
     Float(f64),

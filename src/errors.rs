@@ -32,6 +32,7 @@ impl Error {
             color=colors::RedColor,
             error_type=match self.error_type {
                 ErrorType::Parsing => "parsing",
+                ErrorType::Compilation => "compilation",
                 ErrorType::Runtime => "runtime",
                 ErrorType::Semantic => "semantic",
             }

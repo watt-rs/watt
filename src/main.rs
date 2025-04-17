@@ -9,6 +9,7 @@ mod import;
 mod parser;
 mod vm;
 
+use crate::compiler::visitor::CompileVisitor;
 // imports
 use crate::lexer::lexer::Lexer;
 use crate::parser::parser::Parser;
@@ -27,9 +28,20 @@ fn main() {
                 "test.gko".to_string(),
                 "test".to_string()
             );
+            println!("--------------");
             match parser.parse() {
                 Ok(ast) => {
                     println!("AST: {:?}", ast);
+                    let mut compiler = CompileVisitor::new();
+                    println!("--------------");
+                    match compiler.compile(ast.clone()) {
+                        Ok(opcodes) => {
+                            println!("Opcodes: {:?}", opcodes)
+                        }
+                        Err(err) => {
+                            err.print()
+                        }
+                    }
                 }
                 Err(err) => {
                     err.print()

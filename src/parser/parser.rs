@@ -642,7 +642,7 @@ impl Parser {
             constructor = self.params()?;
         }
         self.consume(TokenType::Lbrace)?;
-        let body = Vec::new();
+        let mut body = Vec::new();
         while !self.is_at_end() && !self.check(TokenType::Rbrace) {
             let location = self.peek()?;
             let mut node = self.statement()?;
@@ -668,6 +668,7 @@ impl Parser {
                     ));
                 }
             }
+            body.push(Box::new(node));
         }
         self.consume(TokenType::Rbrace)?;
 
@@ -687,7 +688,7 @@ impl Parser {
         let name = self.consume(TokenType::Id)?;
 
         self.consume(TokenType::Lbrace)?;
-        let body = Vec::new();
+        let mut body = Vec::new();
         while !self.is_at_end() && !self.check(TokenType::Rbrace) {
             let location = self.peek()?;
             let mut node = self.statement()?;
@@ -713,6 +714,7 @@ impl Parser {
                     ));
                 }
             }
+            body.push(Box::new(node));
         }
         self.consume(TokenType::Rbrace)?;
 

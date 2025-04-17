@@ -1,7 +1,6 @@
-use crate::errors::Error;
 use crate::vm::values::Value;
 
-#[derive!(Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Debug)]
 pub struct Chunk {
     opcodes: Vec<Opcode>
 }
@@ -10,9 +9,12 @@ impl Chunk {
     pub fn new(chunk: Vec<Opcode>) -> Self {
         Chunk { opcodes: chunk }
     }
+    pub fn of(op: Opcode) -> Self {
+        Chunk { opcodes: vec![op] }
+    }
 }
 
-#[derive!(Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Debug)]
 pub enum Opcode {
     Push {
         value: Value

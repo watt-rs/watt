@@ -1,5 +1,4 @@
 ﻿use std::collections::VecDeque;
-use std::fmt::format;
 use crate::errors::{Error, ErrorType};
 use crate::import::Import;
 use crate::lexer::lexer::*;
@@ -10,16 +9,20 @@ use crate::vm::values::Value;
 Визитор (компилятор)
  */
 
-struct CompileVisitor {
+pub struct CompileVisitor {
     opcodes: VecDeque<Vec<Opcode>>,
 }
 
 impl CompileVisitor {
+    pub fn new() -> Self {
+        CompileVisitor { opcodes: VecDeque::new() }
+    }
+
     pub fn compile(&mut self, node: Node) -> Result<Chunk, Error> {
         self.push_chunk();
         match self.visit_node(node) {
             Err(e) => Err(e),
-            Ok(_) => Ok(Chunk::new(self.pop().clone()))
+            Ok(_) => Ok(Chunk::new(self.pop_chunk().clone())),
         }
     }
 
@@ -35,12 +38,15 @@ impl CompileVisitor {
     }
 
     pub fn push_instr(&mut self, op: Opcode) {
-        self.opcodes.front_mut().push(op);
+        match self.opcodes.front_mut() {
+            Some(v) => v.push(op),
+            None => panic!("couldn't push instr to compiler-visitor stack. report to the developer."),
+        }
     }
 
     pub fn pop_instr(&mut self) -> Opcode {
-        match self.opcodes.front_mut().pop() {
-            Some(v) => v,
+        match self.opcodes.front_mut() {
+            Some(v) => v.pop().unwrap(),
             None => panic!("couldn't pop instr from compiler-visitor stack. report to the developer."),
         }
     }
@@ -179,7 +185,7 @@ impl CompileVisitor {
             ));
         }
         // if
-        self.push(Opcode::If {
+        self.push_instr(Opcode::If {
             cond: Box::new(Chunk::new(logical)),
             body: Box::new(Chunk::new(body)),
             elif: elseif,
@@ -204,8 +210,8 @@ impl CompileVisitor {
             elif: None
         };
         // loop
-        self.push(Opcode::Loop {
-            body: Box::new(Chunk::new(_if)),
+        self.push_instr(Opcode::Loop {
+            body: Box::new(Chunk::of(_if)),
         });
         Ok(())
     }
@@ -219,9 +225,10 @@ impl CompileVisitor {
         }
         self.push_chunk();
         self.visit_node(*value)?;
-        self.push(Opcode::Define {
-            name,
-            value: Box::new(Chunk::new(self.pop_chunk())),
+        let chunk = self.pop_chunk();
+        self.push_instr(Opcode::Define {
+            name: name.value,
+            value: Box::new(Chunk::new(chunk)),
             has_previous
         });
         Ok(())
@@ -236,9 +243,10 @@ impl CompileVisitor {
         }
         self.push_chunk();
         self.visit_block(args)?;
-        self.push(Opcode::Call {
-            name,
-            args: Box::new(Chunk::new(self.pop_chunk())),
+        let chunk = self.pop_chunk();
+        self.push_instr(Opcode::Call {
+            name: name.value,
+            args: Box::new(Chunk::new(chunk)),
             has_previous,
             should_push
         });
@@ -260,25 +268,28 @@ impl CompileVisitor {
         // body
         self.push_chunk();
         self.visit_node(*body)?;
-        self.push(Opcode::DefineFn {
-            name,
+        let chunk = self.pop_chunk();
+        self.push_instr(Opcode::DefineFn {
+            name: name.value,
             full_name,
             params,
-            body: Box::new(Chunk::new(self.pop_chunk()))
+            body: Box::new(Chunk::new(chunk))
         });
         Ok(())
     }
 
     pub fn visit_break(&mut self, location: Token) -> Result<(), Error>  {
-        self.push(Opcode::EndLoop {
+        self.push_instr(Opcode::EndLoop {
             current_iteration: false
-        })
+        });
+        Ok(())
     }
 
     pub fn visit_continue(&mut self, location: Token) -> Result<(), Error>  {
-        self.push(Opcode::EndLoop {
+        self.push_instr(Opcode::EndLoop {
             current_iteration: true
-        })
+        });
+        Ok(())
     }
 
     pub fn visit_import(&mut self, imports: Vec<Import>) -> Result<(), Error>  {
@@ -330,11 +341,12 @@ impl CompileVisitor {
         // body
         self.push_chunk();
         self.visit_node(*body)?;
-        self.push(Opcode::DefineType {
-            name,
+        let chunk = self.pop_chunk();
+        self.push_instr(Opcode::DefineType {
+            name: name.value,
             full_name,
             constructor: _constructor,
-            body: Box::new(Chunk::new(self.pop_chunk()))
+            body: Box::new(Chunk::new(chunk))
         });
         Ok(())
     }
@@ -349,10 +361,11 @@ impl CompileVisitor {
         // body
         self.push_chunk();
         self.visit_node(*body)?;
-        self.push(Opcode::DefineUnit {
-            name,
+        let chunk = self.pop_chunk();
+        self.push_instr(Opcode::DefineUnit {
+            name: name.value,
             full_name,
-            body: Box::new(Chunk::new(self.pop_chunk()))
+            body: Box::new(Chunk::new(chunk))
         });
         Ok(())
     }
@@ -414,7 +427,7 @@ impl CompileVisitor {
         for arg in constructor {
             self.visit_node(*arg)?;
         }
-        let mut args = self.pop_chunk();
+        let args = self.pop_chunk();
         // instance
         self.push_instr(Opcode::Instance {
             name: name.value,
@@ -426,11 +439,34 @@ impl CompileVisitor {
 
     pub fn visit_assign(&mut self, previous: Option<Box<Node>>,
                         name: Token, value: Box<Node>) -> Result<(), Error>  {
-
+        let mut has_previous = false;
+        if let Some(prev) = previous {
+            self.visit_node(*prev)?;
+            has_previous = true;
+        }
+        self.push_chunk();
+        self.visit_node(*value)?;
+        let chunk = self.pop_chunk();
+        self.push_instr(Opcode::Set {
+            name: name.value,
+            value: Box::new(Chunk::new(chunk)),
+            has_previous
+        });
+        Ok(())
     }
 
     pub fn visit_get(&mut self, previous: Option<Box<Node>>,
                      name: Token, should_push: bool) -> Result<(), Error>  {
-
+        let mut has_previous = false;
+        if let Some(prev) = previous {
+            self.visit_node(*prev)?;
+            has_previous = true;
+        }
+        self.push_instr(Opcode::Load {
+            name: name.value,
+            has_previous,
+            should_push
+        });
+        Ok(())
     }
 }
