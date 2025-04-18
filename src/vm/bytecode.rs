@@ -1,8 +1,8 @@
-use crate::vm::values::Value;
+use crate::{lexer::address::Address, vm::values::Value};
 
 #[derive(Clone, Debug)]
 pub struct Chunk {
-    opcodes: Vec<Opcode>
+    opcodes: Vec<Opcode>,
 }
 
 impl Chunk {
@@ -12,84 +12,112 @@ impl Chunk {
     pub fn of(op: Opcode) -> Self {
         Chunk { opcodes: vec![op] }
     }
+    pub fn opcodes(&self) -> Vec<Opcode> {
+        self.opcodes.clone()
+    }
 }
 
 #[derive(Clone, Debug)]
 pub enum Opcode {
     Push {
-        value: Value
+        addr: Address,
+        value: Value,
     },
-    Pop,
+    Pop {
+        addr: Address,
+    },
     Bin {
-        op: String
+        addr: Address,
+        op: String,
     },
-    Neg,
-    Bang,
+    Neg {
+        addr: Address,
+    },
+    Bang {
+        addr: Address,
+    },
     Cond {
-        op: String
+        addr: Address,
+        op: String,
     },
     Logic {
-        op: String
+        addr: Address,
+        op: String,
     },
     If {
+        addr: Address,
         cond: Box<Chunk>,
         body: Box<Chunk>,
         elif: Option<Box<Opcode>>,
     },
     Loop {
+        addr: Address,
         body: Box<Chunk>,
     },
     DefineFn {
+        addr: Address,
         name: String,
         full_name: Option<String>,
         params: Vec<String>,
         body: Box<Chunk>,
     },
     DefineType {
+        addr: Address,
         name: String,
         full_name: Option<String>,
         constructor: Vec<String>,
         body: Box<Chunk>,
     },
     DefineUnit {
+        addr: Address,
         name: String,
         full_name: Option<String>,
         body: Box<Chunk>,
     },
     Define {
+        addr: Address,
         name: String,
         value: Box<Chunk>,
         has_previous: bool,
     },
     Set {
+        addr: Address,
         name: String,
         value: Box<Chunk>,
         has_previous: bool,
     },
     Load {
+        addr: Address,
         name: String,
         has_previous: bool,
         should_push: bool,
     },
     Call {
+        addr: Address,
         name: String,
         args: Box<Chunk>,
         has_previous: bool,
         should_push: bool,
     },
-    Duplicate,
+    Duplicate {
+        addr: Address,
+    },
     Instance {
+        addr: Address,
         name: String,
         args: Box<Chunk>,
         should_push: bool,
     },
     EndLoop {
-        current_iteration: bool
+        addr: Address,
+        current_iteration: bool,
     },
     Closure {
+        addr: Address,
         name: String,
     },
     Ret {
+        addr: Address,
         value: Box<Chunk>,
-    }
+    },
 }

@@ -1,4 +1,4 @@
-﻿#![allow(non_upper_case_globals)]
+#![allow(non_upper_case_globals)]
 
 pub static ResetColor: &str = "\u{001B}[0m";
 pub static RedColor: &str = "\x1B[38;2;255;0;0m";

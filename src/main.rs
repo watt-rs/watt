@@ -9,13 +9,15 @@ mod import;
 mod parser;
 mod vm;
 
-use crate::compiler::visitor::CompileVisitor;
 // imports
-use crate::lexer::lexer::Lexer;
-use crate::parser::parser::Parser;
+use crate::lexer::address::Address;
+use crate::vm::bytecode::{Chunk, Opcode};
+use crate::vm::values::Value;
+use crate::vm::vm::Vm;
 
 // main
 fn main() {
+    /*
     let mut lexer = Lexer::new(
         "fun main() { io.println('Hello, world!') }".to_string(),
         "test.gko".to_string()
@@ -52,4 +54,14 @@ fn main() {
             err.print();
         }
     }
+     */
+    let mut vm = Vm::new();
+    vm.run(Chunk::new(
+        vec![
+            Opcode::Push { addr: Address::new(0, "test".to_string()), value: Value::Integer(1) },
+            Opcode::Push { addr: Address::new(0, "test".to_string()), value: Value::Integer(3) },
+            Opcode::Bin { addr: Address::new(0, "test".to_string()), op: "+".to_string() },
+        ]
+    ));
+    println!("{:?}", vm.pop(Address::new(0, "test".to_string())).unwrap());
 }
