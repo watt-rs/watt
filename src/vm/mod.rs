@@ -2,5 +2,4 @@
 pub mod vm;
 pub mod stack;
 pub mod values;
-pub mod memory;
 mod frames;
