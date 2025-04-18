@@ -27,12 +27,12 @@ impl Frame {
         if self.map.contains_key(&name) {
             true
         } else {
-            if let Some(ref mut c) = *self.closure {
-                c.has(name.clone())
-            } else {
-                false
-            }
+            self.get_closure().has(name.clone())
         }
+    }
+
+    pub fn get_closure(&mut self) -> Option<&mut Frame> {
+        self.closure.as_mut().as_mut()
     }
 
     pub fn lookup(&mut self, address: Address, name: String) -> Result<Value, Error> {
@@ -53,7 +53,7 @@ impl Frame {
         if current.map.contains_key(&name) {
             Ok(current.map.get(&name).unwrap().clone())
         } else {
-            Ok(current.closure.as_mut().as_mut().unwrap().lookup(address, name)?)
+            Ok(current.get_closure().unwrap().lookup(address, name)?)
         }
     }
 
