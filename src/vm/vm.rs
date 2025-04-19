@@ -1,7 +1,10 @@
+use std::cell::RefCell;
 use crate::errors::*;
 use crate::lexer::address::Address;
 use crate::vm::bytecode::*;
 use std::collections::VecDeque;
+use std::sync::Arc;
+use crate::vm::frames::Frame;
 use crate::vm::values::Value;
 use super::bytecode::Opcode;
 
@@ -38,7 +41,7 @@ impl Vm {
         }
     }
 
-    pub fn run(&mut self, chunk: Chunk) -> Result<(), Error> {
+    pub fn run(&mut self, chunk: Chunk, frame: Arc<RefCell<Frame>>) -> Result<(), Error> {
         for op in chunk.opcodes() {
             match op {
                 // push
@@ -119,6 +122,10 @@ impl Vm {
                         }
                         _ => {}
                     }
+
+                }
+                // load
+                Opcode::Load { addr: address, name, has_previous, should_push } => {
 
                 }
                 _ => {}
