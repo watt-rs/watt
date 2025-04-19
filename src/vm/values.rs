@@ -28,7 +28,7 @@ pub struct Instance {
 impl Instance {
     pub fn new(vm: &mut Vm, typo: Arc<Mutex<Type>>) -> Result<Instance, Error> {
         let instance = Instance {fields: Arc::new(Mutex::new(Frame::new())), typo: typo.clone()};
-        vm.run(typo.borrow().body.clone(), instance.fields.clone())?;
+        vm.run(typo.lock().unwrap().body.clone(), instance.fields.clone())?;
         Ok(instance)
     }
 }

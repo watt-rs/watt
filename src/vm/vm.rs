@@ -126,18 +126,18 @@ impl Vm {
                 // load
                 Opcode::Load { addr: address, name, has_previous, should_push } => {
                     if has_previous {
-                        let value = self.pop(address.clone()).clone()?;
+                        let value = self.pop(address.clone())?.clone();
                         match value {
                             Value::Instance(instance) => {
                                 let instance_lock = instance.lock().unwrap();
-                                let fields_lock = instance_lock.fields.clone().lock().unwrap();
+                                let fields_lock = instance_lock.fields.lock().unwrap();
                                 if should_push {
                                     self.push(address.clone(), fields_lock.lookup(address.clone(), name.clone())?)?
                                 }
                             }
                             Value::Unit(unit) => {
                                 let unit_lock = unit.lock().unwrap();
-                                let fields_lock = unit_lock.fields.clone().lock().unwrap();
+                                let fields_lock = unit_lock.fields.lock().unwrap();
                                 if should_push {
                                     self.push(address.clone(), fields_lock.lookup(address.clone(), name.clone())?)?
                                 }
@@ -153,7 +153,8 @@ impl Vm {
                         }
                     } else {
                         if should_push {
-                            self.push(address.clone(), frame.borrow().lookup(address.clone(), name.clone())?)?;
+                            let frame_lock = frame.lock().unwrap();
+                            self.push(address.clone(), frame_lock.lookup(address.clone(), name.clone())?)?;
                         }
                     }
                 }
