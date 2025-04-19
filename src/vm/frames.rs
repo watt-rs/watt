@@ -8,8 +8,8 @@ use crate::vm::values::Value;
 #[derive(Debug, Clone)]
 pub struct Frame {
     map: BTreeMap<String, Value>,
-    pub(crate) root: Option<Arc<RefCell<Frame>>>,
-    closure: Option<Arc<RefCell<Frame>>>,
+    pub root: Option<Arc<RefCell<Frame>>>,
+    pub closure: Option<Arc<RefCell<Frame>>>,
 }
 
 impl Frame {
@@ -43,8 +43,10 @@ impl Frame {
         if self.map.contains_key(&name) {
             return Ok(self.map.get(&name).unwrap().clone())
         } else {
-            if let Some(ref closure) = self.closure {
-                return Ok(closure.borrow().lookup(address.clone(), name.clone())?)
+            if let Some(ref ref_closure) = self.closure {
+                if ref_closure.borrow().has(name.clone()) {
+                    return Ok(ref_closure.borrow().lookup(address.clone(), name.clone())?)
+                }
             }
         }
         // checking others

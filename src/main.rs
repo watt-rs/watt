@@ -78,10 +78,15 @@ fn main() {
     } else {
         let mut child_frame = Frame::new();
         child_frame.root = Option::Some(Arc::new(RefCell::new(root_frame)));
+        let mut closure_frame = Frame::new();
+        closure_frame.define(addr.clone(), "role".to_string(), Value::String("Perviy".to_string()));
+        child_frame.closure = Option::Some(Arc::new(RefCell::new(closure_frame)));
         frame = Some(child_frame.clone());
         if let Err(e) = child_frame.set(addr.clone(), "hello".to_string(), Value::String("Petr!".to_string())) {
             println!("{:?} err2!", e)
         }
     }
-    println!("{:?} is a result!", frame.unwrap().lookup(addr, "hello".to_string()));
+    let unwrapped = frame.unwrap();
+    println!("{:?}", unwrapped);
+    println!("{:?} is a result! And he is {:?}", unwrapped.lookup(addr.clone(), "hello".to_string()), unwrapped.lookup(addr, "role".to_string()));
 }
