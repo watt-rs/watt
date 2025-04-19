@@ -1,7 +1,9 @@
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use crate::errors::Error;
 use crate::vm::bytecode::Chunk;
+use crate::vm::frames::Frame;
 use crate::vm::vm::Vm;
 
 // type
@@ -21,14 +23,15 @@ impl Type {
 // instance
 #[derive(Debug)]
 pub struct Instance {
-    fields: BTreeMap<String, Box<Value>>,
-    typo: Type
+    fields: Arc<RefCell<Frame>>,
+    typo: Arc<RefCell<Type>>
 }
 
 impl Instance {
-    pub fn new(vm: &mut Vm, typo: Type) -> Result<Instance, Error> {
-        vm.run(typo.body.clone())?;
-        Ok(Instance {fields: BTreeMap::new(), typo})
+    pub fn new(vm: &mut Vm, typo: Arc<RefCell<Type>>) -> Result<Instance, Error> {
+        let instance = Instance {fields: Arc::new(RefCell::new(Frame::new())), typo: typo.clone()};
+        vm.run(typo.borrow().body.clone(), instance.fields.clone())?;
+        Ok(instance)
     }
 }
 
