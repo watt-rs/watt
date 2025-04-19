@@ -40,8 +40,19 @@ impl Instance {
 pub struct Unit {
     pub name: String,
     pub full_name: String,
-    fields: BTreeMap<String, Box<Value>>,
+    pub fields: Arc<RefCell<Frame>>,
     pub body: Chunk
+}
+
+impl Unit {
+    pub fn new(name: String, full_name: String, body: Chunk) -> Unit {
+        Unit {
+            name,
+            full_name,
+            fields: Arc::new(RefCell::new(Frame::new())),
+            body
+        }
+    }
 }
 
 // value
