@@ -1,4 +1,4 @@
-﻿Watt - multi-paradigm, dynamic-typed, vm-interpreted programming language. 🦎
+﻿Watt - multi-paradigm, dynamic-typed, vm-interpreted programming language. 🦎⚡
 
 Simple example is here. 🍹
 
