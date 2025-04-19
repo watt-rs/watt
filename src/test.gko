@@ -1,5 +1,0 @@
-﻿import 'geko::io'
-
-fn main() {
-    io.println('Hello, world!')
-}

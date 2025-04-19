@@ -23,14 +23,14 @@ fn main() {
     /*
     let mut lexer = Lexer::new(
         "fun main() { io.println('Hello, world!') }".to_string(),
-        "test.gko".to_string()
+        "test.wt".to_string()
     );
     match lexer.lex() {
         Ok(tokens) => {
             println!("Tokens: {:?}", tokens.clone());
             let mut parser = Parser::new(
                 tokens,
-                "test.gko".to_string(),
+                "test.wt".to_string(),
                 "test".to_string()
             );
             println!("--------------");
