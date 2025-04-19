@@ -8,7 +8,7 @@ use crate::vm::values::Value;
 #[derive(Debug, Clone)]
 pub struct Frame {
     map: BTreeMap<String, Value>,
-    root: Option<Arc<RefCell<Frame>>>,
+    pub(crate) root: Option<Arc<RefCell<Frame>>>,
     closure: Option<Arc<RefCell<Frame>>>,
 }
 
@@ -27,12 +27,12 @@ impl Frame {
         } else {
             let mut current = self.root.clone();
             while current.is_some() {
-                current = self.root.clone();
-                if let Some(ref current) = current {
-                    if current.borrow().has(name.clone()) {
+                if let Some(ref current_ref) = current {
+                    if current_ref.borrow().has(name.clone()) {
                         return true
                     }
                 }
+                current = current.unwrap().borrow().root.clone();
             }
             false
         }
@@ -50,12 +50,12 @@ impl Frame {
         // checking others
         let mut current = self.root.clone();
         while current.is_some() {
-            current = self.root.clone();
-            if let Some(ref current) = current {
-                if current.borrow().has(name.clone()) {
-                    return Ok(current.borrow().lookup(address.clone(), name.clone())?)
+            if let Some(ref current_ref) = current {
+                if current_ref.borrow().has(name.clone()) {
+                    return Ok(current_ref.borrow().lookup(address.clone(), name.clone())?)
                 }
             }
+            current = current.unwrap().borrow().root.clone();
         }
         // error
         Err(Error::new(
@@ -72,7 +72,7 @@ impl Frame {
             self.map.insert(name, val);
             return Ok(())
         } else {
-            if let Some(ref mut closure) = self.closure {
+            if let Some(ref closure) = self.closure {
                 closure.borrow_mut().map.insert(name, val);
                 return Ok(())
             }
@@ -80,12 +80,13 @@ impl Frame {
         // checking others
         let mut current = self.root.clone();
         while current.is_some() {
-            current = self.root.clone();
-            if let Some(ref mut current) = current {
-                if current.borrow().has(name.clone()) {
-                    current.borrow_mut().map.insert(name.clone(), val.clone());
+            if let Some(ref current_ref) = current {
+                if current_ref.borrow().has(name.clone()) {
+                    current_ref.borrow_mut().map.insert(name.clone(), val.clone());
+                    return Ok(())
                 }
             }
+            current = current.unwrap().borrow().root.clone();
         }
         // error
         Err(Error::new(
@@ -94,5 +95,21 @@ impl Frame {
             format!("not found: {:?}", name),
             "check variable existence.".to_string()
         ))
+    }
+
+    pub fn define(&mut self, address: Address, name: String, val: Value) -> Result<(), Error> {
+        // checking current frame
+        if self.map.contains_key(&name) {
+            self.map.insert(name.clone(), val);
+            Err(Error::new(
+                ErrorType::Runtime,
+                address,
+                format!("already defined: {:?}", name),
+                "check variable overrides.".to_string()
+            ))
+        } else {
+            self.map.insert(name, val);
+            Ok(())
+        }
     }
 }
