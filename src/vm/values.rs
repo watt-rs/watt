@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use crate::errors::Error;
 use crate::vm::bytecode::Chunk;

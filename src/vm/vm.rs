@@ -126,7 +126,15 @@ impl Vm {
                 }
                 // load
                 Opcode::Load { addr: address, name, has_previous, should_push } => {
-
+                    if has_previous {
+                        let value = self.pop(address.clone())?;
+                        match value {
+                            Value::Instance(instance) => {}
+                            _ => {}
+                        }
+                    } else {
+                        self.push(address.clone(), frame.borrow().lookup(address.clone(), name.clone())?)?;
+                    }
                 }
                 _ => {}
             }
