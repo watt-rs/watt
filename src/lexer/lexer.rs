@@ -127,7 +127,7 @@ impl Lexer {
         while !self.is_at_end() {
             let ch = self.advance();
             match ch {
-                '?' => { self.add_tk(TokenType::Bang, "?".to_string());  }
+                '!' => { self.add_tk(TokenType::Op, "!".to_string());  }
                 '+' => {
                     if self.is_match('=') {
                         self.add_tk(TokenType::AssignAdd, "+=".to_string());
@@ -217,7 +217,6 @@ impl Lexer {
                     } else {
                         self.add_tk(TokenType::Colon, ":".to_string())
                     }
-                    
                 },
                 '<' => {
                     if self.is_match('=') {
@@ -436,12 +435,14 @@ impl Lexer {
         }
     }
 
-    fn is_match(&self, ch: char) -> bool {
+    //noinspection ALL
+    fn is_match(&mut self, ch: char) -> bool {
         if self.is_at_end() {
             false
         }
         else {
-            if self.char_at(self.current) == ch {
+            if self.char_at(0) == ch {
+                self.advance();
                 true
             } else {
                 false

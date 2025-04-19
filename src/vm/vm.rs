@@ -1,16 +1,17 @@
 use crate::errors::*;
 use crate::lexer::address::Address;
 use crate::vm::bytecode::*;
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use crate::vm::frames::Frame;
-use crate::vm::values::Value;
+use crate::vm::values::{Native, Value};
 use super::bytecode::Opcode;
 
 
 // vm struct
 pub struct Vm {
     eval_stack: VecDeque<Value>,
+    natives: BTreeMap<String, Native>
 }
 
 // vm impl
@@ -19,6 +20,13 @@ impl Vm {
     pub fn new() -> Self {
         Vm {
             eval_stack: VecDeque::new(),
+            natives: BTreeMap::from([
+                ("println".to_string(), |vm: &mut Vm, address: Address, values: Vec<Value>| -> Result<Value, Error> {
+                    let value = vm.pop(address)?;
+                    println!("{:?}", value);
+                    return Ok(Value::Null);
+                } as Native)
+            ])
         }
     }
 
@@ -126,8 +134,8 @@ impl Vm {
                 // load
                 Opcode::Load { addr: address, name, has_previous, should_push } => {
                     if has_previous {
-                        let value = self.pop(address.clone())?.clone();
-                        match value {
+                        let previous = self.pop(address.clone())?.clone();
+                        match previous {
                             Value::Instance(instance) => {
                                 let instance_lock = instance.lock().unwrap();
                                 let fields_lock = instance_lock.fields.lock().unwrap();
@@ -146,7 +154,7 @@ impl Vm {
                                 return Err(Error::new(
                                     ErrorType::Runtime,
                                     address.clone(),
-                                    format!("couldn't load var from: {:?}", value),
+                                    format!("couldn't load var from: {:?}", previous),
                                     "check your code.".to_string(),
                                 ));
                             }
@@ -158,7 +166,91 @@ impl Vm {
                         }
                     }
                 }
-                _ => {}
+                // define
+                Opcode::Define { addr: address, name, has_previous, value } => {
+                    if has_previous {
+                        let previous = self.pop(address.clone())?.clone();
+                        match previous {
+                            Value::Instance(instance) => {
+                                let instance_lock = instance.lock().unwrap();
+                                let mut fields_lock = instance_lock.fields.lock().unwrap();
+                                self.run(*value, frame.clone())?;
+                                fields_lock.define(address.clone(), name.clone(), self.pop(address.clone())?)?;
+                            }
+                            Value::Unit(unit) => {
+                                let unit_lock = unit.lock().unwrap();
+                                let mut fields_lock = unit_lock.fields.lock().unwrap();
+                                self.run(*value, frame.clone())?;
+                                fields_lock.define(address.clone(), name.clone(), self.pop(address.clone())?)?;
+                            }
+                            _ => {
+                                return Err(Error::new(
+                                    ErrorType::Runtime,
+                                    address.clone(),
+                                    format!("couldn't load var from: {:?}", value),
+                                    "check your code.".to_string(),
+                                ));
+                            }
+                        }
+                    } else {
+                        {
+                            self.run(*value, frame.clone())?;
+                        }
+                        let mut frame_lock = frame.lock().unwrap();
+                        frame_lock.define(address.clone(), name.clone(), self.pop(address.clone())?)?;
+                    }
+                }
+                // set
+                Opcode::Set { addr: address, name, has_previous, value } => {
+                    if has_previous {
+                        let previous = self.pop(address.clone())?.clone();
+                        match previous {
+                            Value::Instance(instance) => {
+                                self.run(*value, frame.clone())?;
+                                let instance_lock = instance.lock().unwrap();
+                                let mut fields_lock = instance_lock.fields.lock().unwrap();
+                                fields_lock.set(address.clone(), name.clone(), self.pop(address.clone())?)?;
+                            }
+                            Value::Unit(unit) => {
+                                self.run(*value, frame.clone())?;
+                                let unit_lock = unit.lock().unwrap();
+                                let mut fields_lock = unit_lock.fields.lock().unwrap();
+                                fields_lock.set(address.clone(), name.clone(), self.pop(address.clone())?)?;
+                            }
+                            _ => {
+                                return Err(Error::new(
+                                    ErrorType::Runtime,
+                                    address.clone(),
+                                    format!("couldn't load var from: {:?}", value),
+                                    "check your code.".to_string(),
+                                ));
+                            }
+                        }
+                    } else {
+                        {
+                            self.run(*value, frame.clone())?;
+                        }
+                        let mut frame_lock = frame.lock().unwrap();
+                        frame_lock.set(address.clone(), name.clone(), self.pop(address.clone())?)?;
+                    }
+                }
+                // call
+                Opcode::Call { addr, name, args, has_previous, should_push} => {
+                    // args
+                    let before = self.eval_stack.len() as i64;
+                    self.run(*args, frame.clone())?;
+                    let after = self.eval_stack.len() as i64;
+                    let passed_amount = after - before;
+                    // call
+                    if has_previous {
+                        todo!()
+                    } else if let Some(ref native) = self.natives.get(&name).cloned() {
+                        native(self, addr.clone(), Vec::new())?;
+                    }
+                }
+                _ => {
+                    println!("undefined opcode: {:?}", op);
+                }
             }
         }
         Ok(())

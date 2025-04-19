@@ -126,6 +126,8 @@ impl Parser {
                         panic!("invalid AssignOp tk_type. report to developer.");
                     }
                 }
+                self.current += 1;
+
                 let var = Node::Get {
                     previous: previous.clone(),
                     name: identifier.clone(),
@@ -358,10 +360,10 @@ impl Parser {
     fn unary_expr(&mut self) -> Result<Node, Error> {
         let tk = self.peek()?;
         match tk {
-            Token { tk_type: TokenType::Op, value, .. } if value == "?" || value == "!"  => {
-                self.consume(TokenType::Op)?;
+            Token { tk_type: TokenType::Op, value, .. } if value == "-" || value == "!"  => {
+                let op = self.consume(TokenType::Op)?;
                 Ok(Node::Unary {
-                    op: self.peek()?,
+                    op,
                     value: Box::new(self.primary_expr()?)
                 })
             }
@@ -376,7 +378,7 @@ impl Parser {
 
         while self.check(TokenType::Op) &&
             (self.peek()?.value == "*" || self.peek()?.value == "/") {
-            let op = self.peek()?;
+            let op = self.consume(TokenType::Op)?;
             let right = self.unary_expr()?;
             left = Node::Bin {
                 left: Box::new(left),
@@ -393,7 +395,7 @@ impl Parser {
 
         while self.check(TokenType::Op) &&
             (self.peek()?.value == "+" || self.peek()?.value == "-") {
-            let op = self.peek()?;
+            let op = self.consume(TokenType::Op)?;
             let right = self.multiplicative_expr()?;
             left = Node::Bin {
                 left: Box::new(left),
@@ -411,6 +413,7 @@ impl Parser {
         if self.check(TokenType::Greater) || self.check(TokenType::Less)
             || self.check(TokenType::LessEq) || self.check(TokenType::GreaterEq) {
             let op = self.peek()?;
+            self.current += 1;
             let right = self.additive_expr()?;
             left = Node::Cond {
                 left: Box::new(left),
@@ -428,6 +431,7 @@ impl Parser {
         while self.check(TokenType::And) ||
             self.check(TokenType::Or) {
             let op = self.peek()?;
+            self.current += 1;
             let right = self.conditional_expr()?;
             left = Node::Logical {
                 left: Box::new(left),

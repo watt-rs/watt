@@ -1,4 +1,3 @@
 ﻿a := 0
 b := 1
-c = a + b
-println(c)
+c := a + b

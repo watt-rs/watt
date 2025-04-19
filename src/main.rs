@@ -10,10 +10,38 @@ mod parser;
 mod vm;
 
 use std::sync::{Arc, Mutex};
+use crate::compiler::visitor::CompileVisitor;
 // imports
+use crate::lexer::lexer::Lexer;
+use crate::parser::parser::Parser;
+use crate::errors::*;
 use crate::lexer::address::Address;
 use crate::vm::frames::Frame;
-use crate::vm::values::Value;
+use crate::vm::vm::Vm;
+
+fn exec() -> Result<(), Error> {
+    let code = String::from("\
+    a := 5\n
+    b := 7\n
+    c := a + b\n
+    println(c)");
+    let file_name = String::from("main.rs");
+    let tokens = Lexer::new(code, file_name.clone()).lex()?;
+    println!("tokens: {:?}", tokens.clone());
+    println!("...");
+    let address = Address::new(0, "main.rs".to_string());
+    let ast = Parser::new(tokens, file_name.clone(), "main".to_string()).parse()?;
+    println!("ast: {:?}", ast.clone());
+    println!("...");
+    let opcodes = CompileVisitor::new().compile(ast)?;
+    println!("opcodes: {:?}", opcodes.clone());
+    println!("...");
+    let mut vm = Vm::new();
+    let mut frame = Arc::new(Mutex::new(Frame::new()));
+    vm.run(opcodes, frame.clone())?;
+    println!("{:?}", frame);
+    Ok(())
+}
 
 // main
 fn main() {
@@ -67,6 +95,7 @@ fn main() {
     println!("{:?}", vm.pop(Address::new(0, "test".to_string())).unwrap());
 
      */
+    /*
     let mut root_frame = Frame::new();
     let mut frame = None;
     let addr = Address::new(0, "example.wt".to_string());
@@ -86,4 +115,8 @@ fn main() {
     let unwrapped = frame.unwrap();
     // println!("{:?}", unwrapped);
     println!("{:?} is a result! And he is {:?}", unwrapped.lookup(addr.clone(), "hello".to_string()), unwrapped.lookup(addr, "role".to_string()));
+     */
+    if let Err(e) = exec() {
+        e.print()
+    }
 }
