@@ -1,8 +1,12 @@
 use std::sync::{Arc, Mutex};
 use crate::errors::Error;
+use crate::lexer::address::Address;
 use crate::vm::bytecode::Chunk;
 use crate::vm::frames::Frame;
 use crate::vm::vm::Vm;
+
+// native
+pub type Native = fn(&mut Vm, Address, Vec<Value>) -> Result<Value, Error>;
 
 // type
 #[derive(Debug, Clone)]
@@ -53,6 +57,15 @@ impl Unit {
     }
 }
 
+// function
+#[derive(Debug, Clone)]
+pub struct Function {
+    pub name: String,
+    pub full_name: String,
+    pub body: Chunk,
+    pub params: Vec<String>,
+}
+
 // value
 #[derive(Clone, Debug)]
 pub enum Value {
@@ -63,6 +76,7 @@ pub enum Value {
     Instance(Arc<Mutex<Instance>>),
     Unit(Arc<Mutex<Unit>>),
     Type(Arc<Mutex<Type>>),
-    Native(fn(Vec<Value>) -> Value),
+    Native(Native),
+    Fn(Arc<Mutex<Function>>),
     Null,
 }

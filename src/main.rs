@@ -39,7 +39,7 @@ fn exec() -> Result<(), Error> {
     let mut vm = Vm::new();
     let mut frame = Arc::new(Mutex::new(Frame::new()));
     vm.run(opcodes, frame.clone())?;
-    println!("{:?}", frame);
+    // println!("{:?}", frame);
     Ok(())
 }
 
