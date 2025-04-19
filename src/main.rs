@@ -9,14 +9,11 @@ mod import;
 mod parser;
 mod vm;
 
-use std::cell::RefCell;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 // imports
 use crate::lexer::address::Address;
-use crate::vm::bytecode::{Chunk, Opcode};
 use crate::vm::frames::Frame;
 use crate::vm::values::Value;
-use crate::vm::vm::Vm;
 
 // main
 fn main() {
@@ -70,7 +67,6 @@ fn main() {
     println!("{:?}", vm.pop(Address::new(0, "test".to_string())).unwrap());
 
      */
-    /*
     let mut root_frame = Frame::new();
     let mut frame = None;
     let addr = Address::new(0, "example.wt".to_string());
@@ -78,10 +74,10 @@ fn main() {
         println!("{:?} err1: ", e)
     } else {
         let mut child_frame = Frame::new();
-        child_frame.root = Option::Some(Arc::new(RefCell::new(root_frame)));
+        child_frame.root = Option::Some(Arc::new(Mutex::new(root_frame)));
         let mut closure_frame = Frame::new();
         closure_frame.define(addr.clone(), "role".to_string(), Value::String("Perviy".to_string()));
-        child_frame.closure = Option::Some(Arc::new(RefCell::new(closure_frame)));
+        child_frame.closure = Option::Some(Arc::new(Mutex::new(closure_frame)));
         frame = Some(child_frame.clone());
         if let Err(e) = child_frame.set(addr.clone(), "hello".to_string(), Value::String("Petr!".to_string())) {
             println!("{:?} err2!", e)
@@ -90,6 +86,4 @@ fn main() {
     let unwrapped = frame.unwrap();
     // println!("{:?}", unwrapped);
     println!("{:?} is a result! And he is {:?}", unwrapped.lookup(addr.clone(), "hello".to_string()), unwrapped.lookup(addr, "role".to_string()));
-
-     */
 }

@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
 use crate::errors::Error;
 use crate::vm::bytecode::Chunk;
@@ -22,13 +21,13 @@ impl Type {
 // instance
 #[derive(Debug)]
 pub struct Instance {
-    fields: Arc<RefCell<Frame>>,
-    typo: Arc<RefCell<Type>>
+    pub(crate) fields: Arc<Mutex<Frame>>,
+    typo: Arc<Mutex<Type>>
 }
 
 impl Instance {
-    pub fn new(vm: &mut Vm, typo: Arc<RefCell<Type>>) -> Result<Instance, Error> {
-        let instance = Instance {fields: Arc::new(RefCell::new(Frame::new())), typo: typo.clone()};
+    pub fn new(vm: &mut Vm, typo: Arc<Mutex<Type>>) -> Result<Instance, Error> {
+        let instance = Instance {fields: Arc::new(Mutex::new(Frame::new())), typo: typo.clone()};
         vm.run(typo.borrow().body.clone(), instance.fields.clone())?;
         Ok(instance)
     }
@@ -39,7 +38,7 @@ impl Instance {
 pub struct Unit {
     pub name: String,
     pub full_name: String,
-    pub fields: Arc<RefCell<Frame>>,
+    pub fields: Arc<Mutex<Frame>>,
     pub body: Chunk
 }
 
@@ -48,7 +47,7 @@ impl Unit {
         Unit {
             name,
             full_name,
-            fields: Arc::new(RefCell::new(Frame::new())),
+            fields: Arc::new(Mutex::new(Frame::new())),
             body
         }
     }
@@ -62,5 +61,8 @@ pub enum Value {
     Bool(bool),
     String(String),
     Instance(Arc<Mutex<Instance>>),
+    Unit(Arc<Mutex<Unit>>),
+    Type(Arc<Mutex<Type>>),
+    Native(fn(Vec<Value>) -> Value),
     Null,
 }

@@ -1,9 +1,8 @@
-use std::cell::RefCell;
 use crate::errors::*;
 use crate::lexer::address::Address;
 use crate::vm::bytecode::*;
 use std::collections::VecDeque;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use crate::vm::frames::Frame;
 use crate::vm::values::Value;
 use super::bytecode::Opcode;
@@ -41,7 +40,7 @@ impl Vm {
         }
     }
 
-    pub fn run(&mut self, chunk: Chunk, frame: Arc<RefCell<Frame>>) -> Result<(), Error> {
+    pub fn run(&mut self, chunk: Chunk, frame: Arc<Mutex<Frame>>) -> Result<(), Error> {
         for op in chunk.opcodes() {
             match op {
                 // push
@@ -127,13 +126,35 @@ impl Vm {
                 // load
                 Opcode::Load { addr: address, name, has_previous, should_push } => {
                     if has_previous {
-                        let value = self.pop(address.clone())?;
+                        let value = self.pop(address.clone()).clone()?;
                         match value {
-                            Value::Instance(instance) => {}
-                            _ => {}
+                            Value::Instance(instance) => {
+                                let instance_lock = instance.lock().unwrap();
+                                let fields_lock = instance_lock.fields.clone().lock().unwrap();
+                                if should_push {
+                                    self.push(address.clone(), fields_lock.lookup(address.clone(), name.clone())?)?
+                                }
+                            }
+                            Value::Unit(unit) => {
+                                let unit_lock = unit.lock().unwrap();
+                                let fields_lock = unit_lock.fields.clone().lock().unwrap();
+                                if should_push {
+                                    self.push(address.clone(), fields_lock.lookup(address.clone(), name.clone())?)?
+                                }
+                            }
+                            _ => {
+                                return Err(Error::new(
+                                    ErrorType::Runtime,
+                                    address.clone(),
+                                    format!("couldn't load var from: {:?}", value),
+                                    "check your code.".to_string(),
+                                ));
+                            }
                         }
                     } else {
-                        self.push(address.clone(), frame.borrow().lookup(address.clone(), name.clone())?)?;
+                        if should_push {
+                            self.push(address.clone(), frame.borrow().lookup(address.clone(), name.clone())?)?;
+                        }
                     }
                 }
                 _ => {}
