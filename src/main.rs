@@ -70,6 +70,7 @@ fn main() {
     println!("{:?}", vm.pop(Address::new(0, "test".to_string())).unwrap());
 
      */
+    /*
     let mut root_frame = Frame::new();
     let mut frame = None;
     let addr = Address::new(0, "example.wt".to_string());
@@ -87,6 +88,8 @@ fn main() {
         }
     }
     let unwrapped = frame.unwrap();
-    println!("{:?}", unwrapped);
+    // println!("{:?}", unwrapped);
     println!("{:?} is a result! And he is {:?}", unwrapped.lookup(addr.clone(), "hello".to_string()), unwrapped.lookup(addr, "role".to_string()));
+
+     */
 }
