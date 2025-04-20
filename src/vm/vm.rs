@@ -421,7 +421,6 @@ impl Vm {
                     ControlFlow::Return(self.pop(addr.clone())?);
                 }
                 Opcode::If {addr, body, cond, elif} => {
-                    println!("loop if");
                     self.run(*cond.clone(), frame.clone())?;
                     let logical = self.pop(addr.clone())?;
                     if let Value::Bool(bool) = logical {
@@ -527,10 +526,12 @@ impl Vm {
         Ok(())
     }
 
-    pub fn call(&mut self, callee: Value, address: Address, frame: Arc<Mutex<Frame>>, should_push: bool, passed_args: i16) -> Result<(), ControlFlow> {
+    pub fn call(&mut self, callee: Value, address: Address, root_frame: Arc<Mutex<Frame>>, should_push: bool, passed_args: i16) -> Result<(), ControlFlow> {
         match callee {
             Value::Fn(f) => {
                 let mut fun = f.lock().unwrap();
+                let mut frame = Arc::new(Mutex::new(Frame::new()));
+                frame.lock().unwrap().set_root(root_frame.clone());;
                 fun.run(self, address.clone(), frame.clone(), should_push, passed_args)?;
                 Ok(())
             }
