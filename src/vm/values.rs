@@ -57,6 +57,13 @@ impl Unit {
     }
 }
 
+// function owner
+#[derive(Debug, Clone)]
+pub enum FunctionOwner {
+    Type(Arc<Mutex<Type>>),
+    Instance(Arc<Mutex<Instance>>),
+}
+
 // function
 #[derive(Debug, Clone)]
 pub struct Function {
@@ -64,7 +71,7 @@ pub struct Function {
     pub full_name: String,
     pub body: Chunk,
     pub params: Vec<String>,
-    pub closure: Arc<Mutex<Frame>>;
+    pub closure: Arc<Mutex<Frame>>,
     pub owner: FunctionOwner
 }
 
