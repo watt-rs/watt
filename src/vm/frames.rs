@@ -27,11 +27,11 @@ impl Frame {
         } else {
             let mut current = self.root.clone();
             while let Some(ref current_ref) = current.clone() {
-                let current_lock = current_ref.lock().unwrap();
-                if current_lock.has(name.clone()) {
+                let guard = current_ref.lock().unwrap();
+                if guard.has(name.clone()) {
                     return true;
                 } else {
-                    current = current_lock.root.clone();
+                    current = guard.root.clone();
                 }
             }
             false
@@ -44,19 +44,19 @@ impl Frame {
             return Ok(val.clone())
         }
         if let Some(ref closure_ref) = self.closure {
-            let closure_lock = closure_ref.lock().unwrap();
-            if closure_lock.has(name.clone()) {
-                return closure_lock.lookup(address, name);
+            let guard = closure_ref.lock().unwrap();
+            if guard.has(name.clone()) {
+                return guard.lookup(address, name);
             }
         }
         // checking others
         let mut current = self.root.clone();
         while let Some(ref current_ref) = current.clone() {
-            let current_lock = current_ref.lock().unwrap();
-            if current_lock.has(name.clone()) {
-                return current_lock.lookup(address.clone(), name.clone())
+            let guard = current_ref.lock().unwrap();
+            if guard.has(name.clone()) {
+                return guard.lookup(address.clone(), name.clone())
             }
-            current = current_lock.root.clone();
+            current = guard.root.clone();
         }
         // error
         Err(ControlFlow::Error(Error::new(
@@ -74,21 +74,21 @@ impl Frame {
             return Ok(());
         }
         if let Some(ref closure_ref) = self.closure {
-            let mut closure_lock = closure_ref.lock().unwrap();
-            if closure_lock.has(name.clone()) {
-                closure_lock.set(address.clone(), name.clone(), val.clone())?;
+            let mut guard = closure_ref.lock().unwrap();
+            if guard.has(name.clone()) {
+                guard.set(address.clone(), name.clone(), val.clone())?;
                 return Ok(());
             }
         }
         // checking others
         let mut current = self.root.clone();
         while let Some(ref current_ref) = current.clone(){
-            let mut current_lock = current_ref.lock().unwrap();
-            if current_lock.has(name.clone()) {
-                current_lock.set(address.clone(), name.clone(), val.clone())?;
+            let mut guard = current_ref.lock().unwrap();
+            if guard.has(name.clone()) {
+                guard.set(address.clone(), name.clone(), val.clone())?;
                 return Ok(());
             }
-            current = current_lock.root.clone();
+            current = guard.root.clone();
         }
         // error
         Err(ControlFlow::Error(Error::new(
@@ -125,8 +125,8 @@ impl Frame {
         let mut last_root = self.root.clone();
         while last_root.is_some() {
             let root_cloned = last_root.clone().unwrap();
-            let new_root_lock = root_cloned.lock().unwrap();
-            let new_root = new_root_lock.root.clone();
+            let guard = root_cloned.lock().unwrap();
+            let new_root = guard.root.clone();
             if new_root.is_some() {
                 last_root = new_root;
             } else {

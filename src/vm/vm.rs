@@ -155,10 +155,10 @@ impl Vm {
                         let previous = self.pop(address.clone())?.clone();
                         match previous {
                             Value::Instance(instance) => {
-                                let instance_lock = instance.lock().unwrap();
-                                let fields_lock = instance_lock.fields.lock().unwrap();
+                                let guard = instance.lock().unwrap();
+                                let fields_guard = guard.fields.lock().unwrap();
                                 if should_push {
-                                    self.push(address.clone(), fields_lock.lookup(address.clone(), name.clone())?)?
+                                    self.push(address.clone(), fields_guard.lookup(address.clone(), name.clone())?)?
                                 }
                             }
                             Value::Unit(unit) => {
@@ -179,9 +179,9 @@ impl Vm {
                         }
                     } else {
                         if should_push {
-                            let frame_lock = frame.lock().unwrap();
-                            if frame_lock.has(name.clone()) {
-                                self.push(address.clone(), frame_lock.lookup(address.clone(), name.clone())?)?;
+                            let guard = frame.lock().unwrap();
+                            if guard.has(name.clone()) {
+                                self.push(address.clone(), guard.lookup(address.clone(), name.clone())?)?;
                             } else if let Some(type_ref) = self.types.get(&name.clone()) {
                                 self.push(address.clone(), Value::Type(type_ref.clone()))?;
                             } else if let Some(unit_ref) = self.units.get(&name.clone()) {
@@ -203,16 +203,18 @@ impl Vm {
                         let previous = self.pop(address.clone())?.clone();
                         match previous {
                             Value::Instance(instance) => {
-                                let instance_lock = instance.lock().unwrap();
-                                let mut fields_lock = instance_lock.fields.lock().unwrap();
+                                let guard = instance.lock().unwrap();
+                                let mut fields_guard = guard.fields.lock().unwrap();
+                                drop(guard);
                                 self.run(*value.clone(), frame.clone())?;
-                                fields_lock.define(address.clone(), name.clone(), self.pop(address.clone())?)?;
+                                fields_guard.define(address.clone(), name.clone(), self.pop(address.clone())?)?;
                             }
                             Value::Unit(unit) => {
-                                let unit_lock = unit.lock().unwrap();
-                                let mut fields_lock = unit_lock.fields.lock().unwrap();
+                                let guard = unit.lock().unwrap();
+                                let mut fields_guard = guard.fields.lock().unwrap();
+                                drop(guard);
                                 self.run(*value.clone(), frame.clone())?;
-                                fields_lock.define(address.clone(), name.clone(), self.pop(address.clone())?)?;
+                                fields_guard.define(address.clone(), name.clone(), self.pop(address.clone())?)?;
                             }
                             _ => {
                                 return Err(ControlFlow::Error(Error::new(
@@ -225,8 +227,8 @@ impl Vm {
                         }
                     } else {
                         self.run(*value.clone(), frame.clone())?;
-                        let mut frame_lock = frame.lock().unwrap();
-                        frame_lock.define(address.clone(), name.clone(), self.pop(address.clone())?)?;
+                        let mut guard = frame.lock().unwrap();
+                        guard.define(address.clone(), name.clone(), self.pop(address.clone())?)?;
                     }
                 }
                 // set
@@ -236,15 +238,17 @@ impl Vm {
                         match previous {
                             Value::Instance(instance) => {
                                 self.run(*value.clone(), frame.clone())?;
-                                let instance_lock = instance.lock().unwrap();
-                                let mut fields_lock = instance_lock.fields.lock().unwrap();
-                                fields_lock.set(address.clone(), name.clone(), self.pop(address.clone())?)?;
+                                let guard = instance.lock().unwrap();
+                                let mut fields_guard = guard.fields.lock().unwrap();
+                                drop(guard);
+                                fields_guard.set(address.clone(), name.clone(), self.pop(address.clone())?)?;
                             }
                             Value::Unit(unit) => {
                                 self.run(*value.clone(), frame.clone())?;
-                                let unit_lock = unit.lock().unwrap();
-                                let mut fields_lock = unit_lock.fields.lock().unwrap();
-                                fields_lock.set(address.clone(), name.clone(), self.pop(address.clone())?)?;
+                                let guard = unit.lock().unwrap();
+                                let mut fields_guard = guard.fields.lock().unwrap();
+                                drop(guard);
+                                fields_guard.set(address.clone(), name.clone(), self.pop(address.clone())?)?;
                             }
                             _ => {
                                 return Err(ControlFlow::Error(Error::new(
@@ -257,8 +261,8 @@ impl Vm {
                         }
                     } else {
                         self.run(*value.clone(), frame.clone())?;
-                        let mut frame_lock = frame.lock().unwrap();
-                        frame_lock.set(address.clone(), name.clone(), self.pop(address.clone())?)?;
+                        let mut guard = frame.lock().unwrap();
+                        guard.set(address.clone(), name.clone(), self.pop(address.clone())?)?;
                     }
                 }
                 // call
@@ -273,15 +277,19 @@ impl Vm {
                         let previous = self.pop(addr.clone())?.clone();
                         match previous {
                             Value::Instance(instance) => {
-                                let instance_lock = instance.lock().unwrap();
-                                let mut fields_lock = instance_lock.fields.lock().unwrap();
-                                let callee = fields_lock.lookup(addr.clone(), name.clone())?;
+                                let guard = instance.lock().unwrap();
+                                let mut fields_guard = guard.fields.lock().unwrap();
+                                let callee = fields_guard.lookup(addr.clone(), name.clone())?;
+                                drop(guard);
+                                drop(fields_guard);
                                 self.call(callee, addr, frame.clone(), should_push, passed_amount)?;
                             }
                             Value::Unit(unit) => {
-                                let unit_lock = unit.lock().unwrap();
-                                let mut fields_lock = unit_lock.fields.lock().unwrap();
-                                let callee = fields_lock.lookup(addr.clone(), name.clone())?;
+                                let guard = unit.lock().unwrap();
+                                let mut fields_guard = guard.fields.lock().unwrap();
+                                let callee = fields_guard.lookup(addr.clone(), name.clone())?;
+                                drop(guard);
+                                drop(fields_guard);
                                 self.call(callee, addr, frame.clone(), should_push, passed_amount)?;
                             }
                             _ => {
@@ -301,8 +309,10 @@ impl Vm {
                             native_ref(self, addr.clone(), should_push, passed_amount)?;
                         } else {
                             // frame fn
-                            let frame_lock = frame.lock().unwrap();
-                            self.call(frame_lock.lookup(addr.clone(), name.clone())?,
+                            let guard = frame.lock().unwrap();
+                            let value = guard.lookup(addr.clone(), name.clone())?;
+                            drop(guard);
+                            self.call(value,
                                   addr.clone(), frame.clone(), should_push, passed_amount)?;
                         }
                     }
@@ -426,7 +436,9 @@ impl Vm {
                     if let Value::Bool(bool) = logical {
                         if bool {
                             let mut new_frame = Arc::new(Mutex::new(Frame::new()));
-                            new_frame.lock().unwrap().set_root(frame.clone());
+                            let mut guard = new_frame.lock().unwrap();
+                            guard.set_root(frame.clone());
+                            drop(guard);
                             self.run(*body.clone(), new_frame)?;
                         } else {
                             if let Some(elseif) = elif.clone() {
@@ -437,7 +449,9 @@ impl Vm {
                 }
                 Opcode::Loop { addr, body } => {
                     let mut new_frame = Arc::new(Mutex::new(Frame::new()));
-                    new_frame.lock().unwrap().set_root(frame.clone());
+                    let mut guard = new_frame.lock().unwrap();
+                    guard.set_root(frame.clone());
+                    drop(guard);
                     loop {
                         if let Err(e) = self.run(*body.clone(), new_frame.clone()) {
                             if let ControlFlow::Continue = e {
@@ -451,27 +465,27 @@ impl Vm {
                     }
                 }
                 Opcode::Closure { addr, name } => {
-                    let frame_lock = frame.lock().unwrap();
-                    let closure_object = frame_lock.lookup(addr.clone(), name.clone())?;
+                    let guard = frame.lock().unwrap();
+                    let closure_object = guard.lookup(addr.clone(), name.clone())?;
+                    drop(guard);
                     if let Value::Fn(f) = closure_object {
                         let mut fun = f.lock().unwrap();
                         fun.closure = Some(frame.clone());
                     }
                 }
                 Opcode::DefineFn { addr, name, full_name, body, params } => {
-                    let mut frame_lock = frame.lock().unwrap();
+                    let mut guard = frame.lock().unwrap();
                     let fun = Value::Fn(Arc::new(Mutex::new(Function::new(
                         name.clone(),
                         *body.clone(),
                         params.clone(),
                     ))));
-                    frame_lock.define(addr.clone(), name, fun.clone())?;
+                    guard.define(addr.clone(), name, fun.clone())?;
                     if let Some(f_name) = full_name.clone() {
-                        frame_lock.define(addr, f_name, fun)?;
+                        guard.define(addr, f_name, fun)?;
                     }
                 }
                 Opcode::DefineType { addr, name, full_name, body, constructor } => {
-                    let frame_lock = frame.lock().unwrap();
                     let typo = Arc::new(Mutex::new(Type::new(
                         name.clone(),
                         *body.clone(),
@@ -483,7 +497,6 @@ impl Vm {
                     }
                 }
                 Opcode::DefineUnit { addr, name, full_name, body } => {
-                    let frame_lock = frame.lock().unwrap();
                     let unit = Unit::new(
                         self,
                         name.clone(),
@@ -529,10 +542,12 @@ impl Vm {
     pub fn call(&mut self, callee: Value, address: Address, root_frame: Arc<Mutex<Frame>>, should_push: bool, passed_args: i16) -> Result<(), ControlFlow> {
         match callee {
             Value::Fn(f) => {
-                let mut fun = f.lock().unwrap();
+                let mut guard = f.lock().unwrap();
                 let mut frame = Arc::new(Mutex::new(Frame::new()));
-                frame.lock().unwrap().set_root(root_frame.clone());;
-                fun.run(self, address.clone(), frame.clone(), should_push, passed_args)?;
+                let mut frame_guard = frame.lock().unwrap();
+                frame_guard.set_root(root_frame.clone());;
+                drop(frame_guard);
+                guard.run(self, address.clone(), frame.clone(), should_push, passed_args)?;
                 Ok(())
             }
             _ => {

@@ -156,15 +156,18 @@ impl Function {
                 "check your code.".to_string()
             )));
         }
+        println!("exec: {}", self.name);
         let frame_clone = frame.clone();
         let mut frame_lock = frame_clone.lock().unwrap();
+        println!("exec 2: {}", self.name);
         for i in (args_len-1)..=0 {
             let value = vm.pop(address.clone())?;
             frame_lock.define(
                 address.clone(), self.params.get(i as usize).unwrap().clone(), value
             )?
         }
-        if let Err(control_flow) = vm.run(self.body.clone(), frame) {
+        drop(frame_lock);
+        if let Err(control_flow) = vm.run(self.body.clone(), frame.clone()) {
             if let ControlFlow::Return(returnable) = control_flow {
                 if should_push {
                     vm.push(address.clone(), returnable.clone())?;
