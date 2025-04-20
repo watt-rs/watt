@@ -427,7 +427,7 @@ impl Vm {
                     let closure_object = frame_lock.lookup(addr.clone(), name.clone())?;
                     if let Value::Fn(f) = closure_object {
                         let fun = f.lock().unwrap();
-                        fun.closure =
+                        fun.closure = frame.clone();
                     }
                 }
                 _ => {

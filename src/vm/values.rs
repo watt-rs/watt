@@ -91,7 +91,7 @@ impl Function {
         if let Err(control_flow) = vm.run(self.body.clone(), frame) {
             if let ControlFlow::Return(returnable) = control_flow {
                 if should_push {
-                    vm.push(address.clone(), returnable.clone());
+                    vm.push(address.clone(), returnable.clone())?;
                 }
             }
         }
