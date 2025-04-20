@@ -20,12 +20,14 @@ use crate::vm::frames::Frame;
 use crate::vm::vm::{ControlFlow, Vm};
 
 fn exec() -> Result<(), Error> {
-    let code = String::from("i := 0
-    while i < 1000000 {
-        i = i + 1
-        println(i)
+    let code = String::from("fun example(val) {
+        i := val
+        while i < 1000000 {
+            i = i + 1
+            println(i)
+        }
     }
-    ");
+    example(100000)");
     let file_name = String::from("main.rs");
     let tokens = Lexer::new(code, file_name.clone()).lex()?;
     println!("tokens: {:?}", tokens.clone());
