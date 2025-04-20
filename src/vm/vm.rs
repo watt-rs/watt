@@ -317,10 +317,44 @@ impl Vm {
                             if let Value::Bool(l) = left {
                                 if let Value::Bool(r) = right {
                                     self.push(addr.clone(), Value::Bool(l && r))?
+                                } else {
+                                    return Err(ControlFlow::Error(Error::new(
+                                        ErrorType::Runtime,
+                                        addr.clone(),
+                                        format!("couldn't use 'and' op with: {:?} and {:?}", left, right),
+                                        "check your code.".to_string(),
+                                    )))
                                 }
+                            } else {
+                                return Err(ControlFlow::Error(Error::new(
+                                    ErrorType::Runtime,
+                                    addr.clone(),
+                                    format!("couldn't use 'and' op with: {:?} and {:?}", left, right),
+                                    "check your code.".to_string(),
+                                )))
                             }
                         },
-                        _ if op == "or" => self.push(addr.clone(),left.greater_eq(addr.clone(), right)?)?,
+                        _ if op == "or" => {
+                            if let Value::Bool(l) = left {
+                                if let Value::Bool(r) = right {
+                                    self.push(addr.clone(), Value::Bool(l || r))?
+                                } else {
+                                    return Err(ControlFlow::Error(Error::new(
+                                        ErrorType::Runtime,
+                                        addr.clone(),
+                                        format!("couldn't use 'and' op with: {:?} and {:?}", left, right),
+                                        "check your code.".to_string(),
+                                    )))
+                                }
+                            } else {
+                                return Err(ControlFlow::Error(Error::new(
+                                    ErrorType::Runtime,
+                                    addr.clone(),
+                                    format!("couldn't use 'and' op with: {:?} and {:?}", left, right),
+                                    "check your code.".to_string(),
+                                )))
+                            }
+                        }
                         _ => {
                             return Err(ControlFlow::Error(Error::new(
                                 ErrorType::Runtime,
@@ -330,6 +364,37 @@ impl Vm {
                             )))
                         }
                     }
+                }
+                Opcode::Neg { addr } => {
+                    let value = self.pop(addr.clone())?;
+                    if let Value::Integer(int) = value {
+                        self.push(addr.clone(), Value::Integer(-int))?
+                    } else if let Value::Float(float) = value {
+                        self.push(addr.clone(), Value::Float(-float))?
+                    } else {
+                        return Err(ControlFlow::Error(Error::new(
+                            ErrorType::Runtime,
+                            addr.clone(),
+                            format!("couldn't negative value: {:?}", value),
+                            "check your code.".to_string(),
+                        )))
+                    }
+                }
+                Opcode::Duplicate { addr } => {
+                    let value = self.pop(addr.clone())?;
+                    self.push(addr.clone(), value.clone())?;
+                    self.push(addr.clone(), value.clone())?;
+                }
+                Opcode::EndLoop { addr, current_iteration } => {
+                    if current_iteration {
+                        return Err(ControlFlow::Continue);
+                    } else {
+                        return Err(ControlFlow::Break);
+                    }
+                }
+                Opcode::Ret {addr, value} => {
+                    self.run(*value, frame.clone())?;
+                    ControlFlow::Return(self.pop(addr.clone())?);
                 }
                 _ => {
                     println!("undefined opcode: {:?}", op);
