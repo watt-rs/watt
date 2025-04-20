@@ -418,7 +418,9 @@ impl Vm {
                     let logical = self.pop(addr.clone())?;
                     if let Value::Bool(bool) = logical {
                         if bool {
-                            self.run(*body.clone(), frame.clone())?;
+                            let mut new_frame = Arc::new(Mutex::new(Frame::new()));
+                            new_frame.lock().unwrap().set_root(frame.clone());
+                            self.run(*body.clone(), new_frame)?;
                         } else {
                             if let Some(elseif) = elif.clone() {
                                 self.run(Chunk::of(*elseif), frame.clone())?;
@@ -427,8 +429,10 @@ impl Vm {
                     }
                 }
                 Opcode::Loop { addr, body } => {
+                    let mut new_frame = Arc::new(Mutex::new(Frame::new()));
+                    new_frame.lock().unwrap().set_root(frame.clone());
                     loop {
-                        if let Err(e) = self.run(*body.clone(), frame.clone()) {
+                        if let Err(e) = self.run(*body.clone(), new_frame.clone()) {
                             if let ControlFlow::Continue = e {
                                 continue;
                             } else if let ControlFlow::Break = e {
@@ -500,6 +504,7 @@ impl Vm {
                             type_ref.clone(),
                             addr.clone(),
                             passed_amount,
+                            frame.clone()
                         )?);
                         if should_push {
                             self.push(addr.clone(), instance)?;
