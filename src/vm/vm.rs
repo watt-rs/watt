@@ -4,7 +4,7 @@ use crate::vm::bytecode::*;
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use crate::vm::frames::Frame;
-use crate::vm::values::{Function, Native, Type, Unit, Value};
+use crate::vm::values::{Function, Instance, Native, Type, Unit, Value};
 use super::bytecode::Opcode;
 
 
@@ -473,6 +473,19 @@ impl Vm {
                     self.units.insert(name, unit.clone());
                     if let Some(f_name) = full_name {
                         self.units.insert(f_name, unit);
+                    }
+                }
+                Opcode::Instance { addr, name, args, should_push} => {
+                    let typo = self.types.get(&name);
+                    if let Some(type_ref) = typo {
+                        let instance = Value::Instance(Arc::new(Mutex::new(Instance::new(
+                            self,
+                            type_ref,
+                            *args.clone(),
+                        )?)));
+                        if should_push {
+                            self.push(addr.clone(), instance)?;
+                        }
                     }
                 }
                 _ => {
