@@ -7,7 +7,7 @@ use crate::vm::vm::ControlFlow;
 
 #[derive(Debug, Clone)]
 pub struct Frame {
-    map: BTreeMap<String, Value>,
+    pub(crate) map: BTreeMap<String, Value>,
     pub root: Option<Arc<Mutex<Frame>>>,
     pub closure: Option<Arc<Mutex<Frame>>>,
 }

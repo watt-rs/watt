@@ -30,10 +30,10 @@ pub struct Instance {
 }
 
 impl Instance {
-    pub fn new(vm: &mut Vm, typo: Arc<Mutex<Type>>, args: Chunk) -> Result<Instance, ControlFlow> {
+    pub fn new(vm: &mut Vm, typo: Arc<Mutex<Type>>, args: Chunk) -> Result<Arc<Mutex<Instance>>, ControlFlow> {
         let instance = Instance {fields: Arc::new(Mutex::new(Frame::new())), typo: typo.clone()};
         vm.run(typo.lock().unwrap().body.clone(), instance.fields.clone())?;
-        Ok(instance)
+        Ok(Arc::new(Mutex::new(instance)))
     }
 }
 
@@ -46,19 +46,36 @@ pub struct Unit {
 }
 
 impl Unit {
-    pub fn new(name: String, body: Chunk) -> Unit {
-        Unit {
+    pub fn new(vm: &mut Vm, name: String,
+               body: Chunk, root_frame: Arc<Mutex<Frame>>) -> Result<Arc<Mutex<Unit>>, ControlFlow> {
+        let unit = Arc::new(Mutex::new(Unit {
             name,
             fields: Arc::new(Mutex::new(Frame::new())),
             body
+        }));
+        let unit_ref = unit.clone();
+        let unit_deref = unit_ref.lock().unwrap();
+        // fields
+        let mut fields_lock = unit_deref.fields.lock().unwrap();
+        fields_lock.set_root(root_frame);
+        vm.run(unit_deref.body.clone(), unit_deref.fields.clone())?;
+        // fn binds
+        for pair in &fields_lock.map {
+            if let Value::Fn(f) = pair.1 {
+                f.lock().unwrap().owner = FunctionOwner::Unit(
+                    unit.clone()
+                )
+            }
         }
+        // returns unit
+        Ok(unit)
     }
 }
 
 // function owner
 #[derive(Debug, Clone)]
 pub enum FunctionOwner {
-    Type(Arc<Mutex<Type>>),
+    Unit(Arc<Mutex<Unit>>),
     Instance(Arc<Mutex<Instance>>),
     NoOne
 }

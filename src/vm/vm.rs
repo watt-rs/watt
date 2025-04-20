@@ -473,10 +473,12 @@ impl Vm {
                 }
                 Opcode::DefineUnit { addr, name, full_name, body } => {
                     let frame_lock = frame.lock().unwrap();
-                    let unit = Arc::new(Mutex::new(Unit::new(
+                    let unit = Unit::new(
+                        self,
                         name.clone(),
-                        *body.clone()
-                    )));
+                        *body.clone(),
+                        frame.clone()
+                    )?;
                     // TODO: ROOTING, INIT CALL
                     self.units.insert(name, unit.clone());
                     if let Some(f_name) = full_name.clone() {
@@ -486,11 +488,11 @@ impl Vm {
                 Opcode::Instance { addr, name, args, should_push} => {
                     let typo = self.types.get(&name);
                     if let Some(type_ref) = typo {
-                        let instance = Value::Instance(Arc::new(Mutex::new(Instance::new(
+                        let instance = Value::Instance(Instance::new(
                             self,
                             type_ref.clone(),
                             *args.clone(),
-                        )?)));
+                        )?);
                         if should_push {
                             self.push(addr.clone(), instance)?;
                         }
