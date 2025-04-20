@@ -396,6 +396,39 @@ impl Vm {
                     self.run(*value, frame.clone())?;
                     ControlFlow::Return(self.pop(addr.clone())?);
                 }
+                Opcode::If {addr, body, cond, elif} => {
+                    self.run(*cond, frame.clone())?;
+                    let logical = self.pop(addr.clone())?;
+                    if let Some(bool) = logical {
+                        if bool {
+                            self.run(*body, frame.clone())?;
+                        } else {
+                            if let Some(ref elseif) = elif {
+                                self.run(Chunk::of(*elseif.clone()), frame.clone())?;
+                            }
+                        }
+                    }
+                }
+                Opcode::Loop { addr, body } => {
+                    loop {
+                        if let Err(e) = self.run(*body.clone(), frame.clone()) {
+                            if let ControlFlow::Continue = e {
+                                continue;
+                            } else if let ControlFlow::Break = e {
+                                break;
+                            } else {
+                                return Err(e);
+                            }
+                        }
+                    }
+                }
+                Opcode::Closure { addr, name } => {
+                    let frame_lock = frame.lock().unwrap();
+                    let closure_object = frame_lock.lookup(addr.clone(), name.clone())?;
+                    if let Some(f) = closure_object {
+
+                    }
+                }
                 _ => {
                     println!("undefined opcode: {:?}", op);
                 }
