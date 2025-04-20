@@ -23,8 +23,10 @@ fn exec() -> Result<(), Error> {
     let code = String::from("\
     a := 5\n
     b := 7\n
-    c := a + b\n
-    println(c)");
+    c := a + b\n\
+    d := a + b == 13\n
+    println(c)\n\
+    println(d)");
     let file_name = String::from("main.rs");
     let tokens = Lexer::new(code, file_name.clone()).lex()?;
     println!("tokens: {:?}", tokens.clone());

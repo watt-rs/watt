@@ -309,6 +309,28 @@ impl Vm {
                         }
                     }
                 }
+                Opcode::Logic { addr, op} => {
+                    let left = self.pop(addr.clone())?;
+                    let right = self.pop(addr.clone())?;
+                    match op {
+                        _ if op == "and" => {
+                            if let Value::Bool(l) = left {
+                                if let Value::Bool(r) = right {
+                                    self.push(addr.clone(), Value::Bool(l && r))?
+                                }
+                            }
+                        },
+                        _ if op == "or" => self.push(addr.clone(),left.greater_eq(addr.clone(), right)?)?,
+                        _ => {
+                            return Err(ControlFlow::Error(Error::new(
+                                ErrorType::Runtime,
+                                addr.clone(),
+                                format!("undefined logical op: {:?}", op),
+                                "check your code.".to_string(),
+                            )))
+                        }
+                    }
+                }
                 _ => {
                     println!("undefined opcode: {:?}", op);
                 }

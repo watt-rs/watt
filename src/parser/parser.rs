@@ -411,7 +411,8 @@ impl Parser {
         let mut left = self.additive_expr()?;
 
         if self.check(TokenType::Greater) || self.check(TokenType::Less)
-            || self.check(TokenType::LessEq) || self.check(TokenType::GreaterEq) {
+            || self.check(TokenType::LessEq) || self.check(TokenType::GreaterEq) ||
+            self.check(TokenType::Eq) || self.check(TokenType::NotEq) {
             let op = self.peek()?;
             self.current += 1;
             let right = self.additive_expr()?;

@@ -244,9 +244,9 @@ impl Lexer {
                 }
                 '=' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenType::Assign, "==".to_string());
+                        self.add_tk(TokenType::Eq, "==".to_string());
                     } else {
-                        self.add_tk(TokenType::Eq, "=".to_string());
+                        self.add_tk(TokenType::Assign, "=".to_string());
                     }
                     
                 }
