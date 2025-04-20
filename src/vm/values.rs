@@ -25,13 +25,24 @@ impl Type {
 // instance
 #[derive(Debug)]
 pub struct Instance {
-    pub(crate) fields: Arc<Mutex<Frame>>,
+    pub fields: Arc<Mutex<Frame>>,
     typo: Arc<Mutex<Type>>
 }
 
 impl Instance {
-    pub fn new(vm: &mut Vm, typo: Arc<Mutex<Type>>, args: Chunk) -> Result<Arc<Mutex<Instance>>, ControlFlow> {
+    pub fn new(vm: &mut Vm, typo: Arc<Mutex<Type>>, address: Address,
+               passed_args: i16) -> Result<Arc<Mutex<Instance>>, ControlFlow> {
         let instance = Instance {fields: Arc::new(Mutex::new(Frame::new())), typo: typo.clone()};
+        let constructor_len = instance.typo.lock().unwrap().constructor.len() as i16;
+        if passed_args != constructor_len {
+            return Err(ControlFlow::Error(Error::new(
+                ErrorType::Runtime,
+                address.clone(),
+                format!("couldn't create instance: {:?}, invalid args. ({:?}/{:?})",
+                        &instance, passed_args, constructor_len),
+                "check your code.".to_string()
+            )));
+        }
         vm.run(typo.lock().unwrap().body.clone(), instance.fields.clone())?;
         Ok(Arc::new(Mutex::new(instance)))
     }
@@ -103,12 +114,13 @@ impl Function {
 
     pub fn run(&mut self, vm: &mut Vm, address: Address, frame: Arc<Mutex<Frame>>,
                should_push: bool, passed_args: i16) -> Result<(), ControlFlow> {
-        if passed_args != self.params.len() as i16 {
+        let args_len = self.params.len() as i16;
+        if passed_args != args_len {
             return Err(ControlFlow::Error(Error::new(
                 ErrorType::Runtime,
                 address.clone(),
                 format!("couldn't call: {:?}, invalid args. ({:?}/{:?})",
-                self.name.clone(), self.params.len(), passed_args),
+                self.name.clone(), passed_args, args_len),
                 "check your code.".to_string()
             )));
         }
