@@ -4,14 +4,16 @@ use crate::vm::bytecode::*;
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use crate::vm::frames::Frame;
-use crate::vm::values::{Native, Value};
+use crate::vm::values::{Native, Type, Unit, Value};
 use super::bytecode::Opcode;
 
 
 // vm struct
 pub struct Vm {
     eval_stack: VecDeque<Value>,
-    natives: BTreeMap<String, Native>
+    natives: BTreeMap<String, Native>,
+    types: BTreeMap<String, Type>,
+    units: BTreeMap<String, Unit>,
 }
 
 // control flow
