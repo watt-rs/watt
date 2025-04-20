@@ -1,4 +1,5 @@
 use std::sync::{Arc, Mutex};
+use crate::errors::{Error, ErrorType};
 use crate::lexer::address::Address;
 use crate::vm::bytecode::Chunk;
 use crate::vm::frames::Frame;
@@ -103,5 +104,110 @@ pub enum Value {
 }
 
 impl Value {
+    #[inline]
+    pub fn bool(value: Value) -> bool {
+        if let Value::Bool(b) = value {
+            b
+        } else {
+            panic!("couldn't transfer: {:?} to bool.", value)
+        }
+    }
+    pub fn eq(&self, address: Address, other: Value) -> bool {
+        match (self, other) {
+            (Value::Integer(current), Value::Integer(another)) => {
+                *current == another
+            }
+            (Value::Integer(current), Value::Float(another)) => {
+                (*current as f64) == another
+            }
+            (Value::Float(current), Value::Integer(another)) => {
+                *current == (another as f64)
+            }
+            (Value::Float(current), Value::Float(another)) => {
+                *current == another
+            }
+            (Value::Bool(current), Value::Bool(another)) => {
+                *current == another
+            }
+            (Value::String(current), Value::String(another)) => {
+                *current == another
+            }
+            (Value::Instance(current), Value::Instance(another)) => {
+                Arc::ptr_eq(&(*current), &another)
+            }
+            (Value::Unit(current), Value::Unit(another)) => {
+                Arc::ptr_eq(&(*current), &another)
+            }
+            (Value::Fn(current), Value::Fn(another)) => {
+                Arc::ptr_eq(&(*current), &another)
+            }
+            (Value::Type(current), Value::Type(another)) => {
+                Arc::ptr_eq(&(*current), &another)
+            }
+            (Value::Native(current), Value::Native(another)) => {
+                *current == another
+            }
+            (Value::Null, Value::Null) => true,
+            _ => false,
+        }
+    }
+    pub fn not_eq(&self, address: Address, other: Value) -> bool {
+        !self.eq(address, other)
+    }
+    pub fn greater(&self, address: Address, other: Value) -> Result<Value, ControlFlow> {
+        match (self, other.clone()) {
+            (Value::Integer(current), Value::Integer(another)) => {
+                Ok(Value::Bool(*current > another))
+            }
+            (Value::Integer(current), Value::Float(another)) => {
+                Ok(Value::Bool((*current as f64) > another))
+            }
+            (Value::Float(current), Value::Integer(another)) => {
+                Ok(Value::Bool(*current > (another as f64)))
+            }
+            (Value::Float(current), Value::Float(another)) => {
+                Ok(Value::Bool(*current > another))
+            }
+            _ => Err(ControlFlow::Error(Error::new(
+                ErrorType::Runtime,
+                address,
+                format!("couldn't use > for {:?} and {:?}", self, other),
+                "check your code.".to_string()
+            )))
+        }
+    }
+    pub fn less(&self, address: Address, other: Value) -> Result<Value, ControlFlow> {
+        match (self, other.clone()) {
+            (Value::Integer(current), Value::Integer(another)) => {
+                Ok(Value::Bool(*current < another))
+            }
+            (Value::Integer(current), Value::Float(another)) => {
+                Ok(Value::Bool((*current as f64) < another))
+            }
+            (Value::Float(current), Value::Integer(another)) => {
+                Ok(Value::Bool(*current < (another as f64)))
+            }
+            (Value::Float(current), Value::Float(another)) => {
+                Ok(Value::Bool(*current < another))
+            }
+            _ => Err(ControlFlow::Error(Error::new(
+                ErrorType::Runtime,
+                address,
+                format!("couldn't use > for {:?} and {:?}", self, other),
+                "check your code.".to_string()
+            )))
+        }
+    }
 
+    pub fn greater_eq(&self, address: Address, other: Value) -> Result<Value, ControlFlow> {
+        Ok(Value::Bool(
+            self.eq(address.clone(), other.clone()) || Value::bool(self.greater(address, other)?))
+        )
+    }
+
+    pub fn less_eq(&self, address: Address, other: Value) -> Result<Value, ControlFlow> {
+        Ok(Value::Bool(
+            self.eq(address.clone(), other.clone()) || Value::bool(self.less(address, other)?))
+        )
+    }
 }

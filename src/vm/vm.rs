@@ -285,7 +285,29 @@ impl Vm {
                 }
                 Opcode::Bang { addr} => {
                     let value = self.pop(addr.clone())?;
-                    self.push(addr.clone(), value.invert())?;
+                    if let Value::Bool(bool) = value {
+                        self.push(addr.clone(), Value::Bool(!bool))?;
+                    }
+                }
+                Opcode::Cond { addr, op} => {
+                    let left = self.pop(addr.clone())?;
+                    let right = self.pop(addr.clone())?;
+                    match op {
+                        _ if op == ">" => self.push(addr.clone(),left.greater(addr.clone(), right)?)?,
+                        _ if op == ">=" => self.push(addr.clone(),left.greater_eq(addr.clone(), right)?)?,
+                        _ if op == "<" => self.push(addr.clone(),left.less(addr.clone(), right)?)?,
+                        _ if op == "<=" => self.push(addr.clone(),left.less_eq(addr.clone(), right)?)?,
+                        _ if op == "!=" => self.push(addr.clone(), Value::Bool(left.not_eq(addr.clone(), right)))?,
+                        _ if op == "==" => self.push(addr.clone(), Value::Bool(left.eq(addr.clone(), right)))?,
+                        _ => {
+                            return Err(ControlFlow::Error(Error::new(
+                                ErrorType::Runtime,
+                                addr.clone(),
+                                format!("undefined cond op: {:?}", op),
+                                "check your code.".to_string(),
+                            )))
+                        }
+                    }
                 }
                 _ => {
                     println!("undefined opcode: {:?}", op);
