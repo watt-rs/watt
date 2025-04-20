@@ -101,3 +101,7 @@ pub enum Value {
     Fn(Arc<Mutex<Function>>),
     Null,
 }
+
+impl Value {
+
+}

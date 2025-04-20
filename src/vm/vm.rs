@@ -283,6 +283,10 @@ impl Vm {
                         }
                     }
                 }
+                Opcode::Bang { addr} => {
+                    let value = self.pop(addr.clone())?;
+                    self.push(addr.clone(), value.invert())?;
+                }
                 _ => {
                     println!("undefined opcode: {:?}", op);
                 }
