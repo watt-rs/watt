@@ -174,7 +174,11 @@ impl Vm {
                     } else {
                         if should_push {
                             let frame_lock = frame.lock().unwrap();
-                            self.push(address.clone(), frame_lock.lookup(address.clone(), name.clone())?)?;
+                            if frame_lock.has(name.clone()) {
+                                self.push(address.clone(), frame_lock.lookup(address.clone(), name.clone())?)?;
+                            } else if self.types.contains_key(&name) {
+                                self.push(address.clone(), Value::Type(self.types.get(&name)));
+                            }
                         }
                     }
                 }
