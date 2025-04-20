@@ -183,8 +183,8 @@ impl CompileVisitor {
     }
 
     pub fn visit_bin(&mut self, left: Box<Node>, right: Box<Node>, op: Token) -> Result<(), Error> {
-        self.visit_node(*left)?;
         self.visit_node(*right)?;
+        self.visit_node(*left)?;
         self.push_instr(Opcode::Bin {
             addr: op.address.clone(),
             op: op.value,
@@ -242,7 +242,12 @@ impl CompileVisitor {
             addr: location.address.clone(),
             cond: Box::new(Chunk::new(logical)),
             body: Box::new(Chunk::new(body)),
-            elif: None,
+            elif: Some(Box::new(Opcode::If {
+                addr: location.address.clone(),
+                cond: Box::new(Chunk::of(Opcode::Push{ addr: location.address.clone(), value: Value::Bool(true) })),
+                body: Box::new(Chunk::of(Opcode::EndLoop { addr: location.address.clone(), current_iteration: false })),
+                elif: None
+            })),
         };
         // loop
         self.push_instr(Opcode::Loop {
@@ -471,8 +476,8 @@ impl CompileVisitor {
         right: Box<Node>,
         op: Token,
     ) -> Result<(), Error> {
-        self.visit_node(*left)?;
         self.visit_node(*right)?;
+        self.visit_node(*left)?;
         self.push_instr(Opcode::Cond {
             addr: op.address.clone(),
             op: op.value,
@@ -486,8 +491,8 @@ impl CompileVisitor {
         right: Box<Node>,
         op: Token,
     ) -> Result<(), Error> {
-        self.visit_node(*left)?;
         self.visit_node(*right)?;
+        self.visit_node(*left)?;
         self.push_instr(Opcode::Logic {
             addr: op.address.clone(),
             op: op.value,

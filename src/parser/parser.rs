@@ -779,6 +779,12 @@ impl Parser {
             TokenType::Import => {
                 self.import_stmt()
             }
+            TokenType::For => {
+                self.for_stmt()
+            }
+            TokenType::While => {
+                self.while_stmt()
+            }
             _ => {
                 Err(Error::new(
                     ErrorType::Parsing,

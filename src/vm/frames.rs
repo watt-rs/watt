@@ -29,6 +29,8 @@ impl Frame {
             while let Some(ref current_ref) = current.clone() {
                 let current_lock = current_ref.lock().unwrap();
                 if current_lock.has(name.clone()) {
+                    return true;
+                } else {
                     current = current_lock.root.clone();
                 }
             }
@@ -84,6 +86,7 @@ impl Frame {
             let mut current_lock = current_ref.lock().unwrap();
             if current_lock.has(name.clone()) {
                 current_lock.set(address.clone(), name.clone(), val.clone())?;
+                return Ok(());
             }
             current = current_lock.root.clone();
         }
@@ -113,9 +116,22 @@ impl Frame {
     }
 
     pub fn set_root(&mut self, frame: Arc<Mutex<Frame>>) {
+        // current roo
+        if self.root.is_none() {
+            self.root = Some(frame.clone());
+            return;
+        }
+        // other roots
         let mut last_root = self.root.clone();
         while last_root.is_some() {
-            last_root = last_root.unwrap().lock().unwrap().root.clone();
+            let root_cloned = last_root.clone().unwrap();
+            let new_root_lock = root_cloned.lock().unwrap();
+            let new_root = new_root_lock.root.clone();
+            if new_root.is_some() {
+                last_root = new_root;
+            } else {
+                break;
+            }
         }
         last_root.unwrap().lock().unwrap().root = Option::Some(frame.clone());
     }

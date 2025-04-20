@@ -186,6 +186,13 @@ impl Vm {
                                 self.push(address.clone(), Value::Type(type_ref.clone()))?;
                             } else if let Some(unit_ref) = self.units.get(&name.clone()) {
                                 self.push(address.clone(), Value::Unit(unit_ref.clone()))?;
+                            } else {
+                                return Err(ControlFlow::Error(Error::new(
+                                    ErrorType::Runtime,
+                                    address.clone(),
+                                    format!("not found: {:?}", name),
+                                    "check your code.".to_string(),
+                                )));
                             }
                         }
                     }
