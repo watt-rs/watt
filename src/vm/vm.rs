@@ -12,8 +12,8 @@ use super::bytecode::Opcode;
 pub struct Vm {
     eval_stack: VecDeque<Value>,
     natives: BTreeMap<String, Native>,
-    types: BTreeMap<String, Type>,
-    units: BTreeMap<String, Unit>,
+    types: BTreeMap<String, Arc<Mutex<Type>>>,
+    units: BTreeMap<String, Arc<Mutex<Unit>>>,
 }
 
 // control flow
@@ -177,7 +177,7 @@ impl Vm {
                             if frame_lock.has(name.clone()) {
                                 self.push(address.clone(), frame_lock.lookup(address.clone(), name.clone())?)?;
                             } else if self.types.contains_key(&name) {
-                                self.push(address.clone(), Value::Type(self.types.get(&name)));
+                                self.push(address.clone(), Value::Type(self.types.get(&name).unwrap().clone()))?;
                             }
                         }
                     }
@@ -407,7 +407,7 @@ impl Vm {
                 Opcode::If {addr, body, cond, elif} => {
                     self.run(*cond, frame.clone())?;
                     let logical = self.pop(addr.clone())?;
-                    if let Some(bool) = logical {
+                    if let Value::Bool(bool) = logical {
                         if bool {
                             self.run(*body, frame.clone())?;
                         } else {
@@ -434,7 +434,7 @@ impl Vm {
                     let frame_lock = frame.lock().unwrap();
                     let closure_object = frame_lock.lookup(addr.clone(), name.clone())?;
                     if let Value::Fn(f) = closure_object {
-                        let fun = f.lock().unwrap();
+                        let mut fun = f.lock().unwrap();
                         fun.closure = frame.clone();
                     }
                 }
