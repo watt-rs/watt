@@ -64,15 +64,19 @@ pub struct Function {
     pub full_name: String,
     pub body: Chunk,
     pub params: Vec<String>,
+    pub closure: Arc<Mutex<Frame>>;
+    pub owner: FunctionOwner
 }
 
 impl Function {
-    pub fn new(name: String, full_name: String, body: Chunk, params: Vec<String>) -> Function {
+    pub fn new(name: String, full_name: String, body: Chunk, params: Vec<String>, closure: Arc<Mutex<Frame>>, owner: FunctionOwner) -> Function {
         Function {
             name,
             full_name,
             body,
-            params
+            params,
+            closure,
+            owner
         }
     }
 

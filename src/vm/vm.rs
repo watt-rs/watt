@@ -425,8 +425,9 @@ impl Vm {
                 Opcode::Closure { addr, name } => {
                     let frame_lock = frame.lock().unwrap();
                     let closure_object = frame_lock.lookup(addr.clone(), name.clone())?;
-                    if let Some(f) = closure_object {
-
+                    if let Value::Fn(f) = closure_object {
+                        let fun = f.lock().unwrap();
+                        fun.closure =
                     }
                 }
                 _ => {
