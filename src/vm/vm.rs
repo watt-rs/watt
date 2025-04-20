@@ -14,6 +14,14 @@ pub struct Vm {
     natives: BTreeMap<String, Native>
 }
 
+// control flow
+pub enum ControlFlow {
+    Return(Value),
+    Continue,
+    Break,
+    Error(Error)
+}
+
 // vm impl
 impl Vm {
     // new vm instance
@@ -21,7 +29,7 @@ impl Vm {
         Vm {
             eval_stack: VecDeque::new(),
             natives: BTreeMap::from([
-                ("println".to_string(), |vm: &mut Vm, address: Address| -> Result<(), Error> {
+                ("println".to_string(), |vm: &mut Vm, address: Address, should_push: bool| -> Result<(), ControlFlow> {
                     let value = vm.pop(address)?;
                     println!("{:?}", value);
                     return Ok(());
@@ -31,24 +39,24 @@ impl Vm {
     }
 
     // push to stack
-    pub fn push(&mut self, address: Address, value: Value) -> Result<(), Error> {
+    pub fn push(&mut self, address: Address, value: Value) -> Result<(), ControlFlow> {
         self.eval_stack.push_back(value);
         Ok(())
     }
 
-    pub fn pop(&mut self, address: Address) -> Result<Value, Error> {
+    pub fn pop(&mut self, address: Address) -> Result<Value, ControlFlow> {
         match self.eval_stack.pop_back() {
             Some(v) => Ok(v),
-            None => Err(Error::new(
+            None => Err(ControlFlow::Error(Error::new(
                 ErrorType::Runtime,
                 address,
                 "stack is empty.".to_string(),
                 "check your code.".to_string(),
-            )),
+            ))),
         }
     }
 
-    pub fn run(&mut self, chunk: Chunk, frame: Arc<Mutex<Frame>>) -> Result<(), Error> {
+    pub fn run(&mut self, chunk: Chunk, frame: Arc<Mutex<Frame>>) -> Result<(), ControlFlow> {
         for op in chunk.opcodes() {
             match op {
                 // push
@@ -77,7 +85,7 @@ impl Vm {
                                     self.push(address, Value::Float(l as f64 + r))?;
                                 }
                                 _ => {
-                                    return Err(Error::new(
+                                    return Err(ControlFlow::Error(Error::new(
                                         ErrorType::Runtime,
                                         address,
                                         format!(
@@ -85,7 +93,7 @@ impl Vm {
                                             right
                                         ),
                                         "check your code.".to_string(),
-                                    ));
+                                    )));
                                 }
                             }
                         }
@@ -98,7 +106,7 @@ impl Vm {
                                     self.push(address, Value::Float(l + r))?;
                                 }
                                 _ => {
-                                    return Err(Error::new(
+                                    return Err(ControlFlow::Error(Error::new(
                                         ErrorType::Runtime,
                                         address,
                                         format!(
@@ -106,7 +114,7 @@ impl Vm {
                                             right
                                         ),
                                         "check your code.".to_string(),
-                                    ));
+                                    )));
                                 }
                             }
                         }
@@ -118,12 +126,12 @@ impl Vm {
                                     ))?;
                                 }
                                 _ => {
-                                    return Err(Error::new(
+                                    return Err(ControlFlow::Error(Error::new(
                                         ErrorType::Runtime,
                                         address,
                                         format!("couldn't add string with: {:?}", right),
                                         "check your code.".to_string(),
-                                    ));
+                                    )));
                                 }
                             }
                         }
@@ -151,12 +159,12 @@ impl Vm {
                                 }
                             }
                             _ => {
-                                return Err(Error::new(
+                                return Err(ControlFlow::Error(Error::new(
                                     ErrorType::Runtime,
                                     address.clone(),
                                     format!("couldn't load var from: {:?}", previous),
                                     "check your code.".to_string(),
-                                ));
+                                )));
                             }
                         }
                     } else {
@@ -184,12 +192,12 @@ impl Vm {
                                 fields_lock.define(address.clone(), name.clone(), self.pop(address.clone())?)?;
                             }
                             _ => {
-                                return Err(Error::new(
+                                return Err(ControlFlow::Error(Error::new(
                                     ErrorType::Runtime,
                                     address.clone(),
-                                    format!("couldn't load var from: {:?}", value),
+                                    format!("couldn't define var to: {:?}", previous),
                                     "check your code.".to_string(),
-                                ));
+                                )));
                             }
                         }
                     } else {
@@ -216,12 +224,12 @@ impl Vm {
                                 fields_lock.set(address.clone(), name.clone(), self.pop(address.clone())?)?;
                             }
                             _ => {
-                                return Err(Error::new(
+                                return Err(ControlFlow::Error(Error::new(
                                     ErrorType::Runtime,
                                     address.clone(),
-                                    format!("couldn't load var from: {:?}", value),
+                                    format!("couldn't set var to: {:?}", previous),
                                     "check your code.".to_string(),
-                                ));
+                                )));
                             }
                         }
                     } else {
@@ -239,11 +247,39 @@ impl Vm {
                     let passed_amount = after - before;
                     // call
                     if has_previous {
-                        todo!()
+                        let previous = self.pop(addr.clone())?.clone();
+                        match previous {
+                            Value::Instance(instance) => {
+                                let instance_lock = instance.lock().unwrap();
+                                let mut fields_lock = instance_lock.fields.lock().unwrap();
+                                let callee = fields_lock.lookup(addr.clone(), name.clone())?;
+                                self.call(callee, addr, frame.clone(), should_push)?;
+                            }
+                            Value::Unit(unit) => {
+                                let unit_lock = unit.lock().unwrap();
+                                let mut fields_lock = unit_lock.fields.lock().unwrap();
+                                let callee = fields_lock.lookup(addr.clone(), name.clone())?;
+                                self.call(callee, addr, frame.clone(), should_push)?;
+                            }
+                            _ => {
+                                return Err(ControlFlow::Error(Error::new(
+                                    ErrorType::Runtime,
+                                    addr.clone(),
+                                    format!("couldn't load var from: {:?}", previous),
+                                    "check your code.".to_string(),
+                                )));
+                            }
+                        }
                     } else {
+                        // native
                         let native = self.natives.get(&name);
                         if let Some(native_ref) = native {
-                            native_ref(self, addr.clone())?;
+                            // native
+                            native_ref(self, addr.clone(), should_push)?;
+                        } else {
+                            // frame fn
+                            let frame_lock = frame.lock().unwrap();
+                            self.call(frame_lock.lookup(addr.clone(), name.clone())?, addr.clone(), frame.clone(), should_push)?;
                         }
                     }
                 }
@@ -253,5 +289,23 @@ impl Vm {
             }
         }
         Ok(())
+    }
+
+    pub fn call(&mut self, callee: Value, address: Address, frame: Arc<Mutex<Frame>>, should_push: bool) -> Result<(), ControlFlow> {
+        match callee {
+            Value::Fn(f) => {
+                let mut fun = f.lock().unwrap();
+                fun.run(self, address.clone(), frame.clone(), should_push)?;
+                Ok(())
+            }
+            _ => {
+                Err(ControlFlow::Error(Error::new(
+                    ErrorType::Runtime,
+                    address.clone(),
+                    format!("couldn't call: {:?}", callee),
+                    "check your code.".to_string(),
+                )))
+            }
+        }
     }
 }

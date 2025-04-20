@@ -1,12 +1,11 @@
 use std::sync::{Arc, Mutex};
-use crate::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::bytecode::Chunk;
 use crate::vm::frames::Frame;
-use crate::vm::vm::Vm;
+use crate::vm::vm::{ControlFlow, Vm};
 
 // native
-pub type Native = fn(&mut Vm, Address) -> Result<(), Error>;
+pub type Native = fn(&mut Vm, Address, bool) -> Result<(), ControlFlow>;
 
 // type
 #[derive(Debug, Clone)]
@@ -30,7 +29,7 @@ pub struct Instance {
 }
 
 impl Instance {
-    pub fn new(vm: &mut Vm, typo: Arc<Mutex<Type>>) -> Result<Instance, Error> {
+    pub fn new(vm: &mut Vm, typo: Arc<Mutex<Type>>) -> Result<Instance, ControlFlow> {
         let instance = Instance {fields: Arc::new(Mutex::new(Frame::new())), typo: typo.clone()};
         vm.run(typo.lock().unwrap().body.clone(), instance.fields.clone())?;
         Ok(instance)
@@ -64,6 +63,28 @@ pub struct Function {
     pub full_name: String,
     pub body: Chunk,
     pub params: Vec<String>,
+}
+
+impl Function {
+    pub fn new(name: String, full_name: String, body: Chunk, params: Vec<String>) -> Function {
+        Function {
+            name,
+            full_name,
+            body,
+            params
+        }
+    }
+
+    pub fn run(&mut self, vm: &mut Vm, address: Address, frame: Arc<Mutex<Frame>>, should_push: bool) -> Result<(), ControlFlow> {
+        if let Err(control_flow) = vm.run(self.body.clone(), frame) {
+            if let ControlFlow::Return(returnable) = control_flow {
+                if should_push {
+                    vm.push(address.clone(), returnable.clone());
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 // value

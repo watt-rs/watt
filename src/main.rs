@@ -17,7 +17,7 @@ use crate::parser::parser::Parser;
 use crate::errors::*;
 use crate::lexer::address::Address;
 use crate::vm::frames::Frame;
-use crate::vm::vm::Vm;
+use crate::vm::vm::{ControlFlow, Vm};
 
 fn exec() -> Result<(), Error> {
     let code = String::from("\
@@ -38,7 +38,17 @@ fn exec() -> Result<(), Error> {
     println!("...");
     let mut vm = Vm::new();
     let mut frame = Arc::new(Mutex::new(Frame::new()));
-    vm.run(opcodes, frame.clone())?;
+    if let Err(flow) = vm.run(opcodes, frame.clone()) {
+        match flow {
+            ControlFlow::Error(e) => return Err(e),
+            _ => return Err(Error::new(
+                ErrorType::Runtime,
+                address.clone(),
+                "flow leak.".to_string(),
+                "check your code.".to_string(),
+            )),
+        }
+    }
     // println!("{:?}", frame);
     Ok(())
 }

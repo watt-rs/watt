@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 use crate::errors::{Error, ErrorType};
 use crate::lexer::address::Address;
 use crate::vm::values::Value;
+use crate::vm::vm::ControlFlow;
 
 #[derive(Debug, Clone)]
 pub struct Frame {
@@ -35,7 +36,7 @@ impl Frame {
         }
     }
 
-    pub fn lookup(&self, address: Address, name: String) -> Result<Value, Error> {
+    pub fn lookup(&self, address: Address, name: String) -> Result<Value, ControlFlow> {
         // checking current frame
         if let Some(val) = self.map.get(&name) {
             return Ok(val.clone())
@@ -56,15 +57,15 @@ impl Frame {
             current = current_lock.root.clone();
         }
         // error
-        Err(Error::new(
+        Err(ControlFlow::Error(Error::new(
             ErrorType::Runtime,
             address,
             format!("not found: {:?}", name),
             "check variable existence.".to_string()
-        ))
+        )))
     }
 
-    pub fn set(&mut self, address: Address, name: String, val: Value) -> Result<(), Error> {
+    pub fn set(&mut self, address: Address, name: String, val: Value) -> Result<(), ControlFlow> {
         // checking current frame
         if let Some(val) = self.map.get(&name) {
             self.map.insert(name, val.clone());
@@ -87,24 +88,24 @@ impl Frame {
             current = current_lock.root.clone();
         }
         // error
-        Err(Error::new(
+        Err(ControlFlow::Error(Error::new(
             ErrorType::Runtime,
             address,
             format!("not found: {:?}", name),
             "check variable existence.".to_string()
-        ))
+        )))
     }
 
-    pub fn define(&mut self, address: Address, name: String, val: Value) -> Result<(), Error> {
+    pub fn define(&mut self, address: Address, name: String, val: Value) -> Result<(), ControlFlow> {
         // checking current frame
         if self.map.contains_key(&name) {
             self.map.insert(name.clone(), val);
-            Err(Error::new(
+            Err(ControlFlow::Error(Error::new(
                 ErrorType::Runtime,
                 address,
                 format!("already defined: {:?}", name),
                 "check variable overrides.".to_string()
-            ))
+            )))
         } else {
             self.map.insert(name, val);
             Ok(())
