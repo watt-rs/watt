@@ -12,13 +12,13 @@ pub type Native = fn(&mut Vm, Address, bool) -> Result<(), ControlFlow>;
 #[derive(Debug, Clone)]
 pub struct Type {
     pub name: String,
-    pub full_name: String,
-    pub body: Chunk
+    pub body: Chunk,
+    constructor: Vec<String>
 }
 
 impl Type {
-    pub fn new(name: String, full_name: String, body: Chunk) -> Type {
-        Type {name, full_name, body}
+    pub fn new(name: String, body: Chunk, constructor: Vec<String>) -> Type {
+        Type {name, body, constructor}
     }
 }
 
@@ -41,16 +41,14 @@ impl Instance {
 #[derive(Debug)]
 pub struct Unit {
     pub name: String,
-    pub full_name: String,
     pub fields: Arc<Mutex<Frame>>,
     pub body: Chunk
 }
 
 impl Unit {
-    pub fn new(name: String, full_name: String, body: Chunk) -> Unit {
+    pub fn new(name: String, body: Chunk) -> Unit {
         Unit {
             name,
-            full_name,
             fields: Arc::new(Mutex::new(Frame::new())),
             body
         }
@@ -62,28 +60,27 @@ impl Unit {
 pub enum FunctionOwner {
     Type(Arc<Mutex<Type>>),
     Instance(Arc<Mutex<Instance>>),
+    NoOne
 }
 
 // function
 #[derive(Debug, Clone)]
 pub struct Function {
     pub name: String,
-    pub full_name: String,
     pub body: Chunk,
     pub params: Vec<String>,
-    pub closure: Arc<Mutex<Frame>>,
+    pub closure: Option<Arc<Mutex<Frame>>>,
     pub owner: FunctionOwner
 }
 
 impl Function {
-    pub fn new(name: String, full_name: String, body: Chunk, params: Vec<String>, closure: Arc<Mutex<Frame>>, owner: FunctionOwner) -> Function {
+    pub fn new(name: String, body: Chunk, params: Vec<String>) -> Function {
         Function {
             name,
-            full_name,
             body,
             params,
-            closure,
-            owner
+            closure: None,
+            owner: FunctionOwner::NoOne
         }
     }
 

@@ -4,7 +4,7 @@ use crate::vm::bytecode::*;
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use crate::vm::frames::Frame;
-use crate::vm::values::{Native, Type, Unit, Value};
+use crate::vm::values::{Function, Native, Type, Unit, Value};
 use super::bytecode::Opcode;
 
 
@@ -435,11 +435,43 @@ impl Vm {
                     let closure_object = frame_lock.lookup(addr.clone(), name.clone())?;
                     if let Value::Fn(f) = closure_object {
                         let mut fun = f.lock().unwrap();
-                        fun.closure = frame.clone();
+                        fun.closure = Some(frame.clone());
                     }
                 }
                 Opcode::DefineFn { addr, name, full_name, body, params } => {
-                    let frame_lock = frame.lock().unwrap();
+                    let mut frame_lock = frame.lock().unwrap();
+                    let fun = Value::Fn(Arc::new(Mutex::new(Function::new(
+                        name.clone(),
+                        *body,
+                        params.clone(),
+                    ))));
+                    frame_lock.define(addr.clone(), name, fun.clone())?;
+                    if let Some(f_name) = full_name {
+                        frame_lock.define(addr, f_name, fun)?;
+                    }
+                }
+                Opcode::DefineType { addr, name, full_name, body, constructor } => {
+                    let mut frame_lock = frame.lock().unwrap();
+                    let typo = Arc::new(Mutex::new(Type::new(
+                        name.clone(),
+                        *body,
+                        constructor
+                    )));
+                    self.types.insert(name, typo.clone());
+                    if let Some(f_name) = full_name {
+                        self.types.insert(f_name, typo);
+                    }
+                }
+                Opcode::DefineUnit { addr, name, full_name, body } => {
+                    let mut frame_lock = frame.lock().unwrap();
+                    let unit = Arc::new(Mutex::new(Unit::new(
+                        name.clone(),
+                        *body
+                    )));
+                    self.units.insert(name, unit.clone());
+                    if let Some(f_name) = full_name {
+                        self.units.insert(f_name, unit);
+                    }
                 }
                 _ => {
                     println!("undefined opcode: {:?}", op);
