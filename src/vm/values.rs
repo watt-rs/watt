@@ -31,13 +31,18 @@ pub struct Instance {
 
 impl Instance {
     pub fn new(vm: &mut Vm, typo: Arc<Mutex<Type>>, address: Address,
-               passed_args: i16) -> Result<Arc<Mutex<Instance>>, ControlFlow> {
+               passed_args: i16, root_frame: Arc<Mutex<Frame>>) -> Result<Arc<Mutex<Instance>>, ControlFlow> {
         let instance = (Arc::new(Mutex::new(Instance {
             fields: Arc::new(Mutex::new(Frame::new())), typo: typo.clone()}
         )));
         let instance_ref = instance.clone();
         let instance_lock = instance_ref.lock().unwrap();
         let typo_lock = instance_lock.typo.lock().unwrap();
+        // fields
+        let fields_lock_copy = instance_lock.fields.clone();
+        let mut fields_lock = fields_lock_copy.lock().unwrap();
+        fields_lock.set_root(root_frame.clone());
+        // constructor
         let constructor_len = typo_lock.constructor.len() as i16;
         if passed_args != constructor_len {
             return Err(ControlFlow::Error(Error::new(
@@ -55,7 +60,21 @@ impl Instance {
                 address.clone(), typo_lock.constructor.get(i as usize).unwrap().clone(), value
             )?
         }
+        // body
         vm.run(typo.lock().unwrap().body.clone(), instance_lock.fields.clone())?;
+        // fn binds
+        for pair in fields_lock.clone().map {
+            if let Value::Fn(f) = pair.1 {
+                f.lock().unwrap().owner = FunctionOwner::Instance(
+                    instance.clone()
+                )
+            }
+        }
+        // call init
+        if let Some(init) = fields_lock.map.get("init") {
+
+        }
+        // return
         Ok(instance)
     }
 }
@@ -79,11 +98,12 @@ impl Unit {
         let unit_ref = unit.clone();
         let unit_deref = unit_ref.lock().unwrap();
         // fields
-        let mut fields_lock = unit_deref.fields.lock().unwrap();
+        let fields_lock_copy = unit_deref.fields.clone();
+        let mut fields_lock = fields_lock_copy.lock().unwrap();
         fields_lock.set_root(root_frame);
         vm.run(unit_deref.body.clone(), unit_deref.fields.clone())?;
         // fn binds
-        for pair in &fields_lock.map {
+        for pair in fields_lock.clone().map {
             if let Value::Fn(f) = pair.1 {
                 f.lock().unwrap().owner = FunctionOwner::Unit(
                     unit.clone()
