@@ -69,14 +69,14 @@ impl Frame {
 
     pub fn set(&mut self, address: Address, name: String, val: Value) -> Result<(), ControlFlow> {
         // checking current frame
-        if let Some(val) = self.map.get(&name) {
+        if self.map.contains_key(&name) {
             self.map.insert(name, val.clone());
             return Ok(());
         }
         if let Some(ref closure_ref) = self.closure {
             let mut closure_lock = closure_ref.lock().unwrap();
             if closure_lock.has(name.clone()) {
-                closure_lock.set(address, name, val)?;
+                closure_lock.set(address.clone(), name.clone(), val.clone())?;
                 return Ok(());
             }
         }

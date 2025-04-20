@@ -23,8 +23,8 @@ fn exec() -> Result<(), Error> {
     let code = String::from("i := 0
     while i < 1000000 {
         i = i + 1
+        println(i)
     }
-    println(i)
     ");
     let file_name = String::from("main.rs");
     let tokens = Lexer::new(code, file_name.clone()).lex()?;

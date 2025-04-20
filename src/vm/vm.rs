@@ -421,6 +421,7 @@ impl Vm {
                     ControlFlow::Return(self.pop(addr.clone())?);
                 }
                 Opcode::If {addr, body, cond, elif} => {
+                    println!("loop if");
                     self.run(*cond.clone(), frame.clone())?;
                     let logical = self.pop(addr.clone())?;
                     if let Value::Bool(bool) = logical {
