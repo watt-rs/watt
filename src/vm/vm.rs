@@ -176,10 +176,10 @@ impl Vm {
                             let frame_lock = frame.lock().unwrap();
                             if frame_lock.has(name.clone()) {
                                 self.push(address.clone(), frame_lock.lookup(address.clone(), name.clone())?)?;
-                            } else if let Some(typo) = self.types.get(&name) {
-                                self.push(address.clone(), Value::Type(typo.unwrap().clone()))?;
-                            } else if let Some(unit) = self.units.get(&name) {
-                                self.push(address.clone(), Value::Unit(unit.unwrap().clone()))?;
+                            } else if let Some(type_ref) = self.types.get(&name) {
+                                self.push(address.clone(), Value::Type(type_ref.clone()))?;
+                            } else if let Some(unit_ref) = self.units.get(&name) {
+                                self.push(address.clone(), Value::Unit(unit_ref.clone()))?;
                             }
                         }
                     }
@@ -480,7 +480,7 @@ impl Vm {
                     if let Some(type_ref) = typo {
                         let instance = Value::Instance(Arc::new(Mutex::new(Instance::new(
                             self,
-                            type_ref,
+                            type_ref.clone(),
                             *args.clone(),
                         )?)));
                         if should_push {
