@@ -32,8 +32,13 @@ pub struct Instance {
 impl Instance {
     pub fn new(vm: &mut Vm, typo: Arc<Mutex<Type>>, address: Address,
                passed_args: i16) -> Result<Arc<Mutex<Instance>>, ControlFlow> {
-        let instance = Instance {fields: Arc::new(Mutex::new(Frame::new())), typo: typo.clone()};
-        let constructor_len = instance.typo.lock().unwrap().constructor.len() as i16;
+        let instance = (Arc::new(Mutex::new(Instance {
+            fields: Arc::new(Mutex::new(Frame::new())), typo: typo.clone()}
+        )));
+        let instance_ref = instance.clone();
+        let instance_lock = instance_ref.lock().unwrap();
+        let typo_lock = instance_lock.typo.lock().unwrap();
+        let constructor_len = typo_lock.constructor.len() as i16;
         if passed_args != constructor_len {
             return Err(ControlFlow::Error(Error::new(
                 ErrorType::Runtime,
@@ -43,8 +48,15 @@ impl Instance {
                 "check your code.".to_string()
             )));
         }
-        vm.run(typo.lock().unwrap().body.clone(), instance.fields.clone())?;
-        Ok(Arc::new(Mutex::new(instance)))
+        let mut instance_fields_lock = instance_lock.fields.lock().unwrap();
+        for i in (constructor_len-1)..=0 {
+            let value = vm.pop(address.clone())?;
+            instance_fields_lock.define(
+                address.clone(), typo_lock.constructor.get(i as usize).unwrap().clone(), value
+            )?
+        }
+        vm.run(typo.lock().unwrap().body.clone(), instance_lock.fields.clone())?;
+        Ok(instance)
     }
 }
 

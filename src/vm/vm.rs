@@ -486,12 +486,20 @@ impl Vm {
                     }
                 }
                 Opcode::Instance { addr, name, args, should_push} => {
-                    let typo = self.types.get(&name);
+                    // args
+                    let before = self.eval_stack.len() as i16;
+                    self.run(*args.clone(), frame.clone())?;
+                    let after = self.eval_stack.len() as i16;
+                    let passed_amount = after - before;
+                    // instance
+                    let typo = self.types.get(&name).clone();
                     if let Some(type_ref) = typo {
+                        // instance
                         let instance = Value::Instance(Instance::new(
                             self,
                             type_ref.clone(),
-                            *args.clone(),
+                            addr.clone(),
+                            passed_amount,
                         )?);
                         if should_push {
                             self.push(addr.clone(), instance)?;
