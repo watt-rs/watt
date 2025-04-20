@@ -6,7 +6,7 @@ use crate::vm::frames::Frame;
 use crate::vm::vm::{ControlFlow, Vm};
 
 // native
-pub type Native = fn(&mut Vm, Address, bool) -> Result<(), ControlFlow>;
+pub type Native = fn(&mut Vm, Address, bool, i16) -> Result<(), ControlFlow>;
 
 // type
 #[derive(Debug, Clone)]
@@ -84,7 +84,17 @@ impl Function {
         }
     }
 
-    pub fn run(&mut self, vm: &mut Vm, address: Address, frame: Arc<Mutex<Frame>>, should_push: bool) -> Result<(), ControlFlow> {
+    pub fn run(&mut self, vm: &mut Vm, address: Address, frame: Arc<Mutex<Frame>>,
+               should_push: bool, passed_args: i16) -> Result<(), ControlFlow> {
+        if passed_args != self.params.len() as i16 {
+            return Err(ControlFlow::Error(Error::new(
+                ErrorType::Runtime,
+                address.clone(),
+                format!("couldn't call: {:?}, invalid args. ({:?}/{:?})",
+                self.name.clone(), self.params.len(), passed_args),
+                "check your code.".to_string()
+            )));
+        }
         if let Err(control_flow) = vm.run(self.body.clone(), frame) {
             if let ControlFlow::Return(returnable) = control_flow {
                 if should_push {

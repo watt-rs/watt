@@ -3,7 +3,7 @@ use crate::lexer::address::Address;
 /*
 Тип ошибки
  */
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ErrorType {
     Parsing,
     Runtime,
@@ -14,7 +14,7 @@ pub enum ErrorType {
 /*
 Ошибка
  */
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Error {
     error_type: ErrorType,
     addr: Address,

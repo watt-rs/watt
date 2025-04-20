@@ -17,6 +17,7 @@ pub struct Vm {
 }
 
 // control flow
+#[derive(Clone)]
 pub enum ControlFlow {
     Return(Value),
     Continue,
@@ -31,7 +32,7 @@ impl Vm {
         Vm {
             eval_stack: VecDeque::new(),
             natives: BTreeMap::from([
-                ("println".to_string(), |vm: &mut Vm, address: Address, should_push: bool| -> Result<(), ControlFlow> {
+                ("println".to_string(), |vm: &mut Vm, address: Address, should_push: bool, args_amount:i16| -> Result<(), ControlFlow> {
                     let value = vm.pop(address)?;
                     println!("{:?}", value);
                     return Ok(());
@@ -43,6 +44,7 @@ impl Vm {
     }
 
     // push to stack
+    // noinspection RsLiveness
     pub fn push(&mut self, address: Address, value: Value) -> Result<(), ControlFlow> {
         self.eval_stack.push_back(value);
         Ok(())
@@ -68,7 +70,7 @@ impl Vm {
                     addr: address,
                     value,
                 } => {
-                    self.push(address.clone(), value)?;
+                    self.push(address.clone(), value.clone())?;
                 }
                 // pop
                 Opcode::Pop { addr: address } => {
@@ -78,70 +80,74 @@ impl Vm {
                 Opcode::Bin { addr: address, op } => {
                     let left = self.pop(address.clone())?;
                     let right = self.pop(address.clone())?;
+                    let number_error = Err(ControlFlow::Error(Error::new(
+                        ErrorType::Runtime,
+                        address.clone(),
+                        format!(
+                            "couldn't {:?} number with: {:?} and {:?}",
+                            op.clone(),
+                            left,
+                            right
+                        ),
+                        "check your code.".to_string(),
+                    )));
 
-                    match left {
-                        Value::Integer(l) => {
-                            match right {
-                                Value::Integer(r) => {
-                                    self.push(address, Value::Integer(l + r))?;
-                                }
-                                Value::Float(r) => {
-                                    self.push(address, Value::Float(l as f64 + r))?;
-                                }
-                                _ => {
-                                    return Err(ControlFlow::Error(Error::new(
-                                        ErrorType::Runtime,
-                                        address,
-                                        format!(
-                                            "couldn't add number with: {:?}",
-                                            right
-                                        ),
-                                        "check your code.".to_string(),
-                                    )));
-                                }
-                            }
+                    match (left, op.clone().as_str()) {
+                        (Value::Integer(l), "+") => match right {
+                            Value::Integer(r) => self.push(address.clone(), Value::Integer(l + r))?,
+                            Value::Float(r) => self.push(address.clone(), Value::Float((l as f64) + r))?,
+                            _ => return number_error.clone()
                         }
-                        Value::Float(l) => {
-                            match right {
-                                Value::Integer(r) => {
-                                    self.push(address, Value::Float(l + r as f64))?;
-                                }
-                                Value::Float(r) => {
-                                    self.push(address, Value::Float(l + r))?;
-                                }
-                                _ => {
-                                    return Err(ControlFlow::Error(Error::new(
-                                        ErrorType::Runtime,
-                                        address,
-                                        format!(
-                                            "couldn't add number with: {:?}",
-                                            right
-                                        ),
-                                        "check your code.".to_string(),
-                                    )));
-                                }
-                            }
+                        (Value::Integer(l), "-") => match right {
+                            Value::Integer(r) => self.push(address.clone(), Value::Integer(l - r))?,
+                            Value::Float(r) => self.push(address.clone(), Value::Float((l as f64) - r))?,
+                            _ => return number_error.clone()
                         }
-                        Value::String(l) => {
+                        (Value::Integer(l), "*") => match right {
+                            Value::Integer(r) => self.push(address.clone(), Value::Integer(l * r))?,
+                            Value::Float(r) => self.push(address.clone(), Value::Float((l as f64) * r))?,
+                            _ => return number_error.clone()
+                        }
+                        (Value::Integer(l), "/") => match right {
+                            Value::Integer(r) => self.push(address.clone(), Value::Integer(l / r))?,
+                            Value::Float(r) => self.push(address.clone(), Value::Float((l as f64) / r))?,
+                            _ => return number_error.clone()
+                        }
+                        (Value::Float(l), "+") => match right {
+                            Value::Integer(r) => self.push(address.clone(), Value::Float(l + (r as f64)))?,
+                            Value::Float(r) => self.push(address.clone(), Value::Float(l + r))?,
+                            _ => return number_error.clone()
+                        }
+                        (Value::Float(l), "-") => match right {
+                            Value::Integer(r) => self.push(address.clone(), Value::Float(l - (r as f64)))?,
+                            Value::Float(r) => self.push(address.clone(), Value::Float(l - r))?,
+                            _ => return number_error.clone()
+                        }
+                        (Value::Float(l), "*") => match right {
+                            Value::Integer(r) => self.push(address.clone(), Value::Float(l * (r as f64)))?,
+                            Value::Float(r) => self.push(address.clone(), Value::Float(l * r))?,
+                            _ => return number_error.clone()
+                        }
+                        (Value::Float(l), "/") => match right {
+                            Value::Integer(r) => self.push(address.clone(), Value::Float(l / (r as f64)))?,
+                            Value::Float(r) => self.push(address.clone(), Value::Float(l / r))?,
+                            _ => return number_error.clone()
+                        }
+                        (Value::String(l), "+") => {
                             match right {
-                                Value::String(r) => {
-                                    self.push(address, Value::String(
-                                        format!("{:?}{:?}", l, r)
-                                    ))?;
-                                }
-                                _ => {
-                                    return Err(ControlFlow::Error(Error::new(
+                                Value::String(r) => self.push(address, Value::String(
+                                    format!("{:?}{:?}", l, r)
+                                ))?,
+                                _ => return Err(ControlFlow::Error(Error::new(
                                         ErrorType::Runtime,
                                         address,
                                         format!("couldn't add string with: {:?}", right),
                                         "check your code.".to_string(),
-                                    )));
-                                }
+                                    )))
                             }
                         }
                         _ => {}
                     }
-
                 }
                 // load
                 Opcode::Load { addr: address, name, has_previous, should_push } => {
@@ -176,9 +182,9 @@ impl Vm {
                             let frame_lock = frame.lock().unwrap();
                             if frame_lock.has(name.clone()) {
                                 self.push(address.clone(), frame_lock.lookup(address.clone(), name.clone())?)?;
-                            } else if let Some(type_ref) = self.types.get(&name) {
+                            } else if let Some(type_ref) = self.types.get(&name.clone()) {
                                 self.push(address.clone(), Value::Type(type_ref.clone()))?;
-                            } else if let Some(unit_ref) = self.units.get(&name) {
+                            } else if let Some(unit_ref) = self.units.get(&name.clone()) {
                                 self.push(address.clone(), Value::Unit(unit_ref.clone()))?;
                             }
                         }
@@ -192,13 +198,13 @@ impl Vm {
                             Value::Instance(instance) => {
                                 let instance_lock = instance.lock().unwrap();
                                 let mut fields_lock = instance_lock.fields.lock().unwrap();
-                                self.run(*value, frame.clone())?;
+                                self.run(*value.clone(), frame.clone())?;
                                 fields_lock.define(address.clone(), name.clone(), self.pop(address.clone())?)?;
                             }
                             Value::Unit(unit) => {
                                 let unit_lock = unit.lock().unwrap();
                                 let mut fields_lock = unit_lock.fields.lock().unwrap();
-                                self.run(*value, frame.clone())?;
+                                self.run(*value.clone(), frame.clone())?;
                                 fields_lock.define(address.clone(), name.clone(), self.pop(address.clone())?)?;
                             }
                             _ => {
@@ -211,7 +217,7 @@ impl Vm {
                             }
                         }
                     } else {
-                        self.run(*value, frame.clone())?;
+                        self.run(*value.clone(), frame.clone())?;
                         let mut frame_lock = frame.lock().unwrap();
                         frame_lock.define(address.clone(), name.clone(), self.pop(address.clone())?)?;
                     }
@@ -222,13 +228,13 @@ impl Vm {
                         let previous = self.pop(address.clone())?.clone();
                         match previous {
                             Value::Instance(instance) => {
-                                self.run(*value, frame.clone())?;
+                                self.run(*value.clone(), frame.clone())?;
                                 let instance_lock = instance.lock().unwrap();
                                 let mut fields_lock = instance_lock.fields.lock().unwrap();
                                 fields_lock.set(address.clone(), name.clone(), self.pop(address.clone())?)?;
                             }
                             Value::Unit(unit) => {
-                                self.run(*value, frame.clone())?;
+                                self.run(*value.clone(), frame.clone())?;
                                 let unit_lock = unit.lock().unwrap();
                                 let mut fields_lock = unit_lock.fields.lock().unwrap();
                                 fields_lock.set(address.clone(), name.clone(), self.pop(address.clone())?)?;
@@ -243,7 +249,7 @@ impl Vm {
                             }
                         }
                     } else {
-                        self.run(*value, frame.clone())?;
+                        self.run(*value.clone(), frame.clone())?;
                         let mut frame_lock = frame.lock().unwrap();
                         frame_lock.set(address.clone(), name.clone(), self.pop(address.clone())?)?;
                     }
@@ -251,9 +257,9 @@ impl Vm {
                 // call
                 Opcode::Call { addr, name, args, has_previous, should_push} => {
                     // args
-                    let before = self.eval_stack.len() as i64;
-                    self.run(*args, frame.clone())?;
-                    let after = self.eval_stack.len() as i64;
+                    let before = self.eval_stack.len() as i16;
+                    self.run(*args.clone(), frame.clone())?;
+                    let after = self.eval_stack.len() as i16;
                     let passed_amount = after - before;
                     // call
                     if has_previous {
@@ -263,13 +269,13 @@ impl Vm {
                                 let instance_lock = instance.lock().unwrap();
                                 let mut fields_lock = instance_lock.fields.lock().unwrap();
                                 let callee = fields_lock.lookup(addr.clone(), name.clone())?;
-                                self.call(callee, addr, frame.clone(), should_push)?;
+                                self.call(callee, addr, frame.clone(), should_push, passed_amount)?;
                             }
                             Value::Unit(unit) => {
                                 let unit_lock = unit.lock().unwrap();
                                 let mut fields_lock = unit_lock.fields.lock().unwrap();
                                 let callee = fields_lock.lookup(addr.clone(), name.clone())?;
-                                self.call(callee, addr, frame.clone(), should_push)?;
+                                self.call(callee, addr, frame.clone(), should_push, passed_amount)?;
                             }
                             _ => {
                                 return Err(ControlFlow::Error(Error::new(
@@ -282,14 +288,15 @@ impl Vm {
                         }
                     } else {
                         // native
-                        let native = self.natives.get(&name);
+                        let native = self.natives.get(&name.clone());
                         if let Some(native_ref) = native {
                             // native
-                            native_ref(self, addr.clone(), should_push)?;
+                            native_ref(self, addr.clone(), should_push, passed_amount)?;
                         } else {
                             // frame fn
                             let frame_lock = frame.lock().unwrap();
-                            self.call(frame_lock.lookup(addr.clone(), name.clone())?, addr.clone(), frame.clone(), should_push)?;
+                            self.call(frame_lock.lookup(addr.clone(), name.clone())?,
+                                  addr.clone(), frame.clone(), should_push, passed_amount)?;
                         }
                     }
                 }
@@ -302,7 +309,7 @@ impl Vm {
                 Opcode::Cond { addr, op} => {
                     let left = self.pop(addr.clone())?;
                     let right = self.pop(addr.clone())?;
-                    match op {
+                    match op.clone() {
                         _ if op == ">" => self.push(addr.clone(),left.greater(addr.clone(), right)?)?,
                         _ if op == ">=" => self.push(addr.clone(),left.greater_eq(addr.clone(), right)?)?,
                         _ if op == "<" => self.push(addr.clone(),left.less(addr.clone(), right)?)?,
@@ -322,7 +329,7 @@ impl Vm {
                 Opcode::Logic { addr, op} => {
                     let left = self.pop(addr.clone())?;
                     let right = self.pop(addr.clone())?;
-                    match op {
+                    match op.clone() {
                         _ if op == "and" => {
                             if let Value::Bool(l) = left {
                                 if let Value::Bool(r) = right {
@@ -396,25 +403,25 @@ impl Vm {
                     self.push(addr.clone(), value.clone())?;
                 }
                 Opcode::EndLoop { addr, current_iteration } => {
-                    if current_iteration {
-                        return Err(ControlFlow::Continue);
+                    return if current_iteration {
+                        Err(ControlFlow::Continue)
                     } else {
-                        return Err(ControlFlow::Break);
+                        Err(ControlFlow::Break)
                     }
                 }
                 Opcode::Ret {addr, value} => {
-                    self.run(*value, frame.clone())?;
+                    self.run(*value.clone(), frame.clone())?;
                     ControlFlow::Return(self.pop(addr.clone())?);
                 }
                 Opcode::If {addr, body, cond, elif} => {
-                    self.run(*cond, frame.clone())?;
+                    self.run(*cond.clone(), frame.clone())?;
                     let logical = self.pop(addr.clone())?;
                     if let Value::Bool(bool) = logical {
                         if bool {
-                            self.run(*body, frame.clone())?;
+                            self.run(*body.clone(), frame.clone())?;
                         } else {
-                            if let Some(ref elseif) = elif {
-                                self.run(Chunk::of(*elseif.clone()), frame.clone())?;
+                            if let Some(elseif) = elif.clone() {
+                                self.run(Chunk::of(*elseif), frame.clone())?;
                             }
                         }
                     }
@@ -444,34 +451,35 @@ impl Vm {
                     let mut frame_lock = frame.lock().unwrap();
                     let fun = Value::Fn(Arc::new(Mutex::new(Function::new(
                         name.clone(),
-                        *body,
+                        *body.clone(),
                         params.clone(),
                     ))));
                     frame_lock.define(addr.clone(), name, fun.clone())?;
-                    if let Some(f_name) = full_name {
+                    if let Some(f_name) = full_name.clone() {
                         frame_lock.define(addr, f_name, fun)?;
                     }
                 }
                 Opcode::DefineType { addr, name, full_name, body, constructor } => {
-                    let mut frame_lock = frame.lock().unwrap();
+                    let frame_lock = frame.lock().unwrap();
                     let typo = Arc::new(Mutex::new(Type::new(
                         name.clone(),
-                        *body,
+                        *body.clone(),
                         constructor
                     )));
                     self.types.insert(name, typo.clone());
-                    if let Some(f_name) = full_name {
+                    if let Some(f_name) = full_name.clone() {
                         self.types.insert(f_name, typo);
                     }
                 }
                 Opcode::DefineUnit { addr, name, full_name, body } => {
-                    let mut frame_lock = frame.lock().unwrap();
+                    let frame_lock = frame.lock().unwrap();
                     let unit = Arc::new(Mutex::new(Unit::new(
                         name.clone(),
-                        *body
+                        *body.clone()
                     )));
+                    // TODO: ROOTING, INIT CALL
                     self.units.insert(name, unit.clone());
-                    if let Some(f_name) = full_name {
+                    if let Some(f_name) = full_name.clone() {
                         self.units.insert(f_name, unit);
                     }
                 }
@@ -496,11 +504,11 @@ impl Vm {
         Ok(())
     }
 
-    pub fn call(&mut self, callee: Value, address: Address, frame: Arc<Mutex<Frame>>, should_push: bool) -> Result<(), ControlFlow> {
+    pub fn call(&mut self, callee: Value, address: Address, frame: Arc<Mutex<Frame>>, should_push: bool, passed_args: i16) -> Result<(), ControlFlow> {
         match callee {
             Value::Fn(f) => {
                 let mut fun = f.lock().unwrap();
-                fun.run(self, address.clone(), frame.clone(), should_push)?;
+                fun.run(self, address.clone(), frame.clone(), should_push, passed_args)?;
                 Ok(())
             }
             _ => {
