@@ -36,7 +36,9 @@ impl Vm {
                     println!("{:?}", value);
                     return Ok(());
                 } as Native)
-            ])
+            ]),
+            types: BTreeMap::new(),
+            units: BTreeMap::new(),
         }
     }
 
