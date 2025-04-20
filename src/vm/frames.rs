@@ -111,4 +111,12 @@ impl Frame {
             Ok(())
         }
     }
+
+    pub fn set_root(&mut self, frame: Arc<Mutex<Frame>>) {
+        let mut last_root = self.root.clone();
+        while last_root.is_some() {
+            last_root = last_root.unwrap().lock().unwrap().root.clone();
+        }
+        last_root.unwrap().lock().unwrap().root = Option::Some(frame.clone());
+    }
 }
