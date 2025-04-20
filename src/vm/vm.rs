@@ -438,6 +438,9 @@ impl Vm {
                         fun.closure = frame.clone();
                     }
                 }
+                Opcode::DefineFn { addr, name, full_name, body, params } => {
+                    let frame_lock = frame.lock().unwrap();
+                }
                 _ => {
                     println!("undefined opcode: {:?}", op);
                 }
