@@ -6,7 +6,7 @@ use crate::vm::frames::Frame;
 use crate::vm::vm::Vm;
 
 // native
-pub type Native = fn(&mut Vm, Address, Vec<Value>) -> Result<Value, Error>;
+pub type Native = fn(&mut Vm, Address) -> Result<(), Error>;
 
 // type
 #[derive(Debug, Clone)]

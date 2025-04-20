@@ -21,10 +21,10 @@ impl Vm {
         Vm {
             eval_stack: VecDeque::new(),
             natives: BTreeMap::from([
-                ("println".to_string(), |vm: &mut Vm, address: Address, values: Vec<Value>| -> Result<Value, Error> {
+                ("println".to_string(), |vm: &mut Vm, address: Address| -> Result<(), Error> {
                     let value = vm.pop(address)?;
                     println!("{:?}", value);
-                    return Ok(Value::Null);
+                    return Ok(());
                 } as Native)
             ])
         }
@@ -193,9 +193,7 @@ impl Vm {
                             }
                         }
                     } else {
-                        {
-                            self.run(*value, frame.clone())?;
-                        }
+                        self.run(*value, frame.clone())?;
                         let mut frame_lock = frame.lock().unwrap();
                         frame_lock.define(address.clone(), name.clone(), self.pop(address.clone())?)?;
                     }
@@ -227,9 +225,7 @@ impl Vm {
                             }
                         }
                     } else {
-                        {
-                            self.run(*value, frame.clone())?;
-                        }
+                        self.run(*value, frame.clone())?;
                         let mut frame_lock = frame.lock().unwrap();
                         frame_lock.set(address.clone(), name.clone(), self.pop(address.clone())?)?;
                     }
@@ -244,8 +240,11 @@ impl Vm {
                     // call
                     if has_previous {
                         todo!()
-                    } else if let Some(ref native) = self.natives.get(&name).cloned() {
-                        native(self, addr.clone(), Vec::new())?;
+                    } else {
+                        let native = self.natives.get(&name);
+                        if let Some(native_ref) = native {
+                            native_ref(self, addr.clone())?;
+                        }
                     }
                 }
                 _ => {
