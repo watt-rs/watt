@@ -20,14 +20,13 @@ use crate::vm::frames::Frame;
 use crate::vm::vm::{ControlFlow, Vm};
 
 fn exec() -> Result<(), Error> {
-    let code = String::from("fun example(val) {
-        i := val
-        while i < 1000000 {
-            i = i + 1
-            println(i)
+    let code = String::from("type Gecko {\
+        fun hello(name) {
+            println('Hello, ' + name)
         }
     }
-    example(100000)");
+    gecko = new Gecko()
+    gecko.hello('Everyone!')");
     let file_name = String::from("main.rs");
     let tokens = Lexer::new(code, file_name.clone()).lex()?;
     println!("tokens: {:?}", tokens.clone());

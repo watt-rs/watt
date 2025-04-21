@@ -64,6 +64,8 @@ impl Vm {
 
     pub fn run(&mut self, chunk: Chunk, frame: Arc<Mutex<Frame>>) -> Result<(), ControlFlow> {
         for op in chunk.opcodes() {
+            println!("{:?}", op);
+            println!("@@@@@");
             match op {
                 // push
                 Opcode::Push {
@@ -205,14 +207,12 @@ impl Vm {
                             Value::Instance(instance) => {
                                 let guard = instance.lock().unwrap();
                                 let mut fields_guard = guard.fields.lock().unwrap();
-                                drop(guard);
                                 self.run(*value.clone(), frame.clone())?;
                                 fields_guard.define(address.clone(), name.clone(), self.pop(address.clone())?)?;
                             }
                             Value::Unit(unit) => {
                                 let guard = unit.lock().unwrap();
                                 let mut fields_guard = guard.fields.lock().unwrap();
-                                drop(guard);
                                 self.run(*value.clone(), frame.clone())?;
                                 fields_guard.define(address.clone(), name.clone(), self.pop(address.clone())?)?;
                             }
@@ -240,14 +240,12 @@ impl Vm {
                                 self.run(*value.clone(), frame.clone())?;
                                 let guard = instance.lock().unwrap();
                                 let mut fields_guard = guard.fields.lock().unwrap();
-                                drop(guard);
                                 fields_guard.set(address.clone(), name.clone(), self.pop(address.clone())?)?;
                             }
                             Value::Unit(unit) => {
                                 self.run(*value.clone(), frame.clone())?;
                                 let guard = unit.lock().unwrap();
                                 let mut fields_guard = guard.fields.lock().unwrap();
-                                drop(guard);
                                 fields_guard.set(address.clone(), name.clone(), self.pop(address.clone())?)?;
                             }
                             _ => {
@@ -280,7 +278,6 @@ impl Vm {
                                 let guard = instance.lock().unwrap();
                                 let mut fields_guard = guard.fields.lock().unwrap();
                                 let callee = fields_guard.lookup(addr.clone(), name.clone())?;
-                                drop(guard);
                                 drop(fields_guard);
                                 self.call(callee, addr, frame.clone(), should_push, passed_amount)?;
                             }
@@ -288,7 +285,6 @@ impl Vm {
                                 let guard = unit.lock().unwrap();
                                 let mut fields_guard = guard.fields.lock().unwrap();
                                 let callee = fields_guard.lookup(addr.clone(), name.clone())?;
-                                drop(guard);
                                 drop(fields_guard);
                                 self.call(callee, addr, frame.clone(), should_push, passed_amount)?;
                             }

@@ -35,15 +35,13 @@ impl Instance {
         let instance = (Arc::new(Mutex::new(Instance {
             fields: Arc::new(Mutex::new(Frame::new())), typo: typo.clone()}
         )));
-        let instance_ref = instance.clone();
-        let instance_lock = instance_ref.lock().unwrap();
-        let typo_lock = instance_lock.typo.lock().unwrap();
-        // fields
-        let fields_lock_copy = instance_lock.fields.clone();
-        let mut fields_lock = fields_lock_copy.lock().unwrap();
-        fields_lock.set_root(root_frame.clone());
-        // constructor
-        let constructor_len = typo_lock.constructor.len() as i16;
+        // guards
+        let instance_arc = instance.clone();
+        let instance_guard = instance_arc.lock().unwrap();
+        let type_guard = instance_guard.typo.clone().lock().unwrap(); // constructor
+        let mut fields_guard = instance_guard.fields.clone().lock().unwrap();
+        let constructor_len = type_guard.constructor.len() as i16;
+        // logic
         if passed_args != constructor_len {
             return Err(ControlFlow::Error(Error::new(
                 ErrorType::Runtime,
@@ -53,17 +51,17 @@ impl Instance {
                 "check your code.".to_string()
             )));
         }
-        let mut instance_fields_lock = instance_lock.fields.lock().unwrap();
         for i in (constructor_len-1)..=0 {
             let value = vm.pop(address.clone())?;
-            instance_fields_lock.define(
-                address.clone(), typo_lock.constructor.get(i as usize).unwrap().clone(), value
+            fields_guard.define(
+                address.clone(), type_guard.constructor.get(i as usize).unwrap().clone(), value
             )?
         }
         // body
-        vm.run(typo.lock().unwrap().body.clone(), instance_lock.fields.clone())?;
+        vm.run(typo.lock().unwrap().body.clone(), instance_guard.fields.clone())?;
         // fn binds
-        for pair in fields_lock.clone().map {
+        let fn_binds_guard = instance_guard.fields.clone().lock().unwrap();
+        for pair in fn_binds_guard.clone().map {
             if let Value::Fn(f) = pair.1 {
                 f.lock().unwrap().owner = FunctionOwner::Instance(
                     instance.clone()
@@ -71,8 +69,13 @@ impl Instance {
             }
         }
         // call init
-        if let Some(init) = fields_lock.map.get("init") {
-
+        if let Some(some) = fields_guard.map.get("init") {
+            if let Value::Fn(init_fn) = some {
+                let local_frame = Arc::new(Mutex::new(Frame::new()));
+                let mut local_frame_guard = local_frame.lock().unwrap();
+                local_frame_guard.set_root(instance_guard.fields.clone());
+                init_fn.lock().unwrap().run(vm, address, local_frame.clone(), false, 0)?;
+            }
         }
         // return
         Ok(instance)
