@@ -3,8 +3,9 @@ use crate::import::Import;
 use crate::lexer::lexer::*;
 use crate::parser::ast::*;
 use crate::vm::bytecode::{Chunk, Opcode};
-use crate::vm::values::Value;
+use crate::vm::values::*;
 use std::collections::VecDeque;
+
 /*
 Визитор (компилятор)
  */
@@ -160,7 +161,7 @@ impl CompileVisitor {
         } else {
             self.push_instr(Opcode::Push {
                 addr: value.address.clone(),
-                value: Value::Integer(value.value.parse::<i64>().unwrap()),
+                value: Value::Int(value.value.parse::<i64>().unwrap()),
             });
         }
         Ok(())

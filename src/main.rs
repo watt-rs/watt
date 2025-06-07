@@ -9,16 +9,11 @@ mod import;
 mod parser;
 mod vm;
 
-use std::thread;
-use crate::compiler::visitor::CompileVisitor;
 // imports
 use crate::lexer::lexer::Lexer;
 use crate::parser::parser::Parser;
 use crate::errors::*;
-use crate::lexer::address::Address;
-use crate::vm::frames::Frame;
-use crate::vm::utils::SyncCell;
-use crate::vm::vm::{ControlFlow, Vm};
+use crate::compiler::visitor::CompileVisitor;
 
 fn exec() -> Result<(), Error> {
     let code = String::from("
@@ -40,28 +35,6 @@ fn exec() -> Result<(), Error> {
     let opcodes = CompileVisitor::new().compile(ast)?;
     println!("opcodes: {:?}", opcodes.clone());
     println!("...");
-    // запуск
-    let builder = thread::Builder::new().stack_size(32 * 1024 * 1024); // 32 МБ
-    let handler = builder.spawn(|| {
-        let mut vm = Vm::new();
-        let address = Address::new(0, "main.rs".to_string());
-        let mut frame = SyncCell::new(Frame::new());
-        return match vm.run(opcodes, frame.clone()) {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                match e {
-                    ControlFlow::Error(e) => Err(e),
-                    _ => Err(Error::new(
-                        ErrorType::Runtime,
-                        address.clone(),
-                        "flow leak.".to_string(),
-                        "check your code.".to_string(),
-                    )),
-                }
-            }
-        };
-    }).unwrap();
-    handler.join().unwrap()?;
     // println!("{:?}", frame);
     Ok(())
 }
