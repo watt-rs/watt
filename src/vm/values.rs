@@ -1,8 +1,12 @@
-use std::sync::{Arc, Mutex};
+
+use std::sync::{Arc};
+use parking_lot::ReentrantMutex;
 use crate::errors::{Error, ErrorType};
 use crate::lexer::address::Address;
+use crate::{lock};
 use crate::vm::bytecode::Chunk;
 use crate::vm::frames::Frame;
+use crate::vm::utils::SyncCell;
 use crate::vm::vm::{ControlFlow, Vm};
 
 // native
@@ -25,21 +29,23 @@ impl Type {
 // instance
 #[derive(Debug)]
 pub struct Instance {
-    pub fields: Arc<Mutex<Frame>>,
-    typo: Arc<Mutex<Type>>
+    pub fields: SyncCell<Frame>,
+    typo: SyncCell<Type>
 }
 
 impl Instance {
-    pub fn new(vm: &mut Vm, typo: Arc<Mutex<Type>>, address: Address,
-               passed_args: i16, root_frame: Arc<Mutex<Frame>>) -> Result<Arc<Mutex<Instance>>, ControlFlow> {
-        let instance = (Arc::new(Mutex::new(Instance {
-            fields: Arc::new(Mutex::new(Frame::new())), typo: typo.clone()}
-        )));
+    pub fn new(vm: &mut Vm, typo: SyncCell<Type>, address: Address,
+               passed_args: i16, root_frame: SyncCell<Frame>) -> Result<SyncCell<Instance>, ControlFlow> {
+        let instance = (SyncCell::new(Instance {
+            fields: SyncCell::new(Frame::new()), typo: typo.clone()}
+        ));
         // guards
-        let instance_arc = instance.clone();
-        let instance_guard = instance_arc.lock().unwrap();
-        let type_guard = instance_guard.typo.clone().lock().unwrap(); // constructor
-        let mut fields_guard = instance_guard.fields.clone().lock().unwrap();
+        let mut instance_arc = instance.clone();
+        let mut instance_guard = lock!(instance_arc);
+        let type_binding = instance_guard.typo.clone();
+        let type_guard = lock!(type_binding); // constructor
+        let mut fields_binding = instance_guard.fields.clone();
+        let mut fields_guard = lock!(fields_binding);
         let constructor_len = type_guard.constructor.len() as i16;
         // logic
         if passed_args != constructor_len {
@@ -58,23 +64,25 @@ impl Instance {
             )?
         }
         // body
-        vm.run(typo.lock().unwrap().body.clone(), instance_guard.fields.clone())?;
+        vm.run(type_guard.body.clone(), instance_guard.fields.clone())?;
         // fn binds
-        let fn_binds_guard = instance_guard.fields.clone().lock().unwrap();
+        let fn_binds_binding = instance_guard.fields.clone();
+        let fn_binds_guard = lock!(fn_binds_binding);
         for pair in fn_binds_guard.clone().map {
-            if let Value::Fn(f) = pair.1 {
-                f.lock().unwrap().owner = FunctionOwner::Instance(
+            if let Value::Fn(mut f) = pair.1 {
+                let mut locked = lock!(f);
+                locked.owner = FunctionOwner::Instance(
                     instance.clone()
                 )
             }
         }
         // call init
         if let Some(some) = fields_guard.map.get("init") {
-            if let Value::Fn(init_fn) = some {
-                let local_frame = Arc::new(Mutex::new(Frame::new()));
-                let mut local_frame_guard = local_frame.lock().unwrap();
+            if let Value::Fn(ref init_fn) = some {
+                let mut local_frame = SyncCell::new(Frame::new());
+                let mut local_frame_guard = lock!(local_frame);
                 local_frame_guard.set_root(instance_guard.fields.clone());
-                init_fn.lock().unwrap().run(vm, address, local_frame.clone(), false, 0)?;
+                lock!(init_fn).run(vm, address, local_frame.clone(), false, 0)?;
             }
         }
         // return
@@ -83,32 +91,32 @@ impl Instance {
 }
 
 // unit
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Unit {
     pub name: String,
-    pub fields: Arc<Mutex<Frame>>,
+    pub fields: SyncCell<Frame>,
     pub body: Chunk
 }
 
 impl Unit {
     pub fn new(vm: &mut Vm, name: String,
-               body: Chunk, root_frame: Arc<Mutex<Frame>>) -> Result<Arc<Mutex<Unit>>, ControlFlow> {
-        let unit = Arc::new(Mutex::new(Unit {
+               body: Chunk, root_frame: SyncCell<Frame>) -> Result<SyncCell<Unit>, ControlFlow> {
+        let unit = SyncCell::new(Unit {
             name,
-            fields: Arc::new(Mutex::new(Frame::new())),
+            fields: SyncCell::new(Frame::new()),
             body
-        }));
+        });
         let unit_ref = unit.clone();
-        let unit_deref = unit_ref.lock().unwrap();
+        let unit_deref = lock!(unit_ref);
         // fields
-        let fields_lock_copy = unit_deref.fields.clone();
-        let mut fields_lock = fields_lock_copy.lock().unwrap();
+        let mut fields_lock_copy = unit_deref.fields.clone();
+        let mut fields_lock = lock!(fields_lock_copy);
         fields_lock.set_root(root_frame);
         vm.run(unit_deref.body.clone(), unit_deref.fields.clone())?;
         // fn binds
         for pair in fields_lock.clone().map {
-            if let Value::Fn(f) = pair.1 {
-                f.lock().unwrap().owner = FunctionOwner::Unit(
+            if let Value::Fn(mut f) = pair.1 {
+                lock!(f).owner = FunctionOwner::Unit(
                     unit.clone()
                 )
             }
@@ -121,8 +129,8 @@ impl Unit {
 // function owner
 #[derive(Debug, Clone)]
 pub enum FunctionOwner {
-    Unit(Arc<Mutex<Unit>>),
-    Instance(Arc<Mutex<Instance>>),
+    Unit(SyncCell<Unit>),
+    Instance(SyncCell<Instance>),
     NoOne
 }
 
@@ -132,7 +140,7 @@ pub struct Function {
     pub name: String,
     pub body: Chunk,
     pub params: Vec<String>,
-    pub closure: Option<Arc<Mutex<Frame>>>,
+    pub closure: Option<SyncCell<Frame>>,
     pub owner: FunctionOwner
 }
 
@@ -147,7 +155,7 @@ impl Function {
         }
     }
 
-    pub fn run(&mut self, vm: &mut Vm, address: Address, frame: Arc<Mutex<Frame>>,
+    pub fn run(&self, vm: &mut Vm, address: Address, frame: SyncCell<Frame>,
                should_push: bool, passed_args: i16) -> Result<(), ControlFlow> {
         let args_len = self.params.len() as i16;
         if passed_args != args_len {
@@ -159,10 +167,8 @@ impl Function {
                 "check your code.".to_string()
             )));
         }
-        println!("exec: {}", self.name);
-        let frame_clone = frame.clone();
-        let mut frame_lock = frame_clone.lock().unwrap();
-        println!("exec 2: {}", self.name);
+        let mut working_frame = frame.clone();
+        let mut frame_lock = lock!(working_frame);
         for i in (args_len-1)..=0 {
             let value = vm.pop(address.clone())?;
             frame_lock.define(
@@ -188,11 +194,11 @@ pub enum Value {
     Float(f64),
     Bool(bool),
     String(String),
-    Instance(Arc<Mutex<Instance>>),
-    Unit(Arc<Mutex<Unit>>),
-    Type(Arc<Mutex<Type>>),
-    Native(Native),
-    Fn(Arc<Mutex<Function>>),
+    Instance(SyncCell<Instance>),
+    Unit(SyncCell<Unit>),
+    Type(SyncCell<Type>),
+    Native(SyncCell<Native>),
+    Fn(SyncCell<Function>),
     Null,
 }
 
@@ -226,19 +232,19 @@ impl Value {
                 *current == another
             }
             (Value::Instance(current), Value::Instance(another)) => {
-                Arc::ptr_eq(&(*current), &another)
+                current.equals(&another)
             }
             (Value::Unit(current), Value::Unit(another)) => {
-                Arc::ptr_eq(&(*current), &another)
+                current.equals(&another)
             }
             (Value::Fn(current), Value::Fn(another)) => {
-                Arc::ptr_eq(&(*current), &another)
+                current.equals(&another)
             }
             (Value::Type(current), Value::Type(another)) => {
-                Arc::ptr_eq(&(*current), &another)
+                current.equals(&another)
             }
             (Value::Native(current), Value::Native(another)) => {
-                *current == another
+                current.equals(&another)
             }
             (Value::Null, Value::Null) => true,
             _ => false,

@@ -2,18 +2,20 @@ use crate::errors::*;
 use crate::lexer::address::Address;
 use crate::vm::bytecode::*;
 use std::collections::{BTreeMap, VecDeque};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
+use crate::{lock};
 use crate::vm::frames::Frame;
 use crate::vm::values::{Function, Instance, Native, Type, Unit, Value};
 use super::bytecode::Opcode;
-
+use parking_lot::ReentrantMutex;
+use crate::vm::utils::SyncCell;
 
 // vm struct
 pub struct Vm {
     eval_stack: VecDeque<Value>,
     natives: BTreeMap<String, Native>,
-    types: BTreeMap<String, Arc<Mutex<Type>>>,
-    units: BTreeMap<String, Arc<Mutex<Unit>>>,
+    types: BTreeMap<String, SyncCell<Type>>,
+    units: BTreeMap<String, SyncCell<Unit>>,
 }
 
 // control flow
@@ -62,10 +64,9 @@ impl Vm {
         }
     }
 
-    pub fn run(&mut self, chunk: Chunk, frame: Arc<Mutex<Frame>>) -> Result<(), ControlFlow> {
+    pub fn run(&mut self, chunk: Chunk, mut frame: SyncCell<Frame>) -> Result<(), ControlFlow> {
         for op in chunk.opcodes() {
-            println!("{:?}", op);
-            println!("@@@@@");
+            // println!("running {:?}", op);
             match op {
                 // push
                 Opcode::Push {
@@ -86,7 +87,7 @@ impl Vm {
                         ErrorType::Runtime,
                         address.clone(),
                         format!(
-                            "couldn't {:?} number with: {:?} and {:?}",
+                            "couldn't use {:?} with: {:?} and {:?}",
                             op.clone(),
                             left,
                             right
@@ -157,17 +158,17 @@ impl Vm {
                         let previous = self.pop(address.clone())?.clone();
                         match previous {
                             Value::Instance(instance) => {
-                                let guard = instance.lock().unwrap();
-                                let fields_guard = guard.fields.lock().unwrap();
+                                let guard = lock!(instance);
+                                let fields_guard = lock!(guard.fields);
                                 if should_push {
-                                    self.push(address.clone(), fields_guard.lookup(address.clone(), name.clone())?)?
+                                    self.push(address.clone(), fields_guard.find(address.clone(), name.clone())?)?
                                 }
                             }
                             Value::Unit(unit) => {
-                                let unit_lock = unit.lock().unwrap();
-                                let fields_lock = unit_lock.fields.lock().unwrap();
+                                let guard = lock!(unit);
+                                let fields_guard = lock!(guard.fields);
                                 if should_push {
-                                    self.push(address.clone(), fields_lock.lookup(address.clone(), name.clone())?)?
+                                    self.push(address.clone(), fields_guard.find(address.clone(), name.clone())?)?
                                 }
                             }
                             _ => {
@@ -181,7 +182,7 @@ impl Vm {
                         }
                     } else {
                         if should_push {
-                            let guard = frame.lock().unwrap();
+                            let guard = lock!(frame);
                             if guard.has(name.clone()) {
                                 self.push(address.clone(), guard.lookup(address.clone(), name.clone())?)?;
                             } else if let Some(type_ref) = self.types.get(&name.clone()) {
@@ -204,15 +205,15 @@ impl Vm {
                     if has_previous {
                         let previous = self.pop(address.clone())?.clone();
                         match previous {
-                            Value::Instance(instance) => {
-                                let guard = instance.lock().unwrap();
-                                let mut fields_guard = guard.fields.lock().unwrap();
+                            Value::Instance(mut instance) => {
+                                let mut guard = lock!(instance);
+                                let mut fields_guard = lock!(guard.fields);
                                 self.run(*value.clone(), frame.clone())?;
                                 fields_guard.define(address.clone(), name.clone(), self.pop(address.clone())?)?;
                             }
-                            Value::Unit(unit) => {
-                                let guard = unit.lock().unwrap();
-                                let mut fields_guard = guard.fields.lock().unwrap();
+                            Value::Unit(mut unit) => {
+                                let mut guard = lock!(unit);
+                                let mut fields_guard = lock!(guard.fields);
                                 self.run(*value.clone(), frame.clone())?;
                                 fields_guard.define(address.clone(), name.clone(), self.pop(address.clone())?)?;
                             }
@@ -227,7 +228,7 @@ impl Vm {
                         }
                     } else {
                         self.run(*value.clone(), frame.clone())?;
-                        let mut guard = frame.lock().unwrap();
+                        let mut guard = lock!(frame);
                         guard.define(address.clone(), name.clone(), self.pop(address.clone())?)?;
                     }
                 }
@@ -238,15 +239,15 @@ impl Vm {
                         match previous {
                             Value::Instance(instance) => {
                                 self.run(*value.clone(), frame.clone())?;
-                                let guard = instance.lock().unwrap();
-                                let mut fields_guard = guard.fields.lock().unwrap();
-                                fields_guard.set(address.clone(), name.clone(), self.pop(address.clone())?)?;
+                                let mut guard = lock!(instance);
+                                let mut fields_guard = lock!(guard.fields);
+                                fields_guard.set_current(address.clone(), name.clone(), self.pop(address.clone())?)?;
                             }
                             Value::Unit(unit) => {
                                 self.run(*value.clone(), frame.clone())?;
-                                let guard = unit.lock().unwrap();
-                                let mut fields_guard = guard.fields.lock().unwrap();
-                                fields_guard.set(address.clone(), name.clone(), self.pop(address.clone())?)?;
+                                let mut guard = lock!(unit);
+                                let mut fields_guard = lock!(guard.fields);
+                                fields_guard.set_current(address.clone(), name.clone(), self.pop(address.clone())?)?;
                             }
                             _ => {
                                 return Err(ControlFlow::Error(Error::new(
@@ -259,7 +260,7 @@ impl Vm {
                         }
                     } else {
                         self.run(*value.clone(), frame.clone())?;
-                        let mut guard = frame.lock().unwrap();
+                        let mut guard = lock!(frame);
                         guard.set(address.clone(), name.clone(), self.pop(address.clone())?)?;
                     }
                 }
@@ -275,17 +276,19 @@ impl Vm {
                         let previous = self.pop(addr.clone())?.clone();
                         match previous {
                             Value::Instance(instance) => {
-                                let guard = instance.lock().unwrap();
-                                let mut fields_guard = guard.fields.lock().unwrap();
+                                let mut guard = lock!(instance);
+                                let mut fields_guard = lock!(guard.fields);
                                 let callee = fields_guard.lookup(addr.clone(), name.clone())?;
                                 drop(fields_guard);
+                                drop(guard);
                                 self.call(callee, addr, frame.clone(), should_push, passed_amount)?;
                             }
                             Value::Unit(unit) => {
-                                let guard = unit.lock().unwrap();
-                                let mut fields_guard = guard.fields.lock().unwrap();
+                                let mut guard = lock!(unit);
+                                let mut fields_guard = lock!(guard.fields);
                                 let callee = fields_guard.lookup(addr.clone(), name.clone())?;
                                 drop(fields_guard);
+                                drop(guard);
                                 self.call(callee, addr, frame.clone(), should_push, passed_amount)?;
                             }
                             _ => {
@@ -305,7 +308,7 @@ impl Vm {
                             native_ref(self, addr.clone(), should_push, passed_amount)?;
                         } else {
                             // frame fn
-                            let guard = frame.lock().unwrap();
+                            let mut guard = lock!(frame);
                             let value = guard.lookup(addr.clone(), name.clone())?;
                             drop(guard);
                             self.call(value,
@@ -424,18 +427,19 @@ impl Vm {
                 }
                 Opcode::Ret {addr, value} => {
                     self.run(*value.clone(), frame.clone())?;
-                    ControlFlow::Return(self.pop(addr.clone())?);
+                    return Err(ControlFlow::Return(self.pop(addr.clone())?))
                 }
                 Opcode::If {addr, body, cond, elif} => {
                     self.run(*cond.clone(), frame.clone())?;
                     let logical = self.pop(addr.clone())?;
                     if let Value::Bool(bool) = logical {
                         if bool {
-                            let mut new_frame = Arc::new(Mutex::new(Frame::new()));
-                            let mut guard = new_frame.lock().unwrap();
+                            let mut new_frame = SyncCell::new(Frame::new());
+                            let mut new_frame_clone = new_frame.clone();
+                            let mut guard = lock!(new_frame);
                             guard.set_root(frame.clone());
                             drop(guard);
-                            self.run(*body.clone(), new_frame)?;
+                            self.run(*body.clone(), new_frame_clone)?;
                         } else {
                             if let Some(elseif) = elif.clone() {
                                 self.run(Chunk::of(*elseif), frame.clone())?;
@@ -444,8 +448,8 @@ impl Vm {
                     }
                 }
                 Opcode::Loop { addr, body } => {
-                    let mut new_frame = Arc::new(Mutex::new(Frame::new()));
-                    let mut guard = new_frame.lock().unwrap();
+                    let mut new_frame = SyncCell::new(Frame::new());
+                    let mut guard = lock!(new_frame);
                     guard.set_root(frame.clone());
                     drop(guard);
                     loop {
@@ -461,32 +465,31 @@ impl Vm {
                     }
                 }
                 Opcode::Closure { addr, name } => {
-                    let guard = frame.lock().unwrap();
-                    let closure_object = guard.lookup(addr.clone(), name.clone())?;
-                    drop(guard);
-                    if let Value::Fn(f) = closure_object {
-                        let mut fun = f.lock().unwrap();
+                    let mut guard = lock!(frame);
+                    let mut closure_object = guard.lookup(addr.clone(), name.clone())?;
+                    if let Value::Fn(mut f) = closure_object {
+                        let mut fun = lock!(f);
                         fun.closure = Some(frame.clone());
                     }
                 }
                 Opcode::DefineFn { addr, name, full_name, body, params } => {
-                    let mut guard = frame.lock().unwrap();
-                    let fun = Value::Fn(Arc::new(Mutex::new(Function::new(
+                    let mut guard = lock!(frame);
+                    let fun = Value::Fn(SyncCell::new(Function::new(
                         name.clone(),
                         *body.clone(),
                         params.clone(),
-                    ))));
+                    )));
                     guard.define(addr.clone(), name, fun.clone())?;
                     if let Some(f_name) = full_name.clone() {
                         guard.define(addr, f_name, fun)?;
                     }
                 }
                 Opcode::DefineType { addr, name, full_name, body, constructor } => {
-                    let typo = Arc::new(Mutex::new(Type::new(
+                    let typo = SyncCell::new(Type::new(
                         name.clone(),
                         *body.clone(),
                         constructor
-                    )));
+                    ));
                     self.types.insert(name, typo.clone());
                     if let Some(f_name) = full_name.clone() {
                         self.types.insert(f_name, typo);
@@ -535,15 +538,19 @@ impl Vm {
         Ok(())
     }
 
-    pub fn call(&mut self, callee: Value, address: Address, root_frame: Arc<Mutex<Frame>>, should_push: bool, passed_args: i16) -> Result<(), ControlFlow> {
+    pub fn call(&mut self, callee: Value, address: Address, root_frame: SyncCell<Frame>, should_push: bool, passed_args: i16) -> Result<(), ControlFlow> {
         match callee {
             Value::Fn(f) => {
-                let mut guard = f.lock().unwrap();
-                let mut frame = Arc::new(Mutex::new(Frame::new()));
-                let mut frame_guard = frame.lock().unwrap();
-                frame_guard.set_root(root_frame.clone());;
+                let mut fn_clone = f.clone();
+                // клонируем, дабы избежать дедлока.
+                let func_guard = lock!(fn_clone);
+                let func = func_guard.clone();
+                drop(func_guard);
+                let mut frame = SyncCell::new(Frame::new());
+                let mut frame_guard = lock!(frame);
+                frame_guard.set_root(root_frame.clone());
                 drop(frame_guard);
-                guard.run(self, address.clone(), frame.clone(), should_push, passed_args)?;
+                func.run(self, address.clone(), frame.clone(), should_push, passed_args)?;
                 Ok(())
             }
             _ => {

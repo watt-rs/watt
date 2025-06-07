@@ -119,6 +119,7 @@ impl Lexer {
             (String::from("true"), TokenType::Bool),
             (String::from("false"), TokenType::Bool),
             (String::from("null"), TokenType::Null),
+            (String::from("return"), TokenType::Ret)
         ]);
         Lexer {line: 1, current: 0, code, filename, tokens: vec![], keywords: map }
     }

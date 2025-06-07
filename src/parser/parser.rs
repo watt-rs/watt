@@ -448,21 +448,21 @@ impl Parser {
         self.logical_expr()
     }
 
-    fn continue_expr(&mut self) -> Result<Node, Error> {
+    fn continue_stmt(&mut self) -> Result<Node, Error> {
         let location = self.consume(TokenType::Continue)?;
         Ok(Node::Continue {
             location
         })
     }
 
-    fn break_expr(&mut self) -> Result<Node, Error> {
+    fn break_stmt(&mut self) -> Result<Node, Error> {
         let location = self.consume(TokenType::Break)?;
         Ok(Node::Break {
             location
         })
     }
 
-    fn return_expr(&mut self) -> Result<Node, Error> {
+    fn return_stmt(&mut self) -> Result<Node, Error> {
         let location = self.consume(TokenType::Ret)?;
         let value = Box::new(self.expr()?);
         Ok(Node::Ret {
@@ -762,13 +762,13 @@ impl Parser {
                 todo!()
             },
             TokenType::Continue => {
-                self.continue_expr()
+                self.continue_stmt()
             },
             TokenType::Break => {
-                self.break_expr()
+                self.break_stmt()
             },
             TokenType::Ret => {
-                self.return_expr()
+                self.return_stmt()
             },
             TokenType::Fun => {
                 self.function_stmt()
@@ -811,7 +811,7 @@ impl Parser {
                     Err(Error::new(
                         ErrorType::Parsing,
                         tk.address.clone(),
-                        format!("unexpected token {:?}:{:?}", tk.tk_type, tk.value),
+                        format!("unexpected token: {:?}:{:?}", tk.tk_type, tk.value),
                         "check your code.".to_string()
                     ))
                 }
