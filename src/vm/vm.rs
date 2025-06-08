@@ -1069,6 +1069,7 @@ impl VM {
     #[allow(unused_variables)]
     pub unsafe fn run(&mut self, chunk: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         for op in chunk.opcodes() {
+            println!("running: {:?}", op);
             match op {
                 Opcode::Push { addr, value } => {
                     self.push(memory::alloc_value(value));

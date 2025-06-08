@@ -1,4 +1,4 @@
-﻿use std::fmt::{write, Debug, Formatter};
+﻿use std::fmt::{Debug, Formatter};
 use crate::lexer::address::Address;
 use crate::vm::bytecode::Chunk;
 use crate::vm::flow::ControlFlow;
@@ -119,29 +119,37 @@ impl Debug for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         unsafe {
             match self {
-                Value::String(s) => (
-                    return write!(f, "{:?}", **s)
-                ),
+                Value::String(s) => {
+                    write!(f, "{:?}", **s)
+                },
                 Value::Instance(i) => {
-                    return write!(f, "Instance{:?}", *i)
+                    write!(f, "Instance{:?}", *i)
                 },
                 Value::Fn(fun) => {
-                    return write!(f, "Fn{:?}", *fun)
+                    write!(f, "Fn{:?}", *fun)
                 },
                 Value::Native(n) => {
-                    return write!(f, "Native{:?}", *n)
+                    write!(f, "Native{:?}", *n)
                 },
                 Value::Unit(n) => {
-                    return write!(f, "Unit{:?}", **n)
+                    write!(f, "Unit{:?}", **n)
                 },
                 Value::Null => {
-                    return write!(f, "Null")
+                    write!(f, "Null")
                 },
-                _ => {
-                    return write!(f, "{:?}", self)
+                Value::Bool(b) => {
+                    write!(f, "{}", *b)
+                }
+                Value::Type(t) => {
+                    write!(f, "Type{:?}", **t)
+                }
+                Value::Int(i) => {
+                    write!(f, "{}", *i)
+                }
+                Value::Float(f) => {
+                    write!(f, "{}", *f)
                 }
             }
         }
-        write!(f, "{:?}", self)
     }
 }
