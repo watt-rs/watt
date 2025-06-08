@@ -126,7 +126,6 @@ impl Parser {
                         panic!("invalid AssignOp tk_type. report to developer.");
                     }
                 }
-                self.current += 1;
 
                 let var = Node::Get {
                     previous: previous.clone(),

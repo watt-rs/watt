@@ -627,7 +627,6 @@ impl VM {
     // загрузка значения переменной
     unsafe fn op_load(&mut self, addr: Address, name: String, has_previous: bool,
                       should_push: bool, table: *mut Table) -> Result<(), ControlFlow> {
-        println!("loading: {}, {}", name, has_previous);
         // если нет предыдущего
         if !has_previous {
             // получаем значение

@@ -23,6 +23,7 @@ use crate::vm::vm::VM;
 
 unsafe fn exec() -> Result<(), Error> {
     let code = String::from("
+    /*
     unit test_unit {
         a := 4.7
     }
@@ -33,8 +34,14 @@ unsafe fn exec() -> Result<(), Error> {
     }
     bird := new Bird(3.7)
     bird.fly()
-    bird.speed = 3.1415
-    bird.fly()");
+    bird.speed = test_unit.a
+    bird.fly()
+    */
+    i := 0
+    while i < 1000000 {
+        println(i)
+        i += 1
+    }");
     let file_name = String::from("main.rs");
     let tokens = Lexer::new(code, file_name.clone()).lex()?;
     println!("tokens: {:?}", tokens.clone());
