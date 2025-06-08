@@ -1,5 +1,4 @@
 ﻿use crate::vm::bytecode::Chunk;
-use crate::vm::sync::SyncCell;
 use crate::vm::table::Table;
 
 // символ
@@ -30,22 +29,22 @@ pub struct Type {
 #[derive(Clone, Debug)]
 pub struct Instance {
     pub t: Type,
-    pub fields: Table
+    pub fields: *mut Table
 }
 
 // юнит
 #[derive(Clone, Debug)]
 pub struct Unit {
     pub name: Symbol,
-    pub fields: Table,
+    pub fields: *mut Table,
     pub body: Chunk
 }
 
 // владелец функции
 #[derive(Clone, Debug)]
 pub enum FnOwner {
-    Unit(Unit),
-    Instance(Instance),
+    Unit(*mut Unit),
+    Instance(*mut Instance),
     Null
 }
 
@@ -54,7 +53,7 @@ pub enum FnOwner {
 pub struct Fn {
     pub name: Symbol,
     pub body: Chunk,
-    pub owner: FnOwner
+    pub owner: *mut FnOwner
 }
 
 // нативная функция
@@ -72,9 +71,9 @@ pub enum Value {
     String(String),
     Bool(bool),
     Type(Type),
-    Fn(SyncCell<Fn>),
-    Native(SyncCell<Native>),
-    Instance(SyncCell<Instance>),
-    Unit(SyncCell<Unit>),
+    Fn(*mut Fn),
+    Native(*mut Native),
+    Instance(*mut Instance),
+    Unit(*mut Unit),
     Null
 }
