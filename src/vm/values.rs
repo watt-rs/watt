@@ -1,4 +1,5 @@
-﻿use crate::lexer::address::Address;
+﻿use std::fmt::{write, Debug, Formatter};
+use crate::lexer::address::Address;
 use crate::vm::bytecode::Chunk;
 use crate::vm::flow::ControlFlow;
 use crate::vm::table::Table;
@@ -101,7 +102,7 @@ impl Native {
 }
 
 // значение
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum Value {
     Float(f64),
     Int(i64),
@@ -113,4 +114,34 @@ pub enum Value {
     Instance(*mut Instance),
     Unit(*mut Unit),
     Null
+}
+impl Debug for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        unsafe {
+            match self {
+                Value::String(s) => (
+                    return write!(f, "{:?}", **s)
+                ),
+                Value::Instance(i) => {
+                    return write!(f, "Instance{:?}", *i)
+                },
+                Value::Fn(fun) => {
+                    return write!(f, "Fn{:?}", *fun)
+                },
+                Value::Native(n) => {
+                    return write!(f, "Native{:?}", *n)
+                },
+                Value::Unit(n) => {
+                    return write!(f, "Unit{:?}", **n)
+                },
+                Value::Null => {
+                    return write!(f, "Null")
+                },
+                _ => {
+                    return write!(f, "{:?}", self)
+                }
+            }
+        }
+        write!(f, "{:?}", self)
+    }
 }

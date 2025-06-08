@@ -5,7 +5,7 @@ use crate::parser::ast::*;
 use crate::vm::bytecode::{Chunk, Opcode};
 use crate::vm::values::*;
 use std::collections::VecDeque;
-
+use crate::vm::memory;
 /*
 Визитор (компилятор)
  */
@@ -170,7 +170,7 @@ impl CompileVisitor {
     pub fn visit_string(&mut self, value: Token) -> Result<(), Error> {
         self.push_instr(Opcode::Push {
             addr: value.address.clone(),
-            value: Value::String(value.value.as_ptr() as *const String),
+            value: Value::String(memory::alloc_value(value.value)),
         });
         Ok(())
     }

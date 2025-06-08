@@ -37,11 +37,21 @@ unsafe fn exec() -> Result<(), Error> {
     bird.speed = test_unit.a
     bird.fly()
     */
+    /*
     i := 0
     while i < 1000000 {
         println(i)
         i += 1
-    }");
+    }
+    */
+    type Gecko {
+        fun say_hello(name) {
+            println('Hello, ' + name)
+        }
+    }
+
+    gecko := new Gecko()
+    gecko.say_hello('Vyacheslav')");
     let file_name = String::from("main.rs");
     let tokens = Lexer::new(code, file_name.clone()).lex()?;
     println!("tokens: {:?}", tokens.clone());

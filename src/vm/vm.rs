@@ -87,6 +87,13 @@ impl VM {
                         Value::Int(b) => { self.push(memory::alloc_value(Value::Int(a + b))); }
                         _ => { return Err(error) }
                     }}
+                    Value::String(a) => { match (*operand_b) {
+                        Value::String(b) => {
+                            self.push(memory::alloc_value(Value::String(
+                            memory::alloc_value(format!("{}{}",*a, *b))
+                        )))}
+                        _ => { return Err(error) }
+                    }}
                     _ => { return Err(error) }
                 }
             }

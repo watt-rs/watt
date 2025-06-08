@@ -714,7 +714,7 @@ impl Parser {
                     return Err(Error::new(
                         ErrorType::Parsing,
                         location.address,
-                        format!("invalid node for type: {:?}:{:?}", location.tk_type, location.value),
+                        format!("invalid node for unit: {:?}:{:?}", location.tk_type, location.value),
                         "check your code.".to_string(),
                     ));
                 }

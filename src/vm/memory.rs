@@ -1,8 +1,7 @@
 ﻿use std::alloc::{alloc, dealloc, Layout};
 
-
 // аллокация значения в куче
-pub fn alloc_value<T>(value: T) -> *mut T {
+pub fn alloc_value<T: std::fmt::Debug>(value: T) -> *mut T {
     unsafe {
         let layout = Layout::new::<T>();
         let ptr = alloc(layout) as *mut T;
