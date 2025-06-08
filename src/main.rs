@@ -51,7 +51,8 @@ unsafe fn exec() -> Result<(), Error> {
     }
 
     gecko := new Gecko()
-    gecko.say_hello('Vyacheslav')");
+    gecko.say_hello('Vyacheslav')
+    println(gecko)");
     let file_name = String::from("main.rs");
     let tokens = Lexer::new(code, file_name.clone()).lex()?;
     println!("tokens: {:?}", tokens.clone());
