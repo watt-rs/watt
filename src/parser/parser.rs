@@ -165,13 +165,14 @@ impl Parser {
         }
     }
 
-    fn parse_access(&mut self) -> Result<Node, Error> {
+    fn parse_access(&mut self, is_expr: bool) -> Result<Node, Error> {
         let mut left = self.access_part(Option::None)?;
 
         while self.check(TokenType::Dot) {
             self.consume(TokenType::Dot)?;
             let location = self.peek()?.address;
             left = self.access_part(Option::Some(Box::new(left)))?;
+            if !is_expr { continue; }
             match left {
                 Node::Define { .. } => {
                     return Err(Error::new(
@@ -197,12 +198,12 @@ impl Parser {
     }
 
     fn access_expr(&mut self) -> Result<Node, Error> {
-        Ok(self.parse_access()?)
+        Ok(self.parse_access(true)?)
     }
 
     fn access_stmt(&mut self) -> Result<Node, Error> {
         let location = self.peek()?.address;
-        let result = set_should_push(self.parse_access()?, false, location)?;
+        let result = set_should_push(self.parse_access(false)?, false, location)?;
         Ok(result)
     }
 

@@ -128,7 +128,6 @@ impl Lexer {
         while !self.is_at_end() {
             let ch = self.advance();
             match ch {
-                '!' => { self.add_tk(TokenType::Op, "!".to_string());  }
                 '+' => {
                     if self.is_match('=') {
                         self.add_tk(TokenType::AssignAdd, "+=".to_string());
@@ -348,7 +347,7 @@ impl Lexer {
     fn scan_number(&mut self, start: char) -> Result<Token, Error> {
         let mut text: String = String::from(start);
         let mut is_float: bool = false;
-        while self.is_digit(self.peek()) {
+        while self.is_digit(self.peek()) || self.peek() == '.' {
             if self.peek() == '.' {
                 if is_float {
                     return Err(
@@ -364,6 +363,7 @@ impl Lexer {
                     )
                 }
                 is_float = true;
+                text.push(self.advance());
                 continue;
             }
             text.push(self.advance());

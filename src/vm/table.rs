@@ -78,6 +78,17 @@ impl Table {
         Ok(())
     }
 
+    pub unsafe fn has(&mut self, name: String) -> bool {
+        let mut current = self as *mut Table;
+        while !(*current).fields.contains_key(&name) {
+            if (*current).root.is_null() {
+                return false
+            }
+            current = (*current).root;
+        }
+        true
+    }
+
     pub unsafe fn lookup(&mut self, address: Address, name: String) -> Result<*mut Value, Error> {
         let mut current = self as *mut Table;
         while !(*current).exists(name.clone()) {

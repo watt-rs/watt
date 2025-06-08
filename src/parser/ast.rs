@@ -164,12 +164,7 @@ pub fn set_should_push(node: Node, should_push: bool, address: Address) -> Resul
             })
         },
         _ => {
-            Err(Error::new(
-                ErrorType::Parsing,
-                address,
-                format!("couldn't apply should_push changes to: {:?}", node).to_string(),
-                "check your code.".to_string()
-            ))
+            Ok(node)
         }
     }
 }

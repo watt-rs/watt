@@ -595,7 +595,7 @@ impl VM {
                     self.run(*value, table)?;
                     // получаем значение
                     let operand = self.pop(addr.clone())?;
-                    // дефайним
+                    // устанавливаем значение
                     if let Err(e) = (*(*instance).fields).set(addr.clone(), name, operand) {
                         return Err(ControlFlow::Error(e))
                     }
@@ -605,7 +605,7 @@ impl VM {
                     self.run(*value, table)?;
                     // получаем значение
                     let operand = self.pop(addr.clone())?;
-                    // дефайним
+                    // устанавливаем значение
                     if let Err(e) = (*(*unit).fields).set(addr.clone(), name, operand) {
                         return Err(ControlFlow::Error(e))
                     }
@@ -627,10 +627,18 @@ impl VM {
     // загрузка значения переменной
     unsafe fn op_load(&mut self, addr: Address, name: String, has_previous: bool,
                       should_push: bool, table: *mut Table) -> Result<(), ControlFlow> {
+        println!("loading: {}, {}", name, has_previous);
         // если нет предыдущего
         if !has_previous {
             // получаем значение
-            let lookup_result = (*table).lookup(addr.clone(), name);
+            let lookup_result;
+            if (*table).has(name.clone()) {
+                lookup_result = (*table).lookup(addr.clone(), name);
+            } else if (*self.types).has(name.clone()) {
+                lookup_result = (*self.types).lookup(addr.clone(), name);
+            } else {
+                lookup_result = (*self.units).lookup(addr.clone(), name);
+            }
             // проверяем на ошибку
             if let Err(e) = lookup_result {
                 // ошибка

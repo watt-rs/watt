@@ -23,14 +23,18 @@ use crate::vm::vm::VM;
 
 unsafe fn exec() -> Result<(), Error> {
     let code = String::from("
-    fun fib(n) {
-        if n <= 1 {
-            return n
-        } else {
-            return fib(n - 1) + fib(n - 2)
+    unit test_unit {
+        a := 4.7
+    }
+    type Bird(speed) {
+        fun fly() {
+            println(speed)
         }
     }
-    println(fib(6))");
+    bird := new Bird(3.7)
+    bird.fly()
+    bird.speed = 3.1415
+    bird.fly()");
     let file_name = String::from("main.rs");
     let tokens = Lexer::new(code, file_name.clone()).lex()?;
     println!("tokens: {:?}", tokens.clone());
