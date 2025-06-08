@@ -44,6 +44,7 @@ unsafe fn exec() -> Result<(), Error> {
         i += 1
     }
     */
+    /*
     type Gecko {
         fun say_hello(name) {
             println('Hello, ' + name)
@@ -52,7 +53,18 @@ unsafe fn exec() -> Result<(), Error> {
 
     gecko := new Gecko()
     gecko.say_hello('Vyacheslav')
-    println(gecko)");
+    println(gecko)
+    println(gecko.say_hello)
+    */
+    fun factorial(n) {
+        f := 1
+        while n > 1 {
+            f *= n
+            n -= 1
+        }
+        return f
+    }
+    factorial(2)");
     let file_name = String::from("main.rs");
     let tokens = Lexer::new(code, file_name.clone()).lex()?;
     println!("tokens: {:?}", tokens.clone());
