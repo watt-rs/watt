@@ -315,7 +315,7 @@ impl CompileVisitor {
     ) -> Result<(), Error> {
         // full_name
         let full_name = match full_name {
-            Some(name) => Some(name.value),
+            Some(n) => Some(n.value),
             None => None,
         };
         // params

@@ -202,7 +202,7 @@ impl Parser {
 
     fn access_stmt(&mut self) -> Result<Node, Error> {
         let location = self.peek()?.address;
-        let result = set_should_push(self.parse_access()?, true, location)?;
+        let result = set_should_push(self.parse_access()?, false, location)?;
         Ok(result)
     }
 
@@ -756,7 +756,7 @@ impl Parser {
                 self.if_stmt()
             },
             TokenType::New | TokenType::Id => {
-                self.access_expr()
+                self.access_stmt()
             },
             TokenType::Match => {
                 todo!()

@@ -51,6 +51,7 @@ impl Error {
             filename = self.addr.file(),
             line = self.addr.line()
         );
+        println!("│ trace: ");
         println!("│ 💡: {hint}", hint = self.hint);
         println!("╰ {color}", color = colors::ResetColor);
     }

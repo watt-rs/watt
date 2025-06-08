@@ -19,7 +19,7 @@ pub struct VM {
 #[allow(unused_qualifications)]
 impl VM {
     // новая вм
-    unsafe fn new() -> Result<VM, Error> {
+    pub(crate) unsafe fn new() -> Result<VM, Error> {
         // вм
         let mut vm = VM {
             globals: memory::alloc_value(Table::new()),
@@ -441,7 +441,7 @@ impl VM {
         }
         // дефайн функции по full-name
         if symbol.full_name.is_some() {
-            if let Err(e) = (*table).define(addr.clone(), symbol.full_name.unwrap().clone(), memory::alloc_value(
+            if let Err(e) = (*table).define(addr.clone(), symbol.full_name.unwrap(), memory::alloc_value(
                 Value::Fn(function))
             ) {
                 return Err(ControlFlow::Error(e))
@@ -707,14 +707,17 @@ impl VM {
             let passed_amount = new_size-prev_size;
             // проверяем
             if passed_amount == params_amount {
-                for param in params {
+                // реверсируем параметры
+                let mut reversed_params = params.clone();
+                reversed_params.reverse();
+                // проходимся
+                for param in reversed_params {
                     // получаем аргумент из стека
                     let operand = vm.pop(addr.clone())?;
-                    if let Err(e) = (*table).define(addr.clone(), name.clone(), operand) {
+                    // устанавливаем в таблице
+                    if let Err(e) = (*table).define(addr.clone(), param.clone(), operand) {
                         return Err(ControlFlow::Error(e));
                     }
-                    // устанавливаем в таблице
-                    (*table).define(addr.clone(), param, operand).unwrap()
                 }
                 Ok(())
             } else {
@@ -917,14 +920,17 @@ impl VM {
             let passed_amount = new_size-prev_size;
             // проверяем
             if passed_amount == params_amount {
-                for param in params {
+                // реверсируем параметры
+                let mut reversed_params = params.clone();
+                reversed_params.reverse();
+                // проходимся
+                for param in reversed_params {
                     // получаем аргумент из стека
                     let operand = vm.pop(addr.clone())?;
-                    if let Err(e) = (*table).define(addr.clone(), name.clone(), operand) {
+                    // устанавливаем в таблице
+                    if let Err(e) = (*table).define(addr.clone(), param.clone(), operand) {
                         return Err(ControlFlow::Error(e));
                     }
-                    // устанавливаем в таблице
-                    (*table).define(addr.clone(), param, operand).unwrap()
                 }
                 Ok(())
             } else {
@@ -939,9 +945,7 @@ impl VM {
         // ищем тип
         let lookup_result = (*self.types).lookup(addr.clone(), name.clone());
         // проверяем, найден ли
-        if lookup_result.is_ok() {
-            // достаём тип
-            let value = lookup_result.unwrap();
+        if let Ok(value) = lookup_result {
             // проверяем тип ли
             match *value {
                 Value::Type(t) => {
@@ -1049,7 +1053,7 @@ impl VM {
 
     // запуск байткода
     #[allow(unused_variables)]
-    unsafe fn run(&mut self, chunk: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
+    pub unsafe fn run(&mut self, chunk: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         for op in chunk.opcodes() {
             match op {
                 Opcode::Push { addr, value } => {

@@ -16,19 +16,21 @@ use crate::errors::*;
 use crate::compiler::visitor::CompileVisitor;
 use crate::lexer::address::Address;
 use crate::vm::*;
+use crate::vm::flow::ControlFlow;
 use crate::vm::table::Table;
 use crate::vm::values::Value;
+use crate::vm::vm::VM;
 
-fn exec() -> Result<(), Error> {
+unsafe fn exec() -> Result<(), Error> {
     let code = String::from("
-    fun fib(a) {
-        if a <= 1 {
-            return a
+    fun fib(n) {
+        if n <= 1 {
+            return n
         } else {
-            return fib(a - 1) + fib(a - 2)
+            return fib(n - 1) + fib(n - 2)
         }
     }
-    println(fib(15))");
+    println(fib(6))");
     let file_name = String::from("main.rs");
     let tokens = Lexer::new(code, file_name.clone()).lex()?;
     println!("tokens: {:?}", tokens.clone());
@@ -39,6 +41,20 @@ fn exec() -> Result<(), Error> {
     let opcodes = CompileVisitor::new().compile(ast)?;
     println!("opcodes: {:?}", opcodes.clone());
     println!("...");
+    println!("runtime: ");
+    let mut vm = VM::new()?;
+    if let Err(e) = vm.run(opcodes, vm.globals) {
+        if let ControlFlow::Error(error) = e {
+            return Err(error);
+        } else {
+            return Err(Error::new(
+                ErrorType::Runtime,
+                Address::new(0, "internal".to_string()),
+                format!("flow leak: {:?}", e),
+                "check your code".to_string()
+            ))
+        }
+    }
     // println!("{:?}", frame);
     Ok(())
 }
@@ -57,16 +73,18 @@ fn main() {
         println!("integer: {:?} address = {:?}", *int, int);
     }
      */
-    /*
-    if let Err(e) = exec() {
-        e.print()
+    unsafe {
+        if let Err(e) = exec() {
+            e.print()
+        }
     }
-     */
+    /*
     unsafe {
         if let Err(e) = test_tables() {
             e.print()
         }
     }
+     */
 }
 
 unsafe fn test_tables() -> Result<(), Error> {
