@@ -170,7 +170,7 @@ impl CompileVisitor {
     pub fn visit_string(&mut self, value: Token) -> Result<(), Error> {
         self.push_instr(Opcode::Push {
             addr: value.address.clone(),
-            value: Value::String(value.value),
+            value: Value::String(value.value.as_ptr() as *const String),
         });
         Ok(())
     }
@@ -326,6 +326,12 @@ impl CompileVisitor {
         // body
         self.push_chunk();
         self.visit_node(*body)?;
+        self.visit_node(Node::Ret {
+            location: name.clone(),
+            value: Box::new(Node::Null {
+                location: name.clone(),
+            })
+        })?;
         let chunk = self.pop_chunk();
         self.push_instr(Opcode::DefineFn {
             addr: name.address.clone(),

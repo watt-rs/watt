@@ -5,9 +5,9 @@ use crate::vm::values::Value;
 
 #[derive(Clone, Debug)]
 pub struct Table {
-    fields: BTreeMap<String, *mut Value>,
-    root: *mut Table,
-    closure: *mut Table,
+    pub fields: BTreeMap<String, *mut Value>,
+    pub root: *mut Table,
+    pub closure: *mut Table,
 }
 
 impl Table {
@@ -54,7 +54,7 @@ impl Table {
             Err(Error::new(
                 ErrorType::Runtime,
                 address,
-                name + " is already defined.",
+                name.clone() + " is already defined.",
                 "you can rename variable.".to_string()
             ))
         }
@@ -62,12 +62,12 @@ impl Table {
 
     pub unsafe fn set(&mut self, address: Address, name: String, value: *mut Value) -> Result<(), Error> {
         let mut current = self as *mut Table;
-        while !((*current).fields.contains_key(&name)) {
+        while !(*current).fields.contains_key(&name) {
             if (*current).root.is_null() {
                 return Err(Error::new(
                     ErrorType::Runtime,
                     address,
-                    name + " is not defined.",
+                    name.clone() + " is not defined.",
                     "you can define it, using := op.".to_string()
                 ))
             }
@@ -75,5 +75,41 @@ impl Table {
         }
         (*current).fields.insert(name, value);
         Ok(())
+    }
+
+    pub unsafe fn lookup(&mut self, address: Address, name: String) -> Result<*mut Value, Error> {
+        let mut current = self as *mut Table;
+        while !(*current).exists(name.clone()) {
+            if (*current).root.is_null() {
+                return Err(Error::new(
+                    ErrorType::Runtime,
+                    address,
+                    name + " is not found.",
+                    "check variable existence.".to_string()
+                ))
+            }
+            current = (*current).root;
+        }
+        Ok((*current).find(address, name.clone())?)
+    }
+
+    pub unsafe fn set_root(&mut self, root: *mut Table) {
+        let mut current = self as *mut Table;
+        while !(*current).root.is_null() {
+            current = (*current).root;
+            return;
+        }
+        (*current).root = root;
+    }
+
+    pub unsafe fn del_root(&mut self) {
+        let mut current = self as *mut Table;
+        while !(*current).root.is_null() {
+            let mut new_root = (*current).root;
+            if (*new_root).root.is_null() {
+                return;
+            }
+            current = new_root;
+        }
     }
 }

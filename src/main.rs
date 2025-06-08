@@ -14,7 +14,10 @@ use crate::lexer::lexer::Lexer;
 use crate::parser::parser::Parser;
 use crate::errors::*;
 use crate::compiler::visitor::CompileVisitor;
+use crate::lexer::address::Address;
 use crate::vm::*;
+use crate::vm::table::Table;
+use crate::vm::values::Value;
 
 fn exec() -> Result<(), Error> {
     let code = String::from("
@@ -54,7 +57,33 @@ fn main() {
         println!("integer: {:?} address = {:?}", *int, int);
     }
      */
+    /*
     if let Err(e) = exec() {
         e.print()
     }
+     */
+    unsafe {
+        if let Err(e) = test_tables() {
+            e.print()
+        }
+    }
+}
+
+unsafe fn test_tables() -> Result<(), Error> {
+    let mut table = Table::new();
+    let addr = Address::new(0, "test".to_string());
+    table.set_root(memory::alloc_value(Table::new()));
+    (*table.root).closure = memory::alloc_value(Table::new());
+    let str = memory::alloc_value("Hello, world!".to_string());
+    let str2 = memory::alloc_value("Hello, world 2!".to_string());
+    (*(*table.root).closure).define(addr.clone(), "hello".to_string(), memory::alloc_value(Value::String(str)))?;
+    table.define(addr.clone(), "hello".to_string(), memory::alloc_value(Value::String(str2)))?;
+    let val = table.lookup(addr.clone(), "hello".to_string())?;
+    match *val {
+        Value::String(s) => {
+            println!("val: {:?}", *s);
+        }
+        _ => {return  Ok(())}
+    }
+    Ok(())
 }

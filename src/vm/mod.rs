@@ -2,3 +2,6 @@
 pub mod values;
 pub mod table;
 pub mod memory;
+mod vm;
+mod flow;
+mod natives;
