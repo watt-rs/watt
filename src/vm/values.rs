@@ -146,8 +146,8 @@ impl Debug for Value {
                 Value::Int(i) => {
                     write!(f, "{}", *i)
                 }
-                Value::Float(f) => {
-                    write!(f, "{:?}", *f)
+                Value::Float(fl) => {
+                    write!(f, "{}", *fl)
                 }
             }
         }
