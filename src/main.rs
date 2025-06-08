@@ -64,7 +64,7 @@ unsafe fn exec() -> Result<(), Error> {
         }
         return f
     }
-    factorial(2)");
+    println(factorial(7))");
     let file_name = String::from("main.rs");
     let tokens = Lexer::new(code, file_name.clone()).lex()?;
     println!("tokens: {:?}", tokens.clone());
