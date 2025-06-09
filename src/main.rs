@@ -9,6 +9,7 @@ mod import;
 mod parser;
 mod vm;
 
+use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
 // imports
 use crate::lexer::lexer::Lexer;
@@ -23,114 +24,17 @@ use crate::vm::values::Value;
 use crate::vm::vm::{VmSettings, VM};
 
 unsafe fn exec() -> Result<(), Error> {
-    let code = String::from("
-    /*
-    unit test_unit {
-        a := 4.7
-    }
-    type Bird(speed) {
-        fun fly() {
-            println(speed)
+    let code = match fs::read_to_string("./src/test.wt") {
+        Ok(code) => code,
+        Err(e) => {
+            return Err(Error::new(
+                ErrorType::Parsing,
+                Address::new(0, "internal".to_string()),
+                format!("io error: {}", e.to_string()),
+                "check file test.wt existence.".to_string(),
+            ));
         }
-    }
-    bird := new Bird(3.7)
-    bird.fly()
-    bird.speed = test_unit.a
-    bird.fly()
-    */
-    /*
-    i := 0
-    while i < 1000000 {
-        println(i)
-        i += 1
-    }
-    */
-    /*
-    type Gecko {
-        fun say_hello(name) {
-            println('Hello, ' + name)
-        }
-    }
-
-    gecko := new Gecko()
-    gecko.say_hello('Vyacheslav')
-    println(gecko)
-    println(gecko.say_hello)
-    */
-    /*
-    fun factorial(n) {
-        f := 1
-        while n > 1 {
-            f *= n
-            n -= 1
-        }
-        return f
-    }
-    println(factorial(15))
-    */
-    /*
-    a := 5
-    type Doggy {
-    }
-    doggy := new Doggy()
-    doggy.a = 7
-    println(a)
-    */
-    fun first {
-        a := 5
-        fun second {
-            b := 7
-            println(a + b)
-        }
-        return second
-    }
-    /*
-    fn := first()
-    fn()
-    fn = null
-    gc()
-    gc()
-    */
-    /*
-    fun factorial(n) {
-        f := 1
-        while n > 1 {
-            f *= n
-            n -= 1
-        }
-        return f
-    }
-    println(factorial(15))
-    */
-    /*
-    type A {
-    }
-    test := null
-    fun get_str() {
-        return 'aaaa'
-    }
-    str := get_str()
-    i := 0
-    while i < 200 {
-        test = new A()
-        str = null
-        i += 1
-    }
-    println(get_str())
-    */
-    unit test_unit {
-        a := 4.7
-    }
-    type Bird(speed) {
-        fun fly() {
-            println('bird flying with speed ⚡: ')
-            println(speed)
-        }
-    }
-    bird := new Bird(3.7)
-    bird.fly()
-    bird.speed = test_unit.a
-    bird.fly()");
+    };
     let file_name = String::from("main.rs");
     let tokens = Lexer::new(code, file_name.clone()).lex()?;
     println!("tokens: {:?}", tokens.clone());

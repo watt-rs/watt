@@ -257,9 +257,11 @@ impl Lexer {
                 '\t' => {
                     
                 }
+                '\0' => {
+
+                }
                 '\n' => {
                     self.line += 1;
-                    
                 }
                 ' ' => {
                     
@@ -311,7 +313,6 @@ impl Lexer {
                             format!("delete char: {}", ch),
                         ));
                     }
-                    
                 }
             }
         }

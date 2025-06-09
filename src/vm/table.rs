@@ -31,6 +31,7 @@ impl Table {
     }
 
     pub unsafe fn find(&self, address: Address, name: String) -> Result<Value, Error> {
+        println!("finding: {}", name);
         if self.exists(name.clone()) {
             if self.fields.contains_key(&name) {
                 Ok(self.fields[&name].clone())

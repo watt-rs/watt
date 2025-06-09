@@ -558,7 +558,7 @@ impl VM {
         // временный рут
         (*(*unit).fields).set_root(table);
         // исполняем тело
-        self.run(*body, table)?;
+        self.run(*body, (*unit).fields)?;
         // удаляем рут
         (*(*unit).fields).del_root();
         // бинды
@@ -1030,7 +1030,7 @@ impl VM {
                     // временный рут
                     (*(*instance).fields).set_root(table);
                     // исполняем тело
-                    self.run((*(*t).body).clone(), table)?;
+                    self.run((*(*t).body).clone(), (*instance).fields)?;
                     // удаляем рут
                     (*(*instance).fields).del_root();
                     // конструктор
