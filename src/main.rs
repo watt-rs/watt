@@ -57,6 +57,7 @@ unsafe fn exec() -> Result<(), Error> {
     println(gecko)
     println(gecko.say_hello)
     */
+    /*
     fun factorial(n) {
         f := 1
         while n > 1 {
@@ -65,7 +66,26 @@ unsafe fn exec() -> Result<(), Error> {
         }
         return f
     }
-    println(factorial(15))");
+    println(factorial(15))
+    */
+    /*
+    a := 5
+    type Doggy {
+    }
+    doggy := new Doggy()
+    doggy.a = 7
+    println(a)
+    */
+    fun first {
+        a := 5
+        fun second {
+            b := 7
+            println(a + b)
+        }
+        return second
+    }
+    fn := first()
+    fn()");
     let file_name = String::from("main.rs");
     let tokens = Lexer::new(code, file_name.clone()).lex()?;
     println!("tokens: {:?}", tokens.clone());

@@ -5,3 +5,4 @@ pub mod memory;
 pub mod vm;
 pub mod flow;
 pub mod natives;
+mod gc;

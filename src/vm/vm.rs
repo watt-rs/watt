@@ -593,7 +593,7 @@ impl VM {
                     // получаем значение
                     let operand = self.pop(addr.clone())?;
                     // устанавливаем значение
-                    if let Err(e) = (*(*instance).fields).set(addr.clone(), name, operand) {
+                    if let Err(e) = (*(*instance).fields).set_local(addr.clone(), name, operand) {
                         return Err(ControlFlow::Error(e))
                     }
                 }
@@ -603,7 +603,7 @@ impl VM {
                     // получаем значение
                     let operand = self.pop(addr.clone())?;
                     // устанавливаем значение
-                    if let Err(e) = (*(*unit).fields).set(addr.clone(), name, operand) {
+                    if let Err(e) = (*(*unit).fields).set_local(addr.clone(), name, operand) {
                         return Err(ControlFlow::Error(e))
                     }
                 }
@@ -654,7 +654,7 @@ impl VM {
             match previous {
                 Value::Instance(instance) => {
                     // получаем значение
-                    let lookup_result = (*(*instance).fields).lookup(addr.clone(), name);
+                    let lookup_result = (*(*instance).fields).find(addr.clone(), name);
                     // проверяем на ошибку
                     if let Err(e) = lookup_result {
                         // ошибка
@@ -668,7 +668,7 @@ impl VM {
                 }
                 Value::Unit(unit) => {
                     // получаем значение
-                    let lookup_result = (*(*unit).fields).lookup(addr.clone(), name);
+                    let lookup_result = (*(*unit).fields).find(addr.clone(), name);
                     // проверяем на ошибку
                     if let Err(e) = lookup_result {
                         // ошибка
@@ -858,7 +858,7 @@ impl VM {
             match previous {
                 Value::Instance(instance) => {
                     // получаем значение
-                    let lookup_result = (*(*instance).fields).lookup(addr.clone(), name.clone());
+                    let lookup_result = (*(*instance).fields).find(addr.clone(), name.clone());
                     // проверяем на ошибку
                     if let Err(e) = lookup_result {
                         // ошибка
@@ -871,7 +871,7 @@ impl VM {
                 }
                 Value::Unit(unit) => {
                     // получаем значение
-                    let lookup_result = (*(*unit).fields).lookup(addr.clone(), name.clone());
+                    let lookup_result = (*(*unit).fields).find(addr.clone(), name.clone());
                     // проверяем на ошибку
                     if let Err(e) = lookup_result {
                         // ошибка

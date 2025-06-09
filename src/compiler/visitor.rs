@@ -313,17 +313,17 @@ impl CompileVisitor {
         parameters: Vec<Token>,
         body: Box<Node>,
     ) -> Result<(), Error> {
-        // full_name
+        // полное имя
         let full_name = match full_name {
             Some(n) => Some(n.value),
             None => None,
         };
-        // params
+        // параметры
         let mut params = Vec::new();
         for param in parameters {
             params.push(param.value);
         }
-        // body
+        // фунция
         self.push_chunk();
         self.visit_node(*body)?;
         self.visit_node(Node::Ret {
@@ -335,11 +335,18 @@ impl CompileVisitor {
         let chunk = self.pop_chunk();
         self.push_instr(Opcode::DefineFn {
             addr: name.address.clone(),
-            name: name.value,
+            name: name.value.clone(),
             full_name,
             params,
             body: Box::new(Chunk::new(chunk)),
         });
+        // замыкание
+        self.push_instr(Opcode::Closure {
+            addr: name.address.clone(),
+            name: name.value
+
+        });
+        // успех
         Ok(())
     }
 

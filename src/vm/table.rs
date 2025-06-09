@@ -78,9 +78,22 @@ impl Table {
         Ok(())
     }
 
+    pub unsafe fn set_local(&mut self, address: Address, name: String, value: Value) -> Result<(), Error> {
+        if !self.fields.contains_key(&name) {
+            return Err(Error::new(
+                ErrorType::Runtime,
+                address,
+                name.clone() + " is not defined.",
+                "you can define it, using := op.".to_string()
+            ))
+        }
+        self.fields.insert(name, value);
+        Ok(())
+    }
+
     pub unsafe fn has(&mut self, name: String) -> bool {
         let mut current = self as *mut Table;
-        while !(*current).fields.contains_key(&name) {
+        while !(*current).exists(name.clone()) {
             if (*current).root.is_null() {
                 return false
             }
