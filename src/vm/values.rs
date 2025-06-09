@@ -120,7 +120,7 @@ impl Debug for Value {
         unsafe {
             match self {
                 Value::String(s) => {
-                    write!(f, "{:?}", **s)
+                    write!(f, "{}", **s)
                 },
                 Value::Instance(i) => {
                     write!(f, "Instance{:?}", *i)
