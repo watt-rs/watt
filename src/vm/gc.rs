@@ -1,4 +1,4 @@
-use crate::vm::memory;
+use crate::vm::{gil, memory};
 use crate::vm::table::Table;
 use crate::vm::values::{FnOwner, Value};
 use crate::vm::vm::VM;
@@ -156,18 +156,23 @@ impl GC {
         if self.debug { println!("gc :: free :: value = {:?}", value); }
     }
     // сборка мусора
-    pub unsafe fn collect_garbage(&mut self, vm: &VM, table: *mut Table) {
-        // лог
-        self.log("gc :: triggered".to_string());
-        // марк
-        for val in vm.stack.clone() {
-            self.mark_value(val)
-        }
-        self.mark_table(table);
-        // sweep
-        self.sweep();
-        // ресет
-        self.reset()
+    pub unsafe fn collect_garbage(&mut self, table: *mut Table) {
+        // через gil
+        gil::with_gil(|| {
+            // лог
+            self.log("gc :: triggered".to_string());
+            // марк
+            VM::stack.with(|stack| {
+                for val in stack.borrow().iter().cloned() {
+                    self.mark_value(val)
+                }
+            });
+            self.mark_table(table);
+            // sweep
+            self.sweep();
+            // ресет
+            self.reset()
+        });
     }
     // количество объектов
     pub fn objects_amount(&mut self) -> usize {

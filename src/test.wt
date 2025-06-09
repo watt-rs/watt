@@ -1,3 +1,4 @@
+/*
 unit test_unit {
     a := 4.7
 }
@@ -9,3 +10,14 @@ type Bird(speed) {
 }
 bird := new Bird(3.7)
 bird.fly()
+*/
+fun factorial(n) {
+    f := 1
+    result := 1
+    while f < n {
+        f += 1
+        result *= f
+    }
+    return result
+}
+println(factorial(15))
