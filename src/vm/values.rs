@@ -24,7 +24,7 @@ impl Symbol {
 }
 
 // тип
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)] // todo check eq, partialeq
 pub struct Type {
     pub name: Symbol,
     pub constructor: Vec<String>,
@@ -93,10 +93,10 @@ impl Function {
 pub struct Native {
     pub name: Symbol,
     pub params_amount: usize,
-    pub function: fn(&mut VM,Address,bool) -> Result<(), ControlFlow>
+    pub function: fn(&mut VM,Address,bool,*mut Table) -> Result<(), ControlFlow>
 }
 impl Native {
-    pub fn new(name: Symbol, params_amount: usize, function: fn(&mut VM,Address,bool) -> Result<(), ControlFlow>) -> Native {
+    pub fn new(name: Symbol, params_amount: usize, function: fn(&mut VM,Address,bool,*mut Table) -> Result<(), ControlFlow>) -> Native {
         Native {name, params_amount, function}
     }
 }
@@ -150,6 +150,40 @@ impl Debug for Value {
                     write!(f, "{}", *fl)
                 }
             }
+        }
+    }
+}
+impl PartialEq for Value {
+    fn eq(&self, other: &Value) -> bool {
+        match (*self, *other) {
+            (Value::Instance(a), Value::Instance(b)) => unsafe {
+                a == b
+            }
+            (Value::Fn(a), Value::Fn(b)) => unsafe {
+                a == b
+            }
+            (Value::Native(a), Value::Native(b)) => unsafe {
+                a == b
+            }
+            (Value::Bool(a), Value::Bool(b)) => unsafe {
+                a == b
+            }
+            (Value::Type(a), Value::Type(b)) => unsafe {
+                a == b
+            }
+            (Value::String(a), Value::String(b)) => unsafe {
+                **a == **b
+            }
+            (Value::Int(a), Value::Int(b)) => {
+                a == b
+            }
+            (Value::Float(a), Value::Float(b)) => {
+                a == b
+            }
+            (Value::Unit(a), Value::Unit(b)) => unsafe {
+                a == b
+            }
+            _ => false
         }
     }
 }

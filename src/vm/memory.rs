@@ -24,3 +24,14 @@ pub fn free_value<T>(ptr: *mut T) {
         dealloc(ptr as *mut u8, layout);
     }
 }
+
+// высвобождение памяти
+pub fn free_const_value<T>(ptr: *const T) {
+    unsafe {
+        let layout = Layout::new::<T>();
+        if ptr.is_null() {
+            return;
+        }
+        free_value(ptr as *mut T);
+    }
+}

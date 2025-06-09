@@ -21,7 +21,7 @@ impl Chunk {
 pub enum Opcode {
     Push {
         addr: Address,
-        value: Value,
+        value: Value
     },
     Pop {
         addr: Address,

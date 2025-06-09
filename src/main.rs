@@ -20,7 +20,7 @@ use crate::vm::*;
 use crate::vm::flow::ControlFlow;
 use crate::vm::table::Table;
 use crate::vm::values::Value;
-use crate::vm::vm::VM;
+use crate::vm::vm::{VmSettings, VM};
 
 unsafe fn exec() -> Result<(), Error> {
     let code = String::from("
@@ -84,8 +84,38 @@ unsafe fn exec() -> Result<(), Error> {
         }
         return second
     }
+    /*
     fn := first()
-    fn()");
+    fn()
+    fn = null
+    gc()
+    gc()
+    */
+    /*
+    fun factorial(n) {
+        f := 1
+        while n > 1 {
+            f *= n
+            n -= 1
+        }
+        return f
+    }
+    println(factorial(15))
+    */
+    type A {
+    }
+    test := null
+    fun get_str() {
+        return 'aaaa'
+    }
+    str := get_str()
+    i := 0
+    while i < 200 {
+        test = new A()
+        str = null
+        i += 1
+    }
+    println(get_str())");
     let file_name = String::from("main.rs");
     let tokens = Lexer::new(code, file_name.clone()).lex()?;
     println!("tokens: {:?}", tokens.clone());
@@ -101,7 +131,10 @@ unsafe fn exec() -> Result<(), Error> {
         .expect("Time went backwards")
         .as_nanos();
     println!("runtime: ");
-    let mut vm = VM::new()?;
+    let mut vm = VM::new(VmSettings::new(
+        100,
+        true
+    ))?;
     if let Err(e) = vm.run(opcodes, vm.globals) {
         if let ControlFlow::Error(error) = e {
             return Err(error);

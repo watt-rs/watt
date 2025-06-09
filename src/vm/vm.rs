@@ -6,26 +6,42 @@ use crate::vm::flow::ControlFlow;
 use crate::vm::{memory, natives};
 use crate::vm::table::Table;
 use crate::vm::values::{FnOwner, Function, Instance, Symbol, Type, Unit, Value};
+use crate::vm::gc::gc::GC;
+
+// настроки
+pub struct VmSettings {
+    gc_threshold: usize,
+    gc_debug: bool,
+}
+impl VmSettings {
+    pub fn new(gc_threshold: usize, gc_debug: bool) -> Self {
+        Self { gc_threshold, gc_debug }
+    }
+}
 
 // вм
 pub struct VM {
     pub globals: *mut Table,
-    stack: VecDeque<Value>,
+    pub stack: VecDeque<Value>,
     types: *mut Table,
-    units: *mut Table
+    units: *mut Table,
+    pub gc: *mut GC,
+    settings: VmSettings
 }
 
 // имплементация вм
 #[allow(unused_qualifications)]
 impl VM {
     // новая вм
-    pub(crate) unsafe fn new() -> Result<VM, Error> {
+    pub unsafe fn new(settings: VmSettings) -> Result<VM, Error> {
         // вм
         let mut vm = VM {
             globals: memory::alloc_value(Table::new()),
             stack: VecDeque::new(),
             types: memory::alloc_value(Table::new()),
-            units: memory::alloc_value(Table::new())
+            units: memory::alloc_value(Table::new()),
+            gc: memory::alloc_value(GC::new(settings.gc_debug)),
+            settings
         };
         // нативы
         natives::provide(&mut vm)?;
@@ -34,8 +50,26 @@ impl VM {
     }
 
     // пуш
-    pub fn push(&mut self, value: Value) {
+    pub unsafe fn push(&mut self, value: Value) {
         self.stack.push_back(value);
+    }
+
+    // очистка мусора
+    pub unsafe fn gc_invoke(&self, table: *mut Table) {
+        (*self.gc).collect_garbage(self, table);
+    }
+
+    // добавление в учет сборщика мусора
+    pub unsafe fn gc_register(&mut self, value: Value, table: *mut Table) {
+        // добавляем объект
+        (*self.gc).add_object(value);
+        // проверяем порог gc
+        if (*self.gc).objects_amount() > self.settings.gc_threshold {
+            // вызываем gc
+            self.gc_invoke(table);
+            // увеличиваем порог
+            self.settings.gc_threshold *= 2;
+        }
     }
 
     // поп
@@ -60,8 +94,33 @@ impl VM {
         }
     }
 
+    // пуш в стек
+    unsafe fn op_push(&mut self, value: Value, table: *mut Table) -> Result<(), ControlFlow> {
+        // проверяем значение
+        match value {
+            Value::Int(_) | Value::Float(_) | Value::Bool(_) => {
+                self.push(value);
+            }
+            Value::String(s) => {
+                let new_string = Value::String(
+                    memory::alloc_value(
+                        (*s).clone()
+                    )
+                );
+                self.gc_register(new_string, table);
+                self.push(new_string);
+            }
+            _ => {
+                self.gc_register(value, table);
+                self.push(value);
+            }
+        }
+        // успех
+        Ok(())
+    }
+
     // бинарная операция
-    unsafe fn op_binary(&mut self, address: Address, op: &str) -> Result<(), ControlFlow> {
+    unsafe fn op_binary(&mut self, address: Address, op: &str, table: *mut Table) -> Result<(), ControlFlow> {
         // два операнда
         let operand_a = self.pop(address.clone())?;
         let operand_b = self.pop(address.clone())?;
@@ -88,9 +147,11 @@ impl VM {
                     }}
                     Value::String(a) => { match operand_b {
                         Value::String(b) => {
-                            self.push(Value::String(
+                            let string = Value::String(
                                 memory::alloc_value(format!("{}{}",*a, *b))
-                            ))
+                            );
+                            self.gc_register(string, table);
+                            self.push(string);
                         }
                         _ => { return Err(error) }
                     }}
@@ -440,13 +501,16 @@ impl VM {
                 params
             )
         );
+        // создаём значение функции и добавляем в gc
+        let function_value = Value::Fn(function);
+        self.gc_register(function_value, table);
         // дефайн функции
-        if let Err(e) = (*table).define(addr.clone(), symbol.name.clone(), Value::Fn(function)) {
+        if let Err(e) = (*table).define(addr.clone(), symbol.name.clone(), function_value) {
             return Err(ControlFlow::Error(e))
         }
         // дефайн функции по full-name
         if symbol.full_name.is_some() {
-            if let Err(e) = (*table).define(addr.clone(), symbol.full_name.unwrap(), Value::Fn(function)) {
+            if let Err(e) = (*table).define(addr.clone(), symbol.full_name.unwrap(), function_value) {
                 return Err(ControlFlow::Error(e))
             }
         }
@@ -489,6 +553,8 @@ impl VM {
                 memory::alloc_value(Table::new())
             )
         );
+        // добавляем в учет gc
+        self.gc_register(Value::Unit(unit), table);
         // временный рут
         (*(*unit).fields).set_root(table);
         // исполняем тело
@@ -759,6 +825,7 @@ impl VM {
         }
 
         // вызов функции
+        #[allow(unused_parens)]
         unsafe fn call(vm: &mut VM, addr: Address, name: String,
                    callable: Value, args: Box<Chunk>,
                    table: *mut Table, should_push: bool) -> Result<(), ControlFlow> {
@@ -822,7 +889,7 @@ impl VM {
                 load_arguments(vm, addr.clone(), name.clone(), (*function).params_amount, args, call_table)?;
                 // вызов
                 let native = (*function).function;
-                native(vm, addr.clone(), should_push)?;
+                native(vm, addr.clone(), should_push, call_table)?;
                 // успех
                 Ok(())
             }
@@ -958,6 +1025,8 @@ impl VM {
                         t,
                         memory::alloc_value(Table::new()),
                     ));
+                    // добавляем в учет gc
+                    self.gc_register(Value::Instance(instance), table);
                     // временный рут
                     (*(*instance).fields).set_root(table);
                     // исполняем тело
@@ -1061,13 +1130,13 @@ impl VM {
         for op in chunk.opcodes() {
             match op {
                 Opcode::Push { addr, value } => {
-                    self.push(value);
+                    self.op_push(value, table)?;
                 }
                 Opcode::Pop { addr } => {
                     self.pop(addr.clone())?;
                 }
                 Opcode::Bin { addr, op } => {
-                    self.op_binary(addr, op.as_str())?;
+                    self.op_binary(addr, op.as_str(), table)?;
                 }
                 Opcode::Neg { addr } => {
                     self.op_negate(addr)?;
