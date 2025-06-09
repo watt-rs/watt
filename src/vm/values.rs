@@ -102,7 +102,7 @@ impl Native {
 }
 
 // значение
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum Value {
     Float(f64),
     Int(i64),

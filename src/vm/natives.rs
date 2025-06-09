@@ -11,7 +11,7 @@ pub unsafe fn provide(vm: &mut VM) -> Result<(), Error> {
     (*vm.globals).define(
         natives_address.clone(),
         "println".to_string(),
-        memory::alloc_value(Value::Native(
+        Value::Native(
             memory::alloc_value(
                 Native::new(
                     Symbol::new(
@@ -20,15 +20,15 @@ pub unsafe fn provide(vm: &mut VM) -> Result<(), Error> {
                     ),
                     1,
                     |vm: &mut VM, addr: Address, should_push: bool| {
-                        println!("{:?}", *vm.pop(addr.clone())?);
+                        println!("{:?}", vm.pop(addr.clone())?);
                         if should_push {
-                            vm.push(memory::alloc_value(Value::Null))
+                            vm.push(Value::Null)
                         }
                         Ok(())
                     }
                 )
             )
-        ))
+        )
     )?;
     // успех
     Ok(())

@@ -9,6 +9,7 @@ mod import;
 mod parser;
 mod vm;
 
+use std::time::{SystemTime, UNIX_EPOCH};
 // imports
 use crate::lexer::lexer::Lexer;
 use crate::parser::parser::Parser;
@@ -64,7 +65,7 @@ unsafe fn exec() -> Result<(), Error> {
         }
         return f
     }
-    println(factorial(7))");
+    println(factorial(15))");
     let file_name = String::from("main.rs");
     let tokens = Lexer::new(code, file_name.clone()).lex()?;
     println!("tokens: {:?}", tokens.clone());
@@ -75,6 +76,10 @@ unsafe fn exec() -> Result<(), Error> {
     let opcodes = CompileVisitor::new().compile(ast)?;
     println!("opcodes: {:?}", opcodes.clone());
     println!("...");
+    let start = SystemTime::now();
+    let start_millis = start.duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_millis();
     println!("runtime: ");
     let mut vm = VM::new()?;
     if let Err(e) = vm.run(opcodes, vm.globals) {
@@ -89,6 +94,11 @@ unsafe fn exec() -> Result<(), Error> {
             ))
         }
     }
+    let end = SystemTime::now();
+    let end_millis = end.duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_millis();
+    println!("time: {}ms", end_millis-start_millis);
     // println!("{:?}", frame);
     Ok(())
 }
@@ -128,10 +138,10 @@ unsafe fn test_tables() -> Result<(), Error> {
     (*table.root).closure = memory::alloc_value(Table::new());
     let str = memory::alloc_value("Hello, world!".to_string());
     let str2 = memory::alloc_value("Hello, world 2!".to_string());
-    (*(*table.root).closure).define(addr.clone(), "hello".to_string(), memory::alloc_value(Value::String(str)))?;
-    table.define(addr.clone(), "hello".to_string(), memory::alloc_value(Value::String(str2)))?;
+    (*(*table.root).closure).define(addr.clone(), "hello".to_string(), Value::String(str))?;
+    table.define(addr.clone(), "hello".to_string(), Value::String(str2))?;
     let val = table.lookup(addr.clone(), "hello".to_string())?;
-    match *val {
+    match val {
         Value::String(s) => {
             println!("val: {:?}", *s);
         }

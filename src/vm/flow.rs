@@ -4,7 +4,7 @@ use crate::vm::values::Value;
 // контрол флоу
 #[derive(Debug)]
 pub enum ControlFlow {
-    Return(*mut Value),
+    Return(Value),
     Error(Error),
     Continue,
     Break,

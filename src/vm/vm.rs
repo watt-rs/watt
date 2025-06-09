@@ -10,7 +10,7 @@ use crate::vm::values::{FnOwner, Function, Instance, Symbol, Type, Unit, Value};
 // вм
 pub struct VM {
     pub globals: *mut Table,
-    stack: VecDeque<*mut Value>,
+    stack: VecDeque<Value>,
     types: *mut Table,
     units: *mut Table
 }
@@ -34,12 +34,12 @@ impl VM {
     }
 
     // пуш
-    pub fn push(&mut self, value: *mut Value) {
+    pub fn push(&mut self, value: Value) {
         self.stack.push_back(value);
     }
 
     // поп
-    pub fn pop(&mut self, address: Address) -> Result<*mut Value, ControlFlow> {
+    pub fn pop(&mut self, address: Address) -> Result<Value, ControlFlow> {
         if self.stack.len() == 0 {
             return Err(ControlFlow::Error(Error::new(
                 ErrorType::Runtime,
@@ -54,8 +54,7 @@ impl VM {
     // бинды функций
     unsafe fn bind_functions(&mut self, table: *mut Table, owner: *mut FnOwner) {
         for val in (*table).fields.values() {
-            let value = *val;
-            if let Value::Fn(function) = *value {
+            if let Value::Fn(function) = *val {
                 (*function).owner = owner;
             }
         }
@@ -70,88 +69,89 @@ impl VM {
         let error = ControlFlow::Error(Error::new(
             ErrorType::Runtime,
             address.clone(),
-            format!("could not use '{}' with {:?} and {:?}", op, *operand_a, *operand_b),
+            format!("could not use '{}' with {:?} and {:?}", op, operand_a, operand_b),
             "check your code.".to_string()
         ));
         // бинарная операция
         match op.clone() {
             "+" => {
-                match (*operand_a) {
-                    Value::Float(a) => { match (*operand_b) {
-                        Value::Float(b) => { self.push(memory::alloc_value(Value::Float(a + b))); }
-                        Value::Int(b) => { self.push(memory::alloc_value(Value::Float(a + (b as f64)))); }
+                match operand_a {
+                    Value::Float(a) => { match operand_b {
+                        Value::Float(b) => { self.push(Value::Float(a + b)); }
+                        Value::Int(b) => { self.push(Value::Float(a + (b as f64))); }
                         _ => { return Err(error) }
                     }}
-                    Value::Int(a) => { match (*operand_b) {
-                        Value::Float(b) => { self.push(memory::alloc_value(Value::Float((a as f64) + b))); }
-                        Value::Int(b) => { self.push(memory::alloc_value(Value::Int(a + b))); }
+                    Value::Int(a) => { match operand_b {
+                        Value::Float(b) => { self.push(Value::Float((a as f64) + b)); }
+                        Value::Int(b) => { self.push(Value::Int(a + b)); }
                         _ => { return Err(error) }
                     }}
-                    Value::String(a) => { match (*operand_b) {
+                    Value::String(a) => { match operand_b {
                         Value::String(b) => {
-                            self.push(memory::alloc_value(Value::String(
-                            memory::alloc_value(format!("{}{}",*a, *b))
-                        )))}
+                            self.push(Value::String(
+                                memory::alloc_value(format!("{}{}",*a, *b))
+                            ))
+                        }
                         _ => { return Err(error) }
                     }}
                     _ => { return Err(error) }
                 }
             }
             "-" => {
-                match (*operand_a) {
-                    Value::Float(a) => { match (*operand_b) {
-                        Value::Float(b) => { self.push(memory::alloc_value(Value::Float(a - b))); }
-                        Value::Int(b) => { self.push(memory::alloc_value(Value::Float(a - (b as f64)))); }
+                match operand_a {
+                    Value::Float(a) => { match operand_b {
+                        Value::Float(b) => { self.push(Value::Float(a - b)); }
+                        Value::Int(b) => { self.push(Value::Float(a - (b as f64))); }
                         _ => { return Err(error) }
                     }}
-                    Value::Int(a) => { match (*operand_b) {
-                        Value::Float(b) => { self.push(memory::alloc_value(Value::Float((a as f64) - b))); }
-                        Value::Int(b) => { self.push(memory::alloc_value(Value::Int(a - b))); }
+                    Value::Int(a) => { match operand_b {
+                        Value::Float(b) => { self.push(Value::Float((a as f64) - b)); }
+                        Value::Int(b) => { self.push(Value::Int(a - b)); }
                         _ => { return Err(error) }
                     }}
                     _ => { return Err(error) }
                 }
             }
             "*" => {
-                match (*operand_a) {
-                    Value::Float(a) => { match (*operand_b) {
-                        Value::Float(b) => { self.push(memory::alloc_value(Value::Float(a * b))); }
-                        Value::Int(b) => { self.push(memory::alloc_value(Value::Float(a * (b as f64)))); }
+                match operand_a {
+                    Value::Float(a) => { match operand_b {
+                        Value::Float(b) => { self.push(Value::Float(a * b)); }
+                        Value::Int(b) => { self.push(Value::Float(a * (b as f64))); }
                         _ => { return Err(error) }
                     }}
-                    Value::Int(a) => { match (*operand_b) {
-                        Value::Float(b) => { self.push(memory::alloc_value(Value::Float((a as f64) * b))); }
-                        Value::Int(b) => { self.push(memory::alloc_value(Value::Int(a * b))); }
+                    Value::Int(a) => { match operand_b {
+                        Value::Float(b) => { self.push(Value::Float((a as f64) * b)); }
+                        Value::Int(b) => { self.push(Value::Int(a * b)); }
                         _ => { return Err(error) }
                     }}
                     _ => { return Err(error) }
                 }
             }
             "/" => {
-                match (*operand_a) {
-                    Value::Float(a) => { match (*operand_b) {
-                        Value::Float(b) => { self.push(memory::alloc_value(Value::Float(a / b))); }
-                        Value::Int(b) => { self.push(memory::alloc_value(Value::Float(a / (b as f64)))); }
+                match operand_a {
+                    Value::Float(a) => { match operand_b {
+                        Value::Float(b) => { self.push(Value::Float(a / b)); }
+                        Value::Int(b) => { self.push(Value::Float(a / (b as f64))); }
                         _ => { return Err(error) }
                     }}
-                    Value::Int(a) => { match (*operand_b) {
-                        Value::Float(b) => { self.push(memory::alloc_value(Value::Float((a as f64) / b))); }
-                        Value::Int(b) => { self.push(memory::alloc_value(Value::Int(a / b))); }
+                    Value::Int(a) => { match operand_b {
+                        Value::Float(b) => { self.push(Value::Float((a as f64) / b)); }
+                        Value::Int(b) => { self.push(Value::Int(a / b)); }
                         _ => { return Err(error) }
                     }}
                     _ => { return Err(error) }
                 }
             }
             "%" => {
-                match (*operand_a) {
-                    Value::Float(a) => { match (*operand_b) {
-                        Value::Float(b) => { self.push(memory::alloc_value(Value::Float(a % b))); }
-                        Value::Int(b) => { self.push(memory::alloc_value(Value::Float(a % (b as f64)))); }
+                match operand_a {
+                    Value::Float(a) => { match operand_b {
+                        Value::Float(b) => { self.push(Value::Float(a % b)); }
+                        Value::Int(b) => { self.push(Value::Float(a % (b as f64))); }
                         _ => { return Err(error) }
                     }}
-                    Value::Int(a) => { match (*operand_b) {
-                        Value::Float(b) => { self.push(memory::alloc_value(Value::Float((a as f64) % b))); }
-                        Value::Int(b) => { self.push(memory::alloc_value(Value::Int(a % b))); }
+                    Value::Int(a) => { match operand_b {
+                        Value::Float(b) => { self.push(Value::Float((a as f64) % b)); }
+                        Value::Int(b) => { self.push(Value::Int(a % b)); }
                         _ => { return Err(error) }
                     }}
                     _ => { return Err(error) }
@@ -170,16 +170,16 @@ impl VM {
         let error = ControlFlow::Error(Error::new(
             ErrorType::Runtime,
             address.clone(),
-            format!("could not use 'negate' for {:?}", *operand),
+            format!("could not use 'negate' for {:?}", operand),
             "check your code.".to_string()
         ));
         // негэйт
-        match (*operand) {
+        match operand {
             Value::Float(a) => {
-                self.push(memory::alloc_value(Value::Float(-a)));
+                self.push(Value::Float(-a));
             }
             Value::Int(a) => {
-                self.push(memory::alloc_value(Value::Int(-a)));
+                self.push(Value::Int(-a));
             }
             _ => { return Err(error) }
         }
@@ -194,13 +194,13 @@ impl VM {
         let error = ControlFlow::Error(Error::new(
             ErrorType::Runtime,
             address.clone(),
-            format!("could not use 'bang' for {:?}", *operand),
+            format!("could not use 'bang' for {:?}", operand),
             "check your code.".to_string()
         ));
         // бэнг
-        match (*operand) {
+        match operand {
             Value::Bool(b) => {
-                self.push(memory::alloc_value(Value::Bool(!b)));
+                self.push(Value::Bool(!b));
             }
             _ => { return Err(error) }
         }
@@ -216,113 +216,113 @@ impl VM {
         let error = ControlFlow::Error(Error::new(
             ErrorType::Runtime,
             address.clone(),
-            format!("could not use '{}' for {:?} and {:?}", op, *operand_a, *operand_b),
+            format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
             "check your code.".to_string()
         ));
         // условие
         match op {
             ">" => {
-                match *operand_a {
-                    Value::Float(a) => { match (*operand_b) {
-                        Value::Float(b) => { self.push(memory::alloc_value(Value::Bool(a > b))); }
-                        Value::Int(b) => { self.push(memory::alloc_value(Value::Bool(a > (b as f64)))); }
+                match operand_a {
+                    Value::Float(a) => { match operand_b {
+                        Value::Float(b) => { self.push(Value::Bool(a > b)); }
+                        Value::Int(b) => { self.push(Value::Bool(a > (b as f64))); }
                         _ => { return Err(error); }
                     }}
-                    Value::Int(a) => { match (*operand_b) {
-                        Value::Float(b) => { self.push(memory::alloc_value(Value::Bool((a as f64) > b))); }
-                        Value::Int(b) => { self.push(memory::alloc_value(Value::Bool(a > b))); }
+                    Value::Int(a) => { match operand_b {
+                        Value::Float(b) => { self.push(Value::Bool((a as f64) > b)); }
+                        Value::Int(b) => { self.push(Value::Bool(a > b)); }
                         _ => { return Err(error); }
                     }}
                     _ => { return Err(error); }
                 }
             },
             "<" => {
-                match *operand_a {
-                    Value::Float(a) => { match (*operand_b) {
-                        Value::Float(b) => { self.push(memory::alloc_value(Value::Bool(a < b))); }
-                        Value::Int(b) => { self.push(memory::alloc_value(Value::Bool(a < (b as f64)))); }
+                match operand_a {
+                    Value::Float(a) => { match operand_b {
+                        Value::Float(b) => { self.push(Value::Bool(a < b)); }
+                        Value::Int(b) => { self.push(Value::Bool(a < (b as f64))); }
                         _ => { return Err(error); }
                     }}
-                    Value::Int(a) => { match (*operand_b) {
-                        Value::Float(b) => { self.push(memory::alloc_value(Value::Bool((a as f64) < b))); }
-                        Value::Int(b) => { self.push(memory::alloc_value(Value::Bool(a < b))); }
+                    Value::Int(a) => { match operand_b {
+                        Value::Float(b) => { self.push(Value::Bool((a as f64) < b)); }
+                        Value::Int(b) => { self.push(Value::Bool(a < b)); }
                         _ => { return Err(error); }
                     }}
                     _ => { return Err(error); }
                 }
             },
             ">=" => {
-                match *operand_a {
-                    Value::Float(a) => { match (*operand_b) {
-                        Value::Float(b) => { self.push(memory::alloc_value(Value::Bool(a >= b))); }
-                        Value::Int(b) => { self.push(memory::alloc_value(Value::Bool(a >= (b as f64)))); }
+                match operand_a {
+                    Value::Float(a) => { match operand_b {
+                        Value::Float(b) => { self.push(Value::Bool(a >= b)); }
+                        Value::Int(b) => { self.push(Value::Bool(a >= (b as f64))); }
                         _ => { return Err(error); }
                     }}
-                    Value::Int(a) => { match (*operand_b) {
-                        Value::Float(b) => { self.push(memory::alloc_value(Value::Bool((a as f64) >= b))); }
-                        Value::Int(b) => { self.push(memory::alloc_value(Value::Bool(a >= b))); }
+                    Value::Int(a) => { match operand_b {
+                        Value::Float(b) => { self.push(Value::Bool((a as f64) >= b)); }
+                        Value::Int(b) => { self.push(Value::Bool(a >= b)); }
                         _ => { return Err(error); }
                     }}
                     _ => { return Err(error); }
                 }
             }
             "<=" => {
-                match *operand_a {
-                    Value::Float(a) => { match *operand_b {
-                        Value::Float(b) => { self.push(memory::alloc_value(Value::Bool(a <= b))); }
-                        Value::Int(b) => { self.push(memory::alloc_value(Value::Bool(a <= (b as f64)))); }
+                match operand_a {
+                    Value::Float(a) => { match operand_b {
+                        Value::Float(b) => { self.push(Value::Bool(a <= b)); }
+                        Value::Int(b) => { self.push(Value::Bool(a <= (b as f64))); }
                         _ => { return Err(error); }
                     }}
-                    Value::Int(a) => { match *operand_b {
-                        Value::Float(b) => { self.push(memory::alloc_value(Value::Bool((a as f64) <= b))); }
-                        Value::Int(b) => { self.push(memory::alloc_value(Value::Bool(a <= b))); }
+                    Value::Int(a) => { match operand_b {
+                        Value::Float(b) => { self.push(Value::Bool((a as f64) <= b)); }
+                        Value::Int(b) => { self.push(Value::Bool(a <= b)); }
                         _ => { return Err(error); }
                     }}
                     _ => { return Err(error) }
                 }
             }
             "==" => {
-                match *operand_a {
-                    Value::Float(a) => { match *operand_b {
-                        Value::Float(b) => { self.push(memory::alloc_value(Value::Bool(a == b))); }
-                        Value::Int(b) => { self.push(memory::alloc_value(Value::Bool(a == (b as f64)))); }
-                        _ => { self.push(memory::alloc_value(Value::Bool(false))); }
+                match operand_a {
+                    Value::Float(a) => { match operand_b {
+                        Value::Float(b) => { self.push(Value::Bool(a == b)); }
+                        Value::Int(b) => { self.push(Value::Bool(a == (b as f64))); }
+                        _ => { self.push(Value::Bool(false)); }
                     }}
-                    Value::Int(a) => { match *operand_b {
-                        Value::Float(b) => { self.push(memory::alloc_value(Value::Bool((a as f64) == b))); }
-                        Value::Int(b) => { self.push(memory::alloc_value(Value::Bool(a == b))); }
-                        _ => { self.push(memory::alloc_value(Value::Bool(false))); }
+                    Value::Int(a) => { match operand_b {
+                        Value::Float(b) => { self.push(Value::Bool((a as f64) == b)); }
+                        Value::Int(b) => { self.push(Value::Bool(a == b)); }
+                        _ => { self.push(Value::Bool(false)); }
                     }}
-                    Value::Null => { match *operand_b {
-                        Value::Null => { self.push(memory::alloc_value(Value::Bool(true))); }
-                        _ => { self.push(memory::alloc_value(Value::Bool(false)));  }
+                    Value::Null => { match operand_b {
+                        Value::Null => { self.push(Value::Bool(true)); }
+                        _ => { self.push(Value::Bool(false));  }
                     }}
-                    Value::Fn(f1) => { match *operand_b {
-                        Value::Fn(f2) => { self.push(memory::alloc_value(Value::Bool(f1 == f2))); }
-                        _ => { self.push(memory::alloc_value(Value::Bool(false))); }
+                    Value::Fn(f1) => { match operand_b {
+                        Value::Fn(f2) => { self.push(Value::Bool(f1 == f2)); }
+                        _ => { self.push(Value::Bool(false)); }
                     }}
-                    Value::Bool(a) => { match *operand_b {
-                        Value::Bool(b) => { self.push(memory::alloc_value(Value::Bool(a == b))); }
-                        _ => { self.push(memory::alloc_value(Value::Bool(false))); }
+                    Value::Bool(a) => { match operand_b {
+                        Value::Bool(b) => { self.push(Value::Bool(a == b)); }
+                        _ => { self.push(Value::Bool(false)); }
                     }}
-                    Value::Instance(a) => { match *operand_b {
-                        Value::Instance(b) => { self.push(memory::alloc_value(Value::Bool(a == b))); }
-                        _ => { self.push(memory::alloc_value(Value::Bool(false))); }
+                    Value::Instance(a) => { match operand_b {
+                        Value::Instance(b) => { self.push(Value::Bool(a == b)); }
+                        _ => { self.push(Value::Bool(false)); }
                     }}
-                    Value::Type(a) => { match *operand_b {
-                        Value::Type(b) => { self.push(memory::alloc_value(Value::Bool(a == b)))}
-                        _ => { self.push(memory::alloc_value(Value::Bool(false))); }
+                    Value::Type(a) => { match operand_b {
+                        Value::Type(b) => { self.push(Value::Bool(a == b))}
+                        _ => { self.push(Value::Bool(false)); }
                     }}
-                    Value::String(a) => { match *operand_b {
-                        Value::String(b) => { self.push(memory::alloc_value(Value::Bool(a == b)))}
-                        _ => { self.push(memory::alloc_value(Value::Bool(false))); }
+                    Value::String(a) => { match operand_b {
+                        Value::String(b) => { self.push(Value::Bool(*a == *b)) }
+                        _ => { self.push(Value::Bool(false)); }
                     }}
-                    Value::Native(a) => { match *operand_b {
-                        Value::Native(b) => { self.push(memory::alloc_value(Value::Bool(a == b)))}
-                        _ => { self.push(memory::alloc_value(Value::Bool(false))); }
+                    Value::Native(a) => { match operand_b {
+                        Value::Native(b) => { self.push(Value::Bool(a == b))}
+                        _ => { self.push(Value::Bool(false)); }
                     }}
                     _ => {
-                        self.push(memory::alloc_value(Value::Bool(false)));
+                        self.push(Value::Bool(false));
                     }
                 }
             }
@@ -340,16 +340,16 @@ impl VM {
         let error = ControlFlow::Error(Error::new(
             ErrorType::Runtime,
             address.clone(),
-            format!("could not use '{}' for {:?} and {:?}", op, *operand_a, *operand_b),
+            format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
             "check your code.".to_string()
         ));
         // логика
         match op {
             "and" => {
-                match *operand_a {
+                match operand_a {
                     Value::Bool(a) => {
-                        match *operand_b {
-                            Value::Bool(b) => { self.push(memory::alloc_value(Value::Bool(a && b))); }
+                        match operand_b {
+                            Value::Bool(b) => { self.push(Value::Bool(a && b)); }
                             _ => { return Err(error); }
                         }
                     }
@@ -357,10 +357,10 @@ impl VM {
                 }
             }
             "or" => {
-                match *operand_a {
+                match operand_a {
                     Value::Bool(a) => {
-                        match *operand_b {
-                            Value::Bool(b) => { self.push(memory::alloc_value(Value::Bool(a || b))); }
+                        match operand_b {
+                            Value::Bool(b) => { self.push(Value::Bool(a || b)); }
                             _ => { return Err(error); }
                         }
                     }
@@ -383,7 +383,7 @@ impl VM {
         self.run(*cond, table)?;
         let bool = self.pop(addr.clone())?;
         // проверка
-        if let Value::Bool(b) = *bool {
+        if let Value::Bool(b) = bool {
             if b {
                 self.run(*body, table)?
             } else {
@@ -441,16 +441,12 @@ impl VM {
             )
         );
         // дефайн функции
-        if let Err(e) = (*table).define(addr.clone(), symbol.name.clone(), memory::alloc_value(
-            Value::Fn(function))
-        ) {
+        if let Err(e) = (*table).define(addr.clone(), symbol.name.clone(), Value::Fn(function)) {
             return Err(ControlFlow::Error(e))
         }
         // дефайн функции по full-name
         if symbol.full_name.is_some() {
-            if let Err(e) = (*table).define(addr.clone(), symbol.full_name.unwrap(), memory::alloc_value(
-                Value::Fn(function))
-            ) {
+            if let Err(e) = (*table).define(addr.clone(), symbol.full_name.unwrap(), Value::Fn(function)) {
                 return Err(ControlFlow::Error(e))
             }
         }
@@ -470,16 +466,12 @@ impl VM {
             )
         );
         // дефайн типа
-        if let Err(e) = (*self.types).define(addr.clone(), symbol.name.clone(), memory::alloc_value(
-            Value::Type(t))
-        ) {
+        if let Err(e) = (*self.types).define(addr.clone(), symbol.name.clone(), Value::Type(t)) {
             return Err(ControlFlow::Error(e))
         }
         // дефайн по full-name
         if symbol.full_name.is_some() {
-            if let Err(e) = (*self.types).define(addr.clone(), symbol.full_name.unwrap().clone(), memory::alloc_value(
-                Value::Type(t))
-            ) {
+            if let Err(e) = (*self.types).define(addr.clone(), symbol.full_name.unwrap().clone(), Value::Type(t)){
                 return Err(ControlFlow::Error(e))
             }
         }
@@ -506,16 +498,14 @@ impl VM {
         // бинды
         self.bind_functions((*unit).fields, memory::alloc_value(FnOwner::Unit(unit)));
         // дефайн юнита
-        if let Err(e) = (*self.units).define(addr.clone(), symbol.name.clone(), memory::alloc_value(
-            Value::Unit(unit))
-        ) {
+        if let Err(e) = (*self.units).define(addr.clone(), symbol.name.clone(),
+                                             Value::Unit(unit)) {
             return Err(ControlFlow::Error(e))
         }
         // дефайн по full-name
         if symbol.full_name.is_some() {
-            if let Err(e) = (*self.units).define(addr.clone(), symbol.full_name.unwrap().clone(), memory::alloc_value(
-                Value::Unit(unit))
-            ) {
+            if let Err(e) = (*self.units).define(addr.clone(), symbol.full_name.unwrap().clone(),
+                                                 Value::Unit(unit)) {
                 return Err(ControlFlow::Error(e))
             }
         }
@@ -542,7 +532,7 @@ impl VM {
             // получаем значение
             let previous = self.pop(addr.clone())?;
             // првоеряем
-            match *previous {
+            match previous {
                 Value::Instance(instance) => {
                     // исполняем значение
                     self.run(*value, table)?;
@@ -567,7 +557,7 @@ impl VM {
                     return Err(ControlFlow::Error(Error::new(
                         ErrorType::Runtime,
                         addr.clone(),
-                        format!("{:?} is not a container.", *previous),
+                        format!("{:?} is not a container.", previous),
                         "you can define variable for unit or instance.".to_string()
                     )))
                 }
@@ -596,7 +586,7 @@ impl VM {
             // получаем значение
             let previous = self.pop(addr.clone())?;
             // проверяем
-            match *previous {
+            match previous {
                 Value::Instance(instance) => {
                     // исполняем значение
                     self.run(*value, table)?;
@@ -621,7 +611,7 @@ impl VM {
                     return Err(ControlFlow::Error(Error::new(
                         ErrorType::Runtime,
                         addr.clone(),
-                        format!("{:?} is not a container.", *previous),
+                        format!("{:?} is not a container.", previous),
                         "you can define variable for unit or instance.".to_string()
                     )))
                 }
@@ -661,7 +651,7 @@ impl VM {
             // получаем значение
             let previous = self.pop(addr.clone())?;
             // проверяем
-            match *previous {
+            match previous {
                 Value::Instance(instance) => {
                     // получаем значение
                     let lookup_result = (*(*instance).fields).lookup(addr.clone(), name);
@@ -694,7 +684,7 @@ impl VM {
                     return Err(ControlFlow::Error(Error::new(
                         ErrorType::Runtime,
                         addr.clone(),
-                        format!("{:?} is not a container.", *previous),
+                        format!("{:?} is not a container.", previous),
                         "you can load variable from unit or instance.".to_string()
                     )))
                 }
@@ -770,10 +760,10 @@ impl VM {
 
         // вызов функции
         unsafe fn call(vm: &mut VM, addr: Address, name: String,
-                   callable: *mut Value, args: Box<Chunk>,
+                   callable: Value, args: Box<Chunk>,
                    table: *mut Table, should_push: bool) -> Result<(), ControlFlow> {
             // проверка на функцию
-            if let Value::Fn(function) = *callable {
+            if let Value::Fn(function) = callable {
                 // создаём таблицу под вызов.
                 let call_table = memory::alloc_value(Table::new());
                 // рут и self
@@ -782,7 +772,7 @@ impl VM {
                         FnOwner::Unit(unit) => {
                             (*call_table).set_root((*unit).fields);
                             if let Err(e) = (*(*unit).fields).define(
-                                addr.clone(), "self".to_string(), memory::alloc_value(Value::Unit(unit))
+                                addr.clone(), "self".to_string(), Value::Unit(unit)
                             ) {
                                 return Err(ControlFlow::Error(e));
                             }
@@ -790,7 +780,7 @@ impl VM {
                         FnOwner::Instance(instance) => {
                             (*call_table).set_root((*instance).fields);
                             if let Err(e) = (*(*instance).fields).define(
-                                addr.clone(), "self".to_string(), memory::alloc_value(Value::Instance(instance))
+                                addr.clone(), "self".to_string(), Value::Instance(instance)
                             ) {
                                 return Err(ControlFlow::Error(e));
                             }
@@ -824,15 +814,15 @@ impl VM {
                 Ok(())
             }
             // проверка на нативную функцию
-            else if let Value::Native(function) = *callable {
+            else if let Value::Native(function) = callable {
                 // создаём таблицу под вызов.
                 let call_table = memory::alloc_value(Table::new());
                 (*call_table).set_root(table);
                 // загрузка аргументов
                 load_arguments(vm, addr.clone(), name.clone(), (*function).params_amount, args, call_table)?;
                 // вызов
-                let callable = (*function).function;
-                callable(vm, addr.clone(), should_push)?;
+                let native = (*function).function;
+                native(vm, addr.clone(), should_push)?;
                 // успех
                 Ok(())
             }
@@ -865,7 +855,7 @@ impl VM {
             // получаем значение
             let previous = self.pop(addr.clone())?;
             // проверяем
-            match *previous {
+            match previous {
                 Value::Instance(instance) => {
                     // получаем значение
                     let lookup_result = (*(*instance).fields).lookup(addr.clone(), name.clone());
@@ -896,7 +886,7 @@ impl VM {
                     return Err(ControlFlow::Error(Error::new(
                         ErrorType::Runtime,
                         addr.clone(),
-                        format!("{:?} is not a container.", *previous),
+                        format!("{:?} is not a container.", previous),
                         "you can load variable from unit or instance.".to_string()
                     )))
                 }
@@ -961,7 +951,7 @@ impl VM {
         // проверяем, найден ли
         if let Ok(value) = lookup_result {
             // проверяем тип ли
-            match *value {
+            match value {
                 Value::Type(t) => {
                     // создаём экземпляр
                     let instance = memory::alloc_value(Instance::new(
@@ -987,9 +977,9 @@ impl VM {
                     // бинды
                     self.bind_functions((*instance).fields, memory::alloc_value(FnOwner::Instance(instance)));
                     // значение экземпляра
-                    let instance_value = memory::alloc_value(Value::Instance(
+                    let instance_value = Value::Instance(
                         instance
-                    ));
+                    );
                     // init функция
                     let init_fn = "init".to_string();
                     if (*(*instance).fields).exists(init_fn.clone()) {
@@ -1033,7 +1023,7 @@ impl VM {
         // проверяем, нашло ли
         if let Ok(value) = lookup_result {
             // проверяем, функция ли
-            if let Value::Fn(function) = *value {
+            if let Value::Fn(function) = value {
                 // устанавливаем замыкание
                 (*function).closure = table;
                 // успех
@@ -1069,10 +1059,9 @@ impl VM {
     #[allow(unused_variables)]
     pub unsafe fn run(&mut self, chunk: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         for op in chunk.opcodes() {
-            println!("running: {:?}", op);
             match op {
                 Opcode::Push { addr, value } => {
-                    self.push(memory::alloc_value(value));
+                    self.push(value);
                 }
                 Opcode::Pop { addr } => {
                     self.pop(addr.clone())?;

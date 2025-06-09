@@ -6,7 +6,7 @@ use crate::vm::values::Value;
 
 #[derive(Clone, Debug)]
 pub struct Table {
-    pub fields: BTreeMap<String, *mut Value>,
+    pub fields: BTreeMap<String,Value>,
     pub root: *mut Table,
     pub closure: *mut Table,
 }
@@ -30,10 +30,10 @@ impl Table {
         }
     }
 
-    pub unsafe fn find(&self, address: Address, name: String) -> Result<*mut Value, Error> {
+    pub unsafe fn find(&self, address: Address, name: String) -> Result<Value, Error> {
         if self.exists(name.clone()) {
             if self.fields.contains_key(&name) {
-                Ok(self.fields[&name])
+                Ok(self.fields[&name].clone())
             } else {
                 Ok((*self.closure).find(address, name.clone())?)
             }
@@ -47,7 +47,7 @@ impl Table {
         }
     }
 
-    pub fn define(&mut self, address: Address, name: String, value: *mut Value) -> Result<(), Error> {
+    pub fn define(&mut self, address: Address, name: String, value: Value) -> Result<(), Error> {
         if !self.fields.contains_key(&name) {
             self.fields.insert(name, value);
             Ok(())
@@ -61,7 +61,7 @@ impl Table {
         }
     }
 
-    pub unsafe fn set(&mut self, address: Address, name: String, value: *mut Value) -> Result<(), Error> {
+    pub unsafe fn set(&mut self, address: Address, name: String, value: Value) -> Result<(), Error> {
         let mut current = self as *mut Table;
         while !(*current).fields.contains_key(&name) {
             if (*current).root.is_null() {
@@ -89,7 +89,7 @@ impl Table {
         true
     }
 
-    pub unsafe fn lookup(&mut self, address: Address, name: String) -> Result<*mut Value, Error> {
+    pub unsafe fn lookup(&mut self, address: Address, name: String) -> Result<Value, Error> {
         let mut current = self as *mut Table;
         while !(*current).exists(name.clone()) {
             if (*current).root.is_null() {
