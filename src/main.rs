@@ -102,6 +102,7 @@ unsafe fn exec() -> Result<(), Error> {
     }
     println(factorial(15))
     */
+    /*
     type A {
     }
     test := null
@@ -115,7 +116,21 @@ unsafe fn exec() -> Result<(), Error> {
         str = null
         i += 1
     }
-    println(get_str())");
+    println(get_str())
+    */
+    unit test_unit {
+        a := 4.7
+    }
+    type Bird(speed) {
+        fun fly() {
+            println('bird flying with speed ⚡: ')
+            println(speed)
+        }
+    }
+    bird := new Bird(3.7)
+    bird.fly()
+    bird.speed = test_unit.a
+    bird.fly()");
     let file_name = String::from("main.rs");
     let tokens = Lexer::new(code, file_name.clone()).lex()?;
     println!("tokens: {:?}", tokens.clone());
