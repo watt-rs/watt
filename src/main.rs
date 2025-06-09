@@ -79,7 +79,7 @@ unsafe fn exec() -> Result<(), Error> {
     let start = SystemTime::now();
     let start_millis = start.duration_since(UNIX_EPOCH)
         .expect("Time went backwards")
-        .as_millis();
+        .as_nanos();
     println!("runtime: ");
     let mut vm = VM::new()?;
     if let Err(e) = vm.run(opcodes, vm.globals) {
@@ -97,8 +97,8 @@ unsafe fn exec() -> Result<(), Error> {
     let end = SystemTime::now();
     let end_millis = end.duration_since(UNIX_EPOCH)
         .expect("Time went backwards")
-        .as_millis();
-    println!("time: {}ms", end_millis-start_millis);
+        .as_nanos();
+    println!("time: {}ms", ((end_millis-start_millis) as f64)/1_000_000.0);
     // println!("{:?}", frame);
     Ok(())
 }
