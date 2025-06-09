@@ -1,3 +1,11 @@
-﻿a := 0
-b := 1
-c := a + b
+unit test_unit {
+    a := 4.7
+}
+type Bird(speed) {
+    fun fly() {
+        println('bird flying with speed ⚡: ')
+        println(self.speed)
+    }
+}
+bird := new Bird(3.7)
+bird.fly()

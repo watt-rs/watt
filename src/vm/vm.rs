@@ -1041,7 +1041,7 @@ impl VM {
                         (*t).constructor.len(),
                         args,
                         (*t).constructor.clone(),
-                        table
+                        (*instance).fields
                     )?;
                     // бинды
                     self.bind_functions((*instance).fields, memory::alloc_value(FnOwner::Instance(instance)));
