@@ -2,8 +2,9 @@
 use std::collections::BTreeMap;
 use crate::errors::{Error, ErrorType};
 use crate::lexer::address::Address;
-use crate::vm::gil;
+use crate::vm::threads::gil;
 use crate::vm::values::Value;
+use crate::vm::vm::VM;
 
 #[derive(Clone, Debug)]
 pub struct Table {
@@ -157,3 +158,6 @@ impl Table {
         })
     }
 }
+
+unsafe impl Send for Table {}
+unsafe impl Sync for Table {}

@@ -4,12 +4,15 @@ use crate::errors::{Error, ErrorType};
 use crate::lexer::address::Address;
 use crate::vm::bytecode::{Chunk, Opcode};
 use crate::vm::flow::ControlFlow;
-use crate::vm::{gil, memory, natives};
+use crate::vm::{memory, natives};
 use crate::vm::table::Table;
 use crate::vm::values::{FnOwner, Function, Instance, Symbol, Type, Unit, Value};
 use crate::vm::gc::GC;
+use crate::vm::threads::{gil};
+use crate::vm::threads::threads::Threads;
 
 // настроки
+#[derive(Debug)]
 pub struct VmSettings {
     gc_threshold: usize,
     gc_debug: bool,
@@ -21,12 +24,14 @@ impl VmSettings {
 }
 
 // вм
+#[derive(Debug)]
 pub struct VM {
     pub globals: *mut Table,
     types: *mut Table,
     units: *mut Table,
     pub gc: *mut GC,
-    settings: VmSettings
+    pub threads: *mut Threads,
+    settings: VmSettings,
 }
 
 // имплементация вм
@@ -39,13 +44,14 @@ impl VM {
     }
     
     // новая вм
-    pub unsafe fn new(settings: VmSettings) -> Result<VM, Error> {
+    pub unsafe fn new(settings: VmSettings, threads: *mut Threads) -> Result<VM, Error> {
         // вм
         let mut vm = VM {
             globals: memory::alloc_value(Table::new()),
             types: memory::alloc_value(Table::new()),
             units: memory::alloc_value(Table::new()),
             gc: memory::alloc_value(GC::new(settings.gc_debug)),
+            threads,
             settings
         };
         // нативы
@@ -77,6 +83,18 @@ impl VM {
             )))
         }
         Self::stack.with(|stack| Ok(stack.borrow_mut().pop_back().unwrap()))
+    }
+
+    // запуск потока
+    #[allow(unused_variables)]
+    pub unsafe fn start_thread(&mut self, addr: Address, function: *mut Function, table: *mut Table, args: Box<Chunk>) {
+        // запуск
+        (*self.threads).run_thread(
+            addr,
+            function,
+            table,
+            args
+        );
     }
 
 
@@ -776,9 +794,11 @@ impl VM {
         Ok(())
     }
 
-    // загрузка значения переменной
-    unsafe fn op_call(&mut self, addr: Address, name: String, has_previous: bool,
-                      should_push: bool, args: Box<Chunk>, table: *mut Table) -> Result<(), ControlFlow> {
+    // вызов функции
+    #[allow(unused_parens)]
+    pub unsafe fn call(&mut self, addr: Address, name: String,
+                              callable: Value, args: Box<Chunk>,
+                              table: *mut Table, should_push: bool) -> Result<(), ControlFlow> {
 
         // подгрузка аргументов
         unsafe fn pass_arguments(vm: &mut VM, addr: Address, name: String, params_amount: usize,
@@ -818,7 +838,7 @@ impl VM {
 
         // только загрузка аргументов
         unsafe fn load_arguments(vm: &mut VM, addr: Address, name: String, params_amount: usize,
-                                  args: Box<Chunk>, table: *mut Table) -> Result<(), ControlFlow> {
+                                 args: Box<Chunk>, table: *mut Table) -> Result<(), ControlFlow> {
             // фиксируем размер стека
             let prev_size = vm.stack_len();
             // загрузка аргументов
@@ -840,85 +860,83 @@ impl VM {
             }
         }
 
-        // вызов функции
-        #[allow(unused_parens)]
-        unsafe fn call(vm: &mut VM, addr: Address, name: String,
-                   callable: Value, args: Box<Chunk>,
-                   table: *mut Table, should_push: bool) -> Result<(), ControlFlow> {
-            // проверка на функцию
-            if let Value::Fn(function) = callable {
-                // создаём таблицу под вызов.
-                let call_table = memory::alloc_value(Table::new());
-                // рут и self
-                if !(*function).owner.is_null() {
-                    match (*(*function).owner) {
-                        FnOwner::Unit(unit) => {
-                            (*call_table).set_root((*unit).fields);
-                            if let Err(e) = (*(*unit).fields).define(
-                                addr.clone(), "self".to_string(), Value::Unit(unit)
-                            ) {
-                                return Err(ControlFlow::Error(e));
+        // проверка на функцию
+        if let Value::Fn(function) = callable {
+            // создаём таблицу под вызов.
+            let call_table = memory::alloc_value(Table::new());
+            // рут и self
+            if !(*function).owner.is_null() {
+                match (*(*function).owner) {
+                    FnOwner::Unit(unit) => {
+                        (*call_table).set_root((*unit).fields);
+                        if let Err(e) = (*(*unit).fields).define(
+                            addr.clone(), "self".to_string(), Value::Unit(unit)
+                        ) {
+                            return Err(ControlFlow::Error(e));
+                        }
+                    },
+                    FnOwner::Instance(instance) => {
+                        (*call_table).set_root((*instance).fields);
+                        if let Err(e) = (*(*instance).fields).define(
+                            addr.clone(), "self".to_string(), Value::Instance(instance)
+                        ) {
+                            return Err(ControlFlow::Error(e));
+                        }
+                    }
+                }
+            } else {
+                (*call_table).set_root(table)
+            }
+            // замыкание
+            (*call_table).closure = (*function).closure;
+            // загрузка аргументов
+            pass_arguments(self, addr, name, (*function).params.len(), args,
+                                                               (*function).params.clone(), call_table)?;
+            // вызов
+            match self.run((*(*function).body).clone(), call_table) {
+                Err(e) => {
+                    match e {
+                        ControlFlow::Return(val) => {
+                            if should_push {
+                                self.push(val);
                             }
                         },
-                        FnOwner::Instance(instance) => {
-                            (*call_table).set_root((*instance).fields);
-                            if let Err(e) = (*(*instance).fields).define(
-                                addr.clone(), "self".to_string(), Value::Instance(instance)
-                            ) {
-                                return Err(ControlFlow::Error(e));
-                            }
+                        _ => {
+                            return Err(e);
                         }
                     }
-                } else {
-                    (*call_table).set_root(table)
                 }
-                // замыкание
-                (*call_table).closure = (*function).closure;
-                // загрузка аргументов
-                pass_arguments(vm, addr, name, (*function).params.len(), args,
-                               (*function).params.clone(), call_table)?;
-                // вызов
-                match vm.run((*(*function).body).clone(), call_table) {
-                    Err(e) => {
-                        match e {
-                            ControlFlow::Return(val) => {
-                                if should_push {
-                                    vm.push(val);
-                                }
-                            },
-                            _ => {
-                                return Err(e);
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-                // успех
-                Ok(())
+                _ => {}
             }
-            // проверка на нативную функцию
-            else if let Value::Native(function) = callable {
-                // создаём таблицу под вызов.
-                let call_table = memory::alloc_value(Table::new());
-                (*call_table).set_root(table);
-                // загрузка аргументов
-                load_arguments(vm, addr.clone(), name.clone(), (*function).params_amount, args, call_table)?;
-                // вызов
-                let native = (*function).function;
-                native(vm, addr.clone(), should_push, call_table)?;
-                // успех
-                Ok(())
-            }
-            else {
-                Err(ControlFlow::Error(Error::new(
-                    ErrorType::Runtime,
-                    addr.clone(),
-                    format!("{} is not a fn.", name),
-                    "you can call only fn-s.".to_string()
-                )))
-            }
+            // успех
+            Ok(())
         }
+        // проверка на нативную функцию
+        else if let Value::Native(function) = callable {
+            // создаём таблицу под вызов.
+            let call_table = memory::alloc_value(Table::new());
+            (*call_table).set_root(table);
+            // загрузка аргументов
+            load_arguments(self, addr.clone(), name.clone(), (*function).params_amount, args, call_table)?;
+            // вызов
+            let native = (*function).function;
+            native(self, addr.clone(), should_push, call_table)?;
+            // успех
+            Ok(())
+        }
+        else {
+            Err(ControlFlow::Error(Error::new(
+                ErrorType::Runtime,
+                addr.clone(),
+                format!("{} is not a fn.", name),
+                "you can call only fn-s.".to_string()
+            )))
+        }
+    }
 
+    // загрузка значения переменной
+    pub unsafe fn op_call(&mut self, addr: Address, name: String, has_previous: bool,
+                                 should_push: bool, args: Box<Chunk>, table: *mut Table) -> Result<(), ControlFlow> {
         // если нет предыдущего
         if !has_previous {
             // получаем значение
@@ -930,7 +948,7 @@ impl VM {
             }
             else if let Ok(value) = lookup_result {
                 // вызываем
-                call(self, addr.clone(), name.clone(), value, args.clone(), table, should_push)?;
+                self.call(addr.clone(), name.clone(), value, args.clone(), table, should_push)?;
             }
         }
         // если есть
@@ -949,7 +967,7 @@ impl VM {
                     }
                     else if let Ok(value) = lookup_result {
                         // вызываем
-                        call(self, addr.clone(), name.clone(), value, args.clone(), table, should_push)?;
+                        self.call(addr.clone(), name.clone(), value, args.clone(), table, should_push)?;
                     }
                 }
                 Value::Unit(unit) => {
@@ -962,7 +980,7 @@ impl VM {
                     }
                     else if let Ok(value) = lookup_result {
                         // вызываем
-                        call(self, addr.clone(), name.clone(), value, args.clone(), table, should_push)?;
+                        self.call(addr.clone(), name.clone(), value, args.clone(), table, should_push)?;
                     }
                 }
                 _ => {
@@ -1213,3 +1231,6 @@ impl VM {
         Ok(())
     }
 }
+
+unsafe impl Send for VM {}
+unsafe impl Sync for VM {}

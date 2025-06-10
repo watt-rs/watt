@@ -6,4 +6,4 @@ pub mod vm;
 pub mod flow;
 pub mod natives;
 pub mod gc;
-pub mod gil;
+pub mod threads;

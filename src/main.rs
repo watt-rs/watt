@@ -20,8 +20,12 @@ use crate::lexer::address::Address;
 use crate::vm::*;
 use crate::vm::flow::ControlFlow;
 use crate::vm::table::Table;
+use crate::vm::threads::threads::Threads;
 use crate::vm::values::Value;
 use crate::vm::vm::{VmSettings, VM};
+
+pub static mut VM_PTR: Option<*mut VM> = None;
+pub static mut THREADS_PTR: Option<*mut Threads> = None;
 
 unsafe fn exec() -> Result<(), Error> {
     let code = match fs::read_to_string("./src/test.wt") {
@@ -50,11 +54,13 @@ unsafe fn exec() -> Result<(), Error> {
         .expect("Time went backwards")
         .as_nanos();
     println!("runtime: ");
+    THREADS_PTR = Option::Some(memory::alloc_value(Threads::new()));
     let mut vm = VM::new(VmSettings::new(
         100,
         true
-    ))?;
-    if let Err(e) = vm.run(opcodes, vm.globals) {
+    ), THREADS_PTR.unwrap())?;
+    VM_PTR = Option::Some(memory::alloc_value(vm));
+    if let Err(e) = (*VM_PTR.unwrap()).run(opcodes, (*VM_PTR.unwrap() ).globals) {
         if let ControlFlow::Error(error) = e {
             return Err(error);
         } else {
@@ -70,6 +76,10 @@ unsafe fn exec() -> Result<(), Error> {
     let end_millis = end.duration_since(UNIX_EPOCH)
         .expect("Time went backwards")
         .as_nanos();
+    // ждём окончания потоков
+    (*(*VM_PTR.unwrap()).threads).wait_finish();
+    print!("wait finished");
+    // выводим время
     println!("time: {}ms", ((end_millis-start_millis) as f64)/1_000_000.0);
     // println!("{:?}", frame);
     Ok(())

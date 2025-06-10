@@ -11,6 +11,7 @@ type Bird(speed) {
 bird := new Bird(3.7)
 bird.fly()
 */
+/*
 fun factorial(n) {
     f := 1
     result := 1
@@ -21,3 +22,16 @@ fun factorial(n) {
     return result
 }
 println(factorial(15))
+*/
+fun a() {
+    while true {
+        println('thread a')
+    }
+}
+fun b() {
+    while true {
+        println('thread b')
+    }
+}
+thread(a)
+thread(b)

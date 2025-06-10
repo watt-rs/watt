@@ -1,5 +1,6 @@
-use crate::vm::{gil, memory};
+use crate::vm::memory;
 use crate::vm::table::Table;
+use crate::vm::threads::gil;
 use crate::vm::values::{FnOwner, Value};
 use crate::vm::vm::VM;
 
