@@ -1,12 +1,6 @@
-﻿use std::cell::RefCell;
-use std::sync::{Arc, Mutex};
-use std::thread;
-use fragile::{Fragile, Sticky};
-use crate::errors::Error;
+﻿use crate::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::bytecode::Chunk;
-use crate::vm::flow::ControlFlow;
-use crate::vm::gc::GC;
 use crate::vm::memory;
 use crate::vm::table::Table;
 use crate::vm::values::{Native, Symbol, Value};
