@@ -1,14 +1,16 @@
-﻿use crate::errors::Error;
+﻿// импорты
+use crate::errors::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::bytecode::Chunk;
-use crate::vm::memory;
+use crate::vm::memory::memory;
 use crate::vm::table::Table;
 use crate::vm::values::{Native, Symbol, Value};
 use crate::vm::vm::{VM};
 
-pub unsafe fn provide(vm: &mut VM) -> Result<(), Error> {
+// провайд билтинов
+pub unsafe fn provide_builtins(vm: &mut VM) -> Result<(), Error> {
     // нативный адрес
-    let mut natives_address = Address::new(0, "builtins".to_string());
+    let natives_address = Address::new(0, "builtins".to_string());
     // нативные функции
     (*vm.globals).define(
         natives_address.clone(),

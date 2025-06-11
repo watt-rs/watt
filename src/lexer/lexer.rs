@@ -1,13 +1,9 @@
-﻿#![allow(non_upper_case_globals)]
-
+﻿// импорты
 use std::collections::HashMap;
 use crate::lexer::address::*;
-use crate::errors::{Error, ErrorType};
+use crate::errors::errors::{Error, ErrorType};
 
-/*
-Тип токена
- */
-
+// тип токена
 #[derive(Debug, Clone, Eq, PartialEq, Copy, Hash)]
 pub enum TokenType {
     Fun,
@@ -64,27 +60,21 @@ pub enum TokenType {
     With, // with
 }
 
-/*
-Токен
- */
-
+// токен
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Token {
     pub tk_type: TokenType,
     pub value: String,
     pub address: Address,
 }
-
+// имплементация
 impl Token {
     pub fn new(tk_type: TokenType, value: String, address: Address) -> Token {
         Token { tk_type, value, address }
     }
 }
 
-/*
-Лексер
- */
-
+// лексер
 pub struct Lexer {
     line: u64,
     current: u128,
@@ -93,7 +83,7 @@ pub struct Lexer {
     tokens: Vec<Token>,
     keywords: HashMap<String, TokenType>,
 }
-
+// имплементация
 impl Lexer {
     pub fn new(code: String, filename: String) -> Lexer {
         let map = HashMap::from([

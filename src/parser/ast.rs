@@ -1,11 +1,9 @@
-﻿/*
-АСТ
- */
-use crate::lexer::address::*;
-use crate::errors::{Error, ErrorType};
-use crate::import::Import;
+﻿// импорты
 use crate::lexer::lexer::*;
+use crate::parser::import::Import;
+use crate::errors::errors::Error;
 
+// нода
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Node {
     Block {
@@ -139,7 +137,8 @@ pub enum Node {
     }
 }
 
-pub fn set_should_push(node: Node, should_push: bool, address: Address) -> Result<Node, Error> {
+// установка should_push
+pub fn set_should_push(node: Node, should_push: bool) -> Result<Node, Error> {
     match node {
         Node::Get { previous, name, .. } => {
             Ok(Node::Get {

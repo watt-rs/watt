@@ -1,8 +1,8 @@
+// импорты
 use crate::colors;
 use crate::lexer::address::Address;
-/*
-Тип ошибки
- */
+
+// тип ошибки
 #[derive(Debug, Clone)]
 pub enum ErrorType {
     Parsing,
@@ -11,9 +11,7 @@ pub enum ErrorType {
     Compilation,
 }
 
-/*
-Ошибка
- */
+// ошибка
 #[derive(Debug, Clone)]
 pub struct Error {
     error_type: ErrorType,
@@ -22,6 +20,7 @@ pub struct Error {
     hint: String,
 }
 
+// имплементация
 impl Error {
     // новая ошибка
     pub fn new(error_type: ErrorType, addr: Address, text: String, hint: String) -> Self {

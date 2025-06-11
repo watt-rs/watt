@@ -1,9 +1,9 @@
 ﻿pub mod bytecode;
 pub mod values;
 pub mod table;
-pub mod memory;
 pub mod vm;
 pub mod flow;
 pub mod natives;
-pub mod gc;
 pub mod threads;
+pub mod statics;
+pub mod memory;

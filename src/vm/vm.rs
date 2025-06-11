@@ -1,22 +1,25 @@
-﻿use std::cell::RefCell;
+﻿// импорты
+use std::cell::RefCell;
 use std::collections::VecDeque;
-use crate::errors::{Error, ErrorType};
+use crate::errors::errors::{Error, ErrorType};
 use crate::lexer::address::Address;
 use crate::vm::bytecode::{Chunk, Opcode};
 use crate::vm::flow::ControlFlow;
-use crate::vm::{memory, natives};
+use crate::vm::{natives};
 use crate::vm::table::Table;
 use crate::vm::values::{FnOwner, Function, Instance, Symbol, Type, Unit, Value};
-use crate::vm::gc::GC;
+use crate::vm::memory::gc::GC;
+use crate::vm::memory::memory;
 use crate::vm::threads::{gil};
 use crate::vm::threads::threads::Threads;
 
-// настроки
+// настройки
 #[derive(Debug)]
 pub struct VmSettings {
     gc_threshold: usize,
     gc_debug: bool,
 }
+// имплементация
 impl VmSettings {
     pub fn new(gc_threshold: usize, gc_debug: bool) -> Self {
         Self { gc_threshold, gc_debug }
@@ -33,7 +36,6 @@ pub struct VM {
     pub threads: *mut Threads,
     settings: VmSettings,
 }
-
 // имплементация вм
 #[allow(non_upper_case_globals)]
 #[allow(unused_qualifications)]
@@ -55,7 +57,7 @@ impl VM {
             settings
         };
         // нативы
-        natives::provide(&mut vm)?;
+        natives::provide_builtins(&mut vm)?;
         // возвращаем
         Ok(vm)
     }
@@ -182,7 +184,7 @@ impl VM {
                     Value::String(a) => { match operand_b {
                         Value::String(b) => {
                             let string = Value::String(
-                                memory::alloc_value(format!("{}{}",*a, *b))
+                                memory::alloc_value(format!("{}{}", *a, *b))
                             );
                             self.gc_register(string, table);
                             self.push(string);
@@ -1232,5 +1234,6 @@ impl VM {
     }
 }
 
+// имплементация для передачи между потоками
 unsafe impl Send for VM {}
 unsafe impl Sync for VM {}

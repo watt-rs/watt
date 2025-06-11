@@ -1,10 +1,12 @@
+// импорты
 use crate::{lexer::address::Address, vm::values::Value};
 
+// чанк
 #[derive(Clone, Debug)]
 pub struct Chunk {
     opcodes: Vec<Opcode>,
 }
-
+// имплементация
 impl Chunk {
     pub fn new(chunk: Vec<Opcode>) -> Self {
         Chunk { opcodes: chunk }
@@ -17,6 +19,7 @@ impl Chunk {
     }
 }
 
+// опкод
 #[derive(Clone, Debug)]
 pub enum Opcode {
     Push {

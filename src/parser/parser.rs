@@ -1,11 +1,11 @@
-﻿#![allow(unused_qualifications)]
-
+﻿// импорты
 use crate::lexer::address::*;
-use crate::errors::{Error, ErrorType};
-use crate::import::Import;
+use crate::errors::errors::{Error, ErrorType};
+use crate::parser::import::Import;
 use crate::lexer::lexer::*;
 use crate::parser::ast::*;
 
+// парсер
 pub struct Parser {
     tokens: Vec<Token>,
     current: u128,
@@ -13,6 +13,8 @@ pub struct Parser {
     full_name_prefix: String,
 }
 
+// имплементация
+#[allow(unused_qualifications)]
 impl Parser {
     pub fn new(tokens: Vec<Token>, filename: String, full_name_prefix: String) -> Parser {
         Parser { tokens, current: 0, filename, full_name_prefix }
@@ -201,8 +203,7 @@ impl Parser {
     }
 
     fn access_stmt(&mut self) -> Result<Node, Error> {
-        let location = self.peek()?.address;
-        let result = set_should_push(self.parse_access(false)?, false, location)?;
+        let result = set_should_push(self.parse_access(false)?, false)?;
         Ok(result)
     }
 
@@ -538,7 +539,6 @@ impl Parser {
         })
     }
 
-    //noinspection ALL
     fn elif_stmt(&mut self) -> Result<Node, Error> {
         let location = self.consume(TokenType::Elif)?;
         let logical = self.expr()?;
@@ -569,7 +569,6 @@ impl Parser {
         }
     }
 
-    //noinspection ALL
     fn if_stmt(&mut self) -> Result<Node, Error> {
         let location = self.consume(TokenType::If)?;
         let logical = self.expr()?;
@@ -637,7 +636,6 @@ impl Parser {
         })
     }
 
-    //noinspection ALL
     fn type_stmt(&mut self) -> Result<Node, Error> {
         self.consume(TokenType::Type)?;
         let name = self.consume(TokenType::Id)?;
@@ -687,7 +685,6 @@ impl Parser {
         })
     }
 
-    //noinspection ALL
     fn unit_stmt(&mut self) -> Result<Node, Error> {
         self.consume(TokenType::Unit)?;
         let name = self.consume(TokenType::Id)?;

@@ -1,4 +1,5 @@
-﻿use std::fmt::{Debug, Formatter};
+﻿// импорты
+use std::fmt::{Debug, Formatter};
 use crate::lexer::address::Address;
 use crate::vm::bytecode::Chunk;
 use crate::vm::flow::ControlFlow;
@@ -12,14 +13,16 @@ pub struct Symbol {
     pub full_name: Option<String>,
 }
 impl Symbol {
+    #[allow(unused_qualifications)]
     pub fn new(name: String, full_name: String) -> Symbol {
         Symbol {name, full_name: Option::Some(full_name)}
     }
     pub fn new_option(name: String, full_name: Option<String>) -> Symbol {
         Symbol {name, full_name }
     }
+    #[allow(unused_qualifications)]
     pub fn by_name(name: String) -> Symbol {
-        Symbol {name, full_name:Option::None}
+        Symbol {name, full_name: Option::None}
     }
 }
 

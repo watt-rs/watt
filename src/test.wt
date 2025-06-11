@@ -23,6 +23,7 @@ fun factorial(n) {
 }
 println(factorial(15))
 */
+/*
 fun a() {
     while true {
         println('thread a')
@@ -35,3 +36,17 @@ fun b() {
 }
 thread(a)
 thread(b)
+*/
+/*
+return 10
+*/
+fun factorial(n) {
+    f := 1
+    result := 1
+    while f < n {
+        f += 1
+        result *= f
+    }
+    return result
+}
+println(factorial(15))

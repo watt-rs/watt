@@ -1,20 +1,18 @@
-﻿/*
-Потоки
- */
+﻿// потоки
 use std::thread::{JoinHandle};
 use crate::lexer::address::Address;
 use crate::vm::bytecode::Chunk;
+use crate::vm::statics::statics;
 use crate::vm::table::Table;
 use crate::vm::threads::{gil, nonsafe};
 use crate::vm::values::{Function, Value};
-use crate::VM_PTR;
-/*
-Поток
- */
+
+// поток
 #[derive(Debug)]
 pub struct VmThread {
     thread: Option<JoinHandle<()>>,
 }
+// имплементация
 impl VmThread {
     // новый поток
     pub fn new() -> Self {
@@ -23,13 +21,14 @@ impl VmThread {
     // запуск
     pub fn start(&mut self, addr: Address,
                  function: *mut Function, args: Box<Chunk>, table: *mut Table) {
-        // табличка
+        // нонсейфы
         let nonsafe_table = nonsafe::NonSend::new(table);
         let nonsafe_function = nonsafe::NonSend::new(function);
         let nonsafe_args = nonsafe::NonSend::new(args);
-        // поток
+        // запуск потока
         self.thread = Some(std::thread::spawn(move || unsafe {
-            let _ = (*VM_PTR.unwrap()).call(
+            let vm_ptr = statics::VM_PTR;
+            let _ = (*vm_ptr.unwrap()).call(
                 addr.clone(),
                 (*nonsafe_function.get()).name.name.clone(),
                 Value::Fn(nonsafe_function.get()),
@@ -37,19 +36,17 @@ impl VmThread {
                 nonsafe_table.get(),
                 false
             );
-            gil::with_gil(||{(*(*VM_PTR.unwrap()).threads).threads_amount -= 1})
+            gil::with_gil(||{(*(*vm_ptr.unwrap()).threads).threads_amount -= 1})
         }));
     }
 }
 
-/*
-Код для работы с потоками
- */
+// управление потоками
 #[derive(Debug)]
 pub struct Threads {
     pub threads_amount: u16
 }
-
+// имплементация
 impl Threads {
     // новые потоки
     pub fn new() -> Threads {
@@ -67,7 +64,12 @@ impl Threads {
 
     // ожидание
     pub unsafe fn wait_finish(&mut self) {
-        while self.threads_amount > 0 {
+        // цикл
+        loop {
+            // ожидание колличества потоков
+            if self.threads_amount <= 0 {
+                break;
+            }
         }
     }
 }

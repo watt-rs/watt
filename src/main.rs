@@ -1,32 +1,33 @@
-/*
-Main modules
- */
-mod errors;
+// объявление модулей
 mod lexer;
-mod colors;
 mod compiler;
-mod import;
 mod parser;
 mod vm;
+mod errors;
+mod semantic;
 
+// импорты
 use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
-// imports
 use crate::lexer::lexer::Lexer;
 use crate::parser::parser::Parser;
 use crate::errors::*;
 use crate::compiler::visitor::CompileVisitor;
+use crate::errors::errors::{Error, ErrorType};
 use crate::lexer::address::Address;
-use crate::vm::*;
+use crate::semantic::analyzer::Analyzer;
 use crate::vm::flow::ControlFlow;
 use crate::vm::table::Table;
 use crate::vm::threads::threads::Threads;
 use crate::vm::values::Value;
 use crate::vm::vm::{VmSettings, VM};
+use crate::vm::memory::memory;
+use crate::vm::statics::statics;
+use crate::vm::statics::statics::VM_PTR;
 
-pub static mut VM_PTR: Option<*mut VM> = None;
-pub static mut THREADS_PTR: Option<*mut Threads> = None;
-
+// исполнения
+#[allow(unused_mut)]
+#[allow(unused_qualifications)]
 unsafe fn exec() -> Result<(), Error> {
     let code = match fs::read_to_string("./src/test.wt") {
         Ok(code) => code,
@@ -46,6 +47,10 @@ unsafe fn exec() -> Result<(), Error> {
     let ast = Parser::new(tokens, file_name.clone(), "main".to_string()).parse()?;
     println!("ast: {:?}", ast.clone());
     println!("...");
+    println!("analyzing...");
+    println!("...");
+    let mut analyzer = Analyzer::new();
+    analyzer.analyze(ast.clone())?;
     let opcodes = CompileVisitor::new().compile(ast)?;
     println!("opcodes: {:?}", opcodes.clone());
     println!("...");
@@ -54,17 +59,17 @@ unsafe fn exec() -> Result<(), Error> {
         .expect("Time went backwards")
         .as_nanos();
     println!("runtime: ");
-    THREADS_PTR = Option::Some(memory::alloc_value(Threads::new()));
+    statics::THREADS_PTR = Option::Some(memory::alloc_value(Threads::new()));
     let mut vm = VM::new(VmSettings::new(
         100,
         true
-    ), THREADS_PTR.unwrap())?;
+    ), statics::THREADS_PTR.unwrap())?;
     VM_PTR = Option::Some(memory::alloc_value(vm));
     if let Err(e) = (*VM_PTR.unwrap()).run(opcodes, (*VM_PTR.unwrap() ).globals) {
-        if let ControlFlow::Error(error) = e {
-            return Err(error);
+        return if let ControlFlow::Error(error) = e {
+            Err(error)
         } else {
-            return Err(Error::new(
+            Err(Error::new(
                 ErrorType::Runtime,
                 Address::new(0, "internal".to_string()),
                 format!("flow leak: {:?}", e),

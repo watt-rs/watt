@@ -1,15 +1,10 @@
-﻿/*
-Структура адреса
- */
+﻿// адрес
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Address {
     line: u64,
     file: String,
 }
-
-/*
-Структура адреса : имплементация
- */
+// имплементация
 impl Address {
     pub fn new(line: u64, file: String) -> Address {
         Address { line, file }

@@ -1,18 +1,18 @@
-﻿use std::backtrace::Backtrace;
+﻿// импорты
 use std::collections::BTreeMap;
-use crate::errors::{Error, ErrorType};
+use crate::errors::errors::{Error, ErrorType};
 use crate::lexer::address::Address;
 use crate::vm::threads::gil;
 use crate::vm::values::Value;
-use crate::vm::vm::VM;
 
+// таблица
 #[derive(Clone, Debug)]
 pub struct Table {
     pub fields: BTreeMap<String,Value>,
     pub root: *mut Table,
     pub closure: *mut Table,
 }
-
+// имплементация
 impl Table {
     pub fn new() -> Table {
         Table {
@@ -159,5 +159,6 @@ impl Table {
     }
 }
 
+// имплементация Send и Sync для трансфера между потоками
 unsafe impl Send for Table {}
 unsafe impl Sync for Table {}

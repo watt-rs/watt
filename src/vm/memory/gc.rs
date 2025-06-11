@@ -1,8 +1,9 @@
-use crate::vm::memory;
+// импорты
 use crate::vm::table::Table;
 use crate::vm::threads::gil;
 use crate::vm::values::{FnOwner, Value};
 use crate::vm::vm::VM;
+use crate::vm::memory::memory;
 
 // структура сборщика мусора
 #[derive(Debug)]
@@ -52,10 +53,10 @@ impl GC {
                 self.mark_table((*f).closure);
                 if !(*f).owner.is_null() {
                     match (*(*f).owner) {
-                        FnOwner::Unit(unit) => unsafe {
+                        FnOwner::Unit(unit) => {
                             self.mark_value(Value::Unit(unit));
                         }
-                        FnOwner::Instance(unit) => unsafe {
+                        FnOwner::Instance(unit) => {
                             self.mark_value(Value::Instance(unit));
                         }
                     }

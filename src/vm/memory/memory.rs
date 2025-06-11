@@ -1,4 +1,5 @@
-﻿use std::alloc::{alloc, dealloc, Layout};
+﻿// импорты
+use std::alloc::{alloc, dealloc, Layout};
 
 // аллокация значения в куче
 pub fn alloc_value<T: std::fmt::Debug>(value: T) -> *mut T {
@@ -25,13 +26,10 @@ pub fn free_value<T>(ptr: *mut T) {
     }
 }
 
-// высвобождение памяти
+// высвобождение памяти константного указателя
 pub fn free_const_value<T>(ptr: *const T) {
-    unsafe {
-        let layout = Layout::new::<T>();
-        if ptr.is_null() {
-            return;
-        }
-        free_value(ptr as *mut T);
+    if ptr.is_null() {
+        return;
     }
+    free_value(ptr as *mut T);
 }
