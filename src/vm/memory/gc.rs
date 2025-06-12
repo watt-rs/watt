@@ -1,3 +1,4 @@
+use std::collections::{HashSet};
 // импорты
 use crate::vm::table::Table;
 use crate::vm::threads::gil;
@@ -8,9 +9,9 @@ use crate::vm::memory::memory;
 // структура сборщика мусора
 #[derive(Debug)]
 pub struct GC {
-    objects: Vec<Value>,
-    marked: Vec<Value>,
-    marked_tables: Vec<*mut Table>,
+    objects: HashSet<Value>,
+    marked: HashSet<Value>,
+    marked_tables: HashSet<*mut Table>,
     debug: bool,
 }
 
@@ -19,9 +20,9 @@ impl GC {
     // новый gc
     pub fn new(debug: bool) -> GC {
         GC {
-            objects: vec![],
-            marked: vec![],
-            marked_tables: vec![],
+            objects: HashSet::new(),
+            marked: HashSet::new(),
+            marked_tables: HashSet::new(),
             debug
         }
     }
@@ -31,7 +32,7 @@ impl GC {
     }
     // ресет
     fn reset(&mut self) {
-        self.marked = vec![];
+        self.marked = HashSet::new();
     }
     // маркинг значения
     #[allow(unused_parens)]
@@ -45,11 +46,11 @@ impl GC {
         // маркинг
         match value {
             Value::Instance(instance) => unsafe {
-                self.marked.push(value);
+                self.marked.insert(value);
                 self.mark_table((*instance).fields);
             }
             Value::Fn(f) => unsafe {
-                self.marked.push(value);
+                self.marked.insert(value);
                 self.mark_table((*f).closure);
                 if !(*f).owner.is_null() {
                     match (*(*f).owner) {
@@ -63,14 +64,14 @@ impl GC {
                 }
             }
             Value::Unit(unit) => unsafe {
-                self.marked.push(value);
+                self.marked.insert(value);
                 self.mark_table((*unit).fields)
             }
             Value::Native(_) => {
-                self.marked.push(value);
+                self.marked.insert(value);
             }
             Value::String(_) => {
-                self.marked.push(value);
+                self.marked.insert(value);
             }
             _ => {}
         }
@@ -82,7 +83,7 @@ impl GC {
             return;
         }
         // добавляем
-        self.marked_tables.push(table);
+        self.marked_tables.insert(table);
         // лог
         self.log(format!("gc :: mark :: table = {:?}", table));
         // значения таблицы
@@ -108,7 +109,7 @@ impl GC {
             if self.marked.contains(&value.clone()) {
                 true
             } else {
-                to_free.push(value.clone());
+                to_free.push(*value);
                 false
             }
         });
@@ -124,7 +125,7 @@ impl GC {
             Value::Native(_) | Value::Unit(_)  |
             Value::String(_) => {
                 if !self.objects.contains(&value) {
-                    self.objects.push(value);
+                    self.objects.insert(value);
                 }
             }
             _ => {}

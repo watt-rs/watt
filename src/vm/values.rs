@@ -1,5 +1,6 @@
 ﻿// импорты
 use std::fmt::{Debug, Formatter};
+use std::hash::{Hash, Hasher};
 use crate::lexer::address::Address;
 use crate::vm::bytecode::Chunk;
 use crate::vm::flow::ControlFlow;
@@ -191,6 +192,43 @@ impl PartialEq for Value {
                 a == b
             }
             _ => false
+        }
+    }
+}
+impl Eq for Value {}
+impl Hash for Value {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match *self {
+            Value::Instance(a) => {
+                (a as usize).hash(state);
+            }
+            Value::Fn(a) => {
+                (a as usize).hash(state);
+            }
+            Value::Native(a) => {
+                (a as usize).hash(state);
+            }
+            Value::Bool(a) => {
+                a.hash(state);
+            }
+            Value::Type(a) => {
+                (a as usize).hash(state);
+            }
+            Value::String(a) => unsafe {
+                (a as usize).hash(state);
+            }
+            Value::Int(a) => {
+                a.hash(state);
+            }
+            Value::Float(a) => {
+                a.to_bits().hash(state);
+            }
+            Value::Unit(a) => unsafe {
+                (a as usize).hash(state);
+            }
+            Value::Null => {
+                0.hash(state);
+            }
         }
     }
 }
