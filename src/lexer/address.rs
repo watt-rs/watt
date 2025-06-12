@@ -1,20 +1,15 @@
 ﻿// адрес
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Address {
-    line: u64,
-    file: String,
+    pub line: u64,
+    pub column: u16,
+    pub file: String,
+    pub line_text: String,
 }
 // имплементация
 impl Address {
-    pub fn new(line: u64, file: String) -> Address {
-        Address { line, file }
-    }
-
-    pub fn line(&self) -> u64 {
-        self.line
-    }
-
-    pub fn file(&self) -> String {
-        self.file.clone()
+    pub fn new(line: u64, column: u16,
+               file: String, line_text: String) -> Address {
+        Address { line, column, file, line_text }
     }
 }

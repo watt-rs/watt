@@ -1,7 +1,8 @@
 ﻿// импорты
 use std::cell::RefCell;
 use std::collections::VecDeque;
-use crate::errors::errors::{Error, ErrorType};
+use crate::error;
+use crate::errors::errors::{Error};
 use crate::lexer::address::Address;
 use crate::vm::bytecode::{Chunk, Opcode};
 use crate::vm::flow::ControlFlow;
@@ -77,12 +78,11 @@ impl VM {
     // поп
     pub fn pop(&mut self, address: Address) -> Result<Value, ControlFlow> {
         if self.stack_len() == 0 {
-            return Err(ControlFlow::Error(Error::new(
-                ErrorType::Runtime,
+            error!(Error::new(
                 address,
                 "stack underflow.".to_string(),
                 "check your code.".to_string()
-            )))
+            ));
         }
         Self::stack.with(|stack| Ok(stack.borrow_mut().pop_back().unwrap()))
     }
@@ -161,12 +161,11 @@ impl VM {
         let operand_a = self.pop(address.clone())?;
         let operand_b = self.pop(address.clone())?;
         // ошибка
-        let error = ControlFlow::Error(Error::new(
-            ErrorType::Runtime,
+        let error = Error::new(
             address.clone(),
             format!("could not use '{}' with {:?} and {:?}", op, operand_a, operand_b),
             "check your code.".to_string()
-        ));
+        );
         // бинарная операция
         match op.clone() {
             "+" => {
@@ -174,12 +173,12 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Float(a + b)); }
                         Value::Int(b) => { self.push(Value::Float(a + (b as f64))); }
-                        _ => { return Err(error) }
+                        _ => { error!(error); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Float((a as f64) + b)); }
                         Value::Int(b) => { self.push(Value::Int(a + b)); }
-                        _ => { return Err(error) }
+                        _ => { error!(error); }
                     }}
                     Value::String(a) => { match operand_b {
                         Value::String(b) => {
@@ -189,9 +188,9 @@ impl VM {
                             self.gc_register(string, table);
                             self.push(string);
                         }
-                        _ => { return Err(error) }
+                        _ => { error!(error); }
                     }}
-                    _ => { return Err(error) }
+                    _ => { error!(error); }
                 }
             }
             "-" => {
@@ -199,14 +198,14 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Float(a - b)); }
                         Value::Int(b) => { self.push(Value::Float(a - (b as f64))); }
-                        _ => { return Err(error) }
+                        _ => { error!(error); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Float((a as f64) - b)); }
                         Value::Int(b) => { self.push(Value::Int(a - b)); }
-                        _ => { return Err(error) }
+                        _ => { error!(error); }
                     }}
-                    _ => { return Err(error) }
+                    _ => { error!(error); }
                 }
             }
             "*" => {
@@ -214,14 +213,14 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Float(a * b)); }
                         Value::Int(b) => { self.push(Value::Float(a * (b as f64))); }
-                        _ => { return Err(error) }
+                        _ => { error!(error); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Float((a as f64) * b)); }
                         Value::Int(b) => { self.push(Value::Int(a * b)); }
-                        _ => { return Err(error) }
+                        _ => { error!(error); }
                     }}
-                    _ => { return Err(error) }
+                    _ => { error!(error); }
                 }
             }
             "/" => {
@@ -229,14 +228,14 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Float(a / b)); }
                         Value::Int(b) => { self.push(Value::Float(a / (b as f64))); }
-                        _ => { return Err(error) }
+                        _ => { error!(error); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Float((a as f64) / b)); }
                         Value::Int(b) => { self.push(Value::Int(a / b)); }
-                        _ => { return Err(error) }
+                        _ => { error!(error); }
                     }}
-                    _ => { return Err(error) }
+                    _ => { error!(error); }
                 }
             }
             "%" => {
@@ -244,14 +243,14 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Float(a % b)); }
                         Value::Int(b) => { self.push(Value::Float(a % (b as f64))); }
-                        _ => { return Err(error) }
+                        _ => { error!(error); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Float((a as f64) % b)); }
                         Value::Int(b) => { self.push(Value::Int(a % b)); }
-                        _ => { return Err(error) }
+                        _ => { error!(error); }
                     }}
-                    _ => { return Err(error) }
+                    _ => { error!(error); }
                 }
             }
             _ => { panic!("operator = {} is not found.", op)}
@@ -264,12 +263,11 @@ impl VM {
         // операнд
         let operand = self.pop(address.clone())?;
         // ошибка
-        let error = ControlFlow::Error(Error::new(
-            ErrorType::Runtime,
+        let error = Error::new(
             address.clone(),
             format!("could not use 'negate' for {:?}", operand),
             "check your code.".to_string()
-        ));
+        );
         // негэйт
         match operand {
             Value::Float(a) => {
@@ -278,7 +276,7 @@ impl VM {
             Value::Int(a) => {
                 self.push(Value::Int(-a));
             }
-            _ => { return Err(error) }
+            _ => { error!(error); }
         }
         // успех
         Ok(())
@@ -288,18 +286,17 @@ impl VM {
     unsafe fn op_bang(&mut self, address: Address) -> Result<(), ControlFlow> {
         // операнд
         let operand = self.pop(address.clone())?;
-        let error = ControlFlow::Error(Error::new(
-            ErrorType::Runtime,
+        let error = Error::new(
             address.clone(),
             format!("could not use 'bang' for {:?}", operand),
             "check your code.".to_string()
-        ));
+        );
         // бэнг
         match operand {
             Value::Bool(b) => {
                 self.push(Value::Bool(!b));
             }
-            _ => { return Err(error) }
+            _ => { error!(error); }
         }
         // успех
         Ok(())
@@ -310,12 +307,11 @@ impl VM {
         // операнды
         let operand_a = self.pop(address.clone())?;
         let operand_b = self.pop(address.clone())?;
-        let error = ControlFlow::Error(Error::new(
-            ErrorType::Runtime,
+        let error = Error::new(
             address.clone(),
             format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
             "check your code.".to_string()
-        ));
+        );
         // условие
         match op {
             ">" => {
@@ -323,14 +319,14 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool(a > b)); }
                         Value::Int(b) => { self.push(Value::Bool(a > (b as f64))); }
-                        _ => { return Err(error); }
+                        _ => { error!(error); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool((a as f64) > b)); }
                         Value::Int(b) => { self.push(Value::Bool(a > b)); }
-                        _ => { return Err(error); }
+                        _ => { error!(error); }
                     }}
-                    _ => { return Err(error); }
+                    _ => { error!(error); }
                 }
             },
             "<" => {
@@ -338,14 +334,14 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool(a < b)); }
                         Value::Int(b) => { self.push(Value::Bool(a < (b as f64))); }
-                        _ => { return Err(error); }
+                        _ => { error!(error); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool((a as f64) < b)); }
                         Value::Int(b) => { self.push(Value::Bool(a < b)); }
-                        _ => { return Err(error); }
+                        _ => { error!(error); }
                     }}
-                    _ => { return Err(error); }
+                    _ => { error!(error); }
                 }
             },
             ">=" => {
@@ -353,14 +349,14 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool(a >= b)); }
                         Value::Int(b) => { self.push(Value::Bool(a >= (b as f64))); }
-                        _ => { return Err(error); }
+                        _ => { error!(error); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool((a as f64) >= b)); }
                         Value::Int(b) => { self.push(Value::Bool(a >= b)); }
-                        _ => { return Err(error); }
+                        _ => { error!(error); }
                     }}
-                    _ => { return Err(error); }
+                    _ => { error!(error); }
                 }
             }
             "<=" => {
@@ -368,14 +364,14 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool(a <= b)); }
                         Value::Int(b) => { self.push(Value::Bool(a <= (b as f64))); }
-                        _ => { return Err(error); }
+                        _ => { error!(error); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool((a as f64) <= b)); }
                         Value::Int(b) => { self.push(Value::Bool(a <= b)); }
-                        _ => { return Err(error); }
+                        _ => { error!(error); }
                     }}
-                    _ => { return Err(error) }
+                    _ => { error!(error); }
                 }
             }
             "==" => {
@@ -434,12 +430,11 @@ impl VM {
         // операнды
         let operand_a = self.pop(address.clone())?;
         let operand_b = self.pop(address.clone())?;
-        let error = ControlFlow::Error(Error::new(
-            ErrorType::Runtime,
+        let error = Error::new(
             address.clone(),
             format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
             "check your code.".to_string()
-        ));
+        );
         // логика
         match op {
             "and" => {
@@ -447,10 +442,10 @@ impl VM {
                     Value::Bool(a) => {
                         match operand_b {
                             Value::Bool(b) => { self.push(Value::Bool(a && b)); }
-                            _ => { return Err(error); }
+                            _ => { error!(error); }
                         }
                     }
-                    _ => { return Err(error); }
+                    _ => { error!(error); }
                 }
             }
             "or" => {
@@ -458,10 +453,10 @@ impl VM {
                     Value::Bool(a) => {
                         match operand_b {
                             Value::Bool(b) => { self.push(Value::Bool(a || b)); }
-                            _ => { return Err(error); }
+                            _ => { error!(error); }
                         }
                     }
-                    _ => { return Err(error); }
+                    _ => { error!(error); }
                 }
             }
             _ => { panic!("operator = {} is not found.", op)}
@@ -489,12 +484,11 @@ impl VM {
                 }
             }
         } else {
-            return Err(ControlFlow::Error(Error::new(
-                ErrorType::Runtime,
+            error!(Error::new(
                 addr.clone(),
                 format!("condition provided not a bool: {:?}", bool),
                 "condition should provide a bool.".to_string()
-            )))
+            ))
         }
         // успех
         Ok(())
@@ -542,12 +536,12 @@ impl VM {
         self.gc_register(function_value, table);
         // дефайн функции
         if let Err(e) = (*table).define(addr.clone(), symbol.name.clone(), function_value) {
-            return Err(ControlFlow::Error(e))
+            error!(e);
         }
         // дефайн функции по full-name
         if symbol.full_name.is_some() {
             if let Err(e) = (*table).define(addr.clone(), symbol.full_name.unwrap(), function_value) {
-                return Err(ControlFlow::Error(e))
+                error!(e);
             }
         }
         // успех
@@ -567,12 +561,12 @@ impl VM {
         );
         // дефайн типа
         if let Err(e) = (*self.types).define(addr.clone(), symbol.name.clone(), Value::Type(t)) {
-            return Err(ControlFlow::Error(e))
+            error!(e);
         }
         // дефайн по full-name
         if symbol.full_name.is_some() {
             if let Err(e) = (*self.types).define(addr.clone(), symbol.full_name.unwrap().clone(), Value::Type(t)){
-                return Err(ControlFlow::Error(e))
+                error!(e);
             }
         }
         // успех
@@ -602,13 +596,13 @@ impl VM {
         // дефайн юнита
         if let Err(e) = (*self.units).define(addr.clone(), symbol.name.clone(),
                                              Value::Unit(unit)) {
-            return Err(ControlFlow::Error(e))
+            error!(e);
         }
         // дефайн по full-name
         if symbol.full_name.is_some() {
             if let Err(e) = (*self.units).define(addr.clone(), symbol.full_name.unwrap().clone(),
                                                  Value::Unit(unit)) {
-                return Err(ControlFlow::Error(e))
+                error!(e);
             }
         }
         // успех
@@ -626,7 +620,7 @@ impl VM {
             let operand = self.pop(addr.clone())?;
             // дефайним
             if let Err(e) = (*table).define(addr.clone(), name, operand) {
-                return Err(ControlFlow::Error(e));
+                error!(e);
             }
         }
         // если есть
@@ -642,7 +636,7 @@ impl VM {
                     let operand = self.pop(addr.clone())?;
                     // дефайним
                     if let Err(e) = (*(*instance).fields).define(addr.clone(), name, operand) {
-                        return Err(ControlFlow::Error(e))
+                        error!(e);
                     }
                 }
                 Value::Unit(unit) => {
@@ -652,16 +646,15 @@ impl VM {
                     let operand = self.pop(addr.clone())?;
                     // дефайним
                     if let Err(e) = (*(*unit).fields).define(addr.clone(), name, operand) {
-                        return Err(ControlFlow::Error(e))
+                        error!(e);
                     }
                 }
                 _ => {
-                    return Err(ControlFlow::Error(Error::new(
-                        ErrorType::Runtime,
+                    error!(Error::new(
                         addr.clone(),
                         format!("{:?} is not a container.", previous),
                         "you can define variable for unit or instance.".to_string()
-                    )))
+                    ))
                 }
             }
         }
@@ -680,7 +673,7 @@ impl VM {
             let operand = self.pop(addr.clone())?;
             // дефайним
             if let Err(e) = (*table).set(addr.clone(), name, operand) {
-                return Err(ControlFlow::Error(e));
+                error!(e);
             }
         }
         // если есть
@@ -696,7 +689,7 @@ impl VM {
                     let operand = self.pop(addr.clone())?;
                     // устанавливаем значение
                     if let Err(e) = (*(*instance).fields).set_local(addr.clone(), name, operand) {
-                        return Err(ControlFlow::Error(e))
+                        error!(e);
                     }
                 }
                 Value::Unit(unit) => {
@@ -706,16 +699,15 @@ impl VM {
                     let operand = self.pop(addr.clone())?;
                     // устанавливаем значение
                     if let Err(e) = (*(*unit).fields).set_local(addr.clone(), name, operand) {
-                        return Err(ControlFlow::Error(e))
+                        error!(e);
                     }
                 }
                 _ => {
-                    return Err(ControlFlow::Error(Error::new(
-                        ErrorType::Runtime,
+                    error!(Error::new(
                         addr.clone(),
                         format!("{:?} is not a container.", previous),
                         "you can define variable for unit or instance.".to_string()
-                    )))
+                    ))
                 }
             }
         }
@@ -740,7 +732,7 @@ impl VM {
             // проверяем на ошибку
             if let Err(e) = lookup_result {
                 // ошибка
-                return Err(ControlFlow::Error(e))
+                error!(e)
             }
             else if let Ok(value) = lookup_result {
                 // пушим в стек
@@ -760,7 +752,7 @@ impl VM {
                     // проверяем на ошибку
                     if let Err(e) = lookup_result {
                         // ошибка
-                        return Err(ControlFlow::Error(e))
+                        error!(e)
                     }
                     else if let Ok(value) = lookup_result {
                         // пушим в стек
@@ -774,7 +766,7 @@ impl VM {
                     // проверяем на ошибку
                     if let Err(e) = lookup_result {
                         // ошибка
-                        return Err(ControlFlow::Error(e))
+                        error!(e)
                     }
                     else if let Ok(value) = lookup_result {
                         // пушим в стек
@@ -783,12 +775,11 @@ impl VM {
                     }
                 }
                 _ => {
-                    return Err(ControlFlow::Error(Error::new(
-                        ErrorType::Runtime,
+                    error!(Error::new(
                         addr.clone(),
                         format!("{:?} is not a container.", previous),
                         "you can load variable from unit or instance.".to_string()
-                    )))
+                    ))
                 }
             }
         }
@@ -824,17 +815,17 @@ impl VM {
                     let operand = vm.pop(addr.clone())?;
                     // устанавливаем в таблице
                     if let Err(e) = (*table).define(addr.clone(), param.clone(), operand) {
-                        return Err(ControlFlow::Error(e));
+                        error!(e);
                     }
                 }
                 Ok(())
             } else {
-                Err(ControlFlow::Error(Error::new(
-                    ErrorType::Runtime,
+                error!(Error::new(
                     addr.clone(),
                     format!("invalid args amount: {} to call: {}.", passed_amount, name),
                     format!("expected {} arguments.", params_amount)
-                )))
+                ));
+                Ok(())
             }
         }
 
@@ -853,12 +844,12 @@ impl VM {
             if passed_amount == params_amount {
                 Ok(())
             } else {
-                Err(ControlFlow::Error(Error::new(
-                    ErrorType::Runtime,
+                error!(Error::new(
                     addr.clone(),
                     format!("invalid args amount: {} to call: {}.", passed_amount, name),
                     format!("expected {} arguments.", params_amount)
-                )))
+                ));
+                Ok(())
             }
         }
 
@@ -874,7 +865,7 @@ impl VM {
                         if let Err(e) = (*(*unit).fields).define(
                             addr.clone(), "self".to_string(), Value::Unit(unit)
                         ) {
-                            return Err(ControlFlow::Error(e));
+                            error!(e);
                         }
                     },
                     FnOwner::Instance(instance) => {
@@ -882,7 +873,7 @@ impl VM {
                         if let Err(e) = (*(*instance).fields).define(
                             addr.clone(), "self".to_string(), Value::Instance(instance)
                         ) {
-                            return Err(ControlFlow::Error(e));
+                            error!(e);
                         }
                     }
                 }
@@ -927,12 +918,12 @@ impl VM {
             Ok(())
         }
         else {
-            Err(ControlFlow::Error(Error::new(
-                ErrorType::Runtime,
+            error!(Error::new(
                 addr.clone(),
                 format!("{} is not a fn.", name),
                 "you can call only fn-s.".to_string()
-            )))
+            ));
+            Ok(())
         }
     }
 
@@ -946,7 +937,7 @@ impl VM {
             // проверяем на ошибку
             if let Err(e) = lookup_result {
                 // ошибка
-                return Err(ControlFlow::Error(e))
+                error!(e)
             }
             else if let Ok(value) = lookup_result {
                 // вызываем
@@ -965,7 +956,7 @@ impl VM {
                     // проверяем на ошибку
                     if let Err(e) = lookup_result {
                         // ошибка
-                        return Err(ControlFlow::Error(e))
+                        error!(e)
                     }
                     else if let Ok(value) = lookup_result {
                         // вызываем
@@ -978,7 +969,7 @@ impl VM {
                     // проверяем на ошибку
                     if let Err(e) = lookup_result {
                         // ошибка
-                        return Err(ControlFlow::Error(e))
+                        error!(e)
                     }
                     else if let Ok(value) = lookup_result {
                         // вызываем
@@ -986,12 +977,11 @@ impl VM {
                     }
                 }
                 _ => {
-                    return Err(ControlFlow::Error(Error::new(
-                        ErrorType::Runtime,
+                    error!(Error::new(
                         addr.clone(),
                         format!("{:?} is not a container.", previous),
                         "you can load variable from unit or instance.".to_string()
-                    )))
+                    ))
                 }
             }
         }
@@ -1036,17 +1026,17 @@ impl VM {
                     let operand = vm.pop(addr.clone())?;
                     // устанавливаем в таблице
                     if let Err(e) = (*table).define(addr.clone(), param.clone(), operand) {
-                        return Err(ControlFlow::Error(e));
+                        error!(e);
                     }
                 }
                 Ok(())
             } else {
-                Err(ControlFlow::Error(Error::new(
-                    ErrorType::Runtime,
+                error!(Error::new(
                     addr.clone(),
                     format!("invalid args amount: {} to create instance of {}.", passed_amount, name),
                     format!("expected {} arguments.", params_amount)
-                )))
+                ));
+                Ok(())
             }
         }
         // ищем тип
@@ -1107,7 +1097,8 @@ impl VM {
             }
         }
         else {
-            Err(ControlFlow::Error(lookup_result.unwrap_err()))
+            error!(lookup_result.unwrap_err());
+            Ok(())
         }
     }
 
@@ -1136,18 +1127,19 @@ impl VM {
             }
             else {
                 // ошибка
-                Err(ControlFlow::Error(Error::new(
-                    ErrorType::Runtime,
+                error!(Error::new(
                     addr.clone(),
                     format!("could not make closure for: {}", name.clone()),
                     "not a function.".to_string()
-                )))
+                ));
+                Ok(())
             }
         }
         else {
-            Err(ControlFlow::Error(
+            error!(
                 lookup_result.unwrap_err()
-            ))
+            );
+            Ok(())
         }
     }
 

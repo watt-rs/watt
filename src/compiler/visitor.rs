@@ -6,7 +6,7 @@ use crate::vm::bytecode::{Chunk, Opcode};
 use crate::vm::values::*;
 use crate::vm::memory::memory;
 use std::collections::VecDeque;
-use crate::errors::errors::{Error, ErrorType};
+use crate::errors::errors::{Error};
 
 // визитор (компилятор)
 pub struct CompileVisitor {
@@ -482,7 +482,6 @@ impl CompileVisitor {
             // неизвестный оператор
             _ => {
                 return Err(Error::new(
-                    ErrorType::Compilation,
                     op.address,
                     format!("undefined unary op: {:?}", op.value),
                     "available: -, !".to_string(),

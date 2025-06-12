@@ -10,7 +10,12 @@ use crate::vm::vm::{VM};
 // провайд билтинов
 pub unsafe fn provide_builtins(vm: &mut VM) -> Result<(), Error> {
     // нативный адрес
-    let natives_address = Address::new(0, "builtins".to_string());
+    let natives_address = Address::new(
+        0,
+        0,
+        "builtins".to_string(),
+        "fun ... (..., ..., n) {".to_string()
+    );
     // нативные функции
     (*vm.globals).define(
         natives_address.clone(),

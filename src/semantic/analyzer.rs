@@ -1,6 +1,6 @@
 ﻿// импорты
 use crate::parser::ast::Node;
-use crate::errors::errors::{Error, ErrorType};
+use crate::errors::errors::{Error};
 use std::collections::VecDeque;
 use crate::lexer::address::Address;
 
@@ -135,7 +135,6 @@ impl Analyzer {
         // проверяем
         if self.analyze_stack.len() == 0 {
             return Err(Error::new(
-                ErrorType::Semantic,
                 addr,
                 "couldn't use continue without loop.".to_string(),
                 "remove this keyword".to_string()
@@ -146,7 +145,6 @@ impl Analyzer {
             Ok(())
         } else {
             Err(Error::new(
-                ErrorType::Semantic,
                 addr,
                 "couldn't use continue without loop.".to_string(),
                 "remove this keyword".to_string()
@@ -159,7 +157,6 @@ impl Analyzer {
         // проверяем
         if self.analyze_stack.len() == 0 {
             return Err(Error::new(
-                ErrorType::Semantic,
                 addr,
                 "couldn't use break without loop.".to_string(),
                 "remove this keyword".to_string()
@@ -170,7 +167,6 @@ impl Analyzer {
             Ok(())
         } else {
             Err(Error::new(
-                ErrorType::Semantic,
                 addr,
                 "couldn't use break without loop.".to_string(),
                 "remove this keyword".to_string()
@@ -194,8 +190,7 @@ impl Analyzer {
         // проверяем
         if self.analyze_stack.len() == 0 {
             return Err(Error::new(
-                ErrorType::Semantic,
-                addr.clone(),
+                addr,
                 "couldn't use return without loop.".to_string(),
                 "remove this keyword".to_string()
             ))
@@ -205,7 +200,6 @@ impl Analyzer {
             Ok(())
         } else {
             Err(Error::new(
-                ErrorType::Semantic,
                 addr,
                 "couldn't use break without loop.".to_string(),
                 "remove this keyword".to_string()

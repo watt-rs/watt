@@ -40,7 +40,7 @@ thread(b)
 /*
 return 10
 */
-fun factorial(n) {
+fun factorial~(n) {
     f := 1
     result := 1
     while f < n {

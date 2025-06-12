@@ -1,6 +1,6 @@
 ﻿// импорты
 use crate::lexer::address::*;
-use crate::errors::errors::{Error, ErrorType};
+use crate::errors::errors::{Error};
 use crate::parser::import::Import;
 use crate::lexer::lexer::*;
 use crate::parser::ast::*;
@@ -177,7 +177,6 @@ impl Parser {
             match left {
                 Node::Define { .. } => {
                     return Err(Error::new(
-                        ErrorType::Parsing,
                         location,
                         "couldn't use define in expr.".to_string(),
                         "check your code.".to_string(),
@@ -185,7 +184,6 @@ impl Parser {
                 }
                 Node::Assign { .. } => {
                     return Err(Error::new(
-                        ErrorType::Parsing,
                         location,
                         "couldn't use assign in expr.".to_string(),
                         "check your code.".to_string(),
@@ -293,9 +291,10 @@ impl Parser {
             //     Ok(self.match_expr()?)
             // }
             _ => Err(Error::new(
-                ErrorType::Parsing,
                 self.peek()?.address,
-                format!("invalid token. {:?}:{:?}", self.peek()?.tk_type, self.peek()?.value),
+                format!("invalid token. {:?}:{:?}",
+                    self.peek()?.tk_type, self.peek()?.value
+                ),
                 "check your code.".to_string(),
             ))
         }
@@ -664,7 +663,6 @@ impl Parser {
                 Node::Assign { .. } => {}
                 _ => {
                     return Err(Error::new(
-                        ErrorType::Parsing,
                         location.address,
                         format!("invalid node for type: {:?}:{:?}", location.tk_type, location.value),
                         "check your code.".to_string(),
@@ -709,7 +707,6 @@ impl Parser {
                 Node::Assign { .. } => {}
                 _ => {
                     return Err(Error::new(
-                        ErrorType::Parsing,
                         location.address,
                         format!("invalid node for unit: {:?}:{:?}", location.tk_type, location.value),
                         "check your code.".to_string(),
@@ -784,7 +781,6 @@ impl Parser {
             }
             _ => {
                 Err(Error::new(
-                    ErrorType::Parsing,
                     tk.address,
                     format!("unexpected token: {:?}:{tk_value}",
                             tk.tk_type, tk_value=tk.value),
@@ -806,7 +802,6 @@ impl Parser {
                     Ok(tk.clone())
                 } else {
                     Err(Error::new(
-                        ErrorType::Parsing,
                         tk.address.clone(),
                         format!("unexpected token: {:?}:{:?}", tk.tk_type, tk.value),
                         "check your code.".to_string()
@@ -815,8 +810,12 @@ impl Parser {
             },
             None => {
                 Err(Error::new(
-                    ErrorType::Parsing,
-                    Address::new(0, self.filename.clone()),
+                    Address::new(
+                        0,
+                        0,
+                        self.filename.clone(),
+                        "eof".to_string()
+                    ),
                     "unexpected eof".to_string(),
                     "check your code.".to_string()
                 ))
@@ -846,8 +845,12 @@ impl Parser {
             },
             None => {
                 Err(Error::new(
-                    ErrorType::Parsing,
-                    Address::new(0, self.filename.clone()),
+                    Address::new(
+                        0,
+                        0,
+                        self.filename.clone(),
+                        "eof".to_string()
+                    ),
                     "unexpected eof".to_string(),
                     "check your code.".to_string()
                 ))

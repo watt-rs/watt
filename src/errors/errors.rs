@@ -2,30 +2,27 @@
 use crate::colors;
 use crate::lexer::address::Address;
 
-// тип ошибки
-#[derive(Debug, Clone)]
-pub enum ErrorType {
-    Parsing,
-    Runtime,
-    Semantic,
-    Compilation,
-}
-
 // ошибка
 #[derive(Debug, Clone)]
 pub struct Error {
-    error_type: ErrorType,
     addr: Address,
     text: String,
     hint: String,
 }
 
+// паника
+#[macro_export]
+macro_rules! error {
+    ($err:expr) => {
+        $err.panic()
+    }
+}
+
 // имплементация
 impl Error {
     // новая ошибка
-    pub fn new(error_type: ErrorType, addr: Address, text: String, hint: String) -> Self {
+    pub fn new(addr: Address, text: String, hint: String) -> Self {
         Error {
-            error_type,
             addr,
             text,
             hint,
@@ -33,25 +30,31 @@ impl Error {
     }
 
     // вывод
-    pub fn print(&self) {
+    pub fn panic(&self) {
+        // выводим
         println!(
-            "{color}╭ ⚡ {error_type} error.",
+            "┌─ {color}panic:{reset} {text}",
             color = colors::RedColor,
-            error_type = match self.error_type {
-                ErrorType::Parsing => "parsing",
-                ErrorType::Compilation => "compilation",
-                ErrorType::Runtime => "runtime",
-                ErrorType::Semantic => "semantic",
-            }
+            reset = colors::ResetColor,
+            text = self.text,
         );
-        println!("│ err: {text}", text = self.text);
-        println!(
-            "│ at: {filename}:{line}",
-            filename = self.addr.file(),
-            line = self.addr.line()
+        println!("│");
+        println!("│ {}:", self.addr.file);
+        println!("│ {gray}{line}{reset} {text}",
+            line = self.addr.line,
+            text = self.addr.line_text,
+            gray = colors::WhiteColor,
+            reset = colors::ResetColor,
         );
-        println!("│ trace: ");
-        println!("│ 💡: {hint}", hint = self.hint);
-        println!("╰ {color}", color = colors::ResetColor);
+        println!("│ {spaces}^", spaces=" ".repeat(
+            self.addr.column as usize
+            +
+            self.addr.line.to_string().len()
+        ));
+        println!("│");
+        println!("│ hint: {hint}", hint = self.hint);
+        println!("{}", colors::ResetColor);
+        // завершаем процесс
+        std::process::exit(1);
     }
 }

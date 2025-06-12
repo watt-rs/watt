@@ -13,7 +13,7 @@ use crate::lexer::lexer::Lexer;
 use crate::parser::parser::Parser;
 use crate::errors::*;
 use crate::compiler::visitor::CompileVisitor;
-use crate::errors::errors::{Error, ErrorType};
+use crate::errors::errors::{Error};
 use crate::lexer::address::Address;
 use crate::semantic::analyzer::Analyzer;
 use crate::vm::flow::ControlFlow;
@@ -33,8 +33,7 @@ unsafe fn exec() -> Result<(), Error> {
         Ok(code) => code,
         Err(e) => {
             return Err(Error::new(
-                ErrorType::Parsing,
-                Address::new(0, "internal".to_string()),
+                Address::new(0, 0, "internal".to_string(), "".to_string()),
                 format!("io error: {}", e.to_string()),
                 "check file test.wt existence.".to_string(),
             ));
@@ -66,16 +65,11 @@ unsafe fn exec() -> Result<(), Error> {
     ), statics::THREADS_PTR.unwrap())?;
     VM_PTR = Option::Some(memory::alloc_value(vm));
     if let Err(e) = (*VM_PTR.unwrap()).run(opcodes, (*VM_PTR.unwrap() ).globals) {
-        return if let ControlFlow::Error(error) = e {
-            Err(error)
-        } else {
-            Err(Error::new(
-                ErrorType::Runtime,
-                Address::new(0, "internal".to_string()),
-                format!("flow leak: {:?}", e),
-                "check your code".to_string()
-            ))
-        }
+        return Err(Error::new(
+            Address::new(0, 0, "internal".to_string(), "".to_string()),
+            format!("flow leak: {:?}", e),
+            "check your code".to_string()
+        ))
     }
     let end = SystemTime::now();
     let end_millis = end.duration_since(UNIX_EPOCH)
@@ -106,7 +100,7 @@ fn main() {
      */
     unsafe {
         if let Err(e) = exec() {
-            e.print()
+            e.panic()
         }
     }
     /*
@@ -120,7 +114,7 @@ fn main() {
 
 unsafe fn test_tables() -> Result<(), Error> {
     let mut table = Table::new();
-    let addr = Address::new(0, "test".to_string());
+    let addr = Address::new(0, 0, "test".to_string(), "".to_string());
     table.set_root(memory::alloc_value(Table::new()));
     (*table.root).closure = memory::alloc_value(Table::new());
     let str = memory::alloc_value("Hello, world!".to_string());

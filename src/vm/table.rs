@@ -1,6 +1,6 @@
 ﻿// импорты
 use std::collections::BTreeMap;
-use crate::errors::errors::{Error, ErrorType};
+use crate::errors::errors::{Error};
 use crate::lexer::address::Address;
 use crate::vm::threads::gil;
 use crate::vm::values::Value;
@@ -44,7 +44,6 @@ impl Table {
                 }
             } else {
                 Err(Error::new(
-                    ErrorType::Runtime,
                     address,
                     name.clone() + " is not found.",
                     "check variable existence.".to_string()
@@ -60,7 +59,6 @@ impl Table {
                 Ok(())
             } else {
                 Err(Error::new(
-                    ErrorType::Runtime,
                     address,
                     name.clone() + " is already defined.",
                     "you can rename variable.".to_string()
@@ -75,7 +73,6 @@ impl Table {
             while !(*current).fields.contains_key(&name) {
                 if (*current).root.is_null() {
                     return Err(Error::new(
-                        ErrorType::Runtime,
                         address,
                         name.clone() + " is not defined.",
                         "you can define it, using := op.".to_string()
@@ -92,7 +89,6 @@ impl Table {
         gil::with_gil(|| -> Result<(), Error> {
             if !self.fields.contains_key(&name) {
                 return Err(Error::new(
-                    ErrorType::Runtime,
                     address,
                     name.clone() + " is not defined.",
                     "you can define it, using := op.".to_string()
@@ -122,7 +118,6 @@ impl Table {
             while !(*current).exists(name.clone()) {
                 if (*current).root.is_null() {
                     return Err(Error::new(
-                        ErrorType::Runtime,
                         address,
                         name + " is not found.",
                         "check variable existence.".to_string()
