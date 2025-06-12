@@ -121,15 +121,18 @@ impl VM {
 
     // добавление в учет сборщика мусора
     pub unsafe fn gc_register(&mut self, value: Value, table: *mut Table) {
-        // добавляем объект
-        (*self.gc).add_object(value);
-        // проверяем порог gc
-        if (*self.gc).objects_amount() > self.settings.gc_threshold {
-            // вызываем gc
-            self.gc_invoke(table);
-            // увеличиваем порог
-            self.settings.gc_threshold *= 2;
-        }
+        // gil
+        gil::with_gil(|| {
+            // добавляем объект
+            (*self.gc).add_object(value);
+            // проверяем порог gc
+            if (*self.gc).objects_amount() > self.settings.gc_threshold {
+                // вызываем gc
+                self.gc_invoke(table);
+                // увеличиваем порог
+                self.settings.gc_threshold *= 2;
+            }
+        });
     }
     
     // пуш в стек

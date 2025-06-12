@@ -120,6 +120,9 @@ impl GC {
     }
     // добавить в аллоцированные
     pub fn add_object(&mut self, value: Value) {
+        // лог
+        self.log(format!("gc :: register :: {}", value.to_string()));
+        // добавляем
         match value {
             Value::Instance(_) | Value::Fn(_) |
             Value::Native(_) | Value::Unit(_)  |
@@ -153,7 +156,7 @@ impl GC {
                 memory::free_value(native);
             }
             _ => {
-                println!("unexpected gc value = {:?}.", value);
+                println!("unexpected gc value = {}.", value.to_string());
             }
         }
         if self.debug { println!("gc :: free :: value = {:?}", value); }
@@ -174,11 +177,14 @@ impl GC {
             // sweep
             self.sweep();
             // ресет
-            self.reset()
+            self.reset();
+            // лог
+            self.log("gc :: end".to_string());
         });
     }
     // количество объектов
     pub fn objects_amount(&mut self) -> usize {
+        // возвращаем
         self.objects.len()
     }
 }

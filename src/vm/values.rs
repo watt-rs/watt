@@ -1,6 +1,7 @@
 ﻿// импорты
 use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
+use strum_macros::ToString;
 use crate::lexer::address::Address;
 use crate::vm::bytecode::Chunk;
 use crate::vm::flow::ControlFlow;
@@ -110,6 +111,7 @@ impl Native {
 
 // значение
 #[derive(Clone, Copy)]
+#[derive(ToString)]
 pub enum Value {
     Float(f64),
     Int(i64),
