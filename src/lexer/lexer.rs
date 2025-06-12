@@ -1,5 +1,6 @@
 ﻿// импорты
 use std::collections::HashMap;
+use crate::error;
 use crate::lexer::address::*;
 use crate::errors::errors::{Error};
 
@@ -129,7 +130,7 @@ impl Lexer {
         lexer
     }
 
-    pub fn lex(&mut self) -> Result<Vec<Token>, Error> {
+    pub fn lex(&mut self) -> Vec<Token>{
         while !self.is_at_end() {
             let ch = self.advance();
             match ch {
@@ -277,7 +278,7 @@ impl Lexer {
                             self.tokens.push(tk);
                         }
                         Err(err) => {
-                            return Err(err);
+                            error!(err);
                         }
                     }
                     
@@ -289,7 +290,7 @@ impl Lexer {
                                 self.tokens.push(tk);
                             }
                             Err(err) => {
-                                return Err(err);
+                                error!(err);
                             }
                         }
                     }
@@ -298,7 +299,7 @@ impl Lexer {
                         self.tokens.push(token);
                     }
                     else {
-                        return Err(Error::new(
+                        error!(Error::new(
                             Address::new(
                                 self.line,
                                 self.column,
@@ -312,7 +313,7 @@ impl Lexer {
                 }
             }
         }
-        Ok(self.tokens.clone())
+        self.tokens.clone()
     }
 
     fn scan_string(&mut self) -> Result<Token, Error> {

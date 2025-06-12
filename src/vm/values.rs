@@ -21,6 +21,7 @@ impl Symbol {
         Symbol {name, full_name }
     }
     #[allow(unused_qualifications)]
+    #[allow(unused)]
     pub fn by_name(name: String) -> Symbol {
         Symbol {name, full_name: Option::None}
     }
@@ -41,6 +42,7 @@ impl Type {
 
 // экземпляр типа
 #[derive(Clone, Debug)]
+#[allow(unused)]
 pub struct Instance {
     pub t: *mut Type,
     pub fields: *mut Table
@@ -53,6 +55,7 @@ impl Instance {
 
 // юнит
 #[derive(Clone, Debug)]
+#[allow(unused)]
 pub struct Unit {
     pub name: Symbol,
     pub fields: *mut Table,
@@ -156,6 +159,7 @@ impl Debug for Value {
         }
     }
 }
+#[allow(unused_unsafe)]
 impl PartialEq for Value {
     fn eq(&self, other: &Value) -> bool {
         match (*self, *other) {
@@ -175,7 +179,7 @@ impl PartialEq for Value {
                 a == b
             }
             (Value::String(a), Value::String(b)) => unsafe {
-                **a == **b
+                a == b
             }
             (Value::Int(a), Value::Int(b)) => {
                 a == b

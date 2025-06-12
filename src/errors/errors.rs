@@ -1,5 +1,5 @@
 // импорты
-use crate::colors;
+use crate::errors::colors;
 use crate::lexer::address::Address;
 
 // ошибка

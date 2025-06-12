@@ -47,7 +47,7 @@ impl VM {
     }
     
     // новая вм
-    pub unsafe fn new(settings: VmSettings, threads: *mut Threads) -> Result<VM, Error> {
+    pub unsafe fn new(settings: VmSettings, threads: *mut Threads) -> VM {
         // вм
         let mut vm = VM {
             globals: memory::alloc_value(Table::new()),
@@ -58,9 +58,11 @@ impl VM {
             settings
         };
         // нативы
-        natives::provide_builtins(&mut vm)?;
+        if let Err(e) = natives::provide_builtins(&mut vm) {
+            error!(e)
+        }
         // возвращаем
-        Ok(vm)
+        vm
     }
     
     // длина стека
