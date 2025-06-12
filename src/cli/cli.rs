@@ -23,6 +23,18 @@ struct CLI {
 
     #[arg(long = "lexer-debug", value_name = "lexer_debug")]
     lexer_debug: Option<bool>,
+
+    #[arg(long = "parse-bench", value_name = "parse_bench")]
+    parse_bench: Option<bool>,
+
+    #[arg(long = "compile-bench", value_name = "compile_bench")]
+    compile_bench: Option<bool>,
+
+    #[arg(long = "lexer-bench", value_name = "lexer_bench")]
+    lexer_bench: Option<bool>,
+
+    #[arg(long = "runtime-bench", value_name = "runtime_bench")]
+    runtime_bench: Option<bool>,
 }
 
 pub unsafe fn cli() {
@@ -37,5 +49,9 @@ pub unsafe fn cli() {
         args.lexer_debug,
         args.ast_debug,
         args.opcodes_debug,
+        args.lexer_bench,
+        args.parse_bench,
+        args.compile_bench,
+        args.runtime_bench
     )
 }

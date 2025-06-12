@@ -24,25 +24,29 @@ pub unsafe fn run(
     lexer_debug: Option<bool>,
     ast_debug: Option<bool>,
     opcodes_debug: Option<bool>,
+    lexer_bench: Option<bool>,
+    parser_bench: Option<bool>,
+    compile_bench: Option<bool>,
+    runtime_bench: Option<bool>,
 ) {
     // спиннер компиляции
     let spinner = start_spinner();
     // чтение файла
     let code = read_file(path.clone());
-    // выключаем спиннер
-    spinner.stop("running...");
     // имя файла
     let filename = path.file_name().unwrap().to_str().unwrap().to_string();
     // компиляция
     let tokens = lex(
         filename.clone(),
         code,
-        lexer_debug.unwrap_or(false)
+        lexer_debug.unwrap_or(false),
+        lexer_bench.unwrap_or(false)
     );
     let ast = parse(
         filename,
         tokens.unwrap(),
         ast_debug.unwrap_or(false),
+        parser_bench.unwrap_or(false)
     );
     let analyzed = analyze(
         ast.unwrap()
@@ -50,12 +54,16 @@ pub unsafe fn run(
     let compiled = compile(
         analyzed,
         opcodes_debug.unwrap_or(false),
+        compile_bench.unwrap_or(false)
     );
+    // выключаем спиннер
+    spinner.stop("running...");
     // запуск
     run_chunk(
         compiled,
         gc_threshold.unwrap_or(200),
-        gc_debug.unwrap_or(false)
+        gc_debug.unwrap_or(false),
+        runtime_bench.unwrap_or(false)
     );
 }
 
@@ -93,12 +101,17 @@ fn read_file(path: PathBuf) -> String {
 }
 
 // лексинг
-fn lex(file_name: String, code: String, debug: bool) -> Option<Vec<Token>> {
+fn lex(file_name: String, code: String, debug: bool, bench: bool) -> Option<Vec<Token>> {
+    // начальное время
+    let start = std::time::Instant::now();
     // сканнинг токенов
     let tokens = Lexer::new(
         code,
         file_name
     ).lex();
+    // конечное время
+    let duration = start.elapsed().as_nanos();
+    if bench { println!("benchmark 'lexer', elapsed {}", duration as f64 / 1_000_000f64); }
     // проверяем на дебаг
     if debug {
         println!("tokens debug: ");
@@ -110,13 +123,18 @@ fn lex(file_name: String, code: String, debug: bool) -> Option<Vec<Token>> {
 
 
 // парсинг
-fn parse(file_name: String, tokens: Vec<Token>, debug: bool) -> Option<Node> {
+fn parse(file_name: String, tokens: Vec<Token>, debug: bool, bench: bool) -> Option<Node> {
+    // начальное время
+    let start = std::time::Instant::now();
     // стройка аст
     let raw_ast = Parser::new(
         tokens,
         file_name.clone(),
         file_name
     ).parse();
+    // конечное время
+    let duration = start.elapsed().as_nanos();
+    if bench { println!("benchmark 'parse', elapsed {}", duration as f64 / 1_000_000f64); }
     // проверяем на ошибку
     if let Ok(ast) = raw_ast {
         // проверяем на дебаг
@@ -145,9 +163,14 @@ fn analyze(ast: Node) -> Node {
 }
 
 // компиляция
-fn compile(ast: Node, opcodes_debug: bool) -> Chunk {
+fn compile(ast: Node, opcodes_debug: bool, bench: bool) -> Chunk {
+    // начальное время
+    let start = std::time::Instant::now();
     // компилируем
     let compiled = CompileVisitor::new().compile(ast);
+    // конечное время
+    let duration = start.elapsed().as_nanos();
+    if bench { println!("benchmark 'compile', elapsed {}", duration as f64 / 1_000_000f64); }
     // дебаг
     if opcodes_debug {
         println!("opcodes debug: ");
@@ -159,11 +182,13 @@ fn compile(ast: Node, opcodes_debug: bool) -> Chunk {
 
 // запуск
 #[allow(unused_qualifications)]
-unsafe fn run_chunk(chunk: Chunk, gc_threshold: usize, gc_debug: bool) {
+unsafe fn run_chunk(chunk: Chunk, gc_threshold: usize, gc_debug: bool, bench: bool) {
     // потоки
     let threads = memory::alloc_value(Threads::new());
     // указатель
     statics::THREADS_PTR = Option::Some(threads);
+    // начальное время
+    let start = std::time::Instant::now();
     // вм
     let vm = memory::alloc_value(VM::new(VmSettings::new(
         gc_threshold,
@@ -186,6 +211,9 @@ unsafe fn run_chunk(chunk: Chunk, gc_threshold: usize, gc_debug: bool) {
     }
     // ожидаем завершения потоков
     (*(*vm).threads).wait_finish();
+    // конечное время
+    let duration = start.elapsed().as_nanos();
+    if bench { println!("benchmark 'runtime', elapsed {}", duration as f64 / 1_000_000f64); }
 }
 
 // спиннер компиляции

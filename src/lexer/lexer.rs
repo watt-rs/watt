@@ -80,7 +80,7 @@ pub struct Lexer {
     column: u16,
     current: u128,
     line_text: String,
-    code: String,
+    code: Vec<char>,
     filename: String,
     tokens: Vec<Token>,
     keywords: HashMap<String, TokenType>,
@@ -119,7 +119,7 @@ impl Lexer {
             current: 0,
             column: 0,
             line_text: "".to_string(),
-            code,
+            code: code.chars().collect::<Vec<char>>(),
             filename,
             tokens: vec![],
             keywords: map
@@ -421,13 +421,12 @@ impl Lexer {
     }
 
     fn char_at(&self, offset: u128) -> char {
-        match self.code.chars().nth((self.current + offset) as usize) {
-            Some(ch) => {
-                ch
-            }
-            None => {
-                '\0'
-            }
+        let index = (self.current + offset) as usize;
+        if self.code.len() > index {
+            let c = self.code[index];
+            c
+        } else {
+            '\0'
         }
     }
 
