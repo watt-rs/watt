@@ -1,7 +1,6 @@
 ﻿// импорты
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
-use crate::vm::bytecode::Chunk;
 use crate::vm::memory::memory;
 use crate::vm::table::Table;
 use crate::vm::values::{Native, Symbol, Value};
@@ -55,38 +54,6 @@ pub unsafe fn provide_builtins(vm: &mut VM) -> Result<(), Error> {
                         if should_push {
                             vm.push(Value::Null)
                         }
-                        Ok(())
-                    }
-                )
-            )
-        )
-    )?;
-    // todo delete this temp native:
-    (*vm.globals).define(
-        natives_address.clone(),
-        "thread".to_string(),
-        Value::Native(
-            memory::alloc_value(
-                Native::new(
-                    Symbol::new(
-                        "thread".to_string(),
-                        "builtin:thread".to_string()
-                    ),
-                    1,
-                    |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-                        // функция
-                        let value = vm.pop(addr.clone())?;
-                        // запуск
-                        if let Value::Fn(function) = value {
-                            unsafe {
-                                vm.start_thread(addr, function, table, Box::new(Chunk::new(vec![])));
-                            }
-                        }
-                        // нулл
-                        if should_push {
-                            vm.push(Value::Null);
-                        }
-                        // успех
                         Ok(())
                     }
                 )

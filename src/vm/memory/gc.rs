@@ -1,10 +1,9 @@
-use std::collections::{HashSet};
 // импорты
 use crate::vm::table::Table;
-use crate::vm::threads::gil;
 use crate::vm::values::{FnOwner, Value};
 use crate::vm::vm::VM;
 use crate::vm::memory::memory;
+use std::collections::{HashSet};
 
 // структура сборщика мусора
 #[derive(Debug)]
@@ -120,8 +119,6 @@ impl GC {
     }
     // добавить в аллоцированные
     pub fn add_object(&mut self, value: Value) {
-        // лог
-        self.log(format!("gc :: register :: {}", value.to_string()));
         // добавляем
         match value {
             Value::Instance(_) | Value::Fn(_) |
@@ -156,31 +153,26 @@ impl GC {
                 memory::free_value(native);
             }
             _ => {
-                println!("unexpected gc value = {}.", value.to_string());
+                println!("unexpected gc value = {:?}.", value);
             }
         }
         if self.debug { println!("gc :: free :: value = {:?}", value); }
     }
     // сборка мусора
-    pub unsafe fn collect_garbage(&mut self, table: *mut Table) {
-        // через gil
-        gil::with_gil(|| {
-            // лог
-            self.log("gc :: triggered".to_string());
-            // марк
-            VM::stack.with(|stack| {
-                for val in stack.borrow().iter().cloned() {
-                    self.mark_value(val)
-                }
-            });
-            self.mark_table(table);
-            // sweep
-            self.sweep();
-            // ресет
-            self.reset();
-            // лог
-            self.log("gc :: end".to_string());
-        });
+    pub unsafe fn collect_garbage(&mut self, vm: &mut VM, table: *mut Table) {
+        // лог
+        self.log("gc :: triggered".to_string());
+        // марк
+        for val in vm.stack.clone() {
+                self.mark_value(val)
+        };
+        self.mark_table(table);
+        // sweep
+        self.sweep();
+        // ресет
+        self.reset();
+        // лог
+        self.log("gc :: end".to_string());
     }
     // количество объектов
     pub fn objects_amount(&mut self) -> usize {

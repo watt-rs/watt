@@ -13,7 +13,6 @@ use crate::semantic::analyzer::Analyzer;
 use crate::vm::bytecode::Chunk;
 use crate::vm::memory::memory;
 use crate::vm::statics::statics;
-use crate::vm::threads::threads::Threads;
 use crate::vm::vm::{VmSettings, VM};
 
 // запуск кода
@@ -183,17 +182,13 @@ fn compile(ast: Node, opcodes_debug: bool, bench: bool) -> Chunk {
 // запуск
 #[allow(unused_qualifications)]
 unsafe fn run_chunk(chunk: Chunk, gc_threshold: usize, gc_debug: bool, bench: bool) {
-    // потоки
-    let threads = memory::alloc_value(Threads::new());
-    // указатель
-    statics::THREADS_PTR = Option::Some(threads);
     // начальное время
     let start = std::time::Instant::now();
     // вм
     let vm = memory::alloc_value(VM::new(VmSettings::new(
         gc_threshold,
         gc_debug,
-    ), threads));
+    )));
     // указатель
     statics::VM_PTR = Option::Some(vm);
     // запуск
@@ -209,8 +204,6 @@ unsafe fn run_chunk(chunk: Chunk, gc_threshold: usize, gc_debug: bool, bench: bo
             "report this error to the developer.".to_string()
         ));
     }
-    // ожидаем завершения потоков
-    (*(*vm).threads).wait_finish();
     // конечное время
     let duration = start.elapsed().as_nanos();
     if bench { println!("benchmark 'runtime', elapsed {}", duration as f64 / 1_000_000f64); }

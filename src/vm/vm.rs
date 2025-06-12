@@ -1,5 +1,4 @@
 ﻿// импорты
-use std::cell::RefCell;
 use std::collections::VecDeque;
 use crate::error;
 use crate::errors::errors::{Error};
@@ -11,8 +10,6 @@ use crate::vm::table::Table;
 use crate::vm::values::{FnOwner, Function, Instance, Symbol, Type, Unit, Value};
 use crate::vm::memory::gc::GC;
 use crate::vm::memory::memory;
-use crate::vm::threads::{gil};
-use crate::vm::threads::threads::Threads;
 
 // настройки
 #[derive(Debug)]
@@ -34,27 +31,22 @@ pub struct VM {
     types: *mut Table,
     units: *mut Table,
     pub gc: *mut GC,
-    pub threads: *mut Threads,
     settings: VmSettings,
+    pub(crate) stack: VecDeque<Value>,
 }
 // имплементация вм
 #[allow(non_upper_case_globals)]
 #[allow(unused_qualifications)]
 impl VM {
-    // стек
-    thread_local! {
-        pub static stack: RefCell<VecDeque<Value>> = RefCell::new(VecDeque::new());
-    }
-    
     // новая вм
-    pub unsafe fn new(settings: VmSettings, threads: *mut Threads) -> VM {
+    pub unsafe fn new(settings: VmSettings) -> VM {
         // вм
         let mut vm = VM {
             globals: memory::alloc_value(Table::new()),
             types: memory::alloc_value(Table::new()),
             units: memory::alloc_value(Table::new()),
             gc: memory::alloc_value(GC::new(settings.gc_debug)),
-            threads,
+            stack: VecDeque::new(),
             settings
         };
         // нативы
@@ -64,75 +56,51 @@ impl VM {
         // возвращаем
         vm
     }
-    
-    // длина стека
-    pub fn stack_len(&mut self) -> usize {
-        Self::stack.with(|stack| stack.borrow().len())
-    }
 
     // пуш
     pub unsafe fn push(&mut self, value: Value) {
-        Self::stack.with(|stack| {
-            stack.borrow_mut().push_back(value);
-        })
+        self.stack.push_back(value);
     }
 
     // поп
     pub fn pop(&mut self, address: Address) -> Result<Value, ControlFlow> {
-        if self.stack_len() == 0 {
+        if self.stack.len() == 0 {
             error!(Error::new(
                 address,
                 "stack underflow.".to_string(),
                 "check your code.".to_string()
             ));
         }
-        Self::stack.with(|stack| Ok(stack.borrow_mut().pop_back().unwrap()))
+        Ok(self.stack.pop_back().unwrap())
     }
-
-    // запуск потока
-    #[allow(unused_variables)]
-    pub unsafe fn start_thread(&mut self, addr: Address, function: *mut Function, table: *mut Table, args: Box<Chunk>) {
-        // запуск
-        (*self.threads).run_thread(
-            addr,
-            function,
-            table,
-            args
-        );
-    }
-
 
     // очистка мусора
-    pub unsafe fn gc_invoke(&self, table: *mut Table) {
-        (*self.gc).collect_garbage(table);
+    pub unsafe fn gc_invoke(&mut self, table: *mut Table) {
+        (*self.gc).collect_garbage(self, table);
     }
 
     // бинды функций
     unsafe fn bind_functions(&mut self, table: *mut Table, owner: *mut FnOwner) {
         // биндим
-        gil::with_gil(|| {
-            for val in (*table).fields.values() {
-                if let Value::Fn(function) = *val {
-                    (*function).owner = owner;
-                }
+        for val in (*table).fields.values() {
+            if let Value::Fn(function) = *val {
+                (*function).owner = owner;
             }
-        });
+        }
     }
 
     // добавление в учет сборщика мусора
     pub unsafe fn gc_register(&mut self, value: Value, table: *mut Table) {
         // gil
-        gil::with_gil(|| {
-            // добавляем объект
-            (*self.gc).add_object(value);
-            // проверяем порог gc
-            if (*self.gc).objects_amount() > self.settings.gc_threshold {
-                // вызываем gc
-                self.gc_invoke(table);
-                // увеличиваем порог
-                self.settings.gc_threshold *= 2;
-            }
-        });
+        // добавляем объект
+        (*self.gc).add_object(value);
+        // проверяем порог gc
+        if (*self.gc).objects_amount() > self.settings.gc_threshold {
+            // вызываем gc
+            self.gc_invoke(table);
+            // увеличиваем порог
+            self.settings.gc_threshold *= 2;
+        }
     }
     
     // пуш в стек
@@ -802,11 +770,11 @@ impl VM {
         unsafe fn pass_arguments(vm: &mut VM, addr: Address, name: String, params_amount: usize,
                                  args: Box<Chunk>, params: Vec<String>, table: *mut Table) -> Result<(), ControlFlow> {
             // фиксируем размер стека
-            let prev_size = vm.stack_len();
+            let prev_size = vm.stack.len();
             // загрузка аргументов
             vm.run(*args, table)?;
             // фиксируем новый размер стека
-            let new_size = vm.stack_len();
+            let new_size = vm.stack.len();
             // количество переданных аргументов
             let passed_amount = new_size-prev_size;
             // проверяем
@@ -838,11 +806,11 @@ impl VM {
         unsafe fn load_arguments(vm: &mut VM, addr: Address, name: String, params_amount: usize,
                                  args: Box<Chunk>, table: *mut Table) -> Result<(), ControlFlow> {
             // фиксируем размер стека
-            let prev_size = vm.stack_len();
+            let prev_size = vm.stack.len();
             // загрузка аргументов
             vm.run(*args, table)?;
             // фиксируем новый размер стека
-            let new_size = vm.stack_len();
+            let new_size = vm.stack.len();
             // количество переданных аргументов
             let passed_amount = new_size-prev_size;
             // проверяем
@@ -1013,11 +981,11 @@ impl VM {
         unsafe fn pass_constructor(vm: &mut VM, addr: Address, name: String, params_amount: usize,
                                  args: Box<Chunk>, params: Vec<String>, table: *mut Table) -> Result<(), ControlFlow> {
             // фиксируем размер стека
-            let prev_size = vm.stack_len();
+            let prev_size = vm.stack.len();
             // загрузка аргументов
             vm.run(*args, table)?;
             // фиксируем новый размер стека
-            let new_size = vm.stack_len();
+            let new_size = vm.stack.len();
             // количество переданных аргументов
             let passed_amount = new_size-prev_size;
             // проверяем
