@@ -58,6 +58,9 @@ pub enum TokenType {
     Unit, // unit
     Native, // native
     With, // with
+    Trait, // trait
+    Impl, // impl
+    Impls // impls
 }
 
 // токен

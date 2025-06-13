@@ -124,6 +124,7 @@ pub enum Node {
         full_name: Option<Token>,
         constructor: Vec<Token>,
         body: Box<Node>,
+        impls: Vec<Token>
     },
     Unit {
         name: Token,
@@ -134,6 +135,24 @@ pub enum Node {
         iterable: Box<Node>,
         variable_name: Token,
         body: Box<Node>
+    },
+    Trait {
+        name: Token,
+        full_name: Option<Token>,
+        functions: Vec<TraitFn>
+    },
+}
+
+// функция трейта
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct TraitFn {
+    name: Token,
+    params: Vec<Token>,
+    default: Option<Box<Node>>
+}
+impl TraitFn {
+    pub fn new(name: Token, params: Vec<Token>, default: Option<Box<Node>>) -> Self {
+        Self { name, params, default }
     }
 }
 

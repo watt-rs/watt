@@ -40,6 +40,7 @@ thread(b)
 /*
 return 10
 */
+/*
 fun factorial(n) {
     f := 1
     result := 1
@@ -50,3 +51,7 @@ fun factorial(n) {
     return result
 }
 println(factorial(15))
+*/
+a := 5
+a += 4
+println(a)

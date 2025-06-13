@@ -167,6 +167,7 @@ impl CompileVisitor {
                 full_name,
                 constructor,
                 body,
+                impls,
             } => { self.visit_type(name, full_name, constructor, body); }
             Node::Unit {
                 name,
@@ -179,6 +180,7 @@ impl CompileVisitor {
                 body,
             } => { self.visit_for(iterable, variable_name, body); }
             Node::Block { body } => { self.visit_block(body); }
+            Node::Trait { .. } => { todo!() }
         }
     }
 

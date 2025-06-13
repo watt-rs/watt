@@ -4,6 +4,7 @@ use crate::errors::errors::{Error};
 use crate::parser::import::Import;
 use crate::lexer::lexer::*;
 use crate::parser::ast::*;
+use crate::error;
 
 // парсер
 pub struct Parser {
@@ -12,58 +13,76 @@ pub struct Parser {
     filename: String,
     full_name_prefix: String,
 }
-
 // имплементация
 #[allow(unused_qualifications)]
 impl Parser {
+    // новый
     pub fn new(tokens: Vec<Token>, filename: String, full_name_prefix: String) -> Parser {
         Parser { tokens, current: 0, filename, full_name_prefix }
     }
-
+    // блок
     fn block(&mut self) -> Result<Node, Error> {
+        // список
         let mut nodes: Vec<Box<Node>> = Vec::new();
-
+        // до } или конца файла
         while !self.is_at_end() && !self.check(TokenType::Rbrace) {
             nodes.push(Box::new(self.statement()?));
         }
-
+        // возвращаем
         Ok(Node::Block {
             body: nodes
         })
     }
 
+    // аргументы
     fn args(&mut self) -> Result<Vec<Box<Node>>, Error> {
+        // список
         let mut nodes: Vec<Box<Node>> = Vec::new();
+        // (
         self.consume(TokenType::Lparen)?;
-
+        // до )
         if !self.check(TokenType::Rparen) {
+            // аргумент
             nodes.push(Box::new(self.expr()?));
+            // через запятую
             while !self.is_at_end() && self.check(TokenType::Comma) {
+                // ,
                 self.consume(TokenType::Comma)?;
+                // аргумент
                 nodes.push(Box::new(self.expr()?));
             }
         }
-
+        // )
         self.consume(TokenType::Rparen)?;
+        // возвращаем
         Ok(nodes)
     }
 
+    // параметры
     fn params(&mut self) -> Result<Vec<Token>, Error> {
+        // список
         let mut nodes: Vec<Token> = Vec::new();
+        // (
         self.consume(TokenType::Lparen)?;
-
-        if self.check(TokenType::Id) {
+        // до )
+        if !self.check(TokenType::Rparen) {
+            // параметр
             nodes.push(self.consume(TokenType::Id)?);
+            // через запятую
             while !self.is_at_end() && self.check(TokenType::Comma) {
+                // ,
                 self.consume(TokenType::Comma)?;
+                // параметр
                 nodes.push(self.consume(TokenType::Id)?);
             }
         }
-
+        // )
         self.consume(TokenType::Rparen)?;
+        // возвращаем
         Ok(nodes)
     }
 
+    // преобразовывает name в full name
     fn to_full_name(&self, tk: Token) -> Token{
         Token::new(
             TokenType::Text,
@@ -72,10 +91,14 @@ impl Parser {
         )
     }
 
+    // парсинг new
     fn object_creation_expr(&mut self) -> Result<Node, Error> {
+        // new
         self.consume(TokenType::New)?;
+        // имя и аргументы
         let name = self.consume(TokenType::Id)?;
         let args = self.args()?;
+        // возвращаем
         Ok(Node::Instance {
             name,
             constructor: args,
@@ -83,9 +106,13 @@ impl Parser {
         })
     }
 
+    // часть access
     fn access_part(&mut self, previous: Option<Box<Node>>) -> Result<Node, Error> {
+        // если есть id
         if self.check(TokenType::Id) {
+            // id
             let identifier = self.consume(TokenType::Id)?;
+            // дефайн ':='
             if self.check(TokenType::Walrus) {
                 self.consume(TokenType::Walrus)?;
                 Ok(Node::Define {
@@ -93,47 +120,53 @@ impl Parser {
                     name: identifier,
                     value: Box::new(self.expr()?),
                 })
-            } else if self.check(TokenType::Assign) {
+            }
+            // присваивание '='
+            else if self.check(TokenType::Assign) {
                 self.consume(TokenType::Assign)?;
                 Ok(Node::Assign {
                     previous,
                     name: identifier,
                     value: Box::new(self.expr()?),
                 })
-            } else if self.check(TokenType::AssignAdd) ||
+            }
+            // +=, -=, *=, /=
+            else if self.check(TokenType::AssignAdd) ||
                 self.check(TokenType::AssignSub) ||
                 self.check(TokenType::AssignMul) ||
                 self.check(TokenType::AssignDiv) {
+                // оператор и локация
                 let op;
-                let loc;
-
+                let location;
+                // парсим
                 match self.peek()?.tk_type {
                     TokenType::AssignSub => {
-                        loc = self.consume(TokenType::AssignSub)?;
+                        location = self.consume(TokenType::AssignSub)?;
                         op = "-".to_string();
                     }
                     TokenType::AssignMul => {
-                        loc = self.consume(TokenType::AssignMul)?;
+                        location = self.consume(TokenType::AssignMul)?;
                         op = "*".to_string();
                     }
                     TokenType::AssignDiv => {
-                        loc = self.consume(TokenType::AssignDiv)?;
+                        location = self.consume(TokenType::AssignDiv)?;
                         op = "/".to_string();
                     }
                     TokenType::AssignAdd => {
-                        loc = self.consume(TokenType::AssignAdd)?;
+                        location = self.consume(TokenType::AssignAdd)?;
                         op = "+".to_string();
                     }
                     _ => {
                         panic!("invalid AssignOp tk_type. report to developer.");
                     }
                 }
-
+                // нода для получения значения
                 let var = Node::Get {
                     previous: previous.clone(),
                     name: identifier.clone(),
                     should_push: true
                 };
+                // нода для присваивания
                 return Ok(Node::Assign {
                     previous: previous.clone(),
                     name: identifier.clone(),
@@ -143,37 +176,50 @@ impl Parser {
                         op: Token::new(
                             TokenType::Op,
                             op,
-                            loc.address,
+                            location.address,
                         )
                     }),
                 });
-            } else if self.check(TokenType::Lparen) {
+            }
+            // вызов функции
+            else if self.check(TokenType::Lparen) {
                 return Ok(Node::Call {
                     previous,
                     name: identifier.clone(),
                     args: self.args()?,
                     should_push: true
                 });
-            } else {
+            }
+            // получение значения переменной
+            else {
                 return Ok(Node::Get {
                     previous,
                     name: identifier.clone(),
                     should_push: true
                 })
             }
-        } else {
+        }
+        // в ином случае - парсинг new
+        else {
             Ok(self.object_creation_expr()?)
         }
     }
 
+    // парсинг access
     fn parse_access(&mut self, is_expr: bool) -> Result<Node, Error> {
+        // access part
         let mut left = self.access_part(Option::None)?;
-
+        // через точку
         while self.check(TokenType::Dot) {
+            // .
             self.consume(TokenType::Dot)?;
+            // адрес
             let location = self.peek()?.address;
+            // access part
             left = self.access_part(Option::Some(Box::new(left)))?;
+            // если выражение
             if !is_expr { continue; }
+            // если не выражение
             match left {
                 Node::Define { .. } => {
                     return Err(Error::new(
@@ -192,37 +238,49 @@ impl Parser {
                 _ => {}
             }
         }
-
+        // возвращаем
         Ok(left)
     }
 
+    // access выражение
     fn access_expr(&mut self) -> Result<Node, Error> {
         Ok(self.parse_access(true)?)
     }
 
+    // access стейтмент
     fn access_stmt(&mut self) -> Result<Node, Error> {
+        // устанавливаем should_push на false
         let result = set_should_push(self.parse_access(false)?, false)?;
+        // возвращаем
         Ok(result)
     }
 
+    // скобки
     fn grouping_expr(&mut self) -> Result<Node, Error> {
+        // (
         self.consume(TokenType::Lparen)?;
+        // выражение
         let expr = self.expr()?;
+        // )
         self.consume(TokenType::Rparen)?;
+        // возвращаем
         Ok(expr)
     }
 
+    // анонимная функция
     fn anonymous_fn_expr(&mut self) -> Result<Node, Error> {
+        // fun
         let location = self.consume(TokenType::Fun)?;
-
+        // параметры
         let mut params: Vec<Token> = Vec::new();
         if self.check(TokenType::Lparen) {
             params = self.params()?;
         }
+        // тело
         self.consume(TokenType::Lbrace)?;
         let body = self.block()?;
         self.consume(TokenType::Rbrace)?;
-
+        // возвращаем
         Ok(Node::AnFnDeclaration {
             location,
             params,
@@ -230,16 +288,20 @@ impl Parser {
         })
     }
 
+    // лямбда
     fn lambda_fn_expr(&mut self) -> Result<Node, Error> {
+        // lambda
         let location = self.consume(TokenType::Lambda)?;
-
+        // параметры
         let mut params: Vec<Token> = Vec::new();
         if self.check(TokenType::Lparen) {
             params = self.params()?;
         }
+        // ->
         self.consume(TokenType::Arrow)?;
+        // тело
         let body = self.expr()?;
-
+        // возвращаем
         Ok(Node::AnFnDeclaration {
             location,
             params,
@@ -247,49 +309,63 @@ impl Parser {
         })
     }
 
+    // primary
     fn primary_expr(&mut self) -> Result<Node, Error> {
+        // матч
         match self.peek()?.tk_type {
+            // access
             TokenType::Id | TokenType::New => {
                 Ok(self.access_expr()?)
             }
+            // число
             TokenType::Number => {
                 Ok(Node::Number {
                     value: self.consume(TokenType::Number)?
                 })
             }
+            // текст
             TokenType::Text => {
                 Ok(Node::String {
                     value: self.consume(TokenType::Text)?
                 })
             }
+            // бул
             TokenType::Bool => {
                 Ok(Node::Bool {
                     value: self.consume(TokenType::Bool)?
                 })
             }
+            // в скобках
             TokenType::Lparen => {
                 Ok(self.grouping_expr()?)
             }
+            // мапа
             TokenType::Lbrace => {
                 Ok(self.map_expr()?)
             }
+            // список
             TokenType::Lbracket => {
                 Ok(self.list_expr()?)
             }
+            // null
             TokenType::Null => {
                 Ok(Node::Null {
                     location: self.consume(TokenType::Null)?
                 })
             }
+            // анонимная функция
             TokenType::Fun => {
                 Ok(self.anonymous_fn_expr()?)
             }
+            // лямбда
             TokenType::Lambda => {
                 Ok(self.lambda_fn_expr()?)
             }
-            // TokenType::Match => {
-            //     Ok(self.match_expr()?)
-            // }
+            // паттерн матчинг
+            TokenType::Match => {
+                 todo!()
+            }
+            // иное
             _ => Err(Error::new(
                 self.peek()?.address,
                 format!("invalid token. {:?}:{:?}",
@@ -300,8 +376,12 @@ impl Parser {
         }
     }
 
+    // список
     fn list_expr(&mut self) -> Result<Node, Error> {
+        // [
         let location = self.consume(TokenType::Lbracket)?;
+        // парсинг тела
+        // пустой список
         if self.check(TokenType::Rbracket) {
             self.consume(TokenType::Rbracket)?;
             Ok(
@@ -310,7 +390,9 @@ impl Parser {
                     values: Box::new(Vec::new())
                 }
             )
-        } else {
+        }
+        // заполненный
+        else {
             let mut nodes: Vec<Box<Node>> = Vec::new();
             nodes.push(Box::new(self.expr()?));
             while self.check(TokenType::Comma) {
@@ -324,15 +406,24 @@ impl Parser {
         }
     }
 
+    // key : value
     fn key_value_expr(&mut self) -> Result<(Box<Node>, Box<Node>), Error> {
+        // ключ
         let l = self.expr()?;
+        // :
         self.consume(TokenType::Colon)?;
+        // значение
         let r = self.expr()?;
+        // возвращаем
         Ok((Box::new(l), Box::new(r)))
     }
 
+    // мапа
     fn map_expr(&mut self) -> Result<Node, Error> {
+        // {
         let location = self.consume(TokenType::Lbracket)?;
+        // парсинг тела
+        // пустая мапа
         if self.check(TokenType::Rbracket) {
             self.consume(TokenType::Rbracket)?;
             Ok(
@@ -341,7 +432,9 @@ impl Parser {
                     values: Box::new(Vec::new())
                 }
             )
-        } else {
+        }
+        // заполненная
+        else {
             let mut nodes: Vec<(Box<Node>, Box<Node>)> = Vec::new();
             let key = self.key_value_expr()?;
             nodes.push((key.0, key.1));
@@ -357,6 +450,7 @@ impl Parser {
         }
     }
 
+    // унарная операция
     fn unary_expr(&mut self) -> Result<Node, Error> {
         let tk = self.peek()?;
         match tk {
@@ -373,6 +467,7 @@ impl Parser {
         }
     }
 
+    // бинарные операции умножения, деления
     fn multiplicative_expr(&mut self) -> Result<Node, Error> {
         let mut left = self.unary_expr()?;
 
@@ -390,6 +485,7 @@ impl Parser {
         Ok(left)
     }
 
+    // бинарные операции сложения, вычитания
     fn additive_expr(&mut self) -> Result<Node, Error> {
         let mut left = self.multiplicative_expr()?;
 
@@ -407,9 +503,11 @@ impl Parser {
         Ok(left)
     }
 
+    // условие
     fn conditional_expr(&mut self) -> Result<Node, Error> {
         let mut left = self.additive_expr()?;
 
+        // <, >, <=, >=, ==, !=
         if self.check(TokenType::Greater) || self.check(TokenType::Less)
             || self.check(TokenType::LessEq) || self.check(TokenType::GreaterEq) ||
             self.check(TokenType::Eq) || self.check(TokenType::NotEq) {
@@ -426,6 +524,7 @@ impl Parser {
         Ok(left)
     }
 
+    // логическое выражение
     fn logical_expr(&mut self) -> Result<Node, Error> {
         let mut left = self.conditional_expr()?;
 
@@ -444,10 +543,12 @@ impl Parser {
         Ok(left)
     }
 
+    // выражение
     fn expr(&mut self) -> Result<Node, Error> {
         self.logical_expr()
     }
 
+    // стейтмент continue
     fn continue_stmt(&mut self) -> Result<Node, Error> {
         let location = self.consume(TokenType::Continue)?;
         Ok(Node::Continue {
@@ -455,6 +556,7 @@ impl Parser {
         })
     }
 
+    // стейтмент break
     fn break_stmt(&mut self) -> Result<Node, Error> {
         let location = self.consume(TokenType::Break)?;
         Ok(Node::Break {
@@ -462,6 +564,7 @@ impl Parser {
         })
     }
 
+    // стейтмент return
     fn return_stmt(&mut self) -> Result<Node, Error> {
         let location = self.consume(TokenType::Ret)?;
         let value = Box::new(self.expr()?);
@@ -471,6 +574,7 @@ impl Parser {
         })
     }
 
+    // один import
     fn single_import(&mut self) -> Result<Import, Error> {
         let name = self.consume(TokenType::Text)?;
         if self.check(TokenType::With) {
@@ -489,6 +593,7 @@ impl Parser {
         }
     }
 
+    // стейтмент continue
     fn import_stmt(&mut self) -> Result<Node, Error> {
         self.consume(TokenType::Import)?;
         let mut imports = Vec::new();
@@ -508,6 +613,7 @@ impl Parser {
         })
     }
 
+    // стейтмент while
     fn while_stmt(&mut self) -> Result<Node, Error> {
         let location = self.consume(TokenType::While)?;
         let logical = self.expr()?;
@@ -521,6 +627,7 @@ impl Parser {
         })
     }
 
+    // else
     fn else_stmt(&mut self) -> Result<Node, Error> {
         let location = self.consume(TokenType::Else)?;
         self.consume(TokenType::Lbrace)?;
@@ -538,6 +645,7 @@ impl Parser {
         })
     }
 
+    // elif
     fn elif_stmt(&mut self) -> Result<Node, Error> {
         let location = self.consume(TokenType::Elif)?;
         let logical = self.expr()?;
@@ -568,6 +676,7 @@ impl Parser {
         }
     }
 
+    // if
     fn if_stmt(&mut self) -> Result<Node, Error> {
         let location = self.consume(TokenType::If)?;
         let logical = self.expr()?;
@@ -598,6 +707,7 @@ impl Parser {
         }
     }
 
+    // for
     fn for_stmt(&mut self) -> Result<Node, Error> {
         self.consume(TokenType::For)?;
         let name = self.consume(TokenType::Id)?;
@@ -613,18 +723,22 @@ impl Parser {
         })
     }
 
+    // определение функции
     fn function_stmt(&mut self) -> Result<Node, Error> {
+        // fun
         self.consume(TokenType::Fun)?;
+        // имя
         let name = self.consume(TokenType::Id)?;
-
+        // параметры
         let mut params: Vec<Token> = Vec::new();
         if self.check(TokenType::Lparen) {
             params = self.params()?;
         }
         self.consume(TokenType::Lbrace)?;
+        // тело
         let body = self.block()?;
         self.consume(TokenType::Rbrace)?;
-
+        // возвращаем
         Ok(Node::FnDeclaration {
             name: name.clone(),
             full_name: Option::Some(
@@ -635,14 +749,23 @@ impl Parser {
         })
     }
 
+    // определение типа
     fn type_stmt(&mut self) -> Result<Node, Error> {
+        // type
         self.consume(TokenType::Type)?;
+        // имя
         let name = self.consume(TokenType::Id)?;
-
+        // параметры
         let mut constructor: Vec<Token> = Vec::new();
         if self.check(TokenType::Lparen) {
             constructor = self.params()?;
         }
+        // имплементация трейтов
+        let mut impls: Vec<Token> = Vec::new();
+        if self.check(TokenType::Impl) {
+            impls = self.params()?;
+        }
+        // тело
         self.consume(TokenType::Lbrace)?;
         let mut body = Vec::new();
         while !self.is_at_end() && !self.check(TokenType::Rbrace) {
@@ -679,14 +802,83 @@ impl Parser {
             constructor,
             body: Box::new(Node::Block {
                 body
-            })
+            }),
+            impls
         })
     }
 
-    fn unit_stmt(&mut self) -> Result<Node, Error> {
-        self.consume(TokenType::Unit)?;
+    // определение трэйта
+    fn trait_stmt(&mut self) -> Result<Node, Error> {
+        // trait
+        self.consume(TokenType::Trait)?;
+        // имя
         let name = self.consume(TokenType::Id)?;
+        // функции
+        let mut functions: Vec<TraitFn> = Vec::new();
+        // тело
+        while !self.is_at_end() && !self.check(TokenType::Rbrace) {
+            // локация
+            let location = self.peek()?;
+            // функция
+            if self.check(TokenType::Fun) {
+                // fun
+                self.consume(TokenType::Fun)?;
+                // имя функции
+                let name = self.consume(TokenType::Id)?;
+                // параметры
+                let mut params: Vec<Token> = Vec::new();
+                if self.check(TokenType::Lparen) {
+                    params = self.params()?;
+                }
+                // если есть тело
+                if self.check(TokenType::Lbrace) {
+                    // тело
+                    self.consume(TokenType::Lbrace)?;
+                    let body = self.block()?;
+                    self.consume(TokenType::Rbrace)?;
+                    // добавляем
+                    functions.push(TraitFn::new(
+                        name,
+                        params,
+                        Option::Some(
+                            Box::new(body)
+                        )
+                    ))
+                }
+                else {
+                    // добавляем
+                    functions.push(TraitFn::new(
+                        name,
+                        params,
+                        Option::None
+                    ))
+                }
+            }
+            // в ином случае
+            else {
+                error!(Error::new(
+                    location.address,
+                    "only fn-s can be declared in trait.".to_string(),
+                    "you can create this declaration: 'fn meow(cat) {}'".to_string(),
+                ))
+            }
+        }
+        self.consume(TokenType::Rbrace)?;
+        // возвращаем
+        Ok(Node::Trait {
+            name: name.clone(),
+            full_name: Some(self.to_full_name(name)),
+            functions,
+        })
+    }
 
+    // определение юнита
+    fn unit_stmt(&mut self) -> Result<Node, Error> {
+        // unit
+        self.consume(TokenType::Unit)?;
+        // имя
+        let name = self.consume(TokenType::Id)?;
+        // тело
         self.consume(TokenType::Lbrace)?;
         let mut body = Vec::new();
         while !self.is_at_end() && !self.check(TokenType::Rbrace) {
@@ -715,8 +907,9 @@ impl Parser {
             }
             body.push(Box::new(node));
         }
+        // }
         self.consume(TokenType::Rbrace)?;
-
+        // возвращаем
         Ok(Node::Unit {
             name: name.clone(),
             full_name: Some(self.to_full_name(name)),
@@ -726,17 +919,24 @@ impl Parser {
         })
     }
 
+    // определение нативной функции
     fn native_stmt(&mut self) -> Result<Node, Error> {
+        // native
         self.consume(TokenType::Native)?;
+        // имя
         let name = self.consume(TokenType::Id)?;
+        // ->
         self.consume(TokenType::Arrow)?;
+        // имя нативной функции
         let fn_name = self.consume(TokenType::Text)?;
+        // возвращаем
         Ok(Node::Native {
             name,
             fn_name
         })
     }
 
+    // стейтмент
     fn statement(&mut self) -> Result<Node, Error> {
         let tk = self.peek()?;
         match tk.tk_type {
@@ -779,6 +979,9 @@ impl Parser {
             TokenType::While => {
                 self.while_stmt()
             }
+            TokenType::Trait => {
+                self.trait_stmt()
+            }
             _ => {
                 Err(Error::new(
                     tk.address,
@@ -790,10 +993,16 @@ impl Parser {
         }
     }
 
+    // парсинг
     pub fn parse(&mut self) -> Result<Node, Error> {
         self.block()
     }
 
+    /*
+     вспомогательные функции
+     */
+
+    // consume
     fn consume(&mut self, tk_type: TokenType) -> Result<Token, Error> {
         match self.tokens.get(self.current as usize) {
             Some(tk) => {
@@ -823,6 +1032,7 @@ impl Parser {
         }
     }
 
+    // check
     fn check(&self, tk_type: TokenType) -> bool {
         match self.tokens.get(self.current as usize) {
             Some(tk) => {
@@ -838,6 +1048,7 @@ impl Parser {
         }
     }
 
+    // peek
     fn peek(&self) -> Result<Token, Error> {
         match self.tokens.get(self.current as usize) {
             Some(tk) => {
@@ -858,6 +1069,7 @@ impl Parser {
         }
     }
 
+    // is_at_end
     fn is_at_end(&self) -> bool {
         self.current as usize >= self.tokens.len()
     }
