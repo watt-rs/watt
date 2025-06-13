@@ -835,7 +835,7 @@ impl VM {
                 match (*(*function).owner) {
                     FnOwner::Unit(unit) => {
                         (*call_table).set_root((*unit).fields);
-                        if let Err(e) = (*(*unit).fields).define(
+                        if let Err(e) = (*call_table).define(
                             addr.clone(), "self".to_string(), Value::Unit(unit)
                         ) {
                             error!(e);
@@ -843,7 +843,7 @@ impl VM {
                     },
                     FnOwner::Instance(instance) => {
                         (*call_table).set_root((*instance).fields);
-                        if let Err(e) = (*(*instance).fields).define(
+                        if let Err(e) = (*call_table).define(
                             addr.clone(), "self".to_string(), Value::Instance(instance)
                         ) {
                             error!(e);
