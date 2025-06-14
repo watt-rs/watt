@@ -1,5 +1,6 @@
 // импорты
 use crate::{lexer::address::Address, vm::values::Value};
+use crate::vm::values::TraitFn;
 
 // чанк
 #[derive(Clone, Debug)]
@@ -70,12 +71,18 @@ pub enum Opcode {
         full_name: Option<String>,
         constructor: Vec<String>,
         body: Box<Chunk>,
+        impls: Vec<String>
     },
     DefineUnit {
         addr: Address,
         name: String,
         full_name: Option<String>,
         body: Box<Chunk>,
+    },
+    DefineTrait {
+        addr: Address,
+        name: String,
+        functions: Vec<TraitFn>,
     },
     Define {
         addr: Address,

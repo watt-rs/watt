@@ -114,7 +114,9 @@ impl Lexer {
             (String::from("true"), TokenType::Bool),
             (String::from("false"), TokenType::Bool),
             (String::from("null"), TokenType::Null),
-            (String::from("return"), TokenType::Ret)
+            (String::from("return"), TokenType::Ret),
+            (String::from("trait"), TokenType::Trait),
+            (String::from("impl"), TokenType::Impl),
         ]);
         // лексер
         let mut lexer = Lexer {
@@ -170,7 +172,7 @@ impl Lexer {
                         while !self.is_match('\n') && !self.is_at_end() {
                             self.advance();
                         }
-                        self.line += 1;
+                        self.newline();
                     } else if self.is_match('*') {
                         while !(self.peek() == '*' && self.next() == '/') && !self.is_at_end() {
                             if self.is_match('\n') {

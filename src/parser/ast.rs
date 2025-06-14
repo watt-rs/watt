@@ -139,18 +139,18 @@ pub enum Node {
     Trait {
         name: Token,
         full_name: Option<Token>,
-        functions: Vec<TraitFn>
+        functions: Vec<TraitNodeFn>
     },
 }
 
 // функция трейта
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct TraitFn {
-    name: Token,
-    params: Vec<Token>,
-    default: Option<Box<Node>>
+pub struct TraitNodeFn {
+    pub name: Token,
+    pub params: Vec<Token>,
+    pub default: Option<Box<Node>>
 }
-impl TraitFn {
+impl TraitNodeFn {
     pub fn new(name: Token, params: Vec<Token>, default: Option<Box<Node>>) -> Self {
         Self { name, params, default }
     }

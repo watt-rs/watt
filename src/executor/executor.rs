@@ -28,8 +28,6 @@ pub unsafe fn run(
     compile_bench: Option<bool>,
     runtime_bench: Option<bool>,
 ) {
-    // спиннер компиляции
-    let spinner = start_spinner();
     // чтение файла
     let code = read_file(path.clone());
     // имя файла
@@ -55,8 +53,6 @@ pub unsafe fn run(
         opcodes_debug.unwrap_or(false),
         compile_bench.unwrap_or(false)
     );
-    // выключаем спиннер
-    spinner.stop("running...");
     // запуск
     run_chunk(
         compiled,

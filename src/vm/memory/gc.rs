@@ -122,8 +122,8 @@ impl GC {
         // добавляем
         match value {
             Value::Instance(_) | Value::Fn(_) |
-            Value::Native(_) | Value::Unit(_)  |
-            Value::String(_) => {
+            Value::Native(_) | Value::String(_) |
+            Value::Unit(_) => {
                 if !self.objects.contains(&value) {
                     self.objects.insert(value);
                 }
@@ -137,20 +137,17 @@ impl GC {
             Value::Fn(f) => {
                 memory::free_value(f);
             }
-            Value::Unit(u) => {
-                memory::free_value(u);
-            }
             Value::Instance(i) => {
                 memory::free_value(i);
-            }
-            Value::Type(t) => {
-                memory::free_value(t);
             }
             Value::String(s) => {
                 memory::free_const_value(s);
             }
             Value::Native(native) => {
                 memory::free_value(native);
+            }
+            Value::Unit(unit) => {
+                memory::free_value(unit);
             }
             _ => {
                 println!("unexpected gc value = {:?}.", value);
@@ -164,8 +161,9 @@ impl GC {
         self.log("gc :: triggered".to_string());
         // марк
         for val in vm.stack.clone() {
-                self.mark_value(val)
+            self.mark_value(val)
         };
+        self.mark_table(vm.units);
         self.mark_table(table);
         // sweep
         self.sweep();

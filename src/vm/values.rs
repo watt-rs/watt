@@ -33,11 +33,12 @@ impl Symbol {
 pub struct Type {
     pub name: Symbol,
     pub constructor: Vec<String>,
-    pub body: *const Chunk
+    pub body: *const Chunk,
+    pub impls: Vec<String>
 }
 impl Type {
-    pub fn new(name: Symbol, constructor: Vec<String>, body: *const Chunk) -> Type {
-        Type {name, constructor, body}
+    pub fn new(name: Symbol, constructor: Vec<String>, body: *const Chunk, impls: Vec<String>) -> Type {
+        Type {name, constructor, body, impls}
     }
 }
 
@@ -64,6 +65,32 @@ pub struct Unit {
 impl Unit {
     pub fn new(name: Symbol, fields: *mut Table) -> Unit {
         Unit {name, fields}
+    }
+}
+
+// функция трейта
+#[derive(Clone, Debug)]
+pub struct TraitFn {
+    pub name: String,
+    pub params_amount: usize,
+    pub default: Option<Function>
+}
+impl TraitFn {
+    pub fn new(name: String, params_amount: usize, default: Option<Function>) -> TraitFn {
+        TraitFn {name, params_amount, default}
+    }
+}
+
+// трейт
+#[derive(Clone, Debug)]
+#[allow(unused)]
+pub struct Trait {
+    pub name: Symbol,
+    pub functions: Vec<TraitFn>
+}
+impl Trait {
+    pub fn new(name: Symbol, functions: Vec<TraitFn>) -> Trait {
+        Trait {name, functions}
     }
 }
 
@@ -120,6 +147,7 @@ pub enum Value {
     Native(*mut Native),
     Instance(*mut Instance),
     Unit(*mut Unit),
+    Trait(*mut Trait),
     Null
 }
 impl Debug for Value {
@@ -132,6 +160,9 @@ impl Debug for Value {
                 Value::Instance(i) => {
                     write!(f, "Instance{:?}", *i)
                 },
+                Value::Trait(t) => {
+                    write!(f, "Trait{:?}", *t)
+                }
                 Value::Fn(fun) => {
                     write!(f, "Fn{:?}", *fun)
                 },
@@ -139,7 +170,7 @@ impl Debug for Value {
                     write!(f, "Native{:?}", *n)
                 },
                 Value::Unit(n) => {
-                    write!(f, "Unit{:?}", **n)
+                    write!(f, "Unit{:?}", *n)
                 },
                 Value::Null => {
                     write!(f, "Null")
@@ -191,6 +222,9 @@ impl PartialEq for Value {
             (Value::Unit(a), Value::Unit(b)) => unsafe {
                 a == b
             }
+            (Value::Trait(a), Value::Trait(b)) => unsafe {
+                a == b
+            }
             _ => false
         }
     }
@@ -224,6 +258,9 @@ impl Hash for Value {
                 a.to_bits().hash(state);
             }
             Value::Unit(a) => unsafe {
+                (a as usize).hash(state);
+            }
+            Value::Trait(a) => unsafe {
                 (a as usize).hash(state);
             }
             Value::Null => {

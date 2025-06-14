@@ -763,7 +763,20 @@ impl Parser {
         // имплементация трейтов
         let mut impls: Vec<Token> = Vec::new();
         if self.check(TokenType::Impl) {
-            impls = self.params()?;
+            // impl
+            self.consume(TokenType::Impl)?;
+            // парсим
+            if !self.check(TokenType::Lbrace) {
+                // параметр
+                impls.push(self.consume(TokenType::Id)?);
+                // через запятую
+                while !self.is_at_end() && self.check(TokenType::Comma) {
+                    // ,
+                    self.consume(TokenType::Comma)?;
+                    // параметр
+                    impls.push(self.consume(TokenType::Id)?);
+                }
+            }
         }
         // тело
         self.consume(TokenType::Lbrace)?;
@@ -795,7 +808,7 @@ impl Parser {
             body.push(Box::new(node));
         }
         self.consume(TokenType::Rbrace)?;
-
+        // возвращаем
         Ok(Node::Type {
             name: name.clone(),
             full_name: Some(self.to_full_name(name)),
@@ -814,8 +827,9 @@ impl Parser {
         // имя
         let name = self.consume(TokenType::Id)?;
         // функции
-        let mut functions: Vec<TraitFn> = Vec::new();
+        let mut functions: Vec<TraitNodeFn> = Vec::new();
         // тело
+        self.consume(TokenType::Lbrace)?;
         while !self.is_at_end() && !self.check(TokenType::Rbrace) {
             // локация
             let location = self.peek()?;
@@ -837,7 +851,7 @@ impl Parser {
                     let body = self.block()?;
                     self.consume(TokenType::Rbrace)?;
                     // добавляем
-                    functions.push(TraitFn::new(
+                    functions.push(TraitNodeFn::new(
                         name,
                         params,
                         Option::Some(
@@ -847,7 +861,7 @@ impl Parser {
                 }
                 else {
                     // добавляем
-                    functions.push(TraitFn::new(
+                    functions.push(TraitNodeFn::new(
                         name,
                         params,
                         Option::None

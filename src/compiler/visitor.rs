@@ -168,7 +168,7 @@ impl CompileVisitor {
                 constructor,
                 body,
                 impls,
-            } => { self.visit_type(name, full_name, constructor, body); }
+            } => { self.visit_type(name, full_name, constructor, body, impls); }
             Node::Unit {
                 name,
                 full_name,
@@ -180,7 +180,9 @@ impl CompileVisitor {
                 body,
             } => { self.visit_for(iterable, variable_name, body); }
             Node::Block { body } => { self.visit_block(body); }
-            Node::Trait { .. } => { todo!() }
+            Node::Trait { name, full_name, functions } => {
+                self.visit_trait(name, full_name, functions);
+            }
         }
     }
 
@@ -404,7 +406,6 @@ impl CompileVisitor {
         self.push_instr(Opcode::Closure {
             addr: name.address.clone(),
             name: name.value
-
         });
     }
 
@@ -506,6 +507,7 @@ impl CompileVisitor {
         full_name: Option<Token>,
         constructor: Vec<Token>,
         body: Box<Node>,
+        impl_tokens: Vec<Token>
     ) {
         // полное имя
         let full_name = match full_name {
@@ -521,6 +523,11 @@ impl CompileVisitor {
         self.push_chunk();
         self.visit_node(*body);
         let chunk = self.pop_chunk();
+        // имплементации
+        let mut impls = Vec::new();
+        for i in impl_tokens {
+            impls.push(i.value)
+        }
         // дефайн типа
         self.push_instr(Opcode::DefineType {
             addr: name.address.clone(),
@@ -528,6 +535,69 @@ impl CompileVisitor {
             full_name,
             constructor: constructor_params,
             body: Box::new(Chunk::new(chunk)),
+            impls
+        });
+    }
+
+    // визит трейта
+    pub fn visit_trait(
+        &mut self,
+        name: Token,
+        full_name: Option<Token>,
+        functions: Vec<TraitNodeFn>
+    ) {
+        // полное имя
+        let full_name = match full_name {
+            Some(name) => Some(name.value),
+            None => None,
+        };
+        // функции
+        let mut trait_functions: Vec<TraitFn> = Vec::new();
+        // перебираем
+        for nodeFn in functions {
+            // дефолтная реализация
+            let default: Option<Function>;
+            // проверяем, если есть дефолтная реализация
+            if nodeFn.default.is_some() {
+                // тело
+                self.push_chunk();
+                self.visit_node((*nodeFn.default.unwrap()).clone());
+                let chunk = memory::alloc_value(
+                    Chunk::new(self.pop_chunk()),
+                );
+                // параметры
+                let mut params: Vec<String> = Vec::new();
+                for param in nodeFn.params.clone() {
+                    params.push(param.value);
+                }
+                // дефолтная реализация
+                default = Some(Function::new(
+                    Symbol::by_name(
+                        nodeFn.name.value.clone(),
+                    ),
+                    chunk,
+                    params
+                ))
+            }
+            // если нет
+            else {
+                // дефолтная реализация
+                default = None
+            }
+            // пушим
+            trait_functions.push(
+                TraitFn::new(
+                    nodeFn.name.value,
+                    nodeFn.params.len(),
+                    default
+                )
+            )
+        }
+        // дефайн трейта
+        self.push_instr(Opcode::DefineTrait {
+            addr: name.address.clone(),
+            name: name.value,
+            functions: trait_functions
         });
     }
 

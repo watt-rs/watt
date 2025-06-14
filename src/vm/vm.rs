@@ -7,7 +7,7 @@ use crate::vm::bytecode::{Chunk, Opcode};
 use crate::vm::flow::ControlFlow;
 use crate::vm::{natives};
 use crate::vm::table::Table;
-use crate::vm::values::{FnOwner, Function, Instance, Symbol, Type, Unit, Value};
+use crate::vm::values::{FnOwner, Function, Instance, Symbol, Trait, TraitFn, Type, Unit, Value};
 use crate::vm::memory::gc::GC;
 use crate::vm::memory::memory;
 
@@ -29,10 +29,11 @@ impl VmSettings {
 pub struct VM {
     pub globals: *mut Table,
     types: *mut Table,
-    units: *mut Table,
+    pub(crate) units: *mut Table,
+    traits: *mut Table,
     pub gc: *mut GC,
     settings: VmSettings,
-    pub(crate) stack: VecDeque<Value>,
+    pub stack: VecDeque<Value>,
 }
 // имплементация вм
 #[allow(non_upper_case_globals)]
@@ -45,6 +46,7 @@ impl VM {
             globals: memory::alloc_value(Table::new()),
             types: memory::alloc_value(Table::new()),
             units: memory::alloc_value(Table::new()),
+            traits: memory::alloc_value(Table::new()),
             gc: memory::alloc_value(GC::new(settings.gc_debug)),
             stack: VecDeque::new(),
             settings
@@ -387,6 +389,10 @@ impl VM {
                         Value::Native(b) => { self.push(Value::Bool(a == b))}
                         _ => { self.push(Value::Bool(false)); }
                     }}
+                    Value::Trait(a) => { match operand_b {
+                        Value::Trait(b) => { self.push(Value::Bool(a == b))}
+                        _ => { self.push(Value::Bool(false)); }
+                    }}
                     _ => {
                         self.push(Value::Bool(false));
                     }
@@ -523,13 +529,14 @@ impl VM {
 
     // дефайн типа
     unsafe fn op_define_type(&mut self, addr: Address, symbol: Symbol, body: Box<Chunk>,
-                             constructor: Vec<String>) -> Result<(), ControlFlow> {
+                             constructor: Vec<String>, impls: Vec<String>) -> Result<(), ControlFlow> {
         // создаём тип
         let t = memory::alloc_value(
             Type::new(
                 symbol.clone(),
                 constructor,
                 memory::alloc_value(*body),
+                impls
             )
         );
         // дефайн типа
@@ -575,6 +582,32 @@ impl VM {
         if symbol.full_name.is_some() {
             if let Err(e) = (*self.units).define(addr.clone(), symbol.full_name.unwrap().clone(),
                                                  Value::Unit(unit)) {
+                error!(e);
+            }
+        }
+        // успех
+        Ok(())
+    }
+
+    // дефайн тейта
+    unsafe fn op_define_trait(&mut self, addr: Address, symbol: Symbol,
+                              functions: Vec<TraitFn>) -> Result<(), ControlFlow> {
+        // создаём трейт
+        let _trait = memory::alloc_value(
+            Trait::new(
+                symbol.clone(),
+                functions
+            )
+        );
+        // дефайн трейта
+        if let Err(e) = (*self.traits).define(addr.clone(), symbol.name.clone(),
+                                             Value::Trait(_trait)) {
+            error!(e);
+        }
+        // дефайн по full-name
+        if symbol.full_name.is_some() {
+            if let Err(e) = (*self.traits).define(addr.clone(), symbol.full_name.unwrap().clone(),
+                                                 Value::Trait(_trait)) {
                 error!(e);
             }
         }
@@ -973,6 +1006,137 @@ impl VM {
         Ok(())
     }
 
+    // проверка трейтов
+    unsafe fn check_traits(&mut self, addr: Address, instance: *mut Instance) {
+        // тип инстанса
+        let instance_type = (*instance).t;
+        // получение трейта
+        unsafe fn get_trait(traits: *mut Table, addr: Address, trait_name: String) -> Option<*mut Trait> {
+            // трейт
+            let trait_result = (*traits).lookup(addr, trait_name);
+            // проверяем результат
+            if let Err(e) = trait_result {
+                error!(e);
+                None
+            }
+            else if let Ok(trait_value) = trait_result {
+                match trait_value {
+                    Value::Trait(_trait) => {
+                        // перебираем функции
+                        return Some(_trait)
+                    }
+                    _ => {
+                        panic!("not a trait in traits table. report to developer.")
+                    }
+                }
+            }
+            else {
+                return None
+            }
+        }
+        // получение имплементации
+        unsafe fn get_impl(table: *mut Table, addr: Address, impl_name: String) -> Option<*mut Function> {
+            // трейт
+            let fn_result = (*table).lookup(addr, impl_name);
+            // проверяем результат
+            if let Err(e) = fn_result {
+                error!(e);
+                None
+            }
+            else if let Ok(trait_value) = fn_result {
+                return match trait_value {
+                    Value::Fn(_fn) => {
+                        // перебираем функции
+                        Some(_fn)
+                    }
+                    _ => {
+                        None
+                    }
+                }
+            }
+            else {
+                return None
+            }
+        }
+        // проверка
+        for trait_name in (*instance_type).impls.clone() {
+            // получаем трейт
+            let _trait = get_trait(self.traits, addr.clone(), trait_name.clone()).unwrap();
+            // проверяем
+            for function in (*_trait).functions.clone() {
+                // проверяем наличие имплементации
+                if (*(*instance).fields).exists(function.name.clone()) {
+                    // имплементация
+                    let _impl = get_impl((*instance).fields, addr.clone(), function.name.clone());
+                    // проверяем
+                    if _impl.is_some() {
+                        // имплементация
+                        let implementation = _impl.unwrap();
+                        // проверяем имплементацию
+                        if (*implementation).params.len() != function.params_amount {
+                            // ошибка
+                            error!(Error::new(
+                                addr.clone(),
+                                format!(
+                                    "type {} impls {}, but fn {} has wrong impl.",
+                                    (*instance_type).name.name.clone(),
+                                    trait_name, function.name.clone()
+                                ),
+                                format!(
+                                    "expected args {}, got {}",
+                                    function.params_amount,
+                                    (*implementation).params.len()
+                                )
+                            ));
+                        }
+                    }
+                    else {
+                        // ошибка
+                        error!(Error::new(
+                            addr.clone(),
+                            format!(
+                                "type {} impls {}, but doesn't impl fn {}({})",
+                                (*instance_type).name.name.clone(),
+                                trait_name, function.name.clone(),
+                                function.params_amount
+                            ),
+                            format!("implement fn {}", function.name.clone())
+                        ));
+                    }
+                }
+                else {
+                    // проверяем есть ли дефолтная имплементация
+                    if function.default.is_some() {
+                        // если есть
+                        if let Err(e) = (*(*instance).fields).define(
+                            addr.clone(),
+                            function.name.clone(),
+                            Value::Fn(memory::alloc_value(
+                                function.default.clone().unwrap(),
+                            ))
+                        ) {
+                            error!(e);
+                        }
+                    }
+                    // если нет
+                    else {
+                        // ошибка
+                        error!(Error::new(
+                            addr.clone(),
+                            format!(
+                                "type {} impls {}, but doesn't impl fn {}({})",
+                                (*instance_type).name.name.clone(), // todo check
+                                trait_name, function.name.clone(), // todo check
+                                function.params_amount
+                            ),
+                            format!("implement fn {}", function.name.clone())
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
     // созедание экземпляра типа
     unsafe fn op_instance(&mut self, addr: Address, name: String,
                           args: Box<Chunk>, should_push: bool, table: *mut Table) -> Result<(), ControlFlow> {
@@ -1042,6 +1206,8 @@ impl VM {
                         (*t).constructor.clone(),
                         (*instance).fields
                     )?;
+                    // проверка трейтов
+                    self.check_traits(addr.clone(), instance);
                     // бинды
                     self.bind_functions((*instance).fields, memory::alloc_value(FnOwner::Instance(instance)));
                     // значение экземпляра
@@ -1160,11 +1326,14 @@ impl VM {
                 Opcode::DefineFn { addr, name, full_name, body, params } => {
                     self.op_define_fn(addr, Symbol::new_option(name, full_name), body, params, table)?;
                 }
-                Opcode::DefineType { addr, name, full_name, body, constructor } => {
-                    self.op_define_type(addr, Symbol::new_option(name, full_name), body, constructor)?
+                Opcode::DefineType { addr, name, full_name, body, constructor, impls } => {
+                    self.op_define_type(addr, Symbol::new_option(name, full_name), body, constructor, impls)?
                 }
                 Opcode::DefineUnit { addr, name, full_name, body } => {
                     self.op_define_unit(addr, Symbol::new_option(name, full_name), body, table)?
+                }
+                Opcode::DefineTrait { addr, name, functions } => {
+                    self.op_define_trait(addr, Symbol::by_name(name), functions)?
                 }
                 Opcode::Define { addr, name, value, has_previous} => {
                     self.op_define(addr, name, has_previous, value, table)?;
