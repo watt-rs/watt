@@ -1,0 +1,104 @@
+/*
+ Библиотека io.
+ | имплементация println, print и input
+ | находится в
+ | > crate::vm::natives::libs::natives_io
+ */
+unit io {
+    /*
+     Выводит строку в консоль.
+     После, выводит \n.
+    */
+    native println -> 'io@println'
+
+    /*
+     Выводит строку в консоль
+    */
+    native print -> 'io@print'
+
+    /*
+     Запрашивает ввод у пользователя.
+    */
+    native input -> 'io@input'
+}
+
+/*
+ Утилиты списка.
+ | имплементация add, set, get, index_of,
+ | length, delete, to_string
+ | находится в
+ | > crate::vm::natives::libs::natives_list
+*/
+unit __list_utils {
+    native make -> 'list@make'
+    native add -> 'list@add'
+    native set -> 'list@set'
+    native get -> 'list@get'
+    native index_of -> 'list@index_of'
+    native length -> 'list@length'
+    native delete -> 'list@delete'
+    native to_string -> 'list@to_string'
+}
+
+/*
+ Список.
+ | имплементация add, set, get, index_of,
+ | length, delete, to_string
+ | находится в
+ | > list_utils
+*/
+type List {
+    fun init {
+        self.internal := __list_utils.make()
+    }
+    fun add(value) {
+        __list_utils.add(self.internal, value)
+    }
+    fun set(index, value) {
+        __list_utils.set(self.internal, index, value)
+    }
+    fun delete(value) {
+        __list_utils.delete(self.internal, value)
+    }
+    fun length {
+        return __list_utils.length(self.internal)
+    }
+    fun to_string {
+        return __list_utils.to_string(self.internal)
+    }
+    fun get(index) {
+        return __list_utils.get(self.internal, index)
+    }
+}
+
+/*
+list := new List()
+list.add(1)
+list.add(3)
+list.add(6)
+io.println(list.get(1))
+*/
+// a tractor 🚜
+type Tractor(storage) {
+    // amount of 🌾
+    value := 0
+    // fill 🌿
+    fun fill(value) {
+        if self.value + value > storage {
+            self.value = storage
+            return null
+        }
+        self.value += value
+    }
+    // print 📜
+    fun print() {
+        io.print('tractor value: ')
+        io.println(self.value)
+    }
+}
+
+tractor := new Tractor(100)
+tractor.fill(50)
+tractor.print()
+tractor.fill(70)
+tractor.print()
