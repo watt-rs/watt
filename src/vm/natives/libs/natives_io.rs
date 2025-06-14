@@ -1,4 +1,5 @@
-﻿use std::io;
+﻿// импорты
+use std::io;
 use crate::error;
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
@@ -14,6 +15,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
     natives::provide(
         vm,
         built_in_address.clone(),
+        1,
         "io@println".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: *mut FnOwner| {
             println!("{:?}", vm.pop(addr.clone())?);
@@ -26,6 +28,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
     natives::provide(
         vm,
         built_in_address.clone(),
+        1,
         "io@print".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: *mut FnOwner| {
             print!("{:?}", vm.pop(addr.clone())?);
@@ -38,6 +41,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
     natives::provide(
         vm,
         built_in_address,
+        0,
         "io@input".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: *mut FnOwner| {
             // инпут
@@ -52,9 +56,12 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             }
             // если нужен пуш
             if should_push {
-                vm.push(Value::String(
-                    memory::alloc_value(input)
-                ))
+                vm.op_push(
+                    Value::String(
+                        memory::alloc_value(input)
+                    ),
+                    table
+                )?;
             }
             // успех
             Ok(())

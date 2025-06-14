@@ -19,7 +19,8 @@ pub unsafe fn provide_builtins(vm: &mut VM) -> Result<(), Error> {
         "-".to_string()
     );
     // io
-    natives_io::provide(built_in_address, vm)?;
+    natives_io::provide(built_in_address.clone(), vm)?;
+    natives_list::provide(built_in_address.clone(), vm)?;
     // успех
     Ok(())
 }
@@ -28,6 +29,7 @@ pub unsafe fn provide_builtins(vm: &mut VM) -> Result<(), Error> {
 pub unsafe fn provide(
     vm: &mut VM,
     addr: Address,
+    params_amount: usize,
     name: String,
     native: fn(&mut VM,Address,bool,*mut Table,*mut FnOwner) -> Result<(), ControlFlow>) {
     // дефайн
@@ -38,7 +40,7 @@ pub unsafe fn provide(
             memory::alloc_value(
                 Native::new(
                     Symbol::by_name(name),
-                    0,
+                    params_amount,
                     native
                 )
             )

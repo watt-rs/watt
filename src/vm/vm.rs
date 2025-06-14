@@ -111,7 +111,7 @@ impl VM {
     }
     
     // пуш в стек
-    unsafe fn op_push(&mut self, value: Value, table: *mut Table) -> Result<(), ControlFlow> {
+    pub(crate) unsafe fn op_push(&mut self, value: Value, table: *mut Table) -> Result<(), ControlFlow> {
         // проверяем значение
         match value {
             Value::Int(_) | Value::Float(_) | Value::Bool(_) => {
@@ -808,7 +808,8 @@ impl VM {
 
         // подгрузка аргументов
         unsafe fn pass_arguments(vm: &mut VM, addr: Address, name: String, params_amount: usize,
-                                 args: Box<Chunk>, params: Vec<String>, table: *mut Table) -> Result<(), ControlFlow> {
+                                 args: Box<Chunk>, params: Vec<String>, table: *mut Table,
+                                 call_table: *mut Table) -> Result<(), ControlFlow> {
             // фиксируем размер стека
             let prev_size = vm.stack.len();
             // загрузка аргументов
@@ -827,7 +828,7 @@ impl VM {
                     // получаем аргумент из стека
                     let operand = vm.pop(addr.clone())?;
                     // устанавливаем в таблице
-                    if let Err(e) = (*table).define(addr.clone(), param.clone(), operand) {
+                    if let Err(e) = (*call_table).define(addr.clone(), param.clone(), operand) {
                         error!(e);
                     }
                 }
@@ -897,7 +898,7 @@ impl VM {
             (*call_table).closure = (*function).closure;
             // загрузка аргументов
             pass_arguments(self, addr, name, (*function).params.len(), args,
-                                                               (*function).params.clone(), call_table)?;
+                           (*function).params.clone(), table, call_table)?;
             // вызов
             match self.run((*(*function).body).clone(), call_table) {
                 Err(e) => {
@@ -945,7 +946,7 @@ impl VM {
                 (*call_table).set_root(table)
             }
             // загрузка аргументов
-            load_arguments(self, addr.clone(), name.clone(), (*function).params_amount, args, call_table)?;
+            load_arguments(self, addr.clone(), name.clone(), (*function).params_amount, args, table)?;
             // вызов
             let native = (*function).function;
             native(self, addr.clone(), should_push, call_table, (*function).owner)?;

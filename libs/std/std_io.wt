@@ -1,0 +1,23 @@
+﻿/*
+ Библиотека io.
+ | имплементация println, print и input
+ | находится в
+ | > crate::vm::natives::libs::natives_io
+ */
+unit io {
+    /*
+     Выводит строку в консоль.
+     После, выводит \n.
+    */
+    native println -> 'io@println'
+
+    /*
+     Выводит строку в консоль
+    */
+    native print -> 'io@print'
+
+    /*
+     Запрашивает ввод у пользователя.
+    */
+    native input -> 'io@input'
+}
