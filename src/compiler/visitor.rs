@@ -472,9 +472,21 @@ impl CompileVisitor {
         todo!()
     }
 
-    // todo: native
+    // нативная функция
     pub fn visit_native(&mut self, name: Token, fn_name: Token) {
-        todo!()
+        self.push_instr(Opcode::Define {
+            addr: name.address.clone(),
+            name: name.value.clone(),
+            value: Box::new(
+                Chunk::of(
+                    Opcode::Native {
+                        addr: fn_name.address.clone(),
+                        fn_name: fn_name.value,
+                    }
+                )
+            ),
+            has_previous: false,
+        });
     }
 
     // унарная операция

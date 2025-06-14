@@ -35,7 +35,7 @@ impl GC {
     }
     // маркинг значения
     #[allow(unused_parens)]
-    fn mark_value(&mut self, value: Value) {
+    pub fn mark_value(&mut self, value: Value) {
         // проверяем
         if self.marked.contains(&value) {
             return;
@@ -70,6 +70,12 @@ impl GC {
                 self.marked.insert(value);
             }
             Value::String(_) => {
+                self.marked.insert(value);
+            }
+            Value::List(list) => unsafe {
+                for value in (*list).clone() {
+                    self.marked.insert(value);
+                }
                 self.marked.insert(value);
             }
             _ => {}
@@ -123,7 +129,7 @@ impl GC {
         match value {
             Value::Instance(_) | Value::Fn(_) |
             Value::Native(_) | Value::String(_) |
-            Value::Unit(_) => {
+            Value::Unit(_) | Value::List(_) => {
                 if !self.objects.contains(&value) {
                     self.objects.insert(value);
                 }
@@ -148,6 +154,9 @@ impl GC {
             }
             Value::Unit(unit) => {
                 memory::free_value(unit);
+            }
+            Value::List(foreign) => {
+                memory::free_value(foreign);
             }
             _ => {
                 println!("unexpected gc value = {:?}.", value);

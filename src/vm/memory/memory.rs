@@ -4,7 +4,7 @@ pub fn alloc_value<T: std::fmt::Debug>(value: T) -> *mut T {
 }
 
 // высвобождение памяти
-pub fn free_value<T>(ptr: *mut T) {
+pub fn free_value<T: ?Sized>(ptr: *mut T) {
     if ptr.is_null() {
         return;
     }

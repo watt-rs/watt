@@ -130,4 +130,8 @@ pub enum Opcode {
         addr: Address,
         value: Box<Chunk>,
     },
+    Native {
+        addr: Address,
+        fn_name: String,
+    }
 }

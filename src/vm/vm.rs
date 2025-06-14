@@ -5,7 +5,7 @@ use crate::errors::errors::{Error};
 use crate::lexer::address::Address;
 use crate::vm::bytecode::{Chunk, Opcode};
 use crate::vm::flow::ControlFlow;
-use crate::vm::{natives};
+use crate::vm::natives::natives;
 use crate::vm::table::Table;
 use crate::vm::values::{FnOwner, Function, Instance, Symbol, Trait, TraitFn, Type, Unit, Value};
 use crate::vm::memory::gc::GC;
@@ -29,8 +29,9 @@ impl VmSettings {
 pub struct VM {
     pub globals: *mut Table,
     types: *mut Table,
-    pub(crate) units: *mut Table,
+    pub units: *mut Table,
     traits: *mut Table,
+    pub natives: *mut Table,
     pub gc: *mut GC,
     settings: VmSettings,
     pub stack: VecDeque<Value>,
@@ -47,6 +48,7 @@ impl VM {
             types: memory::alloc_value(Table::new()),
             units: memory::alloc_value(Table::new()),
             traits: memory::alloc_value(Table::new()),
+            natives: memory::alloc_value(Table::new()),
             gc: memory::alloc_value(GC::new(settings.gc_debug)),
             stack: VecDeque::new(),
             settings
@@ -86,6 +88,9 @@ impl VM {
         // биндим
         for val in (*table).fields.values() {
             if let Value::Fn(function) = *val {
+                (*function).owner = owner;
+            }
+            else if let Value::Native(function) = *val {
                 (*function).owner = owner;
             }
         }
@@ -565,12 +570,14 @@ impl VM {
         );
         // добавляем в учет gc
         self.gc_register(Value::Unit(unit), table);
-        // временный рут
+        // рут
         (*(*unit).fields).set_root(table);
+        // временный self
+        (*(*unit).fields).fields.insert("self".to_string(), Value::Unit(unit));
         // исполняем тело
         self.run(*body, (*unit).fields)?;
-        // удаляем рут
-        (*(*unit).fields).del_root();
+        // удаляем временный self
+        (*(*unit).fields).fields.remove(&"self".to_string());
         // бинды
         self.bind_functions((*unit).fields, memory::alloc_value(FnOwner::Unit(unit)));
         // дефайн юнита
@@ -731,9 +738,9 @@ impl VM {
             if (*table).has(name.clone()) {
                 lookup_result = (*table).lookup(addr.clone(), name);
             } else if (*self.types).has(name.clone()) {
-                lookup_result = (*self.types).lookup(addr.clone(), name);
+                lookup_result = (*self.types).find(addr.clone(), name);
             } else {
-                lookup_result = (*self.units).lookup(addr.clone(), name);
+                lookup_result = (*self.units).find(addr.clone(), name);
             }
             // проверяем на ошибку
             if let Err(e) = lookup_result {
@@ -914,12 +921,34 @@ impl VM {
         else if let Value::Native(function) = callable {
             // создаём таблицу под вызов.
             let call_table = memory::alloc_value(Table::new());
-            (*call_table).set_root(table);
+            // рут и self
+            if !(*function).owner.is_null() {
+                match (*(*function).owner) {
+                    FnOwner::Unit(unit) => {
+                        (*call_table).set_root((*unit).fields);
+                        if let Err(e) = (*call_table).define(
+                            addr.clone(), "self".to_string(), Value::Unit(unit)
+                        ) {
+                            error!(e);
+                        }
+                    },
+                    FnOwner::Instance(instance) => {
+                        (*call_table).set_root((*instance).fields);
+                        if let Err(e) = (*call_table).define(
+                            addr.clone(), "self".to_string(), Value::Instance(instance)
+                        ) {
+                            error!(e);
+                        }
+                    }
+                }
+            } else {
+                (*call_table).set_root(table)
+            }
             // загрузка аргументов
             load_arguments(self, addr.clone(), name.clone(), (*function).params_amount, args, call_table)?;
             // вызов
             let native = (*function).function;
-            native(self, addr.clone(), should_push, call_table)?;
+            native(self, addr.clone(), should_push, call_table, (*function).owner)?;
             // успех
             Ok(())
         }
@@ -985,8 +1014,8 @@ impl VM {
                 _ => {
                     error!(Error::new(
                         addr.clone(),
-                        format!("{:?} is not a container.", previous),
-                        "you can load variable from unit or instance.".to_string()
+                        format!("couldn't call {} from {:?}.", name.clone(), previous),
+                        "you can call fn from unit, instance or foreign.".to_string()
                     ))
                 }
             }
@@ -1013,7 +1042,7 @@ impl VM {
         // получение трейта
         unsafe fn get_trait(traits: *mut Table, addr: Address, trait_name: String) -> Option<*mut Trait> {
             // трейт
-            let trait_result = (*traits).lookup(addr, trait_name);
+            let trait_result = (*traits).find(addr, trait_name);
             // проверяем результат
             if let Err(e) = trait_result {
                 error!(e);
@@ -1190,12 +1219,6 @@ impl VM {
                     ));
                     // добавляем в учет gc
                     self.gc_register(Value::Instance(instance), table);
-                    // временный рут
-                    (*(*instance).fields).set_root(table);
-                    // исполняем тело
-                    self.run((*(*t).body).clone(), (*instance).fields)?;
-                    // удаляем рут
-                    (*(*instance).fields).del_root();
                     // конструктор
                     pass_constructor(
                         self,
@@ -1206,6 +1229,14 @@ impl VM {
                         (*t).constructor.clone(),
                         (*instance).fields
                     )?;
+                    // рут
+                    (*(*instance).fields).set_root(table);
+                    // временный self
+                    (*(*instance).fields).fields.insert("self".to_string(), Value::Instance(instance));
+                    // исполняем тело
+                    self.run((*(*t).body).clone(), (*instance).fields)?;
+                    // удаляем временный self
+                    (*(*instance).fields).fields.remove(&"self".to_string());
                     // проверка трейтов
                     self.check_traits(addr.clone(), instance);
                     // бинды
@@ -1291,6 +1322,22 @@ impl VM {
         Err(ControlFlow::Return(value))
     }
 
+    // нативная функция
+    unsafe fn op_native(&mut self, addr: Address, name: String) -> Result<(), ControlFlow> {
+        // лукап
+        let result = (*self.natives).find(addr, name);
+        // если нашлась нативная функция
+        if let Ok(value) = result {
+            self.push(value);
+        }
+        // если нет
+        if let Err(e) = result {
+            error!(e);
+        }
+        // ок
+        Ok(())
+    }
+
     // запуск байткода
     #[allow(unused_variables)]
     pub unsafe fn run(&mut self, chunk: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
@@ -1361,6 +1408,9 @@ impl VM {
                 }
                 Opcode::Ret { addr, value } => {
                     self.op_return(addr, value, table)?;
+                }
+                Opcode::Native { addr, fn_name } => {
+                    self.op_native(addr, fn_name)?;
                 }
             }
         }

@@ -46,7 +46,6 @@ impl Analyzer {
             Node::List { .. } => { todo!() }
             Node::Map { .. } => { todo!() }
             Node::Match { .. } => { todo!() }
-            Node::Native { .. } => { todo!() }
             Node::Ret { location, .. } => { self.analyze_return(location.address); }
             Node::Type { name, body, .. } => {
                 self.analyze_type_decl(name.address, body);

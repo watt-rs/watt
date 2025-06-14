@@ -117,6 +117,7 @@ impl Lexer {
             (String::from("return"), TokenType::Ret),
             (String::from("trait"), TokenType::Trait),
             (String::from("impl"), TokenType::Impl),
+            (String::from("native"), TokenType::Native),
         ]);
         // лексер
         let mut lexer = Lexer {

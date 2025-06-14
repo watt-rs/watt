@@ -4,6 +4,7 @@ use std::hash::{Hash, Hasher};
 use crate::lexer::address::Address;
 use crate::vm::bytecode::Chunk;
 use crate::vm::flow::ControlFlow;
+use crate::vm::memory::gc::GC;
 use crate::vm::table::Table;
 use crate::vm::vm::VM;
 
@@ -127,12 +128,33 @@ impl Function {
 pub struct Native {
     pub name: Symbol,
     pub params_amount: usize,
-    pub function: fn(&mut VM,Address,bool,*mut Table) -> Result<(), ControlFlow>
+    pub function: fn(&mut VM,Address,bool,*mut Table,*mut FnOwner) -> Result<(), ControlFlow>,
+    pub owner: *mut FnOwner,
 }
 impl Native {
-    pub fn new(name: Symbol, params_amount: usize, function: fn(&mut VM,Address,bool,*mut Table) -> Result<(), ControlFlow>) -> Native {
-        Native {name, params_amount, function}
+    // новый
+    pub fn new(
+        name: Symbol,
+        params_amount: usize,
+        function: fn(&mut VM,Address,bool,*mut Table,*mut FnOwner
+        ) -> Result<(), ControlFlow>) -> Native {
+        // возвращаем
+        Native {
+            name,
+            params_amount,
+            function,
+            owner: std::ptr::null_mut(),
+        }
     }
+}
+
+// нативный тип
+pub trait Foreign: Debug {
+    unsafe fn new(vm: &mut VM, table: *mut Table) -> Self where Self: Sized;
+    fn fn_table(&self) -> *mut Table;
+    fn mark(&self, gc: &mut GC);
+    #[allow(clippy::wrong_self_convention)]
+    fn to_string(&self) -> String;
 }
 
 // значение
@@ -148,6 +170,7 @@ pub enum Value {
     Instance(*mut Instance),
     Unit(*mut Unit),
     Trait(*mut Trait),
+    List(*mut Vec<Value>),
     Null
 }
 impl Debug for Value {
@@ -187,6 +210,9 @@ impl Debug for Value {
                 Value::Float(fl) => {
                     write!(f, "{}", *fl)
                 }
+                Value::List(l) => {
+                    write!(f, "{:?}", **l)
+                }
             }
         }
     }
@@ -225,6 +251,9 @@ impl PartialEq for Value {
             (Value::Trait(a), Value::Trait(b)) => unsafe {
                 a == b
             }
+            (Value::List(a), Value::List(b)) => unsafe {
+                a == b
+            }
             _ => false
         }
     }
@@ -261,6 +290,9 @@ impl Hash for Value {
                 (a as usize).hash(state);
             }
             Value::Trait(a) => unsafe {
+                (a as usize).hash(state);
+            }
+            Value::List(a) => unsafe {
                 (a as usize).hash(state);
             }
             Value::Null => {
