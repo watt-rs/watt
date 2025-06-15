@@ -6,6 +6,7 @@ use crate::error;
 use crate::lexer::address::Address;
 
 // нода анализа
+#[allow(dead_code)]
 pub enum AnalyzerNode {
     Block,
     If,

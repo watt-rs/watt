@@ -1,4 +1,6 @@
+// allows
 #![allow(non_upper_case_globals)]
+#![allow(unused)]
 
 // цвета
 pub static ResetColor: &str = "\u{001B}[0m";
