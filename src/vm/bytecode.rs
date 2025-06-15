@@ -22,6 +22,7 @@ impl Chunk {
 
 // опкод
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub enum Opcode {
     Push {
         addr: Address,

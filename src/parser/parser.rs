@@ -580,15 +580,17 @@ impl Parser {
         if self.check(TokenType::With) {
             self.consume(TokenType::With)?;
             Ok(Import::new(
+                Option::Some(name.address),
                 name.value,
-                Some(
+                Option::Some(
                     self.consume(TokenType::Text)?.value
                 )
             ))
         } else {
             Ok(Import::new(
+                Option::Some(name.address),
                 name.value,
-                None
+                Option::None
             ))
         }
     }

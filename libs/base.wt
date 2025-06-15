@@ -1,4 +1,4 @@
-﻿/*
+/*
  Утилиты списка.
  | имплементация add, set, get, index_of,
  | length, delete, to_string

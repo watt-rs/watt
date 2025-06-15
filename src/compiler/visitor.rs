@@ -8,10 +8,12 @@ use crate::vm::memory::memory;
 use std::collections::VecDeque;
 use crate::error;
 use crate::errors::errors::{Error};
+use crate::resolver::resolver::ImportsResolver;
 
 // визитор (компилятор)
 pub struct CompileVisitor {
     opcodes: VecDeque<Vec<Opcode>>,
+    resolver: ImportsResolver,
 }
 
 // имплементация визитора
@@ -21,12 +23,19 @@ impl CompileVisitor {
     pub fn new() -> Self {
         CompileVisitor {
             opcodes: VecDeque::new(),
+            resolver: ImportsResolver::new(),
         }
     }
+
     // компиляция
-    pub fn compile(&mut self, node: Node) -> Chunk {
+    pub unsafe fn compile(&mut self, node: Node) -> Chunk {
+        // пуш чанка
         self.push_chunk();
+        // билт-ин
+        self.resolver.provide_builtins();
+        // код
         self.visit_node(node.clone());
+        // возвращаем
         Chunk::new(self.pop_chunk().clone())
     }
 
@@ -123,7 +132,7 @@ impl CompileVisitor {
             } => { self.visit_an_fn_decl(params, body); }
             Node::Break { location } => { self.visit_break(location); }
             Node::Continue { location } => { self.visit_continue(location); }
-            Node::Import { imports } => { self.visit_import(imports); }
+            Node::Import { imports } => { unsafe { self.visit_import(imports); } }
             Node::List {
                 location,
                 values
@@ -428,8 +437,18 @@ impl CompileVisitor {
     }
 
     // todo: import
-    pub fn visit_import(&mut self, imports: Vec<Import>) {
-        todo!()
+    pub unsafe fn visit_import(&mut self, imports: Vec<Import>) {
+        // перебираем импорты
+        for import in imports {
+            // option нода
+            let options_node = self.resolver.import(
+                import.clone().addr, import
+            );
+            // визит ноды
+            if let Some(node) = options_node {
+                self.visit_node(node);
+            }
+        }
     }
 
     // todo: list
@@ -566,26 +585,26 @@ impl CompileVisitor {
         // функции
         let mut trait_functions: Vec<TraitFn> = Vec::new();
         // перебираем
-        for nodeFn in functions {
+        for node_fn in functions {
             // дефолтная реализация
             let default: Option<Function>;
             // проверяем, если есть дефолтная реализация
-            if nodeFn.default.is_some() {
+            if node_fn.default.is_some() {
                 // тело
                 self.push_chunk();
-                self.visit_node((*nodeFn.default.unwrap()).clone());
+                self.visit_node((*node_fn.default.unwrap()).clone());
                 let chunk = memory::alloc_value(
                     Chunk::new(self.pop_chunk()),
                 );
                 // параметры
                 let mut params: Vec<String> = Vec::new();
-                for param in nodeFn.params.clone() {
+                for param in node_fn.params.clone() {
                     params.push(param.value);
                 }
                 // дефолтная реализация
                 default = Some(Function::new(
                     Symbol::by_name(
-                        nodeFn.name.value.clone(),
+                        node_fn.name.value.clone(),
                     ),
                     chunk,
                     params
@@ -599,8 +618,8 @@ impl CompileVisitor {
             // пушим
             trait_functions.push(
                 TraitFn::new(
-                    nodeFn.name.value,
-                    nodeFn.params.len(),
+                    node_fn.name.value,
+                    node_fn.params.len(),
                     default
                 )
             )

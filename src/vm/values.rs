@@ -4,7 +4,6 @@ use std::hash::{Hash, Hasher};
 use crate::lexer::address::Address;
 use crate::vm::bytecode::Chunk;
 use crate::vm::flow::ControlFlow;
-use crate::vm::memory::gc::GC;
 use crate::vm::table::Table;
 use crate::vm::vm::VM;
 
@@ -16,6 +15,7 @@ pub struct Symbol {
 }
 impl Symbol {
     #[allow(unused_qualifications)]
+    #[allow(unused)]
     pub fn new(name: String, full_name: String) -> Symbol {
         Symbol {name, full_name: Option::Some(full_name)}
     }
@@ -104,6 +104,7 @@ pub enum FnOwner {
 
 // функция
 #[derive(Clone, Debug)]
+#[allow(unused)]
 pub struct Function {
     pub name: Symbol,
     pub body: *const Chunk,
@@ -125,6 +126,7 @@ impl Function {
 
 // нативная функция
 #[derive(Clone, Debug)]
+#[allow(unused)]
 pub struct Native {
     pub name: Symbol,
     pub params_amount: usize,
@@ -146,15 +148,6 @@ impl Native {
             owner: std::ptr::null_mut(),
         }
     }
-}
-
-// нативный тип
-pub trait Foreign: Debug {
-    unsafe fn new(vm: &mut VM, table: *mut Table) -> Self where Self: Sized;
-    fn fn_table(&self) -> *mut Table;
-    fn mark(&self, gc: &mut GC);
-    #[allow(clippy::wrong_self_convention)]
-    fn to_string(&self) -> String;
 }
 
 // значение
@@ -277,7 +270,7 @@ impl Hash for Value {
             Value::Type(a) => {
                 (a as usize).hash(state);
             }
-            Value::String(a) => unsafe {
+            Value::String(a) => {
                 (a as usize).hash(state);
             }
             Value::Int(a) => {
@@ -286,13 +279,13 @@ impl Hash for Value {
             Value::Float(a) => {
                 a.to_bits().hash(state);
             }
-            Value::Unit(a) => unsafe {
+            Value::Unit(a) => {
                 (a as usize).hash(state);
             }
-            Value::Trait(a) => unsafe {
+            Value::Trait(a) => {
                 (a as usize).hash(state);
             }
-            Value::List(a) => unsafe {
+            Value::List(a) => {
                 (a as usize).hash(state);
             }
             Value::Null => {

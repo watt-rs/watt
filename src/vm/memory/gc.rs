@@ -137,26 +137,25 @@ impl GC {
             _ => {}
         }
     }
-    // очистка
     fn free_value(&self, value: Value) {
         match value {
             Value::Fn(f) => {
-                memory::free_value(f);
+                if !f.is_null() { memory::free_value(f); }
             }
             Value::Instance(i) => {
-                memory::free_value(i);
+                if !i.is_null() { memory::free_value(i); }
             }
             Value::String(s) => {
-                memory::free_const_value(s);
+                if !s.is_null() { memory::free_const_value(s); }
             }
-            Value::Native(native) => {
-                memory::free_value(native);
+            Value::Native(n) => {
+                if !n.is_null() { memory::free_value(n); }
             }
-            Value::Unit(unit) => {
-                memory::free_value(unit);
+            Value::Unit(u) => {
+                if !u.is_null() { memory::free_value(u); }
             }
-            Value::List(foreign) => {
-                memory::free_value(foreign);
+            Value::List(l) => {
+                if !l.is_null() { memory::free_value(l); }
             }
             _ => {
                 println!("unexpected gc value = {:?}.", value);

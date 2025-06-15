@@ -147,7 +147,7 @@ impl VM {
             "check your code.".to_string()
         );
         // бинарная операция
-        match op.clone() {
+        match op {
             "+" => {
                 match operand_a {
                     Value::Float(a) => { match operand_b {
@@ -453,7 +453,7 @@ impl VM {
     unsafe fn op_if(&mut self, addr: Address, cond: Box<Chunk>, body: Box<Chunk>,
                     elif: Option<Box<Opcode>>, root: *mut Table) -> Result<(), ControlFlow> {
         // таблица
-        let mut table = memory::alloc_value(Table::new());
+        let table = memory::alloc_value(Table::new());
         (*table).set_root(root);
         // условие
         self.run(*cond, table)?;
@@ -482,7 +482,7 @@ impl VM {
     #[allow(unused_variables)]
     unsafe fn op_loop(&mut self, addr: Address, body: Box<Chunk>, root: *mut Table) -> Result<(), ControlFlow> {
         // таблица
-        let mut table = memory::alloc_value(Table::new());
+        let table = memory::alloc_value(Table::new());
         (*table).set_root(root);
         // проверка
         loop {
@@ -562,7 +562,7 @@ impl VM {
     unsafe fn op_define_unit(&mut self, addr: Address, symbol: Symbol,
                              body: Box<Chunk>, table: *mut Table) -> Result<(), ControlFlow> {
         // создаём юнит
-        let mut unit = memory::alloc_value(
+        let unit = memory::alloc_value(
             Unit::new(
                 symbol.clone(),
                 memory::alloc_value(Table::new())
@@ -571,7 +571,7 @@ impl VM {
         // добавляем в учет gc
         self.gc_register(Value::Unit(unit), table);
         // рут
-        (*(*unit).fields).set_root(table);
+        (*(*unit).fields).set_root(self.globals);
         // временный self
         (*(*unit).fields).fields.insert("self".to_string(), Value::Unit(unit));
         // исполняем тело
@@ -892,7 +892,7 @@ impl VM {
                     }
                 }
             } else {
-                (*call_table).set_root(table)
+                (*call_table).set_root(self.globals)
             }
             // замыкание
             (*call_table).closure = (*function).closure;
@@ -943,7 +943,7 @@ impl VM {
                     }
                 }
             } else {
-                (*call_table).set_root(table)
+                (*call_table).set_root(self.globals)
             }
             // загрузка аргументов
             load_arguments(self, addr.clone(), name.clone(), (*function).params_amount, args, table)?;
@@ -1231,7 +1231,7 @@ impl VM {
                         (*instance).fields
                     )?;
                     // рут
-                    (*(*instance).fields).set_root(table);
+                    (*(*instance).fields).set_root(self.globals);
                     // временный self
                     (*(*instance).fields).fields.insert("self".to_string(), Value::Instance(instance));
                     // исполняем тело

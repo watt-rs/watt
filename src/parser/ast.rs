@@ -5,6 +5,7 @@ use crate::errors::errors::Error;
 
 // нода
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[allow(dead_code)]
 pub enum Node {
     Block {
         body: Vec<Box<Node>>,

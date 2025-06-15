@@ -1,0 +1,12 @@
+/*
+ Библиотека gc.
+ | имплементация invoke
+ | находится в
+ | > crate::vm::natives::libs::natives_gc
+ */
+unit gc {
+    /*
+     Очищает мусор в куче
+    */
+    native invoke -> 'gc@invoke'
+}

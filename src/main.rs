@@ -7,6 +7,7 @@ mod errors;
 mod semantic;
 mod cli;
 mod executor;
+mod resolver;
 
 // main
 fn main() {

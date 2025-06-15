@@ -118,15 +118,15 @@ impl Table {
         let mut current = self as *mut Table;
         while !(*current).root.is_null() { // todo check loop
             current = (*current).root;
-            return;
         }
         (*current).root = root;
     }
 
+    #[allow(unused)]
     pub unsafe fn del_root(&mut self) {
         let mut current = self as *mut Table;
         while !(*current).root.is_null() {
-            let mut new_root = (*current).root;
+            let new_root = (*current).root;
             if (*new_root).root.is_null() {
                 return;
             }

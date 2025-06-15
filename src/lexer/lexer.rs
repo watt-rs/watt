@@ -6,6 +6,7 @@ use crate::errors::errors::{Error};
 
 // тип токена
 #[derive(Debug, Clone, Eq, PartialEq, Copy, Hash)]
+#[allow(dead_code)]
 pub enum TokenType {
     Fun,
     Op, // +, -, *, /
@@ -60,7 +61,7 @@ pub enum TokenType {
     With, // with
     Trait, // trait
     Impl, // impl
-    Impls // impls
+    Impls // todo!()
 }
 
 // токен

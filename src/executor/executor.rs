@@ -1,7 +1,6 @@
 ﻿// импорты
 use std::fs;
 use std::path::PathBuf;
-use cliclack::ProgressBar;
 use crate::compiler::visitor::CompileVisitor;
 use crate::error;
 use crate::errors::errors::Error;
@@ -16,6 +15,7 @@ use crate::vm::statics::statics;
 use crate::vm::vm::{VmSettings, VM};
 
 // запуск кода
+#[allow(unused_qualifications)]
 pub unsafe fn run(
     path: PathBuf,
     gc_threshold: Option<usize>,
@@ -29,7 +29,7 @@ pub unsafe fn run(
     runtime_bench: Option<bool>,
 ) {
     // чтение файла
-    let code = read_file(path.clone());
+    let code = read_file(Option::None, path.clone());
     // имя файла
     let filename = path.file_name().unwrap().to_str().unwrap().to_string();
     // компиляция
@@ -43,7 +43,8 @@ pub unsafe fn run(
         filename,
         tokens.unwrap(),
         ast_debug.unwrap_or(false),
-        parser_bench.unwrap_or(false)
+        parser_bench.unwrap_or(false),
+        None
     );
     let analyzed = analyze(
         ast.unwrap()
@@ -63,40 +64,58 @@ pub unsafe fn run(
 }
 
 // краш
-fn crash(reason: String) {
+pub fn crash(reason: String) {
     // крашим и выходим
     println!("{}", reason);
     std::process::exit(1);
 }
 
 // чтение файла
-fn read_file(path: PathBuf) -> String {
+pub fn read_file(addr: Option<Address>, path: PathBuf) -> String {
+    // проверяем наличие пути, если есть
     if path.exists() {
         if let Ok(result) = fs::read_to_string(path.clone()) {
             result
         } else {
-            crash(
-                format!(
-                    "io error with file: {:?}",
-                    path
-                )
-            );
+            if let Some(address) = addr {
+                error!(Error::new(
+                        address,
+                        format!("io error with file: {:?}", path),
+                        "check file existence".to_string()
+                    ));
+            } else {
+                crash(
+                    format!(
+                        "file not found: {:?}",
+                        path
+                    )
+                );
+            }
             "".to_string()
         }
     }
+    // если нет
     else {
-        crash(
-            format!(
-                "file not found: {:?}",
-                path
-            )
-        );
+        if let Some(address) = addr {
+            error!(Error::new(
+                    address,
+                    format!("file not found: {:?}", path),
+                    "check file existence".to_string()
+                ));
+        } else {
+            crash(
+                format!(
+                    "file not found: {:?}",
+                    path
+                )
+            );
+        }
         "".to_string()
     }
 }
 
 // лексинг
-fn lex(file_name: String, code: String, debug: bool, bench: bool) -> Option<Vec<Token>> {
+pub fn lex(file_name: String, code: String, debug: bool, bench: bool) -> Option<Vec<Token>> {
     // начальное время
     let start = std::time::Instant::now();
     // сканнинг токенов
@@ -118,14 +137,15 @@ fn lex(file_name: String, code: String, debug: bool, bench: bool) -> Option<Vec<
 
 
 // парсинг
-fn parse(file_name: String, tokens: Vec<Token>, debug: bool, bench: bool) -> Option<Node> {
+pub fn parse(file_name: String, tokens: Vec<Token>, 
+        debug: bool, bench: bool, full_name_prefix: Option<String>) -> Option<Node> {
     // начальное время
     let start = std::time::Instant::now();
     // стройка аст
     let raw_ast = Parser::new(
         tokens,
         file_name.clone(),
-        file_name
+        full_name_prefix.unwrap_or(file_name)
     ).parse();
     // конечное время
     let duration = start.elapsed().as_nanos();
@@ -150,7 +170,7 @@ fn parse(file_name: String, tokens: Vec<Token>, debug: bool, bench: bool) -> Opt
 }
 
 // семантический анализ
-fn analyze(ast: Node) -> Node {
+pub fn analyze(ast: Node) -> Node {
     // анализ
     let analyzed = Analyzer::new().analyze(ast);
     // возвращаем
@@ -158,7 +178,7 @@ fn analyze(ast: Node) -> Node {
 }
 
 // компиляция
-fn compile(ast: Node, opcodes_debug: bool, bench: bool) -> Chunk {
+pub unsafe fn compile(ast: Node, opcodes_debug: bool, bench: bool) -> Chunk {
     // начальное время
     let start = std::time::Instant::now();
     // компилируем
@@ -203,12 +223,4 @@ unsafe fn run_chunk(chunk: Chunk, gc_threshold: usize, gc_debug: bool, bench: bo
     // конечное время
     let duration = start.elapsed().as_nanos();
     if bench { println!("benchmark 'runtime', elapsed {}", duration as f64 / 1_000_000f64); }
-}
-
-// спиннер компиляции
-fn start_spinner() -> ProgressBar {
-    // запускаем
-    let bar = cliclack::spinner();
-    bar.start("compilation...");
-    bar
 }
