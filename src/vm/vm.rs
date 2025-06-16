@@ -111,7 +111,7 @@ impl VM {
     }
     
     // пуш в стек
-    pub(crate) unsafe fn op_push(&mut self, value: Value, table: *mut Table) -> Result<(), ControlFlow> {
+    pub unsafe fn op_push(&mut self, value: Value, table: *mut Table) -> Result<(), ControlFlow> {
         // проверяем значение
         match value {
             Value::Int(_) | Value::Float(_) | Value::Bool(_) => {
@@ -160,16 +160,13 @@ impl VM {
                         Value::Int(b) => { self.push(Value::Int(a + b)); }
                         _ => { error!(error); }
                     }}
-                    Value::String(a) => { match operand_b {
-                        Value::String(b) => {
-                            let string = Value::String(
-                                memory::alloc_value(format!("{}{}", *a, *b))
-                            );
-                            self.gc_register(string, table);
-                            self.push(string);
-                        }
-                        _ => { error!(error); }
-                    }}
+                    Value::String(a) => {
+                        let string = Value::String(
+                            memory::alloc_value(format!("{}{:?}", *a, operand_b))
+                        );
+                        self.gc_register(string, table);
+                        self.push(string);
+                    }
                     _ => { error!(error); }
                 }
             }
