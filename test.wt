@@ -15,8 +15,7 @@ type Tractor(storage) {
     }
     // print 📜
     fun print() {
-        io.print('tractor value: ')
-        io.println(self.value)
+        io.println('tractor value: ' + self.value)
     }
 }
 
