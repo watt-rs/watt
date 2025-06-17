@@ -206,7 +206,7 @@ impl Parser {
     }
 
     // парсинг access
-    fn parse_access(&mut self, is_expr: bool) -> Result<Node, Error> {
+    fn access(&mut self, is_expr: bool) -> Result<Node, Error> {
         // access part
         let mut left = self.access_part(Option::None)?;
         // через точку
@@ -238,21 +238,41 @@ impl Parser {
                 _ => {}
             }
         }
+        // устанавливаем should push
+        left = set_should_push(left, is_expr)?;
         // возвращаем
         Ok(left)
     }
 
+    // парсинг error propagation
+    fn error_propagation(&mut self, is_expr: bool) -> Result<Node, Error> {
+        // парсинг access
+        let mut node = self.access(is_expr)?;
+        // проверяем на вопросик
+        if self.check(TokenType::Question) {
+            // вопросительный знак
+            let question = self.consume(TokenType::Question)?;
+            // нода
+            node = Node::ErrorPropagation {
+                location: question,
+                value: Box::new(node),
+                should_push: is_expr,
+            }
+        }
+        // возвращаем
+        Ok(node)
+    }
+    
     // access выражение
     fn access_expr(&mut self) -> Result<Node, Error> {
-        Ok(self.parse_access(true)?)
+        if self.check(TokenType::New) { self.access(true) }
+        else { self.error_propagation(true) }
     }
 
     // access стейтмент
     fn access_stmt(&mut self) -> Result<Node, Error> {
-        // устанавливаем should_push на false
-        let result = set_should_push(self.parse_access(false)?, false)?;
-        // возвращаем
-        Ok(result)
+        if self.check(TokenType::New) { self.access(false) }
+        else { self.error_propagation(false) }
     }
 
     // скобки
@@ -595,9 +615,11 @@ impl Parser {
         }
     }
 
-    // стейтмент continue
+    // стейтмент импорт
     fn import_stmt(&mut self) -> Result<Node, Error> {
-        self.consume(TokenType::Import)?;
+        // локация
+        let location = self.consume(TokenType::Import)?;
+        // парсинг импортов
         let mut imports = Vec::new();
         if self.check(TokenType::Lparen) {
             self.consume(TokenType::Lparen)?;
@@ -610,7 +632,9 @@ impl Parser {
         else {
             imports.push(self.single_import()?);
         }
+        // возвращаем
         Ok(Node::Import {
+            location,
             imports
         })
     }

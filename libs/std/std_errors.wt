@@ -1,0 +1,118 @@
+/*
+ Тип Result.
+ | принимает ok/err значение, используется
+ | для прокидывания ошибок и 'ok' значений.
+ | может принимать только ok или err в одно
+ | и то же время.
+ */
+type Result(ok, err) {
+    /*
+     Инициализация результата,
+     проверяет, не переданы ли 'ok' значение
+     и ошибка одновременно.
+    */
+    fun init {
+        if self.ok != null and self.err != null {
+            panic(
+                'could not create result with (ok:'
+                    + self.ok + ', err:' + self.err,
+                'you can use only ok or err at the same time.'
+            )
+        }
+    }
+
+    /*
+     Возвращает true,
+     если нет ошибки,
+     false в противоположном случае.
+    */
+    fun is_ok {
+        return ok != null
+    }
+
+    /*
+     Возвращает false,
+     если нет ошибки,
+     true в противоположном случае.
+    */
+    fun is_err {
+        return err != null
+    }
+
+    /*
+     Если нет ошибки - возвращает
+     'ok' значение, в ином случае
+     паникует
+    */
+    fun unwrap {
+        if self.is_err() {
+            panic(
+                'unwrapping error result.',
+                'error: ' + self.err
+            )
+        }
+        else {
+            return self.ok
+        }
+    }
+
+    /*
+     Если есть ошибка - возвращает
+     её, в ином случае паникует
+    */
+    fun unwrap_err {
+        if self.is_ok() {
+            panic(
+                'unwrapping error, while result is ok.',
+                'ok value: ' + self.ok
+            )
+        }
+        else {
+            return self.err
+        }
+    }
+
+    /*
+     Если нет ошибки - возвращает
+     'ok' значение, в ином случае
+     возвращает 'value'
+    */
+    fun unwrap_or(value) {
+        if self.is_err() {
+            return value
+        }
+        else {
+            return self.ok
+        }
+    }
+
+    /*
+     Если нет ошибки - возвращает
+     'value' значение, в ином случае
+     возвращает 'err'
+    */
+    fun unwrap_err_or(value) {
+        if self.is_ok() {
+            return value
+        }
+        else {
+            return self.err
+        }
+    }
+}
+
+/*
+ юнит result
+ | предоставляет быстрые инициализаторы
+ | для типа Result
+*/
+unit result {
+    /*
+     с ok значением
+    */
+    fun ok(value) { return new Result(value, null) }
+    /*
+     с err значением
+    */
+    fun err(err) { return new Result(null, err) }
+}

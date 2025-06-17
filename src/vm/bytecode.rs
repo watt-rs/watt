@@ -134,5 +134,9 @@ pub enum Opcode {
     Native {
         addr: Address,
         fn_name: String,
+    },
+    ErrorPropagation {
+        addr: Address,
+        value: Box<Chunk>,
     }
 }

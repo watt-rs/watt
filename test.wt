@@ -1,26 +1,22 @@
-// imports
+/*
+ error propagation test
+*/
+import 'std.errors'
 import 'std.io'
 
-// a tractor 🚜
-type Tractor(storage) {
-    // amount of 🌾
-    value := 0
-    // fill 🌿
-    fun fill(value) {
-        if self.value + value > storage {
-            self.value = storage
-            return null
-        }
-        self.value += value
-    }
-    // print 📜
-    fun print() {
-        io.println('tractor value: ' + self.value)
-    }
+fun a {
+    return result.ok(10)
 }
 
-tractor := new Tractor(100)
-tractor.fill(50)
-tractor.print()
-tractor.fill(70)
-tractor.print()
+fun b {
+    return result.err('error found')
+}
+
+fun c {
+    a_val := a()?
+    io.println('a: ' + a_val)
+    b_val := b()?
+    io.println('b: ' + b_val)
+}
+
+io.println(c().unwrap_err())

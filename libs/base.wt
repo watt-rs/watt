@@ -46,3 +46,10 @@ type List {
         return __list_utils.get(self.internal, self.index)
     }
 }
+
+/*
+ Функция паники
+ | реализация находится в
+ | > crate::vm::natives::libs::natives_base
+*/
+native panic -> 'base@panic'

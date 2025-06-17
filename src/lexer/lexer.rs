@@ -52,7 +52,7 @@ pub enum TokenType {
     Rbracket, // ]
     Colon, // colon :
     For, // for
-    Bang, // ?
+    Bang, // !
     In, // in
     Continue, // continue
     Arrow, // ->
@@ -61,6 +61,7 @@ pub enum TokenType {
     With, // with
     Trait, // trait
     Impl, // impl
+    Question, // ?
     Impls // todo!()
 }
 
@@ -147,7 +148,6 @@ impl Lexer {
                     } else {
                         self.add_tk(TokenType::Op, "+".to_string());
                     }
-                    
                 }
                 '-' => {
                     if self.is_match('=') {
@@ -157,7 +157,6 @@ impl Lexer {
                     } else {
                         self.add_tk(TokenType::Op, "-".to_string());
                     }
-                    
                 }
                 '*' => {
                     if self.is_match('=') {
@@ -165,7 +164,6 @@ impl Lexer {
                     } else {
                         self.add_tk(TokenType::Op, "*".to_string());
                     }
-                    
                 }
                 '/' => {
                     if self.is_match('=') {
@@ -190,15 +188,12 @@ impl Lexer {
                     } else {
                         self.add_tk(TokenType::Op, "/".to_string());
                     }
-                    
                 }
                 '(' => {
                     self.add_tk(TokenType::Lparen, "(".to_string());
-                    
                 },
                 ')' => {
                     self.add_tk(TokenType::Rparen, ")".to_string());
-                    
                 },
                 '{' => {
                     self.add_tk(TokenType::Lbrace, "{".to_string());
@@ -206,23 +201,21 @@ impl Lexer {
                 },
                 '}' => {
                     self.add_tk(TokenType::Rbrace, "}".to_string());
-                    
                 },
                 '[' => {
                     self.add_tk(TokenType::Lbracket, "[".to_string());
-                    
                 },
                 ']' => {
                     self.add_tk(TokenType::Rbracket, "]".to_string());
-                    
                 },
                 ',' => {
                     self.add_tk(TokenType::Comma, ",".to_string());
-                    
                 },
                 '.' => {
                     self.add_tk(TokenType::Dot, ".".to_string());
-                    
+                },
+                '?' => {
+                    self.add_tk(TokenType::Question, "?".to_string());
                 },
                 ':' => {
                     if self.is_match('=') {
@@ -237,7 +230,6 @@ impl Lexer {
                     } else {
                         self.add_tk(TokenType::Less, "<".to_string());
                     }
-                    
                 }
                 '>' => {
                     if self.is_match('=') {
@@ -245,7 +237,6 @@ impl Lexer {
                     } else {
                         self.add_tk(TokenType::Greater, ">".to_string());
                     }
-                    
                 }
                 '!' => {
                     if self.is_match('=') {
@@ -253,7 +244,6 @@ impl Lexer {
                     } else {
                         self.add_tk(TokenType::Bang, "!".to_string());
                     }
-                    
                 }
                 '=' => {
                     if self.is_match('=') {
@@ -261,24 +251,15 @@ impl Lexer {
                     } else {
                         self.add_tk(TokenType::Assign, "=".to_string());
                     }
-                    
                 }
                 // пробелы
-                '\r' => {
-                    
-                }
-                '\t' => {
-                    
-                }
-                '\0' => {
-
-                }
+                '\r' => {}
+                '\t' => {}
+                '\0' => {}
                 '\n' => {
                     self.newline();
                 }
-                ' ' => {
-                    
-                }
+                ' ' => {}
                 '\'' => {
                     match self.scan_string() {
                         Ok(tk) => {
@@ -288,7 +269,6 @@ impl Lexer {
                             error!(err);
                         }
                     }
-                    
                 }
                 _ => {
                     if self.is_digit(ch) {

@@ -78,6 +78,7 @@ pub enum Node {
         location: Token,
     },
     Import {
+        location: Token,
         imports: Vec<Import>,
     },
     List {
@@ -142,6 +143,11 @@ pub enum Node {
         full_name: Option<Token>,
         functions: Vec<TraitNodeFn>
     },
+    ErrorPropagation {
+        location: Token,
+        value: Box<Node>,
+        should_push: bool,
+    }
 }
 
 // функция трейта
@@ -182,6 +188,13 @@ pub fn set_should_push(node: Node, should_push: bool) -> Result<Node, Error> {
                 should_push,
             })
         },
+        Node::ErrorPropagation { location, value, .. } => {
+            Ok(Node::ErrorPropagation {
+                location,
+                value,
+                should_push,
+            })
+        }
         _ => {
             Ok(node)
         }

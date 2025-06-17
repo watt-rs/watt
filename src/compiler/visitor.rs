@@ -132,7 +132,7 @@ impl CompileVisitor {
             } => { self.visit_an_fn_decl(params, body); }
             Node::Break { location } => { self.visit_break(location); }
             Node::Continue { location } => { self.visit_continue(location); }
-            Node::Import { imports } => { unsafe { self.visit_import(imports); } }
+            Node::Import { imports, .. } => { unsafe { self.visit_import(imports); } }
             Node::List {
                 location,
                 values
@@ -192,11 +192,14 @@ impl CompileVisitor {
             Node::Trait { name, full_name, functions } => {
                 self.visit_trait(name, full_name, functions);
             }
+            Node::ErrorPropagation { location, value, should_push } => {
+                self.visit_error_propagation(location, value, should_push);
+            }
         }
     }
 
     // блок
-    pub fn visit_block(&mut self, body: Vec<Box<Node>>) {
+    fn visit_block(&mut self, body: Vec<Box<Node>>) {
         // перебор и компиляция нод
         for node in body {
             self.visit_node(*node)
@@ -204,7 +207,7 @@ impl CompileVisitor {
     }
 
     // визит числа
-    pub fn visit_number(&mut self, value: Token) {
+    fn visit_number(&mut self, value: Token) {
         // пуш флоата
         if value.value.contains(".") {
             self.push_instr(Opcode::Push {
@@ -222,7 +225,7 @@ impl CompileVisitor {
     }
 
     // визит строки
-    pub fn visit_string(&mut self, value: Token) {
+    fn visit_string(&mut self, value: Token) {
         // пуш строки
         self.push_instr(Opcode::Push {
             addr: value.address.clone(),
@@ -231,7 +234,7 @@ impl CompileVisitor {
     }
 
     // визит була
-    pub fn visit_bool(&mut self, value: Token) {
+    fn visit_bool(&mut self, value: Token) {
         // пуш бул
         self.push_instr(Opcode::Push {
             addr: value.address.clone(),
@@ -240,7 +243,7 @@ impl CompileVisitor {
     }
 
     // бинарая операция
-    pub fn visit_binary(&mut self, left: Box<Node>, right: Box<Node>, op: Token) {
+    fn visit_binary(&mut self, left: Box<Node>, right: Box<Node>, op: Token) {
         // правая часть
         self.visit_node(*right);
         // левая часть
@@ -253,7 +256,7 @@ impl CompileVisitor {
     }
 
     // блок if
-    pub fn visit_if(
+    fn visit_if(
         &mut self,
         location: Token,
         logical: Box<Node>,
@@ -286,7 +289,7 @@ impl CompileVisitor {
     }
 
     // блок while
-    pub fn visit_while(
+    fn visit_while(
         &mut self,
         location: Token,
         logical: Box<Node>,
@@ -320,7 +323,7 @@ impl CompileVisitor {
     }
 
     // дефайн переменной
-    pub fn visit_define(
+    fn visit_define(
         &mut self,
         previous: Option<Box<Node>>,
         name: Token,
@@ -347,7 +350,7 @@ impl CompileVisitor {
     }
 
     // вызов функции
-    pub fn visit_call(
+    fn visit_call(
         &mut self,
         previous: Option<Box<Node>>,
         name: Token,
@@ -376,7 +379,7 @@ impl CompileVisitor {
     }
 
     // дефайн функции
-    pub fn visit_fn_decl(
+    fn visit_fn_decl(
         &mut self,
         name: Token,
         full_name: Option<Token>,
@@ -419,7 +422,7 @@ impl CompileVisitor {
     }
 
     // визит break
-    pub fn visit_break(&mut self, location: Token){
+    fn visit_break(&mut self, location: Token){
         // завершения цикла
         self.push_instr(Opcode::EndLoop {
             addr: location.address.clone(),
@@ -428,7 +431,7 @@ impl CompileVisitor {
     }
 
     // визит continue
-    pub fn visit_continue(&mut self, location: Token) {
+    fn visit_continue(&mut self, location: Token) {
         // скип итерации цикла
         self.push_instr(Opcode::EndLoop {
             addr: location.address.clone(),
@@ -437,7 +440,7 @@ impl CompileVisitor {
     }
 
     // todo: import
-    pub unsafe fn visit_import(&mut self, imports: Vec<Import>) {
+    unsafe fn visit_import(&mut self, imports: Vec<Import>) {
         // перебираем импорты
         for import in imports {
             // option нода
@@ -452,12 +455,12 @@ impl CompileVisitor {
     }
 
     // todo: list
-    pub fn visit_list(&mut self, location: Token, list: Box<Vec<Box<Node>>>) {
+    fn visit_list(&mut self, location: Token, list: Box<Vec<Box<Node>>>) {
         todo!()
     }
 
     // todo: map
-    pub fn visit_map(
+    fn visit_map(
         &mut self,
         location: Token,
         map: Box<Vec<(Box<Node>, Box<Node>)>>,
@@ -466,7 +469,7 @@ impl CompileVisitor {
     }
 
     // todo: for
-    pub fn visit_for(
+    fn visit_for(
         &mut self,
         iterable: Box<Node>,
         variable_name: Token,
@@ -476,7 +479,7 @@ impl CompileVisitor {
     }
 
     // todo: match
-    pub fn visit_match(
+    fn visit_match(
         &mut self,
         location: Token,
         matchable: Box<Node>,
@@ -487,12 +490,12 @@ impl CompileVisitor {
     }
 
     // todo: anonymous fn
-    pub fn visit_an_fn_decl(&mut self, args: Vec<Token>, body: Box<Node>) {
+    fn visit_an_fn_decl(&mut self, args: Vec<Token>, body: Box<Node>) {
         todo!()
     }
 
     // нативная функция
-    pub fn visit_native(&mut self, name: Token, fn_name: Token) {
+    fn visit_native(&mut self, name: Token, fn_name: Token) {
         self.push_instr(Opcode::Define {
             addr: name.address.clone(),
             name: name.value.clone(),
@@ -509,7 +512,7 @@ impl CompileVisitor {
     }
 
     // унарная операция
-    pub fn visit_unary(&mut self, value: Box<Node>, op: Token) {
+    fn visit_unary(&mut self, value: Box<Node>, op: Token) {
         // перебираем оператор
         match op.value.as_str() {
             // оператор -
@@ -532,7 +535,7 @@ impl CompileVisitor {
     }
 
     // визит типа
-    pub fn visit_type(
+    fn visit_type(
         &mut self,
         name: Token,
         full_name: Option<Token>,
@@ -571,7 +574,7 @@ impl CompileVisitor {
     }
 
     // визит трейта
-    pub fn visit_trait(
+    fn visit_trait(
         &mut self,
         name: Token,
         full_name: Option<Token>,
@@ -633,7 +636,7 @@ impl CompileVisitor {
     }
 
     // визит юнита
-    pub fn visit_unit(
+    fn visit_unit(
         &mut self,
         name: Token,
         full_name: Option<Token>,
@@ -658,7 +661,7 @@ impl CompileVisitor {
     }
 
     // визит условия
-    pub fn visit_cond(
+    fn visit_cond(
         &mut self,
         left: Box<Node>,
         right: Box<Node>,
@@ -675,7 +678,7 @@ impl CompileVisitor {
     }
 
     // визит логическово выражения
-    pub fn visit_logical(
+    fn visit_logical(
         &mut self,
         left: Box<Node>,
         right: Box<Node>,
@@ -692,7 +695,7 @@ impl CompileVisitor {
     }
 
     // визит возврата значения
-    pub fn visit_return(&mut self, location: Token, value: Box<Node>) {
+    fn visit_return(&mut self, location: Token, value: Box<Node>) {
         // чанк значения
         self.push_chunk();
         self.visit_node(*value);
@@ -705,7 +708,7 @@ impl CompileVisitor {
     }
 
     // нулл значение
-    pub fn visit_null(&mut self, location: Token) {
+    fn visit_null(&mut self, location: Token) {
         // нулл значение
         self.push_instr(Opcode::Push {
             addr: location.address.clone(),
@@ -714,7 +717,7 @@ impl CompileVisitor {
     }
 
     // визит инстанса
-    pub fn visit_instance(
+    fn visit_instance(
         &mut self,
         name: Token,
         constructor: Vec<Box<Node>>,
@@ -736,7 +739,7 @@ impl CompileVisitor {
     }
 
     // установка значения переменной
-    pub fn visit_assign(
+    fn visit_assign(
         &mut self,
         previous: Option<Box<Node>>,
         name: Token,
@@ -762,7 +765,7 @@ impl CompileVisitor {
     }
 
     // получение значения переменной
-    pub fn visit_get(
+    fn visit_get(
         &mut self,
         previous: Option<Box<Node>>,
         name: Token,
@@ -780,6 +783,24 @@ impl CompileVisitor {
             name: name.value,
             has_previous,
             should_push,
+        });
+    }
+    
+    // прокидывание ошибок
+    fn visit_error_propagation(
+        &mut self,
+        location: Token,
+        value: Box<Node>,
+        should_push: bool,
+    ) {
+        // чанк значения
+        self.push_chunk();
+        self.visit_node(*value);
+        let chunk = self.pop_chunk();
+        // ретурн
+        self.push_instr(Opcode::ErrorPropagation {
+            addr: location.address.clone(),
+            value: Box::new(Chunk::new(chunk)),
         });
     }
 }

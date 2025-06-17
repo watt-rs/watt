@@ -400,7 +400,16 @@ impl VM {
                     }
                 }
             }
-            _ => { panic!("operator = {} is not found.", op)}
+            "!=" => {
+                // операнды
+                self.push(operand_b);
+                self.push(operand_a);
+                // выполняем ==
+                self.op_conditional(address.clone(), "==")?;
+                // инверсируем
+                self.op_bang(address)?;
+            }
+            _ => { panic!("operator {} is not found.", op)}
         }
         // успех
         Ok(())
@@ -815,7 +824,8 @@ impl VM {
             let new_size = vm.stack.len();
             // количество переданных аргументов
             let passed_amount = new_size-prev_size;
-            // проверяем
+            // проверяем колличество аргументов и параметров
+            // если совпало
             if passed_amount == params_amount {
                 // реверсируем параметры
                 let mut reversed_params = params.clone();
@@ -830,10 +840,15 @@ impl VM {
                     }
                 }
                 Ok(())
-            } else {
+            }
+            // если не совпало
+            else {
                 error!(Error::new(
                     addr.clone(),
-                    format!("invalid args amount: {} to call: {}.", passed_amount, name),
+                    format!(
+                        "invalid args amount: {} to call: {}. stack: {:?}",
+                        passed_amount, name, vm.stack
+                    ),
                     format!("expected {} arguments.", params_amount)
                 ));
                 Ok(())
@@ -857,7 +872,10 @@ impl VM {
             } else {
                 error!(Error::new(
                     addr.clone(),
-                    format!("invalid args amount: {} to call: {}.", passed_amount, name),
+                    format!(
+                        "invalid args amount: {} to call: {}. stack: {:?}",
+                        passed_amount, name, vm.stack
+                    ),
                     format!("expected {} arguments.", params_amount)
                 ));
                 Ok(())
@@ -1170,7 +1188,7 @@ impl VM {
 
         // подгрузка конструктора
         unsafe fn pass_constructor(vm: &mut VM, addr: Address, name: String, params_amount: usize,
-                                 args: Box<Chunk>, params: Vec<String>, table: *mut Table) -> Result<(), ControlFlow> {
+                                 args: Box<Chunk>, params: Vec<String>, table: *mut Table, fields_table: *mut Table) -> Result<(), ControlFlow> {
             // фиксируем размер стека
             let prev_size = vm.stack.len();
             // загрузка аргументов
@@ -1189,7 +1207,7 @@ impl VM {
                     // получаем аргумент из стека
                     let operand = vm.pop(addr.clone())?;
                     // устанавливаем в таблице
-                    if let Err(e) = (*table).define(addr.clone(), param.clone(), operand) {
+                    if let Err(e) = (*fields_table).define(addr.clone(), param.clone(), operand) {
                         error!(e);
                     }
                 }
@@ -1225,6 +1243,7 @@ impl VM {
                         (*t).constructor.len(),
                         args,
                         (*t).constructor.clone(),
+                        table,
                         (*instance).fields
                     )?;
                     // рут
@@ -1336,6 +1355,99 @@ impl VM {
         Ok(())
     }
 
+    // "пробрасывание" ошибок
+    unsafe fn op_error_propagation(&mut self, addr: Address, value: Box<Chunk>, table: *mut Table) -> Result<(), ControlFlow> {
+        // выполняем
+        self.run(*value.clone(), table)?;
+        // значение
+        let value = self.pop(addr.clone())?;
+        // вызов is_ok
+        unsafe fn call_is_ok(vm: &mut VM, addr: Address, instance: *mut Instance) -> Result<bool, ControlFlow> {
+            // пробуем получить is_ok
+            let lookup_result = (*(*instance).fields).find(addr.clone(), "is_ok".to_string());
+            // если успешно
+            if let Ok(callable) = lookup_result {
+                // проверяем, функция ли
+                if let Value::Fn(function) = callable {
+                    // проверяем колличество аргументов
+                    if (*function).params.len() != 0 {
+                        error!(Error::new(
+                            addr,
+                            format!("is_ok takes {} params", (*function).params.len()),
+                            "is_ok should take 0 params.".to_string()
+                        ));
+                        return Ok(false);
+                    }
+                }
+                // если нет
+                else {
+                    error!(Error::new(
+                            addr,
+                            "is_ok is not a fn.".to_string(),
+                            "is_ok should be fn.".to_string()
+                        ));
+                    return Ok(false);
+                }
+                // вызываем
+                vm.call(
+                    addr.clone(), "is_ok".to_string(), callable,
+                    Box::new(Chunk::new(vec![])),
+                    memory::alloc_value(Table::new()),
+                    true
+                )?;
+                // получаем значение
+                let is_ok = vm.pop(addr.clone())?;
+                // проверяем, бул ли
+                return if let Value::Bool(boolean) = is_ok {
+                    Ok(boolean)
+                } else {
+                    error!(Error::new(
+                        addr,
+                        "is_ok should return a bool.".to_string(),
+                        format!("it returned: {:?}", is_ok)
+                    ));
+                    Ok(false)
+                }
+            }
+            // если ошибка
+            else if let Err(e) = lookup_result {
+                error!(e);
+                return Ok(false)
+            }
+            // dead code
+            Ok(false)
+        }
+        // проверяем тип значения
+        if let Value::Instance(instance) = value {
+            // вызов is_ok
+            let is_ok = call_is_ok(
+                self,
+                addr,
+                instance,
+            )?;
+            // проверяем is_ok
+            if !is_ok {
+                // пушим result, если ошибка
+                return Err(
+                    ControlFlow::Return(value)
+                );
+            }
+        }
+        // если неверный тип значения - ошибка
+        else {
+            error!(Error::new(
+                addr,
+                format!("could not use error propagation with {:?}.", value),
+                "requires instance of type that impls .is_ok() fn.".to_string()
+            ))
+        }
+        // если нет ошибки, пушим значение обратно
+        self.push(value);
+
+        // успех
+        Ok(())
+    }
+
     // запуск байткода
     #[allow(unused_variables)]
     pub unsafe fn run(&mut self, chunk: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
@@ -1409,6 +1521,9 @@ impl VM {
                 }
                 Opcode::Native { addr, fn_name } => {
                     self.op_native(addr, fn_name)?;
+                }
+                Opcode::ErrorPropagation { addr, value } => {
+                    self.op_error_propagation(addr, value, table)?;
                 }
             }
         }

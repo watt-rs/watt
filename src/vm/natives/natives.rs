@@ -19,6 +19,7 @@ pub unsafe fn provide_builtins(vm: &mut VM) -> Result<(), Error> {
         "-".to_string()
     );
     // io
+    natives_base::provide(built_in_address.clone(), vm)?;
     natives_io::provide(built_in_address.clone(), vm)?;
     natives_list::provide(built_in_address.clone(), vm)?;
     natives_gc::provide(built_in_address.clone(), vm)?;

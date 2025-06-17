@@ -7,6 +7,7 @@ use crate::lexer::address::Address;
 
 // нода анализа
 #[allow(dead_code)]
+#[derive(Clone)]
 pub enum AnalyzerNode {
     Block,
     If,
@@ -39,8 +40,8 @@ impl Analyzer {
             Node::While { logical, body, .. } => {
                 self.analyze_while(body, logical);
             }
-            Node::FnDeclaration { name, body, .. } => {
-                self.analyze_fn_decl(name.address, body);
+            Node::FnDeclaration { body, .. } => {
+                self.analyze_fn_decl(body);
             }
             Node::Break { location } => { self.analyze_break(location.address); }
             Node::Continue { location } => { self.analyze_continue(location.address); }
@@ -48,11 +49,17 @@ impl Analyzer {
             Node::Map { .. } => { todo!() }
             Node::Match { .. } => { todo!() }
             Node::Ret { location, .. } => { self.analyze_return(location.address); }
-            Node::Type { name, body, .. } => {
-                self.analyze_type_decl(name.address, body);
+            Node::Type { body, .. } => {
+                self.analyze_type_decl( body);
             }
-            Node::Unit { name, body, .. } => {
-                self.analyze_unit_decl(name.address, body);
+            Node::Unit { body, .. } => {
+                self.analyze_unit_decl(body);
+            }
+            Node::Import { location, .. } => {
+                self.analyze_import(location.address)
+            }
+            Node::ErrorPropagation { location, .. } => {
+                self.analyze_error_propagation(location.address);
             }
             _ => {}
         }
@@ -71,8 +78,8 @@ impl Analyzer {
     }
 
     // проверка, есть ли в иерархии функция
-    fn hierarchy_has_fn(&mut self) -> bool {
-        for node in self.analyze_stack.iter().rev() {
+    fn hierarchy_has_fn(&self) -> bool {
+        for node in self.analyze_stack.clone() {
             if let AnalyzerNode::Fn = node {
                 return true
             }
@@ -103,7 +110,7 @@ impl Analyzer {
     }
 
     // цикл
-    pub fn analyze_while(&mut self, body: Box<Node>, logical: Box<Node>) {
+    fn analyze_while(&mut self, body: Box<Node>, logical: Box<Node>) {
         // пушим
         self.analyze_stack.push_back(AnalyzerNode::If);
         self.analyze(*logical);
@@ -113,7 +120,7 @@ impl Analyzer {
     }
 
     // continue
-    pub fn analyze_continue(&mut self, addr: Address) {
+    fn analyze_continue(&mut self, addr: Address) {
         // проверяем
         if self.analyze_stack.len() == 0 {
             error!(Error::new(
@@ -134,7 +141,7 @@ impl Analyzer {
     }
 
     // break
-    pub fn analyze_break(&mut self, addr: Address) {
+    fn analyze_break(&mut self, addr: Address) {
         // проверяем
         if self.analyze_stack.len() == 0 {
             error!(Error::new(
@@ -155,8 +162,7 @@ impl Analyzer {
     }
 
     // анализ декларации функции
-    #[allow(unused_variables)]
-    pub fn analyze_fn_decl(&mut self, addr: Address, body: Box<Node>) {
+    fn analyze_fn_decl(&mut self, body: Box<Node>) {
         // пуш в стек
         self.analyze_stack.push_back(AnalyzerNode::Fn);
         self.analyze(*body);
@@ -164,7 +170,7 @@ impl Analyzer {
     }
 
     // анализ ретурн
-    pub fn analyze_return(&mut self, addr: Address) {
+    fn analyze_return(&mut self, addr: Address) {
         // проверяем
         if self.analyze_stack.len() == 0 {
             error!(Error::new(
@@ -185,16 +191,38 @@ impl Analyzer {
     }
 
     // анализ декларации типа
-    #[allow(unused_variables)]
-    pub fn analyze_type_decl(&mut self, addr: Address, body: Box<Node>) {
+    fn analyze_type_decl(&mut self,  body: Box<Node>) {
         // пуш в стек
         self.analyze(*body);
     }
 
     // анализ декларации юнита
-    #[allow(unused_variables)]
-    pub fn analyze_unit_decl(&mut self, addr: Address, body: Box<Node>) {
+    fn analyze_unit_decl(&mut self, body: Box<Node>) {
         // пуш в стек
         self.analyze(*body);
     }
+
+    // анализ импорта
+    fn analyze_import(&self, addr: Address) {
+        // проверка размера стека вложенности
+        if self.analyze_stack.len() > 0 {
+            error!(Error::new(
+                addr,
+                "couldn't use import in any block.".to_string(),
+                "you can use import only in main scope.".to_string()
+            ))
+        }
+    }
+
+    // анализ error propagation
+    fn analyze_error_propagation(&self, addr: Address) {
+        // проверка размера стека вложенности
+        if !self.hierarchy_has_fn() {
+            error!(Error::new(
+                addr,
+                "couldn't use error propagation outside fn.".to_string(),
+                "you can use it only inside functions.".to_string()
+            ))
+        }
+    }    
 }

@@ -22,6 +22,7 @@ impl ImportsResolver {
             libraries: HashMap::from([
                 ("std.io".to_string(), "./libs/std/std_io.wt".to_string()),
                 ("std.gc".to_string(), "./libs/std/std_gc.wt".to_string()),
+                ("std.errors".to_string(), "./libs/std/std_errors.wt".to_string()),
             ]),
             builtins: vec!["./libs/base.wt".to_string()],
         }
