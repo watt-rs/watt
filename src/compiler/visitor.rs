@@ -27,12 +27,22 @@ impl CompileVisitor {
         }
     }
 
+    // загрузка билт-инов
+    fn provide_builtins(&mut self) {
+        // ноды импротов
+        let imports = self.resolver.import_builtins();
+        // визит нод
+        for node in imports {
+            self.visit_node(node)
+        }
+    }
+
     // компиляция
     pub unsafe fn compile(&mut self, node: Node) -> Chunk {
         // пуш чанка
         self.push_chunk();
-        // билт-ин
-        self.resolver.provide_builtins();
+        // билт-ины
+        self.provide_builtins();
         // код
         self.visit_node(node.clone());
         // возвращаем
@@ -132,7 +142,7 @@ impl CompileVisitor {
             } => { self.visit_an_fn_decl(params, body); }
             Node::Break { location } => { self.visit_break(location); }
             Node::Continue { location } => { self.visit_continue(location); }
-            Node::Import { imports, .. } => { unsafe { self.visit_import(imports); } }
+            Node::Import { imports, .. } => { self.visit_import(imports); }
             Node::List {
                 location,
                 values
@@ -439,8 +449,8 @@ impl CompileVisitor {
         });
     }
 
-    // todo: import
-    unsafe fn visit_import(&mut self, imports: Vec<Import>) {
+    // визит импорта
+    fn visit_import(&mut self, imports: Vec<Import>) {
         // перебираем импорты
         for import in imports {
             // option нода
@@ -454,9 +464,39 @@ impl CompileVisitor {
         }
     }
 
-    // todo: list
+    // визит инициализатора списка
     fn visit_list(&mut self, location: Token, list: Box<Vec<Box<Node>>>) {
-        todo!()
+        // создаём список
+        self.push_instr(Opcode::Instance {
+            addr: location.address.clone(),
+            name: "List".to_string(),
+            args: Box::new(Chunk::new(vec![])),
+            should_push: true,
+        });
+        // если длина больше нуля
+        if (*list).len() > 0 {
+            // заполняем
+            for item in *list {
+                // дублируем список
+                self.push_instr(Opcode::Duplicate {
+                    addr: location.address.clone(),
+                });
+                // чанк элемента
+                self.push_chunk();
+                self.visit_node(*item);
+                let chunk = self.pop_chunk();
+                // добавляем элемент
+                self.push_instr(Opcode::Call {
+                    addr: location.address.clone(),
+                    name: "add".to_string(),
+                    args: Box::new(Chunk::new(
+                        chunk
+                    )),
+                    has_previous: true,
+                    should_push: false
+                })
+            }
+        }
     }
 
     // todo: map

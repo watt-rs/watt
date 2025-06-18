@@ -28,13 +28,26 @@ impl ImportsResolver {
         }
     }
 
-    // билт-ины
-    pub fn provide_builtins(&mut self) {
+    // импорт билт-инов
+    pub fn import_builtins(&mut self) -> Vec<Node> {
+        // ноды
+        let mut nodes = vec![];
+        // перебираем билт-ины
         for builtin in self.builtins.clone() {
             if !self.imported.contains(&builtin.clone()) {
-                self.import(None, Import::new(None, builtin, None));
+                // нода
+                let node_option = self.import(
+                    None,
+                    Import::new(None, builtin, None)
+                );
+                // импортируем
+                if let Some(node) = node_option {
+                    nodes.push(node);
+                }
             }
         }
+        // возвращаем
+        nodes
     }
 
     // ресолвинг

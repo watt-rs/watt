@@ -4,8 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-parking_lot = "0.12"
 clap = { version = "4.5.40", features = ["derive"] }
-cliclack = "0.3.6"
-strum = "0.26"
-strum_macros = "0.26"

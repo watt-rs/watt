@@ -419,6 +419,7 @@ impl Parser {
                 self.consume(TokenType::Comma)?;
                 nodes.push(Box::new(self.expr()?));
             }
+            self.consume(TokenType::Rbracket)?;
             Ok(Node::List {
                 location,
                 values: Box::new(nodes)
@@ -441,11 +442,11 @@ impl Parser {
     // мапа
     fn map_expr(&mut self) -> Result<Node, Error> {
         // {
-        let location = self.consume(TokenType::Lbracket)?;
+        let location = self.consume(TokenType::Lbrace)?;
         // парсинг тела
         // пустая мапа
-        if self.check(TokenType::Rbracket) {
-            self.consume(TokenType::Rbracket)?;
+        if self.check(TokenType::Rbrace) {
+            self.consume(TokenType::Rbrace)?;
             Ok(
                 Node::Map {
                     location,
@@ -463,6 +464,7 @@ impl Parser {
                 let key = self.key_value_expr()?;
                 nodes.push((key.0, key.1));
             }
+            self.consume(TokenType::Rbrace)?;
             Ok(Node::Map {
                 location,
                 values: Box::new(nodes)
