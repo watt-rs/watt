@@ -1417,20 +1417,76 @@ impl VM {
             // dead code
             Ok(false)
         }
+        // вызов unwrap
+        unsafe fn call_unwrap(vm: &mut VM, addr: Address, instance: *mut Instance) -> Result<(), ControlFlow> {
+            // пробуем получить is_ok
+            let lookup_result = (*(*instance).fields).find(addr.clone(), "unwrap".to_string());
+            // если успешно
+            match lookup_result {
+                Ok(callable) => {
+                    // проверяем, функция ли
+                    if let Value::Fn(function) = callable {
+                        // проверяем колличество аргументов
+                        if (*function).params.len() != 0 {
+                            error!(Error::new(
+                            addr.clone(),
+                            format!("unwrap takes {} params", (*function).params.len()),
+                            "unwrap should take 0 params.".to_string()
+                        ));
+                            return Ok(());
+                        }
+                    }
+                    // если нет
+                    else {
+                        error!(Error::new(
+                            addr.clone(),
+                            "unwrap is not a fn.".to_string(),
+                            "unwrap should be fn.".to_string()
+                        ));
+                        return Ok(());
+                    }
+                    // вызываем
+                    vm.call(
+                        addr.clone(), "unwrap".to_string(), callable,
+                        Box::new(Chunk::new(vec![])),
+                        memory::alloc_value(Table::new()),
+                        true
+                    )?;
+                    // успех
+                    Ok(())
+                },
+                Err(e) => {
+                    // ошибка
+                    error!(e);
+                    // успех
+                    Ok(())
+                }
+            }
+        }
         // проверяем тип значения
         if let Value::Instance(instance) = value {
             // вызов is_ok
             let is_ok = call_is_ok(
                 self,
-                addr,
+                addr.clone(),
                 instance,
             )?;
             // проверяем is_ok
+            // если есть ошибка
             if !is_ok {
-                // пушим result, если ошибка
+                // возвращаем обратно
                 return Err(
                     ControlFlow::Return(value)
                 );
+            }
+            // если нет ошибки
+            else {
+                // вызываем unwrap
+                call_unwrap(
+                    self,
+                    addr,
+                    instance
+                )?;
             }
         }
         // если неверный тип значения - ошибка
@@ -1438,11 +1494,9 @@ impl VM {
             error!(Error::new(
                 addr,
                 format!("could not use error propagation with {:?}.", value),
-                "requires instance of type that impls .is_ok() fn.".to_string()
+                "requires instance of type that impls .is_ok() and .unwrap() fn-s.".to_string()
             ))
         }
-        // если нет ошибки, пушим значение обратно
-        self.push(value);
         // успех
         Ok(())
     }

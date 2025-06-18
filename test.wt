@@ -1,6 +1,6 @@
 /*
  error propagation test
-*/
+
 import 'std.errors'
 import 'std.io'
 
@@ -20,3 +20,15 @@ fun c {
 }
 
 io.println(c().unwrap_err())
+*/
+import 'std.io'
+fun factorial(n) {
+    f := 1
+    r := 1
+    while f <= n {
+        r *= f
+        f += 1
+    }
+    return r
+}
+io.println(factorial(15))
