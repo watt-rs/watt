@@ -40,19 +40,24 @@ impl Error {
         );
         println!("│");
         println!("│ {}:", self.addr.file);
-        println!("│ {gray}{line}{reset} {text}",
+        println!("│ {gray}{line}{reset} │ {text}",
             line = self.addr.line,
             text = self.addr.line_text,
             gray = colors::WhiteColor,
             reset = colors::ResetColor,
         );
-        println!("│ {spaces}^", spaces=" ".repeat(
-            self.addr.column as usize
-            +
-            self.addr.line.to_string().len()
-        ));
+        println!("│ {space:count$}^",
+            space = " ",
+            count = self.addr.column as usize
+                    + self.addr.line.to_string().len()
+                    + 2   // Размер разделителя `│ `
+        );
         println!("│");
-        println!("│ hint: {hint}", hint = self.hint);
+        println!("│ {blue}hint:{reset} {hint}",
+            blue = colors::BlueColor,
+            reset = colors::ResetColor,
+            hint = self.hint
+        );
         println!("{}", colors::ResetColor);
         // завершаем процесс
         std::process::exit(1);
