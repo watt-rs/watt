@@ -92,7 +92,7 @@ pub struct Lexer {
 }
 // имплементация
 impl Lexer {
-    pub fn new(code: String, filename: String) -> Lexer {
+    pub fn new(code: String, filename: &str) -> Lexer {
         let map = HashMap::from([
             (String::from("fun"), TokenType::Fun),
             (String::from("break"), TokenType::Break),
@@ -128,7 +128,7 @@ impl Lexer {
             column: 0,
             line_text: "".to_string(),
             code: code.chars().collect::<Vec<char>>(),
-            filename,
+            filename: filename.to_string(),
             tokens: vec![],
             keywords: map
         };

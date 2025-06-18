@@ -67,18 +67,18 @@ impl ImportsResolver {
         // путь
         let path = PathBuf::from(file.clone());
         // чтение файла
-        let code = executor::read_file(addr, path.clone());
+        let code = executor::read_file(addr, &path);
         // имя файла
         let filename = path.file_name().unwrap().to_str().unwrap().to_string();
         // компиляция
         let tokens = executor::lex(
-            filename.clone(),
+            &filename,
             code,
             false,
             false
         );
         let ast = executor::parse(
-            filename,
+            &filename,
             tokens.unwrap(),
             false,
             false,
