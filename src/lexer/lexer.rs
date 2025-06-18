@@ -443,8 +443,11 @@ impl Lexer {
     }
 
     fn peek(&self) -> char {
-        if self.is_at_end() { '\0'; }
-        self.char_at(0)
+        if self.is_at_end() {
+            '\0'
+        } else {
+            self.char_at(0)
+        }
     }
 
     fn next(&self) -> char {
