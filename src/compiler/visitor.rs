@@ -27,8 +27,8 @@ impl CompileVisitor {
         }
     }
 
-    // загрузка билт-инов
-    fn provide_builtins(&mut self) {
+    // визит билт-инов
+    fn visit_builtins(&mut self) {
         // ноды импротов
         let imports = self.resolver.import_builtins();
         // визит нод
@@ -42,7 +42,7 @@ impl CompileVisitor {
         // пуш чанка
         self.push_chunk();
         // билт-ины
-        self.provide_builtins();
+        self.visit_builtins();
         // код
         self.visit_node(node.clone());
         // возвращаем
