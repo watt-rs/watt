@@ -303,6 +303,10 @@ impl VM {
                         Value::Int(b) => { self.push(Value::Bool(a > b)); }
                         _ => { error!(error); }
                     }}
+                    Value::String(a) => { match operand_b {
+                        Value::String(b) => { self.push(Value::Bool(*a > *b)); }
+                        _ => { error!(error); }
+                    }}
                     _ => { error!(error); }
                 }
             },
@@ -316,6 +320,10 @@ impl VM {
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool((a as f64) < b)); }
                         Value::Int(b) => { self.push(Value::Bool(a < b)); }
+                        _ => { error!(error); }
+                    }}
+                    Value::String(a) => { match operand_b {
+                        Value::String(b) => { self.push(Value::Bool(*a < *b)); }
                         _ => { error!(error); }
                     }}
                     _ => { error!(error); }
@@ -333,6 +341,10 @@ impl VM {
                         Value::Int(b) => { self.push(Value::Bool(a >= b)); }
                         _ => { error!(error); }
                     }}
+                    Value::String(a) => { match operand_b {
+                        Value::String(b) => { self.push(Value::Bool(*a >= *b)); }
+                        _ => { error!(error); }
+                    }}
                     _ => { error!(error); }
                 }
             }
@@ -346,6 +358,10 @@ impl VM {
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool((a as f64) <= b)); }
                         Value::Int(b) => { self.push(Value::Bool(a <= b)); }
+                        _ => { error!(error); }
+                    }}
+                    Value::String(a) => { match operand_b {
+                        Value::String(b) => { self.push(Value::Bool(*a <= *b)); }
                         _ => { error!(error); }
                     }}
                     _ => { error!(error); }
