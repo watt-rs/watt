@@ -137,6 +137,7 @@ impl GC {
             _ => {}
         }
     }
+    // высвобождение значения
     fn free_value(&self, value: Value) {
         match value {
             Value::Fn(f) => unsafe {
