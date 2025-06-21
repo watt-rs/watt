@@ -525,17 +525,33 @@ impl Parser {
         Ok(left)
     }
 
+    // impls
+    fn impls_expr(&mut self) -> Result<Node, Error> {
+        let mut left = self.additive_expr()?;
+
+        if self.check(TokenType::Impls) {
+            self.consume(TokenType::Impls)?;
+            let trait_name = self.consume(TokenType::Id)?;
+            left = Node::Impls {
+                value: Box::new(left),
+                trait_name,
+            }
+        }
+
+        Ok(left)
+    }
+
     // условие
     fn conditional_expr(&mut self) -> Result<Node, Error> {
-        let mut left = self.additive_expr()?;
+        let mut left = self.impls_expr()?;
 
         // <, >, <=, >=, ==, !=
         if self.check(TokenType::Greater) || self.check(TokenType::Less)
-            || self.check(TokenType::LessEq) || self.check(TokenType::GreaterEq) ||
-            self.check(TokenType::Eq) || self.check(TokenType::NotEq) {
+            || self.check(TokenType::LessEq) || self.check(TokenType::GreaterEq)
+            || self.check(TokenType::Eq) || self.check(TokenType::NotEq) {
             let op = self.peek()?;
             self.current += 1;
-            let right = self.additive_expr()?;
+            let right = self.impls_expr()?;
             left = Node::Cond {
                 left: Box::new(left),
                 right: Box::new(right),

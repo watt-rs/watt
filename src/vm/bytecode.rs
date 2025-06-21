@@ -138,5 +138,10 @@ pub enum Opcode {
     ErrorPropagation {
         addr: Address,
         value: Box<Chunk>,
-    }
+    },
+    Impls { 
+        addr: Address, 
+        value: Box<Chunk>, 
+        trait_name: String 
+    },
 }

@@ -1517,6 +1517,65 @@ impl VM {
         Ok(())
     }
 
+    // проверка имплементации трейта
+    unsafe fn op_impls(&mut self, addr: Address, value: Box<Chunk>,
+                       trait_name: String, table: *mut Table) -> Result<(), ControlFlow> {
+        // выполняем
+        self.run(*value.clone(), table)?;
+        // значение
+        let value = self.pop(addr.clone())?;
+        // проверка, экземпляр ли класс значение
+        if let Value::Instance(instance) = value {
+            // ищем трейт
+            let lookup_result = (*self.traits).lookup(addr.clone(), trait_name);
+            // если нашли
+            if let Ok(trait_value) = lookup_result {
+                // проверяем, трейт ли
+                match trait_value {
+                    // если трейт
+                    Value::Trait(_trait) => {
+                        // список имплементаций
+                        let impls = (*(*instance).t).impls.clone();
+                        // имена трейта
+                        let name = (*_trait).name.name.clone();
+                        let full_name_option = (*_trait).name.full_name.clone();
+                        // если есть полное имя
+                        if let Some(full_name) = full_name_option {
+                            // пушим бул, есть ли трейт в имплементациях
+                            self.push(Value::Bool(
+                                impls.contains(&name) || impls.contains(&full_name),
+                            ));
+                        }
+                        // если нет
+                        else {
+                            // пушим бул, есть ли трейт в имплементациях
+                            self.push(Value::Bool(
+                                impls.contains(&name),
+                            ));
+                        }
+                    }
+                    // если нет
+                    _ => {
+                        panic!("not a trait in traits table. report to developer.")
+                    }
+                }
+            }
+            // если трейта не существует
+            else if let Err(e) = lookup_result {
+                error!(e);
+            }
+        }
+        else {
+            error!(Error::new(
+                addr.clone(),
+                format!("could not use impls with {:?}.", value),
+                "impls op requires instance.".to_string()
+            ))
+        }
+        // успех
+        Ok(())
+    }
+
     // запуск байткода
     #[allow(unused_variables)]
     pub unsafe fn run(&mut self, chunk: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
@@ -1593,6 +1652,9 @@ impl VM {
                 }
                 Opcode::ErrorPropagation { addr, value } => {
                     self.op_error_propagation(addr, value, table)?;
+                }
+                Opcode::Impls { addr, value, trait_name } => {
+                    self.op_impls(addr, value, trait_name, table)?;
                 }
             }
         }

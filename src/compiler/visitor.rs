@@ -205,6 +205,9 @@ impl CompileVisitor {
             Node::ErrorPropagation { location, value, should_push } => {
                 self.visit_error_propagation(location, value, should_push);
             }
+            Node::Impls { value, trait_name } => {
+                self.visit_impls(value, trait_name);
+            }
         }
     }
 
@@ -837,10 +840,28 @@ impl CompileVisitor {
         self.push_chunk();
         self.visit_node(*value);
         let chunk = self.pop_chunk();
-        // ретурн
+        // прокидывание
         self.push_instr(Opcode::ErrorPropagation {
             addr: location.address.clone(),
             value: Box::new(Chunk::new(chunk)),
         });
+    }
+
+    // проверка имплементации трейта
+    pub fn visit_impls(
+        &mut self,
+        value: Box<Node>,
+        trait_name: Token
+    ) {
+        // чанк значения
+        self.push_chunk();
+        self.visit_node(*value);
+        let chunk = self.pop_chunk();
+        // прокидывание
+        self.push_instr(Opcode::Impls {
+            addr: trait_name.address.clone(),
+            value: Box::new(Chunk::new(chunk)),
+            trait_name: trait_name.value,
+        })
     }
 }

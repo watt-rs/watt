@@ -62,7 +62,8 @@ pub enum TokenType {
     Trait, // trait
     Impl, // impl
     Question, // ?
-    Impls // todo!()
+    Impls, // impls
+    Range // ..
 }
 
 // токен
@@ -120,6 +121,7 @@ impl Lexer {
             (String::from("trait"), TokenType::Trait),
             (String::from("impl"), TokenType::Impl),
             (String::from("native"), TokenType::Native),
+            (String::from("impls"), TokenType::Impls),
         ]);
         // лексер
         let mut lexer = Lexer {
@@ -212,7 +214,11 @@ impl Lexer {
                     self.add_tk(TokenType::Comma, ",".to_string());
                 },
                 '.' => {
-                    self.add_tk(TokenType::Dot, ".".to_string());
+                    if self.is_match('.') {
+                        self.add_tk(TokenType::Range, "..".to_string());
+                    } else {
+                        self.add_tk(TokenType::Dot, ".".to_string());
+                    }
                 },
                 '?' => {
                     self.add_tk(TokenType::Question, "?".to_string());
