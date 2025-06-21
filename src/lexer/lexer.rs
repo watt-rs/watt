@@ -346,6 +346,9 @@ impl Lexer {
         let mut is_float: bool = false;
         while self.is_digit(self.peek()) || self.peek() == '.' {
             if self.peek() == '.' {
+                if self.next() == '.' {
+                    break
+                }
                 if is_float {
                     return Err(
                         Error::new(

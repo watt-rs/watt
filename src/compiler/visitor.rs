@@ -207,6 +207,9 @@ impl CompileVisitor {
             }
             Node::Impls { value, trait_name } => {
                 self.visit_impls(value, trait_name);
+            },
+            Node::Range { location, from, to } => {
+                self.visit_range(location, from, to)
             }
         }
     }
@@ -301,7 +304,7 @@ impl CompileVisitor {
         });
     }
 
-    // блок while
+    // цикл while
     fn visit_while(
         &mut self,
         location: Token,
@@ -511,14 +514,86 @@ impl CompileVisitor {
         todo!()
     }
 
-    // todo: for
+    // цикл for
     fn visit_for(
         &mut self,
         iterable: Box<Node>,
         variable_name: Token,
         body: Box<Node>,
     ) {
-        todo!()
+        // чанк итератора
+        self.push_chunk();
+        self.visit_node(*iterable);
+        let iterator_chunk = self.pop_chunk();
+        // имя для временной переменной
+        let iterator_variable_name = format!("@{}", variable_name.value.clone());
+        // создаём временную переменную для итератора
+        self.push_instr(Opcode::Define {
+            addr: variable_name.address.clone(),
+            name: iterator_variable_name.clone(),
+            value: Box::new(Chunk::new(iterator_chunk)),
+            has_previous: false,
+        });
+        // чанк тела
+        self.push_chunk();
+        self.push_instr(Opcode::Define {
+            addr: variable_name.address.clone(),
+            name: variable_name.value.clone(),
+            value: Box::new(Chunk::new(vec![
+                Opcode::Load {
+                    addr: variable_name.address.clone(),
+                    name: iterator_variable_name.clone(),
+                    has_previous: false,
+                    should_push: true
+                },
+                Opcode::Call {
+                    addr: variable_name.address.clone(),
+                    name: "next".to_string(),
+                    args: Box::new(Chunk::new(vec![])),
+                    has_previous: true,
+                    should_push: true
+                }
+            ])),
+            has_previous: false
+        });
+        self.visit_node(*body);
+        let body_chunk = self.pop_chunk();
+        // чанк иф
+        self.push_chunk();
+        self.push_instr(Opcode::If {
+            addr: variable_name.address.clone(),
+            cond: Box::new(Chunk::new(vec![
+                Opcode::Load {
+                    addr: variable_name.address.clone(),
+                    name: iterator_variable_name.clone(),
+                    has_previous: false,
+                    should_push: true
+                },
+                Opcode::Call {
+                    addr: variable_name.address.clone(),
+                    name: "has_next".to_string(),
+                    args: Box::new(Chunk::new(vec![])),
+                    has_previous: true,
+                    should_push: true
+                }
+            ])),
+            body: Box::new(Chunk::new(body_chunk)),
+            elif: Some(Box::new(Opcode::EndLoop {
+                addr: variable_name.address.clone(),
+                current_iteration: false
+            })),
+        });
+        let if_chunk = self.pop_chunk();
+        // цикл
+        self.push_instr(Opcode::Loop {
+            addr: variable_name.address.clone(),
+            body: Box::new(Chunk::new(if_chunk)),
+        });
+        // удаление временной переменной
+        self.push_instr(Opcode::DeleteLocal {
+            addr: variable_name.address,
+            name: iterator_variable_name
+        })
     }
 
     // todo: match
@@ -863,6 +938,23 @@ impl CompileVisitor {
             addr: trait_name.address.clone(),
             value: Box::new(Chunk::new(chunk)),
             trait_name: trait_name.value,
+        })
+    }
+
+    // создание итератора по range
+    fn visit_range(&mut self, location: Token, from: Box<Node>, to: Box<Node>) {
+        // чанк аргументов
+        self.push_chunk();
+        self.visit_node(*from);
+        self.visit_node(*to);
+        let chunk = self.pop_chunk();
+        // вызов range
+        self.push_instr(Opcode::Call {
+            addr: location.address,
+            name: "_range".to_string(),
+            args: Box::new(Chunk::new(chunk)),
+            has_previous: false,
+            should_push: true,
         })
     }
 }

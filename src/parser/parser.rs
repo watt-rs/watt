@@ -526,9 +526,26 @@ impl Parser {
         Ok(left)
     }
 
+    // выражение range
+    fn range_expr(&mut self) -> Result<Node, Error> {
+        let mut left = self.additive_expr()?;
+        
+        if self.check(TokenType::Range) {
+            let location = self.consume(TokenType::Range)?;
+            let right = self.additive_expr()?;
+            left = Node::Range {
+                location,
+                from: Box::new(left),
+                to: Box::new(right)
+            }
+        }
+        
+        Ok(left)
+    }
+    
     // impls
     fn impls_expr(&mut self) -> Result<Node, Error> {
-        let mut left = self.additive_expr()?;
+        let mut left = self.range_expr()?;
 
         if self.check(TokenType::Impls) {
             self.consume(TokenType::Impls)?;

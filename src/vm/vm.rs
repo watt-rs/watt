@@ -1576,6 +1576,12 @@ impl VM {
         Ok(())
     }
 
+    // удаление локальной переменной
+    #[allow(unused_variables)]
+    unsafe fn op_delete_local(&self, addr: Address, name: String, table: *mut Table) {
+        (*table).fields.remove(&name);
+    }
+
     // запуск байткода
     #[allow(unused_variables)]
     pub unsafe fn run(&mut self, chunk: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
@@ -1655,6 +1661,9 @@ impl VM {
                 }
                 Opcode::Impls { addr, value, trait_name } => {
                     self.op_impls(addr, value, trait_name, table)?;
+                }
+                Opcode::DeleteLocal { addr, name } => {
+                    self.op_delete_local(addr, name, table)
                 }
             }
         }

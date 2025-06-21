@@ -161,7 +161,7 @@ impl GC {
                 println!("unexpected gc value = {:?}.", value);
             }
         }
-        if self.debug { println!("gc :: free :: value = {:?}", value); }
+        self.log(format!("gc :: freed :: value = {:?}", value));
     }
     // сборка мусора
     pub unsafe fn collect_garbage(&mut self, vm: &mut VM, table: *mut Table) {

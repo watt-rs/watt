@@ -45,6 +45,7 @@ a := 'abc'
 b := 'bbc'
 io.println(a < b)
 */
+/*
 import 'std.io'
 
 trait Animal {
@@ -60,4 +61,12 @@ type Cat impl Animal {
 cat := new Cat()
 if cat impls test:Animal {
     cat.pet()
+}
+*/
+import 'std.io'
+for i in 40..120 {
+    io.println('🍧 Ice Cream ' + i)
+}
+for i in 120..40 {
+    io.println('🍧 Ice Cream ' + i)
 }

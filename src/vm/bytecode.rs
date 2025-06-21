@@ -145,4 +145,8 @@ pub enum Opcode {
         value: Box<Chunk>,
         trait_name: String
     },
+    DeleteLocal {
+        addr: Address,
+        name: String,
+    }
 }
