@@ -1,21 +1,21 @@
 ﻿// импорты
-use std::collections::BTreeMap;
 use crate::errors::errors::{Error};
 use crate::lexer::address::Address;
 use crate::vm::values::Value;
+use std::collections::HashMap;
 
 // таблица
 #[derive(Clone, Debug)]
 pub struct Table {
-    pub fields: BTreeMap<String,Value>,
+    pub fields: HashMap<String,Value>,
     pub root: *mut Table,
-    pub closure: *mut Table,
+    pub closure: *mut Table
 }
 // имплементация
 impl Table {
     pub fn new() -> Table {
         Table {
-            fields: BTreeMap::new(),
+            fields: HashMap::new(),
             root: std::ptr::null_mut(),
             closure: std::ptr::null_mut(),
         }
@@ -116,7 +116,7 @@ impl Table {
 
     pub unsafe fn set_root(&mut self, root: *mut Table) {
         let mut current = self as *mut Table;
-        while !(*current).root.is_null() { // todo check loop
+        while !(*current).root.is_null() {
             current = (*current).root;
         }
         (*current).root = root;

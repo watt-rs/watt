@@ -64,9 +64,16 @@ if cat impls test:Animal {
 }
 */
 import 'std.io'
-for i in 40..120 {
-    io.println('🍧 Ice Cream ' + i)
+import 'std.gc'
+fun a() {
+    c := 0
+    fun b() {
+        io.println(c)
+    }
+    return b
 }
-for i in 120..40 {
-    io.println('🍧 Ice Cream ' + i)
-}
+f := a()
+f()
+f = null
+gc.invoke()
+io.println('a')
