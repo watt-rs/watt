@@ -20,6 +20,7 @@ impl Parser {
     pub fn new(tokens: Vec<Token>, filename: String, full_name_prefix: String) -> Parser {
         Parser { tokens, current: 0, filename, full_name_prefix }
     }
+    
     // блок
     fn block(&mut self) -> Result<Node, Error> {
         // список
@@ -86,7 +87,7 @@ impl Parser {
     fn to_full_name(&self, tk: Token) -> Token{
         Token::new(
             TokenType::Text,
-            format!("{:?}:{:?}", self.full_name_prefix, tk.value.clone()),
+            format!("{}:{}", self.full_name_prefix, tk.value.clone()),
             tk.address.clone(),
         )
     }

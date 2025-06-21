@@ -58,6 +58,6 @@ type Cat impl Animal {
 }
 
 cat := new Cat()
-if cat impls Animal {
+if cat impls test:Animal {
     cat.pet()
 }

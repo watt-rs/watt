@@ -4,5 +4,4 @@ pub mod table;
 pub mod vm;
 pub mod flow;
 pub mod natives;
-pub mod statics;
 pub mod memory;

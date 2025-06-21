@@ -1617,8 +1617,8 @@ impl VM {
                 Opcode::DefineUnit { addr, name, full_name, body } => {
                     self.op_define_unit(addr, Symbol::new_option(name, full_name), body, table)?
                 }
-                Opcode::DefineTrait { addr, name, functions } => {
-                    self.op_define_trait(addr, Symbol::by_name(name), functions)?
+                Opcode::DefineTrait { addr, name, full_name, functions } => {
+                    self.op_define_trait(addr, Symbol::new_option(name, full_name), functions)?
                 }
                 Opcode::Define { addr, name, value, has_previous} => {
                     self.op_define(addr, name, has_previous, value, table)?;

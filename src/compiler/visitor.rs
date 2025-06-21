@@ -674,6 +674,7 @@ impl CompileVisitor {
         self.push_instr(Opcode::DefineTrait {
             addr: name.address.clone(),
             name: name.value,
+            full_name,
             functions: trait_functions
         });
     }
