@@ -60,31 +60,31 @@ impl Table {
         }
     }
 
-    pub unsafe fn set(&mut self, address: Address, name: String, value: Value) -> Result<(), Error> {
+    pub unsafe fn set(&mut self, address: Address, name: &str, value: Value) -> Result<(), Error> {
         let mut current = self as *mut Table;
-        while !(*current).fields.contains_key(&name) {
+        while !(*current).fields.contains_key(name) {
             if (*current).root.is_null() {
                 return Err(Error::new(
                     address,
-                    name.clone() + " is not defined.",
+                    format!("{name} is not defined."),
                     "you can define it, using := op.".to_string()
                 ))
             }
             current = (*current).root;
         }
-        (*current).fields.insert(name, value);
+        (*current).fields.insert(name.to_string(), value);
         Ok(())
     }
 
-    pub unsafe fn set_local(&mut self, address: Address, name: String, value: Value) -> Result<(), Error> {
-        if !self.fields.contains_key(&name) {
+    pub unsafe fn set_local(&mut self, address: &Address, name: &str, value: Value) -> Result<(), Error> {
+        if !self.fields.contains_key(name) {
             return Err(Error::new(
-                address,
-                name.clone() + " is not defined.",
+                address.clone(),
+                format!("{name} is not defined."),
                 "you can define it, using := op.".to_string()
             ))
         }
-        self.fields.insert(name, value);
+        self.fields.insert(name.to_string(), value);
         Ok(())
     }
 
