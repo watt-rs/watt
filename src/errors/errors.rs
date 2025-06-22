@@ -31,6 +31,9 @@ impl Error {
 
     // вывод
     pub fn panic(&self) {
+        let filename = self.addr.file.as_ref().map_or("-", |v| v);
+        let textline = self.addr.line_text.as_ref().map_or("-", |v| v);
+
         // выводим
         println!(
             "┌─ {color}panic:{reset} {text}",
@@ -39,10 +42,10 @@ impl Error {
             text = self.text,
         );
         println!("│");
-        println!("│ {}:", self.addr.file);
+        println!("│ {}:", filename);
         println!("│ {gray}{line}{reset} {text}",
             line = self.addr.line,
-            text = self.addr.line_text,
+            text = textline,
             gray = colors::WhiteColor,
             reset = colors::ResetColor,
         );

@@ -12,12 +12,7 @@ use crate::error;
 // провайд билтинов
 pub unsafe fn provide_builtins(vm: &mut VM) -> Result<(), Error> {
     // билт-ин адрес
-    let built_in_address: Address = Address::new(
-        0,
-        0,
-        "-".to_string(),
-        "-".to_string()
-    );
+    let built_in_address: Address = Address::unknown();
     // io
     natives_base::provide(built_in_address.clone(), vm)?;
     natives_io::provide(built_in_address.clone(), vm)?;

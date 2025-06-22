@@ -220,12 +220,7 @@ unsafe fn run_chunk(chunk: Chunk, gc_threshold: usize, gc_debug: bool, bench: bo
     // запуск
     if let Err(e) = vm.run(chunk, vm.globals) {
         error!(Error::new(
-            Address::new(
-                0,
-                0,
-                "-".to_string(),
-                "-".to_string()
-            ),
+            Address::unknown(),
             format!("control flow leak: {:?}", e),
             "report this error to the developer.".to_string()
         ));
