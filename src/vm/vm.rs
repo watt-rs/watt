@@ -932,20 +932,33 @@ impl VM {
                            (*function).params.clone(), table, call_table)?;
             // вызов
             match self.run((*(*function).body).clone(), call_table) {
+                // если поймали control flow
                 Err(e) => {
-                    match e {
+                    return match e {
+                        // если поймали return
                         ControlFlow::Return(val) => {
+                            // высвобождаем таблицу
+                            memory::free_value(call_table);
+                            // пушим
                             if should_push {
                                 self.push(val);
                             }
+                            // успех
+                            Ok(())
                         },
+                        // если другая ошибка
                         _ => {
-                            return Err(e);
+                            // высвобождаем таблицу
+                            memory::free_value(call_table);
+                            // пробрасываем
+                            Err(e)
                         }
                     }
                 }
                 _ => {}
             }
+            // высвобождаем таблицу
+            memory::free_value(call_table);
             // успех
             Ok(())
         }
@@ -981,6 +994,8 @@ impl VM {
             // вызов
             let native = (*function).function;
             native(self, addr.clone(), should_push, call_table, (*function).owner)?;
+            // высвобождаем таблицу
+            memory::free_value(call_table);
             // успех
             Ok(())
         }
@@ -1204,7 +1219,7 @@ impl VM {
 
         // подгрузка конструктора
         unsafe fn pass_constructor(vm: &mut VM, addr: Address, name: String, params_amount: usize,
-                                 args: Chunk, params: Vec<String>, table: *mut Table, 
+                                 args: Chunk, params: Vec<String>, table: *mut Table,
                                    fields_table: *mut Table) -> Result<(), ControlFlow> {
             // фиксируем размер стека
             let prev_size = vm.stack.len();
@@ -1325,7 +1340,8 @@ impl VM {
             // проверяем, функция ли
             if let Value::Fn(function) = value {
                 // устанавливаем замыкание
-                (*function).closure = table;
+                let table_clone = memory::alloc_value((*table).clone());
+                (*function).closure = table_clone;
                 // успех
                 Ok(())
             }

@@ -142,10 +142,7 @@ impl GC {
         match value {
             Value::Fn(f) => unsafe {
                 if !f.is_null() {
-                    let closure = (*f).closure;
-                    if !self.marked_tables.contains(&closure) {
-                        memory::free_value((*f).closure);
-                    }
+                    memory::free_value((*f).closure);
                     memory::free_value(f);
                 }
             }
