@@ -64,16 +64,13 @@ if cat impls test:Animal {
 }
 */
 import 'std.io'
-import 'std.gc'
-fun a() {
-    c := 0
-    fun b() {
-        io.println(c)
+fun factorial(n) {
+    f := 1
+    r := 1
+    while f <= n {
+        r *= f
+        f += 1
     }
-    return b
+    return r
 }
-f := a()
-f()
-f = null
-gc.invoke()
-io.println('a')
+io.println(factorial(15))

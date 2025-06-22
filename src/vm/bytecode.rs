@@ -51,13 +51,13 @@ pub enum Opcode {
     },
     If {
         addr: Address,
-        cond: Box<Chunk>,
-        body: Box<Chunk>,
+        cond: Chunk,
+        body: Chunk,
         elif: Option<Box<Opcode>>,
     },
     Loop {
         addr: Address,
-        body: Box<Chunk>,
+        body: Chunk,
     },
     DefineFn {
         addr: Address,
@@ -71,14 +71,14 @@ pub enum Opcode {
         name: String,
         full_name: Option<String>,
         constructor: Vec<String>,
-        body: Box<Chunk>,
+        body: Chunk,
         impls: Vec<String>
     },
     DefineUnit {
         addr: Address,
         name: String,
         full_name: Option<String>,
-        body: Box<Chunk>,
+        body: Chunk,
     },
     DefineTrait {
         addr: Address,
@@ -89,13 +89,13 @@ pub enum Opcode {
     Define {
         addr: Address,
         name: String,
-        value: Box<Chunk>,
+        value: Chunk,
         has_previous: bool,
     },
     Set {
         addr: Address,
         name: String,
-        value: Box<Chunk>,
+        value: Chunk,
         has_previous: bool,
     },
     Load {
@@ -107,7 +107,7 @@ pub enum Opcode {
     Call {
         addr: Address,
         name: String,
-        args: Box<Chunk>,
+        args: Chunk,
         has_previous: bool,
         should_push: bool,
     },
@@ -117,7 +117,7 @@ pub enum Opcode {
     Instance {
         addr: Address,
         name: String,
-        args: Box<Chunk>,
+        args: Chunk,
         should_push: bool,
     },
     EndLoop {
@@ -130,7 +130,7 @@ pub enum Opcode {
     },
     Ret {
         addr: Address,
-        value: Box<Chunk>,
+        value: Chunk,
     },
     Native {
         addr: Address,
@@ -138,11 +138,11 @@ pub enum Opcode {
     },
     ErrorPropagation {
         addr: Address,
-        value: Box<Chunk>,
+        value: Chunk,
     },
     Impls {
         addr: Address,
-        value: Box<Chunk>,
+        value: Chunk,
         trait_name: String
     },
     DeleteLocal {

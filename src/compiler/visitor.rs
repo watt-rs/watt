@@ -85,120 +85,123 @@ impl CompileVisitor {
     // визит ноды
     pub fn visit_node(&mut self, node: Node) {
         match node {
-            Node::Number { value } => { self.visit_number(value); }
-            Node::String { value } => { self.visit_string(value); }
-            Node::Bool { value } => { self.visit_bool(value); }
-            Node::Bin { 
-                left,
-                right, 
-                op 
-            } => { self.visit_binary(left, right, op); }
-            Node::Unary { 
-                value, 
-                op 
-            } => { self.visit_unary(value, op); }
+            Node::Number { value } => {
+                self.visit_number(value);
+            }
+            Node::String { value } => {
+                self.visit_string(value);
+            }
+            Node::Bool { value } => {
+                self.visit_bool(value);
+            }
+            Node::Bin { left, right, op } => {
+                self.visit_binary(left, right, op);
+            }
+            Node::Unary { value, op } => {
+                self.visit_unary(value, op);
+            }
             Node::If {
                 location,
                 logical,
                 body,
                 elseif,
-            } => { self.visit_if(location, logical, body, elseif); }
-            Node::While {
-                location,
-                logical,
-                body,
-            } => { self.visit_while(location, logical, body); }
-            Node::Define {
-                previous,
-                name,
-                value,
-            } => { self.visit_define(previous, name, *value); }
+            } => {
+                self.visit_if(location, logical, body, elseif);
+            }
+            Node::While { location, logical, body } => {
+                self.visit_while(location, logical, body);
+            }
+            Node::Define { previous, name, value } => {
+                self.visit_define(previous, name, value);
+            }
             Node::Assign {
                 previous,
                 name,
                 value,
-            } => { self.visit_assign(previous, name, *value); }
-            Node::Get {
-                previous,
-                name,
-                should_push,
-            } => { self.visit_get(previous, name, should_push); }
+            } => {
+                self.visit_assign(previous, name, value);
+            }
+            Node::Get { previous, name, should_push } => {
+                self.visit_get(previous, name, should_push);
+            }
             Node::Call {
                 previous,
                 name,
                 args,
                 should_push,
-            } => { self.visit_call(previous, name, args, should_push); }
+            } => {
+                self.visit_call(previous, name, args, should_push);
+            }
             Node::FnDeclaration {
                 name,
                 full_name,
                 params,
                 body,
-            } => { self.visit_fn_decl(name, full_name, params, *body); }
-            Node::AnFnDeclaration {
-                params,
-                body,
-                ..
-            } => { self.visit_an_fn_decl(params, body); }
-            Node::Break { location } => { self.visit_break(location); }
-            Node::Continue { location } => { self.visit_continue(location); }
-            Node::Import { imports, .. } => { self.visit_import(imports); }
-            Node::List {
-                location,
-                values
-            } => { self.visit_list(location, values); }
-            Node::Cond {
-                left,
-                right,
-                op
-            } => { self.visit_cond(left, right, op); }
-            Node::Logical { 
-                left, 
-                right, 
-                op 
-            } => { self.visit_logical(left, right, op); }
-            Node::Map { 
-                location, 
-                values 
-            } => { self.visit_map(location, values); }
+            } => {
+                self.visit_fn_decl(name, full_name, params, body);
+            }
+            Node::AnFnDeclaration { params, body, .. } => {
+                self.visit_an_fn_decl(params, body);
+            }
+            Node::Break { location } => {
+                self.visit_break(location);
+            }
+            Node::Continue { location } => {
+                self.visit_continue(location);
+            }
+            Node::Import { imports, .. } => {
+                self.visit_import(imports);
+            }
+            Node::List { location, values } => {
+                self.visit_list(location, values);
+            }
+            Node::Cond { left, right, op } => {
+                self.visit_cond(left, right, op);
+            }
+            Node::Logical { left, right, op } => {
+                self.visit_logical(left, right, op);
+            }
+            Node::Map { location, values } => {
+                self.visit_map(location, values);
+            }
             Node::Match {
                 location,
                 matchable,
                 cases,
                 default,
-            } => { self.visit_match(location, matchable, cases, default); }
-            Node::Native { 
-                name, 
-                fn_name 
-            } => { self.visit_native(name, fn_name); }
-            Node::Instance {
-                name,
-                constructor,
-                should_push,
-            } => { self.visit_instance(name, constructor, should_push); }
-            Node::Ret { 
-                location, 
-                value 
-            } => { self.visit_return(location, value); }
-            Node::Null { location } => { self.visit_null(location); }
+            } => {
+                self.visit_match(location, matchable, cases, default);
+            }
+            Node::Native { name, fn_name } => {
+                self.visit_native(name, fn_name);
+            }
+            Node::Instance { name, constructor, should_push, } => {
+                self.visit_instance(name, constructor, should_push);
+            }
+            Node::Ret { location, value } => {
+                self.visit_return(location, value);
+            }
+            Node::Null { location } => {
+                self.visit_null(location);
+            }
             Node::Type {
                 name,
                 full_name,
                 constructor,
                 body,
                 impls,
-            } => { self.visit_type(name, full_name, constructor, body, impls); }
-            Node::Unit {
-                name,
-                full_name,
-                body,
-            } => { self.visit_unit(name, full_name, *body); }
-            Node::For {
-                iterable,
-                variable_name,
-                body,
-            } => { self.visit_for(iterable, variable_name, body); }
-            Node::Block { body } => { self.visit_block(body); }
+            } => {
+                self.visit_type(name, full_name, constructor, body, impls);
+            }
+            Node::Unit { name, full_name, body, } => {
+                self.visit_unit(name, full_name, body);
+            }
+            Node::For { iterable, variable_name, body, } => {
+                self.visit_for(iterable, variable_name, body);
+            }
+            Node::Block { body } => {
+                self.visit_block(body);
+            }
             Node::Trait { name, full_name, functions } => {
                 self.visit_trait(name, full_name, functions);
             }
@@ -298,8 +301,8 @@ impl CompileVisitor {
         // возвращаем if
         self.push_instr(Opcode::If {
             addr: location.address,
-            cond: Box::new(Chunk::new(logical_chunk)),
-            body: Box::new(Chunk::new(body_chunk)),
+            cond: Chunk::new(logical_chunk),
+            body: Chunk::new(body_chunk),
             elif: elseif,
         });
     }
@@ -322,19 +325,19 @@ impl CompileVisitor {
         // опкод условия
         let if_opcode = Opcode::If {
             addr: location.address.clone(),
-            cond: Box::new(Chunk::new(logical_chunk)),
-            body: Box::new(Chunk::new(body_chunk)),
+            cond: Chunk::new(logical_chunk),
+            body: Chunk::new(body_chunk),
             elif: Some(Box::new(Opcode::If {
                 addr: location.address.clone(),
-                cond: Box::new(Chunk::of(Opcode::Push{ addr: location.address.clone(), value: Value::Bool(true) })),
-                body: Box::new(Chunk::of(Opcode::EndLoop { addr: location.address.clone(), current_iteration: false })),
+                cond: Chunk::of(Opcode::Push{ addr: location.address.clone(), value: Value::Bool(true) }),
+                body: Chunk::of(Opcode::EndLoop { addr: location.address.clone(), current_iteration: false }),
                 elif: None
             })),
         };
         // цикл
         self.push_instr(Opcode::Loop {
             addr: location.address.clone(),
-            body: Box::new(Chunk::of(if_opcode)),
+            body: Chunk::of(if_opcode),
         });
     }
 
@@ -343,7 +346,7 @@ impl CompileVisitor {
         &mut self,
         previous: Option<Box<Node>>,
         name: Token,
-        value: Node,
+        value: Box<Node>
     ) {
         // есть ли предыдущая нода
         let mut has_previous = false;
@@ -354,13 +357,13 @@ impl CompileVisitor {
         }
         // чанк для значения
         self.push_chunk();
-        self.visit_node(value);
+        self.visit_node(*value);
         let value_chunk = self.pop_chunk();
         // дефайн
         self.push_instr(Opcode::Define {
             addr: name.address.clone(),
             name: name.value,
-            value: Box::new(Chunk::new(value_chunk)),
+            value: Chunk::new(value_chunk),
             has_previous,
         });
     }
@@ -388,7 +391,7 @@ impl CompileVisitor {
         self.push_instr(Opcode::Call {
             addr: name.address,
             name: name.value,
-            args: Box::new(Chunk::new(args_chunk)),
+            args: Chunk::new(args_chunk),
             has_previous,
             should_push,
         });
@@ -400,7 +403,7 @@ impl CompileVisitor {
         name: Token,
         full_name: Option<Token>,
         parameters: Vec<Token>,
-        body: Node,
+        body: Box<Node>,
     ) {
         // полное имя
         let full_name = match full_name {
@@ -414,7 +417,7 @@ impl CompileVisitor {
         }
         // чанк тела
         self.push_chunk();
-        self.visit_node(body);
+        self.visit_node(*body);
         self.visit_node(Node::Ret {
             location: name.clone(),
             value: Box::new(Node::Null {
@@ -476,7 +479,7 @@ impl CompileVisitor {
         self.push_instr(Opcode::Instance {
             addr: location.address.clone(),
             name: "List".to_string(),
-            args: Box::new(Chunk::new(vec![])),
+            args: Chunk::new(vec![]),
             should_push: true,
         });
         // если длина больше нуля
@@ -495,9 +498,9 @@ impl CompileVisitor {
                 self.push_instr(Opcode::Call {
                     addr: location.address.clone(),
                     name: "add".to_string(),
-                    args: Box::new(Chunk::new(
+                    args: Chunk::new(
                         chunk
-                    )),
+                    ),
                     has_previous: true,
                     should_push: false
                 })
@@ -531,7 +534,7 @@ impl CompileVisitor {
         self.push_instr(Opcode::Define {
             addr: variable_name.address.clone(),
             name: iterator_variable_name.clone(),
-            value: Box::new(Chunk::new(iterator_chunk)),
+            value: Chunk::new(iterator_chunk),
             has_previous: false,
         });
         // чанк тела
@@ -539,7 +542,7 @@ impl CompileVisitor {
         self.push_instr(Opcode::Define {
             addr: variable_name.address.clone(),
             name: variable_name.value.clone(),
-            value: Box::new(Chunk::new(vec![
+            value: Chunk::new(vec![
                 Opcode::Load {
                     addr: variable_name.address.clone(),
                     name: iterator_variable_name.clone(),
@@ -549,11 +552,11 @@ impl CompileVisitor {
                 Opcode::Call {
                     addr: variable_name.address.clone(),
                     name: "next".to_string(),
-                    args: Box::new(Chunk::new(vec![])),
+                    args: Chunk::new(vec![]),
                     has_previous: true,
                     should_push: true
                 }
-            ])),
+            ]),
             has_previous: false
         });
         self.visit_node(*body);
@@ -562,7 +565,7 @@ impl CompileVisitor {
         self.push_chunk();
         self.push_instr(Opcode::If {
             addr: variable_name.address.clone(),
-            cond: Box::new(Chunk::new(vec![
+            cond: Chunk::new(vec![
                 Opcode::Load {
                     addr: variable_name.address.clone(),
                     name: iterator_variable_name.clone(),
@@ -572,12 +575,12 @@ impl CompileVisitor {
                 Opcode::Call {
                     addr: variable_name.address.clone(),
                     name: "has_next".to_string(),
-                    args: Box::new(Chunk::new(vec![])),
+                    args: Chunk::new(vec![]),
                     has_previous: true,
                     should_push: true
                 }
-            ])),
-            body: Box::new(Chunk::new(body_chunk)),
+            ]),
+            body: Chunk::new(body_chunk),
             elif: Some(Box::new(Opcode::EndLoop {
                 addr: variable_name.address.clone(),
                 current_iteration: false
@@ -587,7 +590,7 @@ impl CompileVisitor {
         // цикл
         self.push_instr(Opcode::Loop {
             addr: variable_name.address.clone(),
-            body: Box::new(Chunk::new(if_chunk)),
+            body: Chunk::new(if_chunk),
         });
         // удаление временной переменной
         self.push_instr(Opcode::DeleteLocal {
@@ -617,14 +620,10 @@ impl CompileVisitor {
         self.push_instr(Opcode::Define {
             addr: name.address.clone(),
             name: name.value.clone(),
-            value: Box::new(
-                Chunk::of(
-                    Opcode::Native {
-                        addr: fn_name.address,
-                        fn_name: fn_name.value,
-                    }
-                )
-            ),
+            value: Chunk::of(Opcode::Native {
+                addr: fn_name.address,
+                fn_name: fn_name.value,
+            }),
             has_previous: false,
         });
     }
@@ -686,7 +685,7 @@ impl CompileVisitor {
             name: name.value,
             full_name,
             constructor: constructor_params,
-            body: Box::new(Chunk::new(chunk)),
+            body: Chunk::new(chunk),
             impls
         });
     }
@@ -753,20 +752,20 @@ impl CompileVisitor {
         &mut self,
         name: Token,
         full_name: Option<Token>,
-        body: Node,
+        body: Box<Node>,
     ) {
         // полное имя
         let full_name = full_name.map(|name| name.value);
         // тело юнита
         self.push_chunk();
-        self.visit_node(body);
+        self.visit_node(*body);
         let chunk = self.pop_chunk();
         // дефайн юнита
         self.push_instr(Opcode::DefineUnit {
             addr: name.address.clone(),
             name: name.value,
             full_name,
-            body: Box::new(Chunk::new(chunk)),
+            body: Chunk::new(chunk),
         });
     }
 
@@ -813,7 +812,7 @@ impl CompileVisitor {
         // ретурн
         self.push_instr(Opcode::Ret {
             addr: location.address,
-            value: Box::new(Chunk::new(chunk)),
+            value: Chunk::new(chunk),
         });
     }
 
@@ -843,7 +842,7 @@ impl CompileVisitor {
         self.push_instr(Opcode::Instance {
             addr: name.address.clone(),
             name: name.value,
-            args: Box::new(Chunk::new(constructor_args)),
+            args: Chunk::new(constructor_args),
             should_push,
         });
     }
@@ -853,7 +852,7 @@ impl CompileVisitor {
         &mut self,
         previous: Option<Box<Node>>,
         name: Token,
-        value: Node,
+        value: Box<Node>,
     ) {
         // есть ли предыдущая нода
         let mut has_previous = false;
@@ -863,13 +862,13 @@ impl CompileVisitor {
         }
         // чанк значения
         self.push_chunk();
-        self.visit_node(value);
+        self.visit_node(*value);
         let chunk = self.pop_chunk();
         // установка значения переменной
         self.push_instr(Opcode::Set {
             addr: name.address.clone(),
             name: name.value,
-            value: Box::new(Chunk::new(chunk)),
+            value: Chunk::new(chunk),
             has_previous,
         });
     }
@@ -910,7 +909,7 @@ impl CompileVisitor {
         // прокидывание
         self.push_instr(Opcode::ErrorPropagation {
             addr: location.address,
-            value: Box::new(Chunk::new(chunk)),
+            value: Chunk::new(chunk),
         });
     }
 
@@ -927,7 +926,7 @@ impl CompileVisitor {
         // прокидывание
         self.push_instr(Opcode::Impls {
             addr: trait_name.address.clone(),
-            value: Box::new(Chunk::new(chunk)),
+            value: Chunk::new(chunk),
             trait_name: trait_name.value,
         })
     }
@@ -943,7 +942,7 @@ impl CompileVisitor {
         self.push_instr(Opcode::Call {
             addr: location.address,
             name: "_range".to_string(),
-            args: Box::new(Chunk::new(chunk)),
+            args: Chunk::new(chunk),
             has_previous: false,
             should_push: true,
         })

@@ -472,18 +472,18 @@ impl VM {
     }
 
     // иф
-    unsafe fn op_if(&mut self, addr: Address, cond: Box<Chunk>, body: Box<Chunk>,
+    unsafe fn op_if(&mut self, addr: Address, cond: Chunk, body: Chunk,
                     elif: Option<Box<Opcode>>, root: *mut Table) -> Result<(), ControlFlow> {
         // таблица
         let table = memory::alloc_value(Table::new());
         (*table).set_root(root);
         // условие
-        self.run(*cond, table)?;
+        self.run(cond, table)?;
         let bool = self.pop(addr.clone())?;
         // проверка
         if let Value::Bool(b) = bool {
             if b {
-                self.run(*body, table)?
+                self.run(body, table)?
             } else {
                 if let Option::Some(else_if) = elif {
                     self.run(Chunk::of(*else_if), table)? // todo: chunk::of has high runtime cost!
@@ -502,13 +502,13 @@ impl VM {
 
     // луп
     #[allow(unused_variables)]
-    unsafe fn op_loop(&mut self, addr: Address, body: Box<Chunk>, root: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_loop(&mut self, addr: Address, body: Chunk, root: *mut Table) -> Result<(), ControlFlow> {
         // таблица
         let table = memory::alloc_value(Table::new());
         (*table).set_root(root);
         // проверка
         loop {
-            if let Err(e) = self.run(*body.clone(), table) {
+            if let Err(e) = self.run(body.clone(), table) {
                 match e {
                     ControlFlow::Continue => {
                         continue;
@@ -555,14 +555,14 @@ impl VM {
     }
 
     // дефайн типа
-    unsafe fn op_define_type(&mut self, addr: Address, symbol: Symbol, body: Box<Chunk>,
+    unsafe fn op_define_type(&mut self, addr: Address, symbol: Symbol, body: Chunk,
                              constructor: Vec<String>, impls: Vec<String>) -> Result<(), ControlFlow> {
         // создаём тип
         let t = memory::alloc_value(
             Type::new(
                 symbol.clone(),
                 constructor,
-                memory::alloc_value(*body),
+                memory::alloc_value(body),
                 impls
             )
         );
@@ -582,7 +582,7 @@ impl VM {
 
     // дефайн юнита
     unsafe fn op_define_unit(&mut self, addr: Address, symbol: Symbol,
-                             body: Box<Chunk>, table: *mut Table) -> Result<(), ControlFlow> {
+                             body: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         // создаём юнит
         let unit = memory::alloc_value(
             Unit::new(
@@ -597,7 +597,7 @@ impl VM {
         // временный self
         (*(*unit).fields).fields.insert("self".to_string(), Value::Unit(unit));
         // исполняем тело
-        self.run(*body, (*unit).fields)?;
+        self.run(body, (*unit).fields)?;
         // удаляем временный self
         (*(*unit).fields).fields.remove(&"self".to_string());
         // бинды
@@ -646,11 +646,11 @@ impl VM {
 
     // дефайн
     unsafe fn op_define(&mut self, addr: Address, name: String, has_previous: bool,
-                        value: Box<Chunk>, table: *mut Table) -> Result<(), ControlFlow> {
+                        value: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         // если нет предыдущего
         if !has_previous {
             // исполняем значение
-            self.run(*value, table)?;
+            self.run(value, table)?;
             // получаем значение
             let operand = self.pop(addr.clone())?;
             // дефайним
@@ -666,7 +666,7 @@ impl VM {
             match previous {
                 Value::Instance(instance) => {
                     // исполняем значение
-                    self.run(*value, table)?;
+                    self.run(value, table)?;
                     // получаем значение
                     let operand = self.pop(addr.clone())?;
                     // дефайним
@@ -676,7 +676,7 @@ impl VM {
                 }
                 Value::Unit(unit) => {
                     // исполняем значение
-                    self.run(*value, table)?;
+                    self.run(value, table)?;
                     // получаем значение
                     let operand = self.pop(addr.clone())?;
                     // дефайним
@@ -699,11 +699,11 @@ impl VM {
 
     // установка значения переменной
     unsafe fn op_set(&mut self, addr: Address, name: String, has_previous: bool,
-                        value: Box<Chunk>, table: *mut Table) -> Result<(), ControlFlow> {
+                        value: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         // если нет предыдущего
         if !has_previous {
             // исполняем значение
-            self.run(*value, table)?;
+            self.run(value, table)?;
             // получаем значение
             let operand = self.pop(addr.clone())?;
             // дефайним
@@ -719,7 +719,7 @@ impl VM {
             match previous {
                 Value::Instance(instance) => {
                     // исполняем значение
-                    self.run(*value, table)?;
+                    self.run(value, table)?;
                     // получаем значение
                     let operand = self.pop(addr.clone())?;
                     // устанавливаем значение
@@ -729,7 +729,7 @@ impl VM {
                 }
                 Value::Unit(unit) => {
                     // исполняем значение
-                    self.run(*value, table)?;
+                    self.run(value, table)?;
                     // получаем значение
                     let operand = self.pop(addr.clone())?;
                     // устанавливаем значение
@@ -825,17 +825,17 @@ impl VM {
     // вызов функции
     #[allow(unused_parens)]
     pub unsafe fn call(&mut self, addr: Address, name: String,
-                              callable: Value, args: Box<Chunk>,
+                              callable: Value, args: Chunk,
                               table: *mut Table, should_push: bool) -> Result<(), ControlFlow> {
 
         // подгрузка аргументов
         unsafe fn pass_arguments(vm: &mut VM, addr: Address, name: String, params_amount: usize,
-                                 args: Box<Chunk>, params: Vec<String>, table: *mut Table,
+                                 args: Chunk, params: Vec<String>, table: *mut Table,
                                  call_table: *mut Table) -> Result<(), ControlFlow> {
             // фиксируем размер стека
             let prev_size = vm.stack.len();
             // загрузка аргументов
-            vm.run(*args, table)?;
+            vm.run(args, table)?;
             // фиксируем новый размер стека
             let new_size = vm.stack.len();
             // количество переданных аргументов
@@ -873,11 +873,11 @@ impl VM {
 
         // только загрузка аргументов
         unsafe fn load_arguments(vm: &mut VM, addr: Address, name: String, params_amount: usize,
-                                 args: Box<Chunk>, table: *mut Table) -> Result<(), ControlFlow> {
+                                 args: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
             // фиксируем размер стека
             let prev_size = vm.stack.len();
             // загрузка аргументов
-            vm.run(*args, table)?;
+            vm.run(args, table)?;
             // фиксируем новый размер стека
             let new_size = vm.stack.len();
             // количество переданных аргументов
@@ -996,7 +996,7 @@ impl VM {
 
     // загрузка значения переменной
     pub unsafe fn op_call(&mut self, addr: Address, name: String, has_previous: bool,
-                                 should_push: bool, args: Box<Chunk>, table: *mut Table) -> Result<(), ControlFlow> {
+                                 should_push: bool, args: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         // если нет предыдущего
         if !has_previous {
             // получаем значение
@@ -1200,15 +1200,16 @@ impl VM {
 
     // созедание экземпляра типа
     unsafe fn op_instance(&mut self, addr: Address, name: String,
-                          args: Box<Chunk>, should_push: bool, table: *mut Table) -> Result<(), ControlFlow> {
+                          args: Chunk, should_push: bool, table: *mut Table) -> Result<(), ControlFlow> {
 
         // подгрузка конструктора
         unsafe fn pass_constructor(vm: &mut VM, addr: Address, name: String, params_amount: usize,
-                                 args: Box<Chunk>, params: Vec<String>, table: *mut Table, fields_table: *mut Table) -> Result<(), ControlFlow> {
+                                 args: Chunk, params: Vec<String>, table: *mut Table, 
+                                   fields_table: *mut Table) -> Result<(), ControlFlow> {
             // фиксируем размер стека
             let prev_size = vm.stack.len();
             // загрузка аргументов
-            vm.run(*args, table)?;
+            vm.run(args, table)?;
             // фиксируем новый размер стека
             let new_size = vm.stack.len();
             // количество переданных аргументов
@@ -1284,7 +1285,7 @@ impl VM {
                         // пушим инстанс
                         self.push(instance_value);
                         // вызываем
-                        let args = Box::new(Chunk::new(vec![]));
+                        let args = Chunk::new(vec![]);
                         self.op_call(addr, init_fn, true, false, args, table)?
                     }
                     // пушим
@@ -1347,9 +1348,9 @@ impl VM {
     }
 
     // возврат значения из функции
-    unsafe fn op_return(&mut self, addr: Address, value: Box<Chunk>, table: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_return(&mut self, addr: Address, value: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         // выполняем
-        self.run(*value.clone(), table)?;
+        self.run(value, table)?;
         let value = self.pop(addr)?;
         // возвращаем
         Err(ControlFlow::Return(value))
@@ -1372,9 +1373,9 @@ impl VM {
     }
 
     // "пробрасывание" ошибок
-    unsafe fn op_error_propagation(&mut self, addr: Address, value: Box<Chunk>, table: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_error_propagation(&mut self, addr: Address, value: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         // выполняем
-        self.run(*value.clone(), table)?;
+        self.run(value, table)?;
         // значение
         let value = self.pop(addr.clone())?;
         // вызов is_ok
@@ -1407,7 +1408,7 @@ impl VM {
                 // вызываем
                 vm.call(
                     addr.clone(), "is_ok".to_string(), callable,
-                    Box::new(Chunk::new(vec![])),
+                    Chunk::new(vec![]),
                     memory::alloc_value(Table::new()),
                     true
                 )?;
@@ -1464,7 +1465,7 @@ impl VM {
                     // вызываем
                     vm.call(
                         addr.clone(), "unwrap".to_string(), callable,
-                        Box::new(Chunk::new(vec![])),
+                        Chunk::new(vec![]),
                         memory::alloc_value(Table::new()),
                         true
                     )?;
@@ -1518,10 +1519,10 @@ impl VM {
     }
 
     // проверка имплементации трейта
-    unsafe fn op_impls(&mut self, addr: Address, value: Box<Chunk>,
+    unsafe fn op_impls(&mut self, addr: Address, value: Chunk,
                        trait_name: String, table: *mut Table) -> Result<(), ControlFlow> {
         // выполняем
-        self.run(*value.clone(), table)?;
+        self.run(value, table)?;
         // значение
         let value = self.pop(addr.clone())?;
         // проверка, экземпляр ли класс значение
