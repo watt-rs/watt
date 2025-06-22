@@ -204,7 +204,7 @@ impl Debug for Value {
                     write!(f, "{}", *fl)
                 }
                 Value::List(l) => {
-                    write!(f, "{:?}", **l)
+                    write!(f, "List{:?}", *l)
                 }
             }
         }

@@ -62,7 +62,8 @@ pub enum TokenType {
     Trait, // trait
     Impl, // impl
     Question, // ?
-    Impls // todo!()
+    Impls, // impls
+    Range // ..
 }
 
 // токен
@@ -120,6 +121,7 @@ impl Lexer {
             (String::from("trait"), TokenType::Trait),
             (String::from("impl"), TokenType::Impl),
             (String::from("native"), TokenType::Native),
+            (String::from("impls"), TokenType::Impls),
         ]);
         // лексер
         let mut lexer = Lexer {
@@ -212,7 +214,11 @@ impl Lexer {
                     self.add_tk(TokenType::Comma, ",".to_string());
                 },
                 '.' => {
-                    self.add_tk(TokenType::Dot, ".".to_string());
+                    if self.is_match('.') {
+                        self.add_tk(TokenType::Range, "..".to_string());
+                    } else {
+                        self.add_tk(TokenType::Dot, ".".to_string());
+                    }
                 },
                 '?' => {
                     self.add_tk(TokenType::Question, "?".to_string());
@@ -340,6 +346,9 @@ impl Lexer {
         let mut is_float: bool = false;
         while self.is_digit(self.peek()) || self.peek() == '.' {
             if self.peek() == '.' {
+                if self.next() == '.' {
+                    break
+                }
                 if is_float {
                     return Err(
                         Error::new(
@@ -443,8 +452,11 @@ impl Lexer {
     }
 
     fn peek(&self) -> char {
-        if self.is_at_end() { '\0'; }
-        self.char_at(0)
+        if self.is_at_end() {
+            '\0'
+        } else {
+            self.char_at(0)
+        }
     }
 
     fn next(&self) -> char {

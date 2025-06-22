@@ -83,6 +83,7 @@ pub enum Opcode {
     DefineTrait {
         addr: Address,
         name: String,
+        full_name: Option<String>,
         functions: Vec<TraitFn>,
     },
     Define {
@@ -138,5 +139,14 @@ pub enum Opcode {
     ErrorPropagation {
         addr: Address,
         value: Box<Chunk>,
+    },
+    Impls {
+        addr: Address,
+        value: Box<Chunk>,
+        trait_name: String
+    },
+    DeleteLocal {
+        addr: Address,
+        name: String,
     }
 }

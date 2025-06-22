@@ -20,6 +20,7 @@ impl<'filename> Parser<'filename> {
     pub fn new(tokens: Vec<Token>, filename: &'filename str, full_name_prefix: String) -> Parser<'filename> {
         Parser { tokens, current: 0, filename, full_name_prefix }
     }
+    
     // блок
     fn block(&mut self) -> Result<Node, Error> {
         // список
@@ -86,7 +87,7 @@ impl<'filename> Parser<'filename> {
     fn to_full_name(&self, tk: Token) -> Token{
         Token::new(
             TokenType::Text,
-            format!("{:?}:{:?}", self.full_name_prefix, tk.value.clone()),
+            format!("{}:{}", self.full_name_prefix, tk.value.clone()),
             tk.address.clone(),
         )
     }
@@ -528,17 +529,50 @@ impl<'filename> Parser<'filename> {
         Ok(left)
     }
 
+    // выражение range
+    fn range_expr(&mut self) -> Result<Node, Error> {
+        let mut left = self.additive_expr()?;
+        
+        if self.check(TokenType::Range) {
+            let location = self.consume(TokenType::Range)?;
+            let right = self.additive_expr()?;
+            left = Node::Range {
+                location,
+                from: Box::new(left),
+                to: Box::new(right)
+            }
+        }
+        
+        Ok(left)
+    }
+    
+    // impls
+    fn impls_expr(&mut self) -> Result<Node, Error> {
+        let mut left = self.range_expr()?;
+
+        if self.check(TokenType::Impls) {
+            self.consume(TokenType::Impls)?;
+            let trait_name = self.consume(TokenType::Id)?;
+            left = Node::Impls {
+                value: Box::new(left),
+                trait_name,
+            }
+        }
+
+        Ok(left)
+    }
+
     // условие
     fn conditional_expr(&mut self) -> Result<Node, Error> {
-        let mut left = self.additive_expr()?;
+        let mut left = self.impls_expr()?;
 
         // <, >, <=, >=, ==, !=
         if self.check(TokenType::Greater) || self.check(TokenType::Less)
-            || self.check(TokenType::LessEq) || self.check(TokenType::GreaterEq) ||
-            self.check(TokenType::Eq) || self.check(TokenType::NotEq) {
+            || self.check(TokenType::LessEq) || self.check(TokenType::GreaterEq)
+            || self.check(TokenType::Eq) || self.check(TokenType::NotEq) {
             let op = self.peek()?;
             self.current += 1;
-            let right = self.additive_expr()?;
+            let right = self.impls_expr()?;
             left = Node::Cond {
                 left: Box::new(left),
                 right: Box::new(right),

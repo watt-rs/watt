@@ -43,7 +43,31 @@ type List {
         return __list_utils.to_string(self.internal)
     }
     fun get(index) {
-        return __list_utils.get(self.internal, self.index)
+        return __list_utils.get(self.internal, index)
+    }
+}
+
+/*
+ Итератор.
+ | итератор вокруг списка
+*/
+type Iterator(list) {
+    fun init {
+        self.current := 0
+    }
+    fun has_next {
+        return self.current < self.list.length()
+    }
+    fun next {
+        if self.current >= self.list.length() {
+            panic(
+                'could not use next.',
+                'iterator has no elements left.'
+            )
+        }
+        value := self.list.get(self.current)
+        self.current += 1
+        return value
     }
 }
 
@@ -53,3 +77,37 @@ type List {
  | > crate::vm::natives::libs::natives_base
 */
 native panic -> 'base@panic'
+
+/*
+ Функция _range
+ | создаёт Iterator от a до b
+*/
+fun _range(a, b) {
+    // список для итератора
+    list := []
+    // если a > b, то range должен быть
+    // в виде [3,2,1]
+    if a > b {
+        n := a
+        while n > b {
+            list.add(n)
+            n -= 1
+        }
+    }
+    // если a < b, то range должен быть
+    // в виде [1,2,3]
+    elif a < b {
+        n := a
+        while n < b {
+            list.add(n)
+            n += 1
+        }
+    }
+    // если a == b, то range должен быть
+    // в виде [a] || [b]
+    else {
+        list.add(a)
+    }
+    // возвращаем итератор
+    return new Iterator(list)
+}

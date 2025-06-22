@@ -147,6 +147,15 @@ pub enum Node {
         location: Token,
         value: Box<Node>,
         should_push: bool,
+    },
+    Impls {
+        value: Box<Node>,
+        trait_name: Token
+    },
+    Range {
+        location: Token,
+        from: Box<Node>,
+        to: Box<Node>
     }
 }
 

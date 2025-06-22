@@ -34,6 +34,46 @@ fun factorial(n) {
 }
 io.println(factorial(15))
 */
+/*
 import 'std.io'
 list := [1,3,5,7,'hello']
 io.println(list.to_string())
+*/
+/*
+import 'std.io'
+a := 'abc'
+b := 'bbc'
+io.println(a < b)
+*/
+/*
+import 'std.io'
+
+trait Animal {
+    fun pet
+}
+
+type Cat impl Animal {
+    fun pet {
+        io.println('Hello, world!')
+    }
+}
+
+cat := new Cat()
+if cat impls test:Animal {
+    cat.pet()
+}
+*/
+import 'std.io'
+import 'std.gc'
+fun a() {
+    c := 0
+    fun b() {
+        io.println(c)
+    }
+    return b
+}
+f := a()
+f()
+f = null
+gc.invoke()
+io.println('a')

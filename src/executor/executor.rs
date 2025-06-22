@@ -10,8 +10,6 @@ use crate::parser::ast::Node;
 use crate::parser::parser::Parser;
 use crate::semantic::analyzer::Analyzer;
 use crate::vm::bytecode::Chunk;
-use crate::vm::memory::memory;
-use crate::vm::statics::statics;
 use crate::vm::vm::{VmSettings, VM};
 
 // запуск кода
@@ -141,11 +139,22 @@ pub fn parse(file_name: &str, tokens: Vec<Token>,
         debug: bool, bench: bool, full_name_prefix: Option<String>) -> Option<Node> {
     // начальное время
     let start = std::time::Instant::now();
+    // удаление расширения файла
+    fn delete_extension(full_name: String) -> String {
+        match full_name.rfind(".") {
+            Some(index) => {
+                full_name[..index].to_string()
+            }
+            None => {
+                full_name
+            }
+        }
+    }
     // стройка аст
     let raw_ast = Parser::new(
         tokens,
-        file_name,
-        full_name_prefix.unwrap_or(file_name.to_string())
+        file_name.clone(),
+        delete_extension(full_name_prefix.unwrap_or(file_name))
     ).parse();
     // конечное время
     let duration = start.elapsed().as_nanos();
@@ -201,14 +210,12 @@ unsafe fn run_chunk(chunk: Chunk, gc_threshold: usize, gc_debug: bool, bench: bo
     // начальное время
     let start = std::time::Instant::now();
     // вм
-    let vm = memory::alloc_value(VM::new(VmSettings::new(
+    let mut vm = VM::new(VmSettings::new(
         gc_threshold,
         gc_debug,
-    )));
-    // указатель
-    statics::VM_PTR = Option::Some(vm);
+    ));
     // запуск
-    if let Err(e) = (*vm).run(chunk, (*vm).globals) {
+    if let Err(e) = vm.run(chunk, vm.globals) {
         error!(Error::new(
             Address::new(
                 0,
