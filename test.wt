@@ -63,6 +63,20 @@ if cat impls test:Animal {
     cat.pet()
 }
 */
+/*
+import 'std.io'
+import 'std.gc'
+fun a {
+    c := 3
+    fun b {
+        io.println(c)
+    }
+    return b
+}
+f := a()
+f = null
+gc.invoke()
+*/
 import 'std.io'
 fun factorial(n) {
     f := 1

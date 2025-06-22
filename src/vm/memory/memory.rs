@@ -1,5 +1,5 @@
 ﻿// аллокация значения в куче
-pub fn alloc_value<T: std::fmt::Debug>(value: T) -> *mut T {
+pub fn alloc_value<T>(value: T) -> *mut T {
     Box::into_raw(Box::new(value))
 }
 
