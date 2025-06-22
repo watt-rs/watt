@@ -846,12 +846,12 @@ impl VM {
 
     // вызов функции
     #[allow(unused_parens)]
-    pub unsafe fn call(&mut self, addr: Address, name: String,
+    pub unsafe fn call(&mut self, addr: Address, name: &str,
                               callable: Value, args: Chunk,
                               table: *mut Table, should_push: bool) -> Result<(), ControlFlow> {
 
         // подгрузка аргументов
-        unsafe fn pass_arguments(vm: &mut VM, addr: Address, name: String, params_amount: usize,
+        unsafe fn pass_arguments(vm: &mut VM, addr: Address, name: &str, params_amount: usize,
                                  args: Chunk, params: Vec<String>, table: *mut Table,
                                  call_table: *mut Table) -> Result<(), ControlFlow> {
             // фиксируем размер стека
@@ -891,7 +891,7 @@ impl VM {
         }
 
         // только загрузка аргументов
-        unsafe fn load_arguments(vm: &mut VM, addr: Address, name: String, params_amount: usize,
+        unsafe fn load_arguments(vm: &mut VM, addr: Address, name: &str, params_amount: usize,
                                  args: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
             // фиксируем размер стека
             let prev_size = vm.stack.len();
@@ -1013,7 +1013,7 @@ impl VM {
                 (*call_table).set_root(self.globals)
             }
             // загрузка аргументов
-            load_arguments(self, addr.clone(), name.clone(), (*function).params_amount, args, table)?;
+            load_arguments(self, addr.clone(), &name, (*function).params_amount, args, table)?;
             // вызов
             let native = (*function).function;
             native(self, addr.clone(), should_push, call_table, (*function).owner)?;
@@ -1044,7 +1044,7 @@ impl VM {
             }
             else if let Ok(value) = lookup_result {
                 // вызываем
-                self.call(addr.clone(), name.clone(), value, args.clone(), table, should_push)?;
+                self.call(addr.clone(), &name, value, args.clone(), table, should_push)?;
             }
         }
         // если есть
@@ -1063,7 +1063,7 @@ impl VM {
                     }
                     else if let Ok(value) = lookup_result {
                         // вызываем
-                        self.call(addr.clone(), name.clone(), value, args.clone(), table, should_push)?;
+                        self.call(addr.clone(), &name, value, args.clone(), table, should_push)?;
                     }
                 }
                 Value::Unit(unit) => {
@@ -1076,7 +1076,7 @@ impl VM {
                     }
                     else if let Ok(value) = lookup_result {
                         // вызываем
-                        self.call(addr.clone(), name.clone(), value, args.clone(), table, should_push)?;
+                        self.call(addr.clone(), &name, value, args.clone(), table, should_push)?;
                     }
                 }
                 _ => {
@@ -1176,8 +1176,8 @@ impl VM {
                                 addr.clone(),
                                 format!(
                                     "type {} impls {}, but fn {} has wrong impl.",
-                                    (*instance_type).name.name.clone(),
-                                    trait_name, function.name.clone()
+                                    (*instance_type).name.name,
+                                    trait_name, function.name
                                 ),
                                 format!(
                                     "expected args {}, got {}",
@@ -1209,7 +1209,7 @@ impl VM {
                             addr.clone(),
                             function.name.clone(),
                             Value::Fn(memory::alloc_value(
-                                function.default.clone().unwrap(),
+                                function.default.unwrap(),
                             ))
                         ) {
                             error!(e);
@@ -1222,11 +1222,11 @@ impl VM {
                             addr.clone(),
                             format!(
                                 "type {} impls {}, but doesn't impl fn {}({})",
-                                (*instance_type).name.name.clone(), // todo check
-                                trait_name, function.name.clone(), // todo check
+                                (*instance_type).name.name, // todo check
+                                trait_name, function.name, // todo check
                                 function.params_amount
                             ),
-                            format!("implement fn {}", function.name.clone())
+                            format!("implement fn {}", function.name)
                         ));
                     }
                 }
@@ -1441,7 +1441,7 @@ impl VM {
                 }
                 // вызываем
                 vm.call(
-                    addr.clone(), "is_ok".to_string(), callable,
+                    addr.clone(), "is_ok", callable,
                     Chunk::new(vec![]),
                     memory::alloc_value(Table::new()),
                     true
@@ -1498,7 +1498,7 @@ impl VM {
                     }
                     // вызываем
                     vm.call(
-                        addr.clone(), "unwrap".to_string(), callable,
+                        addr.clone(), "unwrap", callable,
                         Chunk::new(vec![]),
                         memory::alloc_value(Table::new()),
                         true
