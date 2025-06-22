@@ -57,19 +57,19 @@ impl ImportsResolver {
         import: Import
     ) -> Node {
         // файл
-        let file;
+        let file: &str;
         // ищем импорт
         if self.libraries.contains_key(&import.name) {
-            file = self.libraries.get(&import.name).unwrap().clone();
+            file = self.libraries.get(&import.name).unwrap();
         } else {
-            file = import.name.clone();
+            file = &import.name;
         }
         // путь
-        let path = PathBuf::from(file.clone());
+        let path = PathBuf::from(file);
         // чтение файла
         let code = executor::read_file(addr, &path);
         // имя файла
-        let filename = path.file_name().unwrap().to_str().unwrap().to_string();
+        let filename = path.file_name().unwrap().to_str().unwrap();
         // компиляция
         let tokens = executor::lex(
             &filename,
