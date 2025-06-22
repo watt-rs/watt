@@ -291,14 +291,17 @@ impl VM {
 
     // условие
     unsafe fn op_conditional(&mut self, address: &Address, op: &str) -> Result<(), ControlFlow> {
+        fn generate_error(address: &Address, op: &str, operand_a: &Value, operand_b: &Value) -> Error {
+            Error::new(
+                address.clone(),
+                format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
+                "check your code.".to_string()
+            )
+        }
+
         // операнды
         let operand_a = self.pop(&address)?;
         let operand_b = self.pop(&address)?;
-        let error = Error::new(
-            address.clone(),
-            format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
-            "check your code.".to_string()
-        );
         // условие
         match op {
             ">" => {
@@ -306,18 +309,18 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool(a > b)); }
                         Value::Int(b) => { self.push(Value::Bool(a > (b as f64))); }
-                        _ => { error!(error); }
+                        _ => { error!(generate_error(address, op, &operand_a, &operand_b)); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool((a as f64) > b)); }
                         Value::Int(b) => { self.push(Value::Bool(a > b)); }
-                        _ => { error!(error); }
+                        _ => { error!(generate_error(address, op, &operand_a, &operand_b)); }
                     }}
                     Value::String(a) => { match operand_b {
                         Value::String(b) => { self.push(Value::Bool(*a > *b)); }
-                        _ => { error!(error); }
+                        _ => { error!(generate_error(address, op, &operand_a, &operand_b)); }
                     }}
-                    _ => { error!(error); }
+                    _ => { error!(generate_error(address, op, &operand_a, &operand_b)); }
                 }
             },
             "<" => {
@@ -325,18 +328,18 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool(a < b)); }
                         Value::Int(b) => { self.push(Value::Bool(a < (b as f64))); }
-                        _ => { error!(error); }
+                        _ => { error!(generate_error(address, op, &operand_a, &operand_b)); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool((a as f64) < b)); }
                         Value::Int(b) => { self.push(Value::Bool(a < b)); }
-                        _ => { error!(error); }
+                        _ => { error!(generate_error(address, op, &operand_a, &operand_b)); }
                     }}
                     Value::String(a) => { match operand_b {
                         Value::String(b) => { self.push(Value::Bool(*a < *b)); }
-                        _ => { error!(error); }
+                        _ => { error!(generate_error(address, op, &operand_a, &operand_b)); }
                     }}
-                    _ => { error!(error); }
+                    _ => { error!(generate_error(address, op, &operand_a, &operand_b)); }
                 }
             },
             ">=" => {
@@ -344,18 +347,18 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool(a >= b)); }
                         Value::Int(b) => { self.push(Value::Bool(a >= (b as f64))); }
-                        _ => { error!(error); }
+                        _ => { error!(generate_error(address, op, &operand_a, &operand_b)); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool((a as f64) >= b)); }
                         Value::Int(b) => { self.push(Value::Bool(a >= b)); }
-                        _ => { error!(error); }
+                        _ => { error!(generate_error(address, op, &operand_a, &operand_b)); }
                     }}
                     Value::String(a) => { match operand_b {
                         Value::String(b) => { self.push(Value::Bool(*a >= *b)); }
-                        _ => { error!(error); }
+                        _ => { error!(generate_error(address, op, &operand_a, &operand_b)); }
                     }}
-                    _ => { error!(error); }
+                    _ => { error!(generate_error(address, op, &operand_a, &operand_b)); }
                 }
             }
             "<=" => {
@@ -363,18 +366,18 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool(a <= b)); }
                         Value::Int(b) => { self.push(Value::Bool(a <= (b as f64))); }
-                        _ => { error!(error); }
+                        _ => { error!(generate_error(address, op, &operand_a, &operand_b)); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool((a as f64) <= b)); }
                         Value::Int(b) => { self.push(Value::Bool(a <= b)); }
-                        _ => { error!(error); }
+                        _ => { error!(generate_error(address, op, &operand_a, &operand_b)); }
                     }}
                     Value::String(a) => { match operand_b {
                         Value::String(b) => { self.push(Value::Bool(*a <= *b)); }
-                        _ => { error!(error); }
+                        _ => { error!(generate_error(address, op, &operand_a, &operand_b)); }
                     }}
-                    _ => { error!(error); }
+                    _ => { error!(generate_error(address, op, &operand_a, &operand_b)); }
                 }
             }
             "==" => {
