@@ -473,7 +473,7 @@ impl VM {
     }
 
     // иф
-    unsafe fn op_if(&mut self, addr: Address, cond: Chunk, body: Chunk,
+    unsafe fn op_if(&mut self, addr: Address, cond: Chunk, body: &Chunk,
                     elif: Option<Box<Opcode>>, root: *mut Table) -> Result<(), ControlFlow> {
         // таблица
         let table = memory::alloc_value(Table::new());
@@ -492,7 +492,7 @@ impl VM {
                 self.run(body, table)?
             } else {
                 if let Option::Some(else_if) = elif {
-                    self.run(Chunk::of(*else_if), table)? // todo: chunk::of has high runtime cost!
+                    self.run(&Chunk::of(*else_if), table)? // todo: chunk::of has high runtime cost!
                 }
             }
         } else {
@@ -666,7 +666,7 @@ impl VM {
 
     // дефайн
     unsafe fn op_define(&mut self, addr: Address, name: String, has_previous: bool,
-                        value: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
+                        value: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         // если нет предыдущего
         if !has_previous {
             // исполняем значение
@@ -719,7 +719,7 @@ impl VM {
 
     // установка значения переменной
     unsafe fn op_set(&mut self, addr: Address, name: String, has_previous: bool,
-                        value: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
+                        value: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         // если нет предыдущего
         if !has_previous {
             // исполняем значение
@@ -1380,7 +1380,7 @@ impl VM {
     }
 
     // возврат значения из функции
-    unsafe fn op_return(&mut self, addr: Address, value: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_return(&mut self, addr: Address, value: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         // выполняем
         self.run(value, table)?;
         let value = self.pop(&addr)?;
@@ -1405,7 +1405,7 @@ impl VM {
     }
 
     // "пробрасывание" ошибок
-    unsafe fn op_error_propagation(&mut self, addr: Address, value: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_error_propagation(&mut self, addr: Address, value: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         // выполняем
         self.run(value, table)?;
         // значение
@@ -1551,7 +1551,7 @@ impl VM {
     }
 
     // проверка имплементации трейта
-    unsafe fn op_impls(&mut self, addr: Address, value: Chunk,
+    unsafe fn op_impls(&mut self, addr: Address, value: &Chunk,
                        trait_name: String, table: *mut Table) -> Result<(), ControlFlow> {
         // выполняем
         self.run(value, table)?;
@@ -1617,7 +1617,7 @@ impl VM {
 
     // запуск байткода
     #[allow(unused_variables)]
-    pub unsafe fn run(&mut self, chunk: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
+    pub unsafe fn run(&mut self, chunk: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         for op in chunk.opcodes() {
             match op {
                 Opcode::Push { addr, value } => {

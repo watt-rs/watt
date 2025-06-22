@@ -15,8 +15,8 @@ impl Chunk {
     pub fn of(op: Opcode) -> Self {
         Chunk { opcodes: vec![op] }
     }
-    pub fn opcodes(&self) -> Vec<Opcode> {
-        self.opcodes.clone()
+    pub fn opcodes(&self) -> &Vec<Opcode> {
+        &self.opcodes
     }
 }
 
