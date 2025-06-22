@@ -97,7 +97,7 @@ pub enum Node {
     },
     Map {
         location: Token,
-        values: Box<Vec<(Box<Node>, Box<Node>)>>,
+        values: Vec<(Box<Node>, Box<Node>)>,
     },
     Match {
         location: Token,

@@ -414,8 +414,7 @@ impl<'filename> Parser<'filename> {
         }
         // заполненный
         else {
-            let mut nodes: Vec<Node> = Vec::new();
-            nodes.push(self.expr()?);
+            let mut nodes: Vec<Node> = vec![self.expr()?];
 
             while self.check(TokenType::Comma) {
                 self.consume(TokenType::Comma)?;
@@ -454,7 +453,7 @@ impl<'filename> Parser<'filename> {
             Ok(
                 Node::Map {
                     location,
-                    values: Box::new(Vec::new())
+                    values: Vec::new()
                 }
             )
         }
@@ -471,7 +470,7 @@ impl<'filename> Parser<'filename> {
             self.consume(TokenType::Rbrace)?;
             Ok(Node::Map {
                 location,
-                values: Box::new(nodes)
+                values: nodes
             })
         }
     }

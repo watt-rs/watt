@@ -73,7 +73,7 @@ impl ImportsResolver {
         // компиляция
         let tokens = executor::lex(
             &filename,
-            code,
+            &code,
             false,
             false
         );
@@ -94,9 +94,9 @@ impl ImportsResolver {
             // новое тело
             let mut new_body: Vec<Node> = vec![];
             // добавляем в тело
-            for node in body {
+            for node in &body {
                 // перебираем
-                match node.clone() {
+                match node {
                     Node::Native { .. } |
                     Node::FnDeclaration { .. } |
                     Node::Type { .. } |

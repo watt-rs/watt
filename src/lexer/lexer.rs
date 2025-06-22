@@ -1,69 +1,69 @@
 ﻿// импорты
-use std::collections::HashMap;
 use crate::error;
+use crate::errors::errors::Error;
 use crate::lexer::address::*;
-use crate::errors::errors::{Error};
+use std::collections::HashMap;
 
 // тип токена
 #[derive(Debug, Clone, Eq, PartialEq, Copy, Hash)]
 #[allow(dead_code)]
 pub enum TokenType {
     Fun,
-    Op, // +, -, *, /
-    Lparen, // (
-    Rparen, // )
-    Lbrace, // {
-    Rbrace, // }
-    Lambda, // lambda
-    Walrus, // :=
-    Eq, // ==
-    NotEq, // !=
-    Text, // 'text'
-    Number, // 1234567890.0123456789
-    Assign, // =
-    Id, // variable id
-    Comma, // ,
-    Ret, // return
-    If, // if
-    Bool, // bool
-    While, // while
-    Type, // type
-    New, // new
-    Dot, // dot
-    Greater, // >
-    Less,  // <
+    Op,        // +, -, *, /
+    Lparen,    // (
+    Rparen,    // )
+    Lbrace,    // {
+    Rbrace,    // }
+    Lambda,    // lambda
+    Walrus,    // :=
+    Eq,        // ==
+    NotEq,     // !=
+    Text,      // 'text'
+    Number,    // 1234567890.0123456789
+    Assign,    // =
+    Id,        // variable id
+    Comma,     // ,
+    Ret,       // return
+    If,        // if
+    Bool,      // bool
+    While,     // while
+    Type,      // type
+    New,       // new
+    Dot,       // dot
+    Greater,   // >
+    Less,      // <
     GreaterEq, // >=
-    LessEq, // <=
-    Null, // null
-    Elif, // elif
-    Else, // else
-    And, // logical and
-    Or, // logical or
-    Import, // import
+    LessEq,    // <=
+    Null,      // null
+    Elif,      // elif
+    Else,      // else
+    And,       // logical and
+    Or,        // logical or
+    Import,    // import
     AssignAdd, // assign add
     AssignSub, // assign sub
     AssignMul, // assign mul
-    AssignDiv,  // assign divide
-    Break, // break
-    Match, // match
-    Case, // case
-    Default, // default
-    Lbracket, // [
-    Rbracket, // ]
-    Colon, // colon :
-    For, // for
-    Bang, // !
-    In, // in
-    Continue, // continue
-    Arrow, // ->
-    Unit, // unit
-    Native, // native
-    With, // with
-    Trait, // trait
-    Impl, // impl
-    Question, // ?
-    Impls, // impls
-    Range // ..
+    AssignDiv, // assign divide
+    Break,     // break
+    Match,     // match
+    Case,      // case
+    Default,   // default
+    Lbracket,  // [
+    Rbracket,  // ]
+    Colon,     // colon :
+    For,       // for
+    Bang,      // !
+    In,        // in
+    Continue,  // continue
+    Arrow,     // ->
+    Unit,      // unit
+    Native,    // native
+    With,      // with
+    Trait,     // trait
+    Impl,      // impl
+    Question,  // ?
+    Impls,     // impls
+    Range,     // ..
 }
 
 // токен
@@ -76,24 +76,28 @@ pub struct Token {
 // имплементация
 impl Token {
     pub fn new(tk_type: TokenType, value: String, address: Address) -> Token {
-        Token { tk_type, value, address }
+        Token {
+            tk_type,
+            value,
+            address,
+        }
     }
 }
 
 // лексер
-pub struct Lexer {
+pub struct Lexer<'filename> {
     line: u64,
     column: u16,
     current: u128,
     line_text: String,
     code: Vec<char>,
-    filename: String,
+    filename: &'filename str,
     tokens: Vec<Token>,
     keywords: HashMap<String, TokenType>,
 }
 // имплементация
-impl Lexer {
-    pub fn new(code: String, filename: &str) -> Lexer {
+impl<'filename> Lexer<'filename> {
+    pub fn new(code: &str, filename: &'filename str) -> Lexer<'filename> {
         let map = HashMap::from([
             (String::from("fun"), TokenType::Fun),
             (String::from("break"), TokenType::Break),
@@ -128,11 +132,11 @@ impl Lexer {
             line: 1,
             current: 0,
             column: 0,
-            line_text: "".to_string(),
+            line_text: String::new(),
             code: code.chars().collect::<Vec<char>>(),
-            filename: filename.to_string(),
+            filename: filename,
             tokens: vec![],
-            keywords: map
+            keywords: map,
         };
         // текст первой линии
         lexer.line_text = lexer.get_line_text();
@@ -140,7 +144,7 @@ impl Lexer {
         lexer
     }
 
-    pub fn lex(&mut self) -> Vec<Token>{
+    pub fn lex(&mut self) -> Vec<Token> {
         while !self.is_at_end() {
             let ch = self.advance();
             match ch {
@@ -193,43 +197,42 @@ impl Lexer {
                 }
                 '(' => {
                     self.add_tk(TokenType::Lparen, "(".to_string());
-                },
+                }
                 ')' => {
                     self.add_tk(TokenType::Rparen, ")".to_string());
-                },
+                }
                 '{' => {
                     self.add_tk(TokenType::Lbrace, "{".to_string());
-                    
-                },
+                }
                 '}' => {
                     self.add_tk(TokenType::Rbrace, "}".to_string());
-                },
+                }
                 '[' => {
                     self.add_tk(TokenType::Lbracket, "[".to_string());
-                },
+                }
                 ']' => {
                     self.add_tk(TokenType::Rbracket, "]".to_string());
-                },
+                }
                 ',' => {
                     self.add_tk(TokenType::Comma, ",".to_string());
-                },
+                }
                 '.' => {
                     if self.is_match('.') {
                         self.add_tk(TokenType::Range, "..".to_string());
                     } else {
                         self.add_tk(TokenType::Dot, ".".to_string());
                     }
-                },
+                }
                 '?' => {
                     self.add_tk(TokenType::Question, "?".to_string());
-                },
+                }
                 ':' => {
                     if self.is_match('=') {
                         self.add_tk(TokenType::Walrus, ":=".to_string());
                     } else {
                         self.add_tk(TokenType::Colon, ":".to_string())
                     }
-                },
+                }
                 '<' => {
                     if self.is_match('=') {
                         self.add_tk(TokenType::LessEq, "<=".to_string());
@@ -266,16 +269,14 @@ impl Lexer {
                     self.newline();
                 }
                 ' ' => {}
-                '\'' => {
-                    match self.scan_string() {
-                        Ok(tk) => {
-                            self.tokens.push(tk);
-                        }
-                        Err(err) => {
-                            error!(err);
-                        }
+                '\'' => match self.scan_string() {
+                    Ok(tk) => {
+                        self.tokens.push(tk);
                     }
-                }
+                    Err(err) => {
+                        error!(err);
+                    }
+                },
                 _ => {
                     if self.is_digit(ch) {
                         match self.scan_number(ch) {
@@ -286,17 +287,15 @@ impl Lexer {
                                 error!(err);
                             }
                         }
-                    }
-                    else if self.is_id(ch) {
+                    } else if self.is_id(ch) {
                         let token = self.scan_id_or_keyword(ch);
                         self.tokens.push(token);
-                    }
-                    else {
+                    } else {
                         error!(Error::new(
                             Address::new(
                                 self.line,
                                 self.column,
-                                self.filename.clone(),
+                                self.filename.to_string(),
                                 self.line_text.clone(),
                             ),
                             format!("unexpected char: {}", ch),
@@ -314,18 +313,16 @@ impl Lexer {
         while self.peek() != '\'' {
             text.push(self.advance());
             if self.is_at_end() || self.is_match('\n') {
-                return Err(
-                    Error::new(
-                        Address::new(
-                            self.line,
-                            self.column,
-                            self.filename.clone(),
-                            self.line_text.clone(),
-                        ),
-                        "unclosed string quotes.".to_string(),
-                        "did you forget ' symbol?".to_string(),
-                    )
-                )
+                return Err(Error::new(
+                    Address::new(
+                        self.line,
+                        self.column,
+                        self.filename.to_string(),
+                        self.line_text.clone(),
+                    ),
+                    "unclosed string quotes.".to_string(),
+                    "did you forget ' symbol?".to_string(),
+                ));
             }
         }
         self.advance();
@@ -335,7 +332,7 @@ impl Lexer {
             address: Address::new(
                 self.line,
                 self.column,
-                self.filename.clone(),
+                self.filename.to_string(),
                 self.line_text.clone(),
             ),
         })
@@ -347,21 +344,19 @@ impl Lexer {
         while self.is_digit(self.peek()) || self.peek() == '.' {
             if self.peek() == '.' {
                 if self.next() == '.' {
-                    break
+                    break;
                 }
                 if is_float {
-                    return Err(
-                        Error::new(
-                            Address::new(
-                                self.line,
-                                self.column,
-                                self.filename.clone(),
-                                self.line_text.clone(),
-                            ),
-                            "couldn't parse number with two dots".to_string(),
-                            "check your code.".to_string(),
-                        )
-                    )
+                    return Err(Error::new(
+                        Address::new(
+                            self.line,
+                            self.column,
+                            self.filename.to_string(),
+                            self.line_text.clone(),
+                        ),
+                        "couldn't parse number with two dots".to_string(),
+                        "check your code.".to_string(),
+                    ));
                 }
                 is_float = true;
                 text.push(self.advance());
@@ -369,7 +364,7 @@ impl Lexer {
             }
             text.push(self.advance());
             if self.is_at_end() {
-                break
+                break;
             }
         }
         Ok(Token {
@@ -378,7 +373,7 @@ impl Lexer {
             address: Address::new(
                 self.line,
                 self.column,
-                self.filename.clone(),
+                self.filename.to_string(),
                 self.line_text.clone(),
             ),
         })
@@ -389,12 +384,12 @@ impl Lexer {
         while self.is_id(self.peek()) {
             text.push(self.advance());
             if self.is_at_end() {
-                break
+                break;
             }
         }
         let tk_type: TokenType = match self.keywords.get(&text) {
             Some(tk_type) => tk_type.clone(),
-            None => TokenType::Id
+            None => TokenType::Id,
         };
         Token {
             tk_type,
@@ -402,7 +397,7 @@ impl Lexer {
             address: Address::new(
                 self.line,
                 self.column,
-                self.filename.clone(),
+                self.filename.to_string(),
                 self.line_text.clone(),
             ),
         }
@@ -471,8 +466,7 @@ impl Lexer {
     fn is_match(&mut self, ch: char) -> bool {
         if self.is_at_end() {
             false
-        }
-        else {
+        } else {
             if self.char_at(0) == ch {
                 self.advance();
                 true
@@ -483,16 +477,16 @@ impl Lexer {
     }
 
     fn add_tk(&mut self, tk_type: TokenType, tk_value: String) {
-        self.tokens.push(
-            Token::new(
-                tk_type, tk_value, Address::new(
-                    self.line,
-                    self.column,
-                    self.filename.clone(),
-                    self.line_text.clone(),
-                )
-            )
-        );
+        self.tokens.push(Token::new(
+            tk_type,
+            tk_value,
+            Address::new(
+                self.line,
+                self.column,
+                self.filename.to_string(),
+                self.line_text.clone(),
+            ),
+        ));
     }
 
     fn is_digit(&self, ch: char) -> bool {
@@ -500,13 +494,10 @@ impl Lexer {
     }
 
     fn is_letter(&self, ch: char) -> bool {
-        (ch >= 'a' && ch <= 'z') ||
-        (ch >= 'A' && ch <= 'Z') ||
-        (ch == '_')
+        (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch == '_')
     }
 
     fn is_id(&self, ch: char) -> bool {
-        self.is_letter(ch) || self.is_digit(ch) ||
-        (ch == ':' && self.is_id(self.next()))
+        self.is_letter(ch) || self.is_digit(ch) || (ch == ':' && self.is_id(self.next()))
     }
 }

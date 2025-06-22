@@ -33,7 +33,7 @@ pub unsafe fn run(
     // компиляция
     let tokens = lex(
         filename,
-        code,
+        &code,
         lexer_debug.unwrap_or(false),
         lexer_bench.unwrap_or(false)
     );
@@ -89,7 +89,7 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
                     )
                 );
             }
-            "".to_string()
+            String::new()
         }
     }
     // если нет
@@ -113,7 +113,7 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
 }
 
 // лексинг
-pub fn lex(file_name: &str, code: String, debug: bool, bench: bool) -> Option<Vec<Token>> {
+pub fn lex(file_name: &str, code: &str, debug: bool, bench: bool) -> Option<Vec<Token>> {
     // начальное время
     let start = std::time::Instant::now();
     // сканнинг токенов

@@ -197,7 +197,7 @@ impl CompileVisitor {
                 self.visit_unit(name, full_name, body);
             }
             Node::For { iterable, variable_name, body, } => {
-                self.visit_for(iterable, variable_name, body);
+                self.visit_for(*iterable, variable_name, body);
             }
             Node::Block { body } => {
                 self.visit_block(body);
@@ -512,7 +512,7 @@ impl CompileVisitor {
     fn visit_map(
         &mut self,
         location: Token,
-        map: Box<Vec<(Box<Node>, Box<Node>)>>,
+        map: Vec<(Box<Node>, Box<Node>)>,
     ) {
         todo!()
     }
@@ -520,13 +520,13 @@ impl CompileVisitor {
     // цикл for
     fn visit_for(
         &mut self,
-        iterable: Box<Node>,
+        iterable: Node,
         variable_name: Token,
         body: Box<Node>,
     ) {
         // чанк итератора
         self.push_chunk();
-        self.visit_node(*iterable);
+        self.visit_node(iterable);
         let iterator_chunk = self.pop_chunk();
         // имя для временной переменной
         let iterator_variable_name = format!("@{}", variable_name.value.clone());
