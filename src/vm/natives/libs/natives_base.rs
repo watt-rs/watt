@@ -17,9 +17,9 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         "base@panic".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: *mut FnOwner| {
             // текст hint
-            let hint = vm.pop(addr.clone())?;
+            let hint = vm.pop(&addr)?;
             // ошибка
-            let error = vm.pop(addr.clone())?;
+            let error = vm.pop(&addr)?;
             // проверяем типы
             if let Value::String(hint_string) = hint {
                 if let Value::String(error_string) = error {

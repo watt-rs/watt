@@ -68,10 +68,10 @@ impl VM {
     }
 
     // поп
-    pub fn pop(&mut self, address: Address) -> Result<Value, ControlFlow> {
+    pub fn pop(&mut self, address: &Address) -> Result<Value, ControlFlow> {
         if self.stack.len() == 0 {
             error!(Error::new(
-                address,
+                address.clone(),
                 "stack underflow.".to_string(),
                 "check your code.".to_string()
             ));
@@ -139,8 +139,8 @@ impl VM {
     // бинарная операция
     unsafe fn op_binary(&mut self, address: Address, op: &str, table: *mut Table) -> Result<(), ControlFlow> {
         // два операнда
-        let operand_a = self.pop(address.clone())?;
-        let operand_b = self.pop(address.clone())?;
+        let operand_a = self.pop(&address)?;
+        let operand_b = self.pop(&address)?;
         // ошибка
         let error = Error::new(
             address.clone(),
@@ -239,7 +239,7 @@ impl VM {
     // негэйт
     unsafe fn op_negate(&mut self, address: Address) -> Result<(), ControlFlow> {
         // операнд
-        let operand = self.pop(address.clone())?;
+        let operand = self.pop(&address)?;
         // негэйт
         match operand {
             Value::Float(a) => {
@@ -264,7 +264,7 @@ impl VM {
     // бэнг
     unsafe fn op_bang(&mut self, address: Address) -> Result<(), ControlFlow> {
         // операнд
-        let operand = self.pop(address.clone())?;
+        let operand = self.pop(&address)?;
         // бэнг
         match operand {
             Value::Bool(b) => {
@@ -283,8 +283,8 @@ impl VM {
     // условие
     unsafe fn op_conditional(&mut self, address: Address, op: &str) -> Result<(), ControlFlow> {
         // операнды
-        let operand_a = self.pop(address.clone())?;
-        let operand_b = self.pop(address.clone())?;
+        let operand_a = self.pop(&address)?;
+        let operand_b = self.pop(&address)?;
         let error = Error::new(
             address.clone(),
             format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
@@ -435,8 +435,8 @@ impl VM {
     // логика
     unsafe fn op_logical(&mut self, address: Address, op: &str) -> Result<(), ControlFlow> {
         // операнды
-        let operand_a = self.pop(address.clone())?;
-        let operand_b = self.pop(address.clone())?;
+        let operand_a = self.pop(&address)?;
+        let operand_b = self.pop(&address)?;
         let error = Error::new(
             address.clone(),
             format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
@@ -485,7 +485,7 @@ impl VM {
         }
         // условие
         self.run(cond, table)?;
-        let bool = self.pop(addr.clone())?;
+        let bool = self.pop(&addr)?;
         // проверка
         if let Value::Bool(b) = bool {
             if b {
@@ -663,7 +663,7 @@ impl VM {
             // исполняем значение
             self.run(value, table)?;
             // получаем значение
-            let operand = self.pop(addr.clone())?;
+            let operand = self.pop(&addr)?;
             // дефайним
             if let Err(e) = (*table).define(addr.clone(), name, operand) {
                 error!(e);
@@ -672,14 +672,14 @@ impl VM {
         // если есть
         else {
             // получаем значение
-            let previous = self.pop(addr.clone())?;
+            let previous = self.pop(&addr)?;
             // првоеряем
             match previous {
                 Value::Instance(instance) => {
                     // исполняем значение
                     self.run(value, table)?;
                     // получаем значение
-                    let operand = self.pop(addr.clone())?;
+                    let operand = self.pop(&addr)?;
                     // дефайним
                     if let Err(e) = (*(*instance).fields).define(addr.clone(), name, operand) {
                         error!(e);
@@ -689,7 +689,7 @@ impl VM {
                     // исполняем значение
                     self.run(value, table)?;
                     // получаем значение
-                    let operand = self.pop(addr.clone())?;
+                    let operand = self.pop(&addr)?;
                     // дефайним
                     if let Err(e) = (*(*unit).fields).define(addr.clone(), name, operand) {
                         error!(e);
@@ -716,7 +716,7 @@ impl VM {
             // исполняем значение
             self.run(value, table)?;
             // получаем значение
-            let operand = self.pop(addr.clone())?;
+            let operand = self.pop(&addr)?;
             // дефайним
             if let Err(e) = (*table).set(addr.clone(), name, operand) {
                 error!(e);
@@ -725,14 +725,14 @@ impl VM {
         // если есть
         else {
             // получаем значение
-            let previous = self.pop(addr.clone())?;
+            let previous = self.pop(&addr)?;
             // проверяем
             match previous {
                 Value::Instance(instance) => {
                     // исполняем значение
                     self.run(value, table)?;
                     // получаем значение
-                    let operand = self.pop(addr.clone())?;
+                    let operand = self.pop(&addr)?;
                     // устанавливаем значение
                     if let Err(e) = (*(*instance).fields).set_local(addr.clone(), name, operand) {
                         error!(e);
@@ -742,7 +742,7 @@ impl VM {
                     // исполняем значение
                     self.run(value, table)?;
                     // получаем значение
-                    let operand = self.pop(addr.clone())?;
+                    let operand = self.pop(&addr)?;
                     // устанавливаем значение
                     if let Err(e) = (*(*unit).fields).set_local(addr.clone(), name, operand) {
                         error!(e);
@@ -789,7 +789,7 @@ impl VM {
         // если есть
         else {
             // получаем значение
-            let previous = self.pop(addr.clone())?;
+            let previous = self.pop(&addr)?;
             // проверяем
             match previous {
                 Value::Instance(instance) => {
@@ -860,7 +860,7 @@ impl VM {
                 // проходимся
                 for param in reversed_params {
                     // получаем аргумент из стека
-                    let operand = vm.pop(addr.clone())?;
+                    let operand = vm.pop(&addr)?;
                     // устанавливаем в таблице
                     if let Err(e) = (*call_table).define(addr.clone(), param.clone(), operand) {
                         error!(e);
@@ -1042,7 +1042,7 @@ impl VM {
         // если есть
         else {
             // получаем значение
-            let previous = self.pop(addr.clone())?;
+            let previous = self.pop(&addr)?;
             // проверяем
             match previous {
                 Value::Instance(instance) => {
@@ -1087,7 +1087,7 @@ impl VM {
     // дублирование значения в стеке
     unsafe fn op_duplicate(&mut self, addr: Address) -> Result<(), ControlFlow> {
         // операнд
-        let operand = self.pop(addr)?;
+        let operand = self.pop(&addr)?;
         // пушим
         self.push(operand);
         self.push(operand);
@@ -1250,7 +1250,7 @@ impl VM {
                 // проходимся
                 for param in reversed_params {
                     // получаем аргумент из стека
-                    let operand = vm.pop(addr.clone())?;
+                    let operand = vm.pop(&addr)?;
                     // устанавливаем в таблице
                     if let Err(e) = (*fields_table).define(addr.clone(), param.clone(), operand) {
                         error!(e);
@@ -1380,7 +1380,7 @@ impl VM {
     unsafe fn op_return(&mut self, addr: Address, value: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         // выполняем
         self.run(value, table)?;
-        let value = self.pop(addr)?;
+        let value = self.pop(&addr)?;
         // возвращаем
         Err(ControlFlow::Return(value))
     }
@@ -1406,7 +1406,7 @@ impl VM {
         // выполняем
         self.run(value, table)?;
         // значение
-        let value = self.pop(addr.clone())?;
+        let value = self.pop(&addr)?;
         // вызов is_ok
         unsafe fn call_is_ok(vm: &mut VM, addr: Address, instance: *mut Instance) -> Result<bool, ControlFlow> {
             // пробуем получить is_ok
@@ -1442,7 +1442,7 @@ impl VM {
                     true
                 )?;
                 // получаем значение
-                let is_ok = vm.pop(addr.clone())?;
+                let is_ok = vm.pop(&addr)?;
                 // проверяем, бул ли
                 return if let Value::Bool(boolean) = is_ok {
                     Ok(boolean)
@@ -1553,7 +1553,7 @@ impl VM {
         // выполняем
         self.run(value, table)?;
         // значение
-        let value = self.pop(addr.clone())?;
+        let value = self.pop(&addr)?;
         // проверка, экземпляр ли класс значение
         if let Value::Instance(instance) = value {
             // ищем трейт
@@ -1621,7 +1621,7 @@ impl VM {
                     self.op_push(value, table)?;
                 }
                 Opcode::Pop { addr } => {
-                    self.pop(addr.clone())?;
+                    self.pop(&addr)?;
                 }
                 Opcode::Bin { addr, op } => {
                     self.op_binary(addr, op.as_str(), table)?;
