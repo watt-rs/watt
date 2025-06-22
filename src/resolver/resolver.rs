@@ -34,11 +34,11 @@ impl ImportsResolver {
         let mut nodes = vec![];
         // перебираем билт-ины
         for builtin in self.builtins.clone() {
-            if !self.imported.contains(&builtin.clone()) {
+            if !self.imported.contains(&builtin) {
                 // нода
                 let node_option = self.import(
                     None,
-                    &Import::new(None, builtin, None)
+                    &Import::new(None, builtin.to_string(), None)
                 );
                 // импортируем
                 if let Some(node) = node_option {
@@ -84,24 +84,25 @@ impl ImportsResolver {
             false,
             import.full_name
         );
-        let analyzed = executor::analyze(
-            ast.as_ref().unwrap()
+        let mut analyzed = executor::analyze(
+            ast.unwrap()
         );
         // блок результата
         let result: Node;
         // проверяем блок
-        if let Node::Block { body } = analyzed {
+        if let Node::Block { body } = &mut analyzed {
             // новое тело
             let mut new_body: Vec<Node> = vec![];
             // добавляем в тело
-            for node in body {
+            
+            while let Some(node) = body.pop() {
                 // перебираем
                 match node {
                     Node::Native { .. } |
                     Node::FnDeclaration { .. } |
                     Node::Type { .. } |
                     Node::Unit { .. } => {
-                        new_body.push(node.clone());
+                        new_body.push(node);
                     }
                     _ => {}
                 }
