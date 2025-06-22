@@ -134,7 +134,7 @@ impl<'filename> Lexer<'filename> {
             column: 0,
             line_text: String::new(),
             code: code.chars().collect::<Vec<char>>(),
-            filename: filename,
+            filename,
             tokens: vec![],
             keywords: map,
         };
