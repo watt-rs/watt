@@ -29,7 +29,7 @@ impl Analyzer {
     }
 
     // анализ ноды
-    pub fn analyze(&mut self, node: &Node) -> Node {
+    pub fn analyze<'node>(&mut self, node: &'node Node) -> &'node Node {
         match node {
             Node::Block { body } => {
                 self.analyze_block(body);
@@ -70,7 +70,7 @@ impl Analyzer {
             _ => {}
         }
         // возвращаем ноду обратно
-        node.clone()
+        node
     }
 
     // проверка, есть ли в иерархии цикл

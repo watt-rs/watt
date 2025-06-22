@@ -45,7 +45,7 @@ pub unsafe fn run(
         None
     );
     let analyzed = analyze(
-        ast.unwrap()
+        ast.as_ref().unwrap()
     );
     let compiled = compile(
         analyzed,
@@ -179,19 +179,19 @@ pub fn parse(file_name: &str, tokens: Vec<Token>,
 }
 
 // семантический анализ
-pub fn analyze(ast: Node) -> Node {
+pub fn analyze(ast: &Node) -> &Node {
     // анализ
-    let analyzed = Analyzer::new().analyze(&ast);
+    let analyzed = Analyzer::new().analyze(ast);
     // возвращаем
     analyzed
 }
 
 // компиляция
-pub unsafe fn compile(ast: Node, opcodes_debug: bool, bench: bool) -> Chunk {
+pub unsafe fn compile(ast: &Node, opcodes_debug: bool, bench: bool) -> Chunk {
     // начальное время
     let start = std::time::Instant::now();
     // компилируем
-    let compiled = CompileVisitor::new().compile(&ast);
+    let compiled = CompileVisitor::new().compile(ast);
     // конечное время
     if bench {
         let duration = start.elapsed().as_nanos();

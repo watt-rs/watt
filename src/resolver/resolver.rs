@@ -85,7 +85,7 @@ impl ImportsResolver {
             import.full_name
         );
         let analyzed = executor::analyze(
-            ast.unwrap()
+            ast.as_ref().unwrap()
         );
         // блок результата
         let result: Node;
@@ -94,7 +94,7 @@ impl ImportsResolver {
             // новое тело
             let mut new_body: Vec<Node> = vec![];
             // добавляем в тело
-            for node in &body {
+            for node in body {
                 // перебираем
                 match node {
                     Node::Native { .. } |
