@@ -153,8 +153,8 @@ pub fn parse(file_name: &str, tokens: Vec<Token>,
     // стройка аст
     let raw_ast = Parser::new(
         tokens,
-        file_name.clone(),
-        delete_extension(full_name_prefix.unwrap_or(file_name))
+        file_name,
+        delete_extension(full_name_prefix.unwrap_or(file_name.to_string()))
     ).parse();
     // конечное время
     let duration = start.elapsed().as_nanos();
