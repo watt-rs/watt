@@ -191,7 +191,7 @@ pub unsafe fn compile(ast: Node, opcodes_debug: bool, bench: bool) -> Chunk {
     // начальное время
     let start = std::time::Instant::now();
     // компилируем
-    let compiled = CompileVisitor::new().compile(ast);
+    let compiled = CompileVisitor::new().compile(&ast);
     // конечное время
     if bench {
         let duration = start.elapsed().as_nanos();

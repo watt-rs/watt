@@ -38,7 +38,7 @@ impl ImportsResolver {
                 // нода
                 let node_option = self.import(
                     None,
-                    Import::new(None, builtin, None)
+                    &Import::new(None, builtin, None)
                 );
                 // импортируем
                 if let Some(node) = node_option {
@@ -122,10 +122,10 @@ impl ImportsResolver {
     pub fn import(
         &mut self,
         addr: Option<Address>,
-        import: Import
+        import: &Import
     ) -> Option<Node> {
         // проверка на наличие импорта, если его нет
-        if !self.imported.contains(&import.name.clone()) {
+        if !self.imported.contains(&import.name) {
             // ресолвинг
             let node = self.resolve(addr, import.clone());
             // импротируем
