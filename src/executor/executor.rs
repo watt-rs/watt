@@ -181,7 +181,7 @@ pub fn parse(file_name: &str, tokens: Vec<Token>,
 // семантический анализ
 pub fn analyze(ast: Node) -> Node {
     // анализ
-    let analyzed = Analyzer::new().analyze(ast);
+    let analyzed = Analyzer::new().analyze(&ast);
     // возвращаем
     analyzed
 }
