@@ -192,7 +192,7 @@ impl Drop for GC {
     fn drop(&mut self) {
         // лог
         self.log(format!("gc :: cleanup :: {:?}", self.objects.len()));
-        // перебираем, и высвобождаем память
+        // перебираем, и высвобождаем аллоцированые объекты
         for value in &self.objects {
             self.free_value(value.clone());
         }

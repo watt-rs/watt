@@ -91,6 +91,8 @@ impl VM {
         // высвобождаем нативные функции
         (*self.natives).free_fields();
         memory::free_value(self.natives);
+        // высвобождаем таблицу юнитов
+        memory::free_value(self.units);
         // высвобождаем таблицу глобальных переменные
         memory::free_value(self.globals);
         // высвобождаем gc
