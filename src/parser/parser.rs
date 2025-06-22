@@ -215,7 +215,7 @@ impl<'filename> Parser<'filename> {
             // .
             self.consume(TokenType::Dot)?;
             // адрес
-            let location = self.peek()?.address;
+            let location = self.peek()?.address.clone();
             // access part
             left = self.access_part(Option::Some(Box::new(left)))?;
             // если выражение
@@ -388,7 +388,7 @@ impl<'filename> Parser<'filename> {
             }
             // иное
             _ => Err(Error::new(
-                self.peek()?.address,
+                self.peek()?.address.clone(),
                 format!("invalid token. {:?}:{:?}",
                     self.peek()?.tk_type, self.peek()?.value
                 ),
@@ -569,7 +569,7 @@ impl<'filename> Parser<'filename> {
         if self.check(TokenType::Greater) || self.check(TokenType::Less)
             || self.check(TokenType::LessEq) || self.check(TokenType::GreaterEq)
             || self.check(TokenType::Eq) || self.check(TokenType::NotEq) {
-            let op = self.peek()?;
+            let op = self.peek()?.clone();
             self.current += 1;
             let right = self.impls_expr()?;
             left = Node::Cond {
@@ -588,9 +588,12 @@ impl<'filename> Parser<'filename> {
 
         while self.check(TokenType::And) ||
             self.check(TokenType::Or) {
-            let op = self.peek()?;
+            let op = self.peek()?.clone();
+
             self.current += 1;
+
             let right = self.conditional_expr()?;
+
             left = Node::Logical {
                 left: Box::new(left),
                 right: Box::new(right),
@@ -846,7 +849,7 @@ impl<'filename> Parser<'filename> {
         self.consume(TokenType::Lbrace)?;
         let mut body = Vec::new();
         while !self.is_at_end() && !self.check(TokenType::Rbrace) {
-            let location = self.peek()?;
+            let location = self.peek()?.clone();
             let mut node = self.statement()?;
             match node {
                 Node::FnDeclaration { name, params, body, .. } => {
@@ -896,7 +899,7 @@ impl<'filename> Parser<'filename> {
         self.consume(TokenType::Lbrace)?;
         while !self.is_at_end() && !self.check(TokenType::Rbrace) {
             // локация
-            let location = self.peek()?;
+            let location = self.peek()?.address.clone();
             // функция
             if self.check(TokenType::Fun) {
                 // fun
@@ -935,7 +938,7 @@ impl<'filename> Parser<'filename> {
             // в ином случае
             else {
                 error!(Error::new(
-                    location.address,
+                    location,
                     "only fn-s can be declared in trait.".to_string(),
                     "you can create this declaration: 'fn meow(cat) {}'".to_string(),
                 ))
@@ -960,7 +963,7 @@ impl<'filename> Parser<'filename> {
         self.consume(TokenType::Lbrace)?;
         let mut body = Vec::new();
         while !self.is_at_end() && !self.check(TokenType::Rbrace) {
-            let location = self.peek()?;
+            let location = self.peek()?.clone();
             let mut node = self.statement()?;
             match node {
                 Node::FnDeclaration { name, params, body, .. } => {
@@ -1062,7 +1065,7 @@ impl<'filename> Parser<'filename> {
             }
             _ => {
                 Err(Error::new(
-                    tk.address,
+                    tk.address.clone(),
                     format!("unexpected token: {:?}:{tk_value}",
                             tk.tk_type, tk_value=tk.value),
                     "check your code.".to_string(),
@@ -1127,10 +1130,10 @@ impl<'filename> Parser<'filename> {
     }
 
     // peek
-    fn peek(&self) -> Result<Token, Error> {
+    fn peek(&self) -> Result<&Token, Error> {
         match self.tokens.get(self.current as usize) {
             Some(tk) => {
-                Ok(tk.clone())
+                Ok(tk)
             },
             None => {
                 Err(Error::new(
