@@ -68,13 +68,13 @@ impl<'filename> Parser<'filename> {
         // до )
         if !self.check(TokenType::Rparen) {
             // параметр
-            nodes.push(self.consume(TokenType::Id)?);
+            nodes.push(self.consume(TokenType::Id)?.clone());
             // через запятую
             while !self.is_at_end() && self.check(TokenType::Comma) {
                 // ,
                 self.consume(TokenType::Comma)?;
                 // параметр
-                nodes.push(self.consume(TokenType::Id)?);
+                nodes.push(self.consume(TokenType::Id)?.clone());
             }
         }
         // )
@@ -97,7 +97,7 @@ impl<'filename> Parser<'filename> {
         // new
         self.consume(TokenType::New)?;
         // имя и аргументы
-        let name = self.consume(TokenType::Id)?;
+        let name = self.consume(TokenType::Id)?.clone();
         let args = self.args()?;
         // возвращаем
         Ok(Node::Instance {
@@ -112,7 +112,7 @@ impl<'filename> Parser<'filename> {
         // если есть id
         if self.check(TokenType::Id) {
             // id
-            let identifier = self.consume(TokenType::Id)?;
+            let identifier = self.consume(TokenType::Id)?.clone();
             // дефайн ':='
             if self.check(TokenType::Walrus) {
                 self.consume(TokenType::Walrus)?;
@@ -142,19 +142,19 @@ impl<'filename> Parser<'filename> {
                 // парсим
                 match self.peek()?.tk_type {
                     TokenType::AssignSub => {
-                        location = self.consume(TokenType::AssignSub)?;
+                        location = self.consume(TokenType::AssignSub)?.clone();
                         op = "-".to_string();
                     }
                     TokenType::AssignMul => {
-                        location = self.consume(TokenType::AssignMul)?;
+                        location = self.consume(TokenType::AssignMul)?.clone();
                         op = "*".to_string();
                     }
                     TokenType::AssignDiv => {
-                        location = self.consume(TokenType::AssignDiv)?;
+                        location = self.consume(TokenType::AssignDiv)?.clone();
                         op = "/".to_string();
                     }
                     TokenType::AssignAdd => {
-                        location = self.consume(TokenType::AssignAdd)?;
+                        location = self.consume(TokenType::AssignAdd)?.clone();
                         op = "+".to_string();
                     }
                     _ => {
@@ -215,7 +215,7 @@ impl<'filename> Parser<'filename> {
             // .
             self.consume(TokenType::Dot)?;
             // адрес
-            let location = self.peek()?.address;
+            let location = self.peek()?.address.clone();
             // access part
             left = self.access_part(Option::Some(Box::new(left)))?;
             // если выражение
@@ -252,7 +252,7 @@ impl<'filename> Parser<'filename> {
         // проверяем на вопросик
         if self.check(TokenType::Question) {
             // вопросительный знак
-            let question = self.consume(TokenType::Question)?;
+            let question = self.consume(TokenType::Question)?.clone();
             // нода
             node = Node::ErrorPropagation {
                 location: question,
@@ -291,7 +291,7 @@ impl<'filename> Parser<'filename> {
     // анонимная функция
     fn anonymous_fn_expr(&mut self) -> Result<Node, Error> {
         // fun
-        let location = self.consume(TokenType::Fun)?;
+        let location = self.consume(TokenType::Fun)?.clone();
         // параметры
         let mut params: Vec<Token> = Vec::new();
         if self.check(TokenType::Lparen) {
@@ -312,7 +312,7 @@ impl<'filename> Parser<'filename> {
     // лямбда
     fn lambda_fn_expr(&mut self) -> Result<Node, Error> {
         // lambda
-        let location = self.consume(TokenType::Lambda)?;
+        let location = self.consume(TokenType::Lambda)?.clone();
         // параметры
         let mut params: Vec<Token> = Vec::new();
         if self.check(TokenType::Lparen) {
@@ -341,19 +341,19 @@ impl<'filename> Parser<'filename> {
             // число
             TokenType::Number => {
                 Ok(Node::Number {
-                    value: self.consume(TokenType::Number)?
+                    value: self.consume(TokenType::Number)?.clone()
                 })
             }
             // текст
             TokenType::Text => {
                 Ok(Node::String {
-                    value: self.consume(TokenType::Text)?
+                    value: self.consume(TokenType::Text)?.clone()
                 })
             }
             // бул
             TokenType::Bool => {
                 Ok(Node::Bool {
-                    value: self.consume(TokenType::Bool)?
+                    value: self.consume(TokenType::Bool)?.clone()
                 })
             }
             // в скобках
@@ -371,7 +371,7 @@ impl<'filename> Parser<'filename> {
             // null
             TokenType::Null => {
                 Ok(Node::Null {
-                    location: self.consume(TokenType::Null)?
+                    location: self.consume(TokenType::Null)?.clone()
                 })
             }
             // анонимная функция
@@ -388,7 +388,7 @@ impl<'filename> Parser<'filename> {
             }
             // иное
             _ => Err(Error::new(
-                self.peek()?.address,
+                self.peek()?.address.clone(),
                 format!("invalid token. {:?}:{:?}",
                     self.peek()?.tk_type, self.peek()?.value
                 ),
@@ -400,7 +400,7 @@ impl<'filename> Parser<'filename> {
     // список
     fn list_expr(&mut self) -> Result<Node, Error> {
         // [
-        let location = self.consume(TokenType::Lbracket)?;
+        let location = self.consume(TokenType::Lbracket)?.clone();
         // парсинг тела
         // пустой список
         if self.check(TokenType::Rbracket) {
@@ -445,7 +445,7 @@ impl<'filename> Parser<'filename> {
     // мапа
     fn map_expr(&mut self) -> Result<Node, Error> {
         // {
-        let location = self.consume(TokenType::Lbrace)?;
+        let location = self.consume(TokenType::Lbrace)?.clone();
         // парсинг тела
         // пустая мапа
         if self.check(TokenType::Rbrace) {
@@ -480,7 +480,7 @@ impl<'filename> Parser<'filename> {
         let tk = self.peek()?;
         match tk {
             Token { tk_type: TokenType::Op, value, .. } if value == "-" || value == "!"  => {
-                let op = self.consume(TokenType::Op)?;
+                let op = self.consume(TokenType::Op)?.clone();
                 Ok(Node::Unary {
                     op,
                     value: Box::new(self.primary_expr()?)
@@ -498,7 +498,7 @@ impl<'filename> Parser<'filename> {
 
         while self.check(TokenType::Op) &&
             (self.peek()?.value == "*" || self.peek()?.value == "/") {
-            let op = self.consume(TokenType::Op)?;
+            let op = self.consume(TokenType::Op)?.clone();
             let right = self.unary_expr()?;
             left = Node::Bin {
                 left: Box::new(left),
@@ -516,7 +516,7 @@ impl<'filename> Parser<'filename> {
 
         while self.check(TokenType::Op) &&
             (self.peek()?.value == "+" || self.peek()?.value == "-") {
-            let op = self.consume(TokenType::Op)?;
+            let op = self.consume(TokenType::Op)?.clone();
             let right = self.multiplicative_expr()?;
             left = Node::Bin {
                 left: Box::new(left),
@@ -533,7 +533,7 @@ impl<'filename> Parser<'filename> {
         let mut left = self.additive_expr()?;
         
         if self.check(TokenType::Range) {
-            let location = self.consume(TokenType::Range)?;
+            let location = self.consume(TokenType::Range)?.clone();
             let right = self.additive_expr()?;
             left = Node::Range {
                 location,
@@ -551,7 +551,7 @@ impl<'filename> Parser<'filename> {
 
         if self.check(TokenType::Impls) {
             self.consume(TokenType::Impls)?;
-            let trait_name = self.consume(TokenType::Id)?;
+            let trait_name = self.consume(TokenType::Id)?.clone();
             left = Node::Impls {
                 value: Box::new(left),
                 trait_name,
@@ -569,7 +569,7 @@ impl<'filename> Parser<'filename> {
         if self.check(TokenType::Greater) || self.check(TokenType::Less)
             || self.check(TokenType::LessEq) || self.check(TokenType::GreaterEq)
             || self.check(TokenType::Eq) || self.check(TokenType::NotEq) {
-            let op = self.peek()?;
+            let op = self.peek()?.clone();
             self.current += 1;
             let right = self.impls_expr()?;
             left = Node::Cond {
@@ -588,9 +588,12 @@ impl<'filename> Parser<'filename> {
 
         while self.check(TokenType::And) ||
             self.check(TokenType::Or) {
-            let op = self.peek()?;
+            let op = self.peek()?.clone();
+
             self.current += 1;
+
             let right = self.conditional_expr()?;
+
             left = Node::Logical {
                 left: Box::new(left),
                 right: Box::new(right),
@@ -608,7 +611,7 @@ impl<'filename> Parser<'filename> {
 
     // стейтмент continue
     fn continue_stmt(&mut self) -> Result<Node, Error> {
-        let location = self.consume(TokenType::Continue)?;
+        let location = self.consume(TokenType::Continue)?.clone();
         Ok(Node::Continue {
             location
         })
@@ -616,7 +619,7 @@ impl<'filename> Parser<'filename> {
 
     // стейтмент break
     fn break_stmt(&mut self) -> Result<Node, Error> {
-        let location = self.consume(TokenType::Break)?;
+        let location = self.consume(TokenType::Break)?.clone();
         Ok(Node::Break {
             location
         })
@@ -624,7 +627,7 @@ impl<'filename> Parser<'filename> {
 
     // стейтмент return
     fn return_stmt(&mut self) -> Result<Node, Error> {
-        let location = self.consume(TokenType::Ret)?;
+        let location = self.consume(TokenType::Ret)?.clone();
         let value = Box::new(self.expr()?);
         Ok(Node::Ret {
             location,
@@ -634,14 +637,14 @@ impl<'filename> Parser<'filename> {
 
     // один import
     fn single_import(&mut self) -> Result<Import, Error> {
-        let name = self.consume(TokenType::Text)?;
+        let name = self.consume(TokenType::Text)?.clone();
         if self.check(TokenType::With) {
             self.consume(TokenType::With)?;
             Ok(Import::new(
                 Option::Some(name.address),
                 name.value,
                 Option::Some(
-                    self.consume(TokenType::Text)?.value
+                    self.consume(TokenType::Text)?.value.clone()
                 )
             ))
         } else {
@@ -656,7 +659,7 @@ impl<'filename> Parser<'filename> {
     // стейтмент импорт
     fn import_stmt(&mut self) -> Result<Node, Error> {
         // локация
-        let location = self.consume(TokenType::Import)?;
+        let location = self.consume(TokenType::Import)?.clone();
         // парсинг импортов
         let mut imports = Vec::new();
         if self.check(TokenType::Lparen) {
@@ -679,7 +682,7 @@ impl<'filename> Parser<'filename> {
 
     // стейтмент while
     fn while_stmt(&mut self) -> Result<Node, Error> {
-        let location = self.consume(TokenType::While)?;
+        let location = self.consume(TokenType::While)?.clone();
         let logical = self.expr()?;
         self.consume(TokenType::Lbrace)?;
         let body = self.block()?;
@@ -693,7 +696,7 @@ impl<'filename> Parser<'filename> {
 
     // else
     fn else_stmt(&mut self) -> Result<Node, Error> {
-        let location = self.consume(TokenType::Else)?;
+        let location = self.consume(TokenType::Else)?.clone();
         self.consume(TokenType::Lbrace)?;
         let body = self.block()?;
         self.consume(TokenType::Rbrace)?;
@@ -711,7 +714,7 @@ impl<'filename> Parser<'filename> {
 
     // elif
     fn elif_stmt(&mut self) -> Result<Node, Error> {
-        let location = self.consume(TokenType::Elif)?;
+        let location = self.consume(TokenType::Elif)?.clone();
         let logical = self.expr()?;
         self.consume(TokenType::Lbrace)?;
         let body = self.block()?;
@@ -742,7 +745,7 @@ impl<'filename> Parser<'filename> {
 
     // if
     fn if_stmt(&mut self) -> Result<Node, Error> {
-        let location = self.consume(TokenType::If)?;
+        let location = self.consume(TokenType::If)?.clone();
         let logical = self.expr()?;
         self.consume(TokenType::Lbrace)?;
         let body = self.block()?;
@@ -774,7 +777,7 @@ impl<'filename> Parser<'filename> {
     // for
     fn for_stmt(&mut self) -> Result<Node, Error> {
         self.consume(TokenType::For)?;
-        let name = self.consume(TokenType::Id)?;
+        let name = self.consume(TokenType::Id)?.clone();
         self.consume(TokenType::In)?;
         let value = self.expr()?;
         self.consume(TokenType::Lbrace)?;
@@ -792,7 +795,7 @@ impl<'filename> Parser<'filename> {
         // fun
         self.consume(TokenType::Fun)?;
         // имя
-        let name = self.consume(TokenType::Id)?;
+        let name = self.consume(TokenType::Id)?.clone();
         // параметры
         let mut params: Vec<Token> = Vec::new();
         if self.check(TokenType::Lparen) {
@@ -818,7 +821,7 @@ impl<'filename> Parser<'filename> {
         // type
         self.consume(TokenType::Type)?;
         // имя
-        let name = self.consume(TokenType::Id)?;
+        let name = self.consume(TokenType::Id)?.clone();
         // параметры
         let mut constructor: Vec<Token> = Vec::new();
         if self.check(TokenType::Lparen) {
@@ -832,13 +835,13 @@ impl<'filename> Parser<'filename> {
             // парсим
             if !self.check(TokenType::Lbrace) {
                 // параметр
-                impls.push(self.consume(TokenType::Id)?);
+                impls.push(self.consume(TokenType::Id)?.clone());
                 // через запятую
                 while !self.is_at_end() && self.check(TokenType::Comma) {
                     // ,
                     self.consume(TokenType::Comma)?;
                     // параметр
-                    impls.push(self.consume(TokenType::Id)?);
+                    impls.push(self.consume(TokenType::Id)?.clone());
                 }
             }
         }
@@ -846,7 +849,7 @@ impl<'filename> Parser<'filename> {
         self.consume(TokenType::Lbrace)?;
         let mut body = Vec::new();
         while !self.is_at_end() && !self.check(TokenType::Rbrace) {
-            let location = self.peek()?;
+            let location = self.peek()?.clone();
             let mut node = self.statement()?;
             match node {
                 Node::FnDeclaration { name, params, body, .. } => {
@@ -889,20 +892,20 @@ impl<'filename> Parser<'filename> {
         // trait
         self.consume(TokenType::Trait)?;
         // имя
-        let name = self.consume(TokenType::Id)?;
+        let name = self.consume(TokenType::Id)?.clone();
         // функции
         let mut functions: Vec<TraitNodeFn> = Vec::new();
         // тело
         self.consume(TokenType::Lbrace)?;
         while !self.is_at_end() && !self.check(TokenType::Rbrace) {
             // локация
-            let location = self.peek()?;
+            let location = self.peek()?.address.clone();
             // функция
             if self.check(TokenType::Fun) {
                 // fun
                 self.consume(TokenType::Fun)?;
                 // имя функции
-                let name = self.consume(TokenType::Id)?;
+                let name = self.consume(TokenType::Id)?.clone();
                 // параметры
                 let mut params: Vec<Token> = Vec::new();
                 if self.check(TokenType::Lparen) {
@@ -935,7 +938,7 @@ impl<'filename> Parser<'filename> {
             // в ином случае
             else {
                 error!(Error::new(
-                    location.address,
+                    location,
                     "only fn-s can be declared in trait.".to_string(),
                     "you can create this declaration: 'fn meow(cat) {}'".to_string(),
                 ))
@@ -955,12 +958,12 @@ impl<'filename> Parser<'filename> {
         // unit
         self.consume(TokenType::Unit)?;
         // имя
-        let name = self.consume(TokenType::Id)?;
+        let name = self.consume(TokenType::Id)?.clone();
         // тело
         self.consume(TokenType::Lbrace)?;
         let mut body = Vec::new();
         while !self.is_at_end() && !self.check(TokenType::Rbrace) {
-            let location = self.peek()?;
+            let location = self.peek()?.clone();
             let mut node = self.statement()?;
             match node {
                 Node::FnDeclaration { name, params, body, .. } => {
@@ -1002,11 +1005,11 @@ impl<'filename> Parser<'filename> {
         // native
         self.consume(TokenType::Native)?;
         // имя
-        let name = self.consume(TokenType::Id)?;
+        let name = self.consume(TokenType::Id)?.clone();
         // ->
         self.consume(TokenType::Arrow)?;
         // имя нативной функции
-        let fn_name = self.consume(TokenType::Text)?;
+        let fn_name = self.consume(TokenType::Text)?.clone();
         // возвращаем
         Ok(Node::Native {
             name,
@@ -1062,7 +1065,7 @@ impl<'filename> Parser<'filename> {
             }
             _ => {
                 Err(Error::new(
-                    tk.address,
+                    tk.address.clone(),
                     format!("unexpected token: {:?}:{tk_value}",
                             tk.tk_type, tk_value=tk.value),
                     "check your code.".to_string(),
@@ -1081,12 +1084,12 @@ impl<'filename> Parser<'filename> {
      */
 
     // consume
-    fn consume(&mut self, tk_type: TokenType) -> Result<Token, Error> {
+    fn consume(&mut self, tk_type: TokenType) -> Result<&Token, Error> {
         match self.tokens.get(self.current as usize) {
             Some(tk) => {
                 self.current += 1;
                 if tk.tk_type == tk_type {
-                    Ok(tk.clone())
+                    Ok(tk)
                 } else {
                     Err(Error::new(
                         tk.address.clone(),
@@ -1127,10 +1130,10 @@ impl<'filename> Parser<'filename> {
     }
 
     // peek
-    fn peek(&self) -> Result<Token, Error> {
+    fn peek(&self) -> Result<&Token, Error> {
         match self.tokens.get(self.current as usize) {
             Some(tk) => {
-                Ok(tk.clone())
+                Ok(tk)
             },
             None => {
                 Err(Error::new(
