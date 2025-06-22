@@ -69,7 +69,7 @@ impl VM {
 
     // поп
     pub fn pop(&mut self, address: &Address) -> Result<Value, ControlFlow> {
-        if self.stack.len() == 0 {
+        if self.stack.is_empty() {
             error!(Error::new(
                 address.clone(),
                 "stack underflow.".to_string(),
@@ -768,12 +768,12 @@ impl VM {
         if !has_previous {
             // получаем значение
             let lookup_result;
-            if (*table).has(name.clone()) {
-                lookup_result = (*table).lookup(addr.clone(), name);
-            } else if (*self.types).has(name.clone()) {
-                lookup_result = (*self.types).find(addr.clone(), name);
+            if (*table).has(&name) {
+                lookup_result = (*table).lookup(&addr, &name);
+            } else if (*self.types).has(&name) {
+                lookup_result = (*self.types).find(&addr, &name);
             } else {
-                lookup_result = (*self.units).find(addr.clone(), name);
+                lookup_result = (*self.units).find(&addr, &name);
             }
             // проверяем на ошибку
             if let Err(e) = lookup_result {
@@ -794,7 +794,7 @@ impl VM {
             match previous {
                 Value::Instance(instance) => {
                     // получаем значение
-                    let lookup_result = (*(*instance).fields).find(addr.clone(), name);
+                    let lookup_result = (*(*instance).fields).find(&addr, &name);
                     // проверяем на ошибку
                     if let Err(e) = lookup_result {
                         // ошибка
@@ -808,7 +808,7 @@ impl VM {
                 }
                 Value::Unit(unit) => {
                     // получаем значение
-                    let lookup_result = (*(*unit).fields).find(addr.clone(), name);
+                    let lookup_result = (*(*unit).fields).find(&addr, &name);
                     // проверяем на ошибку
                     if let Err(e) = lookup_result {
                         // ошибка
@@ -854,11 +854,8 @@ impl VM {
             // проверяем колличество аргументов и параметров
             // если совпало
             if passed_amount == params_amount {
-                // реверсируем параметры
-                let mut reversed_params = params.clone();
-                reversed_params.reverse();
-                // проходимся
-                for param in reversed_params {
+                // проходимся по реверсированным параметрам
+                for param in params.iter().rev() {
                     // получаем аргумент из стека
                     let operand = vm.pop(&addr)?;
                     // устанавливаем в таблице
@@ -1244,11 +1241,8 @@ impl VM {
             let passed_amount = new_size-prev_size;
             // проверяем
             if passed_amount == params_amount {
-                // реверсируем параметры
-                let mut reversed_params = params.clone();
-                reversed_params.reverse();
-                // проходимся
-                for param in reversed_params {
+                // проходимся по реверсированным параметрам
+                for param in params.iter().rev() {
                     // получаем аргумент из стека
                     let operand = vm.pop(&addr)?;
                     // устанавливаем в таблице
