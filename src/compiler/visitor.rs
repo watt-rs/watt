@@ -218,10 +218,10 @@ impl CompileVisitor {
     }
 
     // блок
-    fn visit_block(&mut self, body: Vec<Box<Node>>) {
+    fn visit_block(&mut self, body: Vec<Node>) {
         // перебор и компиляция нод
         for node in body {
-            self.visit_node(*node)
+            self.visit_node(node)
         }
     }
 
@@ -373,7 +373,7 @@ impl CompileVisitor {
         &mut self,
         previous: Option<Box<Node>>,
         name: Token,
-        args: Vec<Box<Node>>,
+        args: Vec<Node>,
         should_push: bool,
     ) {
         // есть ли предыдущая нода
@@ -474,7 +474,7 @@ impl CompileVisitor {
     }
 
     // визит инициализатора списка
-    fn visit_list(&mut self, location: Token, list: Box<Vec<Node>>) {
+    fn visit_list(&mut self, location: Token, list: Vec<Node>) {
         // создаём список
         self.push_instr(Opcode::Instance {
             addr: location.address.clone(),
@@ -485,7 +485,7 @@ impl CompileVisitor {
         // если длина больше нуля
         if (*list).len() > 0 {
             // заполняем
-            for item in *list {
+            for item in list {
                 // дублируем список
                 self.push_instr(Opcode::Duplicate {
                     addr: location.address.clone(),
@@ -604,7 +604,7 @@ impl CompileVisitor {
         &mut self,
         location: Token,
         matchable: Box<Node>,
-        cases: Vec<Box<Node>>,
+        cases: Vec<Node>,
         default: Box<Node>,
     ) {
         todo!()
@@ -829,13 +829,13 @@ impl CompileVisitor {
     fn visit_instance(
         &mut self,
         name: Token,
-        constructor: Vec<Box<Node>>,
+        constructor: Vec<Node>,
         should_push: bool,
     ) {
         // конструктор
         self.push_chunk();
         for arg in constructor {
-            self.visit_node(*arg);
+            self.visit_node(arg);
         }
         let constructor_args = self.pop_chunk();
         // инстанс

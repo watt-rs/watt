@@ -88,10 +88,10 @@ impl Analyzer {
     }
 
     // блок
-    pub fn analyze_block(&mut self, body: Vec<Box<Node>>) {
+    pub fn analyze_block(&mut self, body: Vec<Node>) {
         // ноды
         for node in body {
-            self.analyze(*node);
+            self.analyze(node);
         }
     }
 
@@ -143,7 +143,7 @@ impl Analyzer {
     // break
     fn analyze_break(&mut self, addr: Address) {
         // проверяем
-        if self.analyze_stack.len() == 0 {
+        if self.analyze_stack.is_empty() {
             error!(Error::new(
                 addr,
                 "couldn't use break without loop.".to_string(),
@@ -172,7 +172,7 @@ impl Analyzer {
     // анализ ретурн
     fn analyze_return(&mut self, addr: Address) {
         // проверяем
-        if self.analyze_stack.len() == 0 {
+        if self.analyze_stack.is_empty() {
             error!(Error::new(
                 addr,
                 "couldn't use return without loop.".to_string(),

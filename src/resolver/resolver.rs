@@ -92,11 +92,11 @@ impl ImportsResolver {
         // проверяем блок
         if let Node::Block { body } = analyzed {
             // новое тело
-            let mut new_body: Vec<Box<Node>> = vec![];
+            let mut new_body: Vec<Node> = vec![];
             // добавляем в тело
             for node in body {
                 // перебираем
-                match *node.clone() {
+                match node.clone() {
                     Node::Native { .. } |
                     Node::FnDeclaration { .. } |
                     Node::Type { .. } |
