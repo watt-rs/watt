@@ -79,22 +79,20 @@ impl VM {
         Ok(self.stack.pop_back().unwrap())
     }
 
+    // shallow очистка
+    pub fn cleanup(&mut self) {
+        // высвобождаем
+        memory::free_value(self.types);
+        memory::free_value(self.units);
+        memory::free_value(self.traits);
+        memory::free_value(self.natives);
+        memory::free_value(self.globals);
+        memory::free_value(self.gc);
+    }
+
     // очистка мусора
     pub unsafe fn gc_invoke(&mut self, table: *mut Table) {
         (*self.gc).collect_garbage(self, table);
-    }
-
-    // бинды функций
-    unsafe fn bind_functions(&mut self, table: *mut Table, owner: *mut FnOwner) {
-        // биндим
-        for val in (*table).fields.values() {
-            if let Value::Fn(function) = *val {
-                (*function).owner = owner;
-            }
-            else if let Value::Native(function) = *val {
-                (*function).owner = owner;
-            }
-        }
     }
 
     // добавление в учет сборщика мусора
@@ -110,7 +108,7 @@ impl VM {
             self.settings.gc_threshold *= 2;
         }
     }
-    
+
     // пуш в стек
     pub unsafe fn op_push(&mut self, value: Value, table: *mut Table) -> Result<(), ControlFlow> {
         // проверяем значение
@@ -563,6 +561,19 @@ impl VM {
         }
         // успех
         Ok(())
+    }
+
+    // бинды функций
+    unsafe fn bind_functions(&mut self, table: *mut Table, owner: *mut FnOwner) {
+        // биндим
+        for val in (*table).fields.values() {
+            if let Value::Fn(function) = *val {
+                (*function).owner = owner;
+            }
+            else if let Value::Native(function) = *val {
+                (*function).owner = owner;
+            }
+        }
     }
 
     // дефайн типа

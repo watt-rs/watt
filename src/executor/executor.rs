@@ -225,6 +225,8 @@ unsafe fn run_chunk(chunk: Chunk, gc_threshold: usize, gc_debug: bool, bench: bo
             "report this error to the developer.".to_string()
         ));
     }
+    // высвобождаем таблицы и gc
+    vm.cleanup();
     // конечное время
     if bench {
         let duration = start.elapsed().as_nanos();
