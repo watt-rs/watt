@@ -7,17 +7,17 @@ use crate::parser::ast::*;
 use crate::error;
 
 // парсер
-pub struct Parser {
+pub struct Parser<'filename> {
     tokens: Vec<Token>,
     current: u128,
-    filename: String,
+    filename: &'filename str,
     full_name_prefix: String,
 }
 // имплементация
 #[allow(unused_qualifications)]
-impl Parser {
+impl<'filename> Parser<'filename> {
     // новый
-    pub fn new(tokens: Vec<Token>, filename: String, full_name_prefix: String) -> Parser {
+    pub fn new(tokens: Vec<Token>, filename: &'filename str, full_name_prefix: String) -> Parser<'filename> {
         Parser { tokens, current: 0, filename, full_name_prefix }
     }
     
@@ -414,13 +414,16 @@ impl Parser {
         }
         // заполненный
         else {
-            let mut nodes: Vec<Box<Node>> = Vec::new();
-            nodes.push(Box::new(self.expr()?));
+            let mut nodes: Vec<Node> = Vec::new();
+            nodes.push(self.expr()?);
+
             while self.check(TokenType::Comma) {
                 self.consume(TokenType::Comma)?;
-                nodes.push(Box::new(self.expr()?));
+                nodes.push(self.expr()?);
             }
+            
             self.consume(TokenType::Rbracket)?;
+            
             Ok(Node::List {
                 location,
                 values: Box::new(nodes)
@@ -1098,7 +1101,7 @@ impl Parser {
                     Address::new(
                         0,
                         0,
-                        self.filename.clone(),
+                        self.filename.to_string(),
                         "eof".to_string()
                     ),
                     "unexpected eof".to_string(),
@@ -1135,7 +1138,7 @@ impl Parser {
                     Address::new(
                         0,
                         0,
-                        self.filename.clone(),
+                        self.filename.to_string(),
                         "eof".to_string()
                     ),
                     "unexpected eof".to_string(),

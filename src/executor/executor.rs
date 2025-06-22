@@ -27,12 +27,12 @@ pub unsafe fn run(
     runtime_bench: Option<bool>,
 ) {
     // чтение файла
-    let code = read_file(Option::None, path.clone());
+    let code = read_file(Option::None, &path);
     // имя файла
-    let filename = path.file_name().unwrap().to_str().unwrap().to_string();
+    let filename = path.file_name().unwrap().to_str().unwrap();
     // компиляция
     let tokens = lex(
-        filename.clone(),
+        filename,
         code,
         lexer_debug.unwrap_or(false),
         lexer_bench.unwrap_or(false)
@@ -69,10 +69,10 @@ pub fn crash(reason: String) {
 }
 
 // чтение файла
-pub fn read_file(addr: Option<Address>, path: PathBuf) -> String {
+pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
     // проверяем наличие пути, если есть
     if path.exists() {
-        if let Ok(result) = fs::read_to_string(path.clone()) {
+        if let Ok(result) = fs::read_to_string(path) {
             result
         } else {
             if let Some(address) = addr {
@@ -113,7 +113,7 @@ pub fn read_file(addr: Option<Address>, path: PathBuf) -> String {
 }
 
 // лексинг
-pub fn lex(file_name: String, code: String, debug: bool, bench: bool) -> Option<Vec<Token>> {
+pub fn lex(file_name: &str, code: String, debug: bool, bench: bool) -> Option<Vec<Token>> {
     // начальное время
     let start = std::time::Instant::now();
     // сканнинг токенов
@@ -135,7 +135,7 @@ pub fn lex(file_name: String, code: String, debug: bool, bench: bool) -> Option<
 
 
 // парсинг
-pub fn parse(file_name: String, tokens: Vec<Token>, 
+pub fn parse(file_name: &str, tokens: Vec<Token>, 
         debug: bool, bench: bool, full_name_prefix: Option<String>) -> Option<Node> {
     // начальное время
     let start = std::time::Instant::now();
@@ -153,8 +153,8 @@ pub fn parse(file_name: String, tokens: Vec<Token>,
     // стройка аст
     let raw_ast = Parser::new(
         tokens,
-        file_name.clone(),
-        delete_extension(full_name_prefix.unwrap_or(file_name))
+        file_name,
+        delete_extension(full_name_prefix.unwrap_or(file_name.to_string()))
     ).parse();
     // конечное время
     let duration = start.elapsed().as_nanos();
