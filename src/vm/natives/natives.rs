@@ -36,7 +36,7 @@ pub unsafe fn provide(
         Value::Native(
             memory::alloc_value(
                 Native::new(
-                    Symbol::by_name(name),
+                    Symbol::by_name(name.clone()),
                     params_amount,
                     native
                 )
