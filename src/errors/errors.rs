@@ -46,11 +46,11 @@ impl Error {
             gray = colors::WhiteColor,
             reset = colors::ResetColor,
         );
-        println!("│ {spaces}^", spaces=" ".repeat(
-            self.addr.column as usize
-            +
-            self.addr.line.to_string().len()
-        ));
+        println!("│ {space:count$}^",
+                 space = " ",
+                 count = self.addr.column as usize
+                     + self.addr.line.to_string().len()
+        );
         println!("│");
         println!("│ hint: {hint}", hint = self.hint);
         println!("{}", colors::ResetColor);
