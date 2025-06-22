@@ -3,6 +3,7 @@ use crate::errors::errors::{Error};
 use crate::lexer::address::Address;
 use crate::vm::values::Value;
 use std::collections::HashMap;
+use crate::vm::memory::memory;
 
 // таблица
 #[derive(Clone, Debug)]
@@ -131,6 +132,45 @@ impl Table {
                 return;
             }
             current = new_root;
+        }
+    }
+
+    // глубокая очистка
+    pub unsafe fn free_fields(&self) {
+        let mut to_free = vec![];
+        for v in self.fields.values() {
+            if !to_free.contains(v) {
+                to_free.push(v.clone());
+            }
+        }
+        for val in to_free {
+            match val {
+                Value::Fn(f) => {
+                    if !f.is_null() { memory::free_value(f); }
+                }
+                Value::Instance(i) => {
+                    if !i.is_null() { memory::free_value(i); }
+                }
+                Value::String(s) => {
+                    if !s.is_null() { memory::free_const_value(s); }
+                }
+                Value::Native(n) => {
+                    if !n.is_null() { memory::free_value(n); }
+                }
+                Value::Unit(u) => {
+                    if !u.is_null() { memory::free_value(u); }
+                }
+                Value::List(l) => {
+                    if !l.is_null() { memory::free_value(l); }
+                }
+                Value::Type(t) => {
+                    if !t.is_null() { memory::free_value(t); }
+                }
+                Value::Trait(t) => {
+                    if !t.is_null() { memory::free_value(t); }
+                }                
+                _ => {}
+            }
         }
     }
 }

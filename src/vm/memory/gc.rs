@@ -51,8 +51,8 @@ impl GC {
             Value::Fn(f) => unsafe {
                 self.marked.insert(value);
                 self.mark_table((*f).closure);
-                if !(*f).owner.is_null() {
-                    match (*(*f).owner) {
+                if (*f).owner.is_some() {
+                    match (*f).owner.clone().unwrap() {
                         FnOwner::Unit(unit) => {
                             self.mark_value(Value::Unit(unit));
                         }
@@ -140,17 +140,11 @@ impl GC {
     // высвобождение значения
     fn free_value(&self, value: Value) {
         match value {
-            Value::Fn(f) => unsafe {
-                if !f.is_null() {
-                    memory::free_value((*f).closure);
-                    memory::free_value(f);
-                }
+            Value::Fn(f) => {
+                if !f.is_null() { memory::free_value(f); }
             }
-            Value::Instance(i) => unsafe {
-                if !i.is_null() {
-                    memory::free_value((*i).fields);
-                    memory::free_value(i);
-                }
+            Value::Instance(i) => {
+                if !i.is_null() { memory::free_value(i); }
             }
             Value::String(s) => {
                 if !s.is_null() { memory::free_const_value(s); }
@@ -158,11 +152,8 @@ impl GC {
             Value::Native(n) => {
                 if !n.is_null() { memory::free_value(n); }
             }
-            Value::Unit(u) => unsafe {
-                if !u.is_null() {
-                    memory::free_value((*u).fields);
-                    memory::free_value(u);
-                }
+            Value::Unit(u) => {
+                if !u.is_null() { memory::free_value(u); }
             }
             Value::List(l) => {
                 if !l.is_null() { memory::free_value(l); }

@@ -78,12 +78,13 @@ f = null
 gc.invoke()
 */
 import 'std.io'
-fun a(n) {
-    if n > 15 {
-        return 1
+fun factorial(n) {
+    f := 1
+    r := 1
+    while f <= n {
+        r *= f
+        f += 1
     }
-    else {
-        return 2
-    }
+    return r
 }
-io.println(a(15))
+io.println(factorial(15))
