@@ -193,12 +193,15 @@ pub unsafe fn compile(ast: Node, opcodes_debug: bool, bench: bool) -> Chunk {
     // компилируем
     let compiled = CompileVisitor::new().compile(ast);
     // конечное время
-    let duration = start.elapsed().as_nanos();
-    if bench { println!("benchmark 'compile', elapsed {}", duration as f64 / 1_000_000f64); }
+    if bench {
+        let duration = start.elapsed().as_nanos();
+        
+        println!("benchmark 'compile', elapsed {}", duration as f64 / 1_000_000f64);
+    }
     // дебаг
     if opcodes_debug {
         println!("opcodes debug: ");
-        println!("{:?}", compiled.clone());
+        println!("{:?}", &compiled);
     }
     // возвращаем
     compiled
