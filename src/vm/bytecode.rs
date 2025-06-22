@@ -64,7 +64,7 @@ pub enum Opcode {
         name: String,
         full_name: Option<String>,
         params: Vec<String>,
-        body: Box<Chunk>,
+        body: Chunk,
     },
     DefineType {
         addr: Address,

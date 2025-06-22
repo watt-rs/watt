@@ -511,13 +511,13 @@ impl VM {
     }
 
     // дефайн функции
-    unsafe fn op_define_fn(&mut self, addr: Address, symbol: Symbol, body: Box<Chunk>,
+    unsafe fn op_define_fn(&mut self, addr: Address, symbol: Symbol, body: Chunk,
                         params: Vec<String>, table: *mut Table) -> Result<(), ControlFlow> {
         // создаём функцию
         let function = memory::alloc_value(
             Function::new(
                 symbol.clone(),
-                memory::alloc_value(*body),
+                memory::alloc_value(body),
                 params
             )
         );

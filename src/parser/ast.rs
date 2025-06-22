@@ -83,7 +83,7 @@ pub enum Node {
     },
     List {
         location: Token,
-        values: Box<Vec<Box<Node>>>,
+        values: Box<Vec<Node>>,
     },
     Cond {
         left: Box<Node>,

@@ -413,13 +413,16 @@ impl<'filename> Parser<'filename> {
         }
         // заполненный
         else {
-            let mut nodes: Vec<Box<Node>> = Vec::new();
-            nodes.push(Box::new(self.expr()?));
+            let mut nodes: Vec<Node> = Vec::new();
+            nodes.push(self.expr()?);
+
             while self.check(TokenType::Comma) {
                 self.consume(TokenType::Comma)?;
-                nodes.push(Box::new(self.expr()?));
+                nodes.push(self.expr()?);
             }
+            
             self.consume(TokenType::Rbracket)?;
+            
             Ok(Node::List {
                 location,
                 values: Box::new(nodes)
