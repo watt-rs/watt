@@ -240,12 +240,6 @@ impl VM {
     unsafe fn op_negate(&mut self, address: Address) -> Result<(), ControlFlow> {
         // операнд
         let operand = self.pop(address.clone())?;
-        // ошибка
-        let error = Error::new(
-            address.clone(),
-            format!("could not use 'negate' for {:?}", operand),
-            "check your code.".to_string()
-        );
         // негэйт
         match operand {
             Value::Float(a) => {
@@ -254,7 +248,14 @@ impl VM {
             Value::Int(a) => {
                 self.push(Value::Int(-a));
             }
-            _ => { error!(error); }
+            _ => {
+                // ошибка
+                error!(Error::new(
+                    address.clone(),
+                    format!("could not use 'negate' for {:?}", operand),
+                    "check your code.".to_string()
+                ));
+            }
         }
         // успех
         Ok(())
@@ -264,17 +265,16 @@ impl VM {
     unsafe fn op_bang(&mut self, address: Address) -> Result<(), ControlFlow> {
         // операнд
         let operand = self.pop(address.clone())?;
-        let error = Error::new(
-            address.clone(),
-            format!("could not use 'bang' for {:?}", operand),
-            "check your code.".to_string()
-        );
         // бэнг
         match operand {
             Value::Bool(b) => {
                 self.push(Value::Bool(!b));
             }
-            _ => { error!(error); }
+            _ => { error!(Error::new(
+            address.clone(),
+            format!("could not use 'bang' for {:?}", operand),
+            "check your code.".to_string()
+        )); }
         }
         // успех
         Ok(())
