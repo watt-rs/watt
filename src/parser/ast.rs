@@ -8,7 +8,7 @@ use crate::errors::errors::Error;
 #[allow(dead_code)]
 pub enum Node {
     Block {
-        body: Vec<Box<Node>>,
+        body: Vec<Node>,
     },
     Number {
         value: Token,
@@ -57,7 +57,7 @@ pub enum Node {
     Call {
         previous: Option<Box<Node>>,
         name: Token,
-        args: Vec<Box<Node>>,
+        args: Vec<Node>,
         should_push: bool,
     },
     FnDeclaration {
@@ -83,7 +83,7 @@ pub enum Node {
     },
     List {
         location: Token,
-        values: Box<Vec<Node>>,
+        values: Vec<Node>,
     },
     Cond {
         left: Box<Node>,
@@ -97,12 +97,12 @@ pub enum Node {
     },
     Map {
         location: Token,
-        values: Box<Vec<(Box<Node>, Box<Node>)>>,
+        values: Vec<(Box<Node>, Box<Node>)>,
     },
     Match {
         location: Token,
         matchable: Box<Node>,
-        cases: Vec<Box<Node>>,
+        cases: Vec<Node>,
         default: Box<Node>,
     },
     Native {
@@ -111,7 +111,7 @@ pub enum Node {
     },
     Instance {
         name: Token,
-        constructor: Vec<Box<Node>>,
+        constructor: Vec<Node>,
         should_push: bool,
     },
     Ret {

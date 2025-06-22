@@ -24,10 +24,10 @@ impl<'filename> Parser<'filename> {
     // блок
     fn block(&mut self) -> Result<Node, Error> {
         // список
-        let mut nodes: Vec<Box<Node>> = Vec::new();
+        let mut nodes: Vec<Node> = Vec::new();
         // до } или конца файла
         while !self.is_at_end() && !self.check(TokenType::Rbrace) {
-            nodes.push(Box::new(self.statement()?));
+            nodes.push(self.statement()?);
         }
         // возвращаем
         Ok(Node::Block {
@@ -36,21 +36,21 @@ impl<'filename> Parser<'filename> {
     }
 
     // аргументы
-    fn args(&mut self) -> Result<Vec<Box<Node>>, Error> {
+    fn args(&mut self) -> Result<Vec<Node>, Error> {
         // список
-        let mut nodes: Vec<Box<Node>> = Vec::new();
+        let mut nodes: Vec<Node> = Vec::new();
         // (
         self.consume(TokenType::Lparen)?;
         // до )
         if !self.check(TokenType::Rparen) {
             // аргумент
-            nodes.push(Box::new(self.expr()?));
+            nodes.push(self.expr()?);
             // через запятую
             while !self.is_at_end() && self.check(TokenType::Comma) {
                 // ,
                 self.consume(TokenType::Comma)?;
                 // аргумент
-                nodes.push(Box::new(self.expr()?));
+                nodes.push(self.expr()?);
             }
         }
         // )
@@ -408,14 +408,13 @@ impl<'filename> Parser<'filename> {
             Ok(
                 Node::List {
                     location,
-                    values: Box::new(Vec::new())
+                    values: Vec::new()
                 }
             )
         }
         // заполненный
         else {
-            let mut nodes: Vec<Node> = Vec::new();
-            nodes.push(self.expr()?);
+            let mut nodes: Vec<Node> = vec![self.expr()?];
 
             while self.check(TokenType::Comma) {
                 self.consume(TokenType::Comma)?;
@@ -426,7 +425,7 @@ impl<'filename> Parser<'filename> {
             
             Ok(Node::List {
                 location,
-                values: Box::new(nodes)
+                values: nodes
             })
         }
     }
@@ -454,7 +453,7 @@ impl<'filename> Parser<'filename> {
             Ok(
                 Node::Map {
                     location,
-                    values: Box::new(Vec::new())
+                    values: Vec::new()
                 }
             )
         }
@@ -471,7 +470,7 @@ impl<'filename> Parser<'filename> {
             self.consume(TokenType::Rbrace)?;
             Ok(Node::Map {
                 location,
-                values: Box::new(nodes)
+                values: nodes
             })
         }
     }
@@ -870,7 +869,7 @@ impl<'filename> Parser<'filename> {
                     ));
                 }
             }
-            body.push(Box::new(node));
+            body.push(node);
         }
         self.consume(TokenType::Rbrace)?;
         // возвращаем
@@ -984,7 +983,7 @@ impl<'filename> Parser<'filename> {
                     ));
                 }
             }
-            body.push(Box::new(node));
+            body.push(node);
         }
         // }
         self.consume(TokenType::Rbrace)?;

@@ -33,7 +33,7 @@ pub unsafe fn run(
     // компиляция
     let tokens = lex(
         filename,
-        code,
+        &code,
         lexer_debug.unwrap_or(false),
         lexer_bench.unwrap_or(false)
     );
@@ -89,7 +89,7 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
                     )
                 );
             }
-            "".to_string()
+            String::new()
         }
     }
     // если нет
@@ -113,7 +113,7 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
 }
 
 // лексинг
-pub fn lex(file_name: &str, code: String, debug: bool, bench: bool) -> Option<Vec<Token>> {
+pub fn lex(file_name: &str, code: &str, debug: bool, bench: bool) -> Option<Vec<Token>> {
     // начальное время
     let start = std::time::Instant::now();
     // сканнинг токенов
@@ -181,7 +181,7 @@ pub fn parse(file_name: &str, tokens: Vec<Token>,
 // семантический анализ
 pub fn analyze(ast: Node) -> Node {
     // анализ
-    let analyzed = Analyzer::new().analyze(ast);
+    let analyzed = Analyzer::new().analyze(&ast);
     // возвращаем
     analyzed
 }
@@ -193,12 +193,15 @@ pub unsafe fn compile(ast: Node, opcodes_debug: bool, bench: bool) -> Chunk {
     // компилируем
     let compiled = CompileVisitor::new().compile(ast);
     // конечное время
-    let duration = start.elapsed().as_nanos();
-    if bench { println!("benchmark 'compile', elapsed {}", duration as f64 / 1_000_000f64); }
+    if bench {
+        let duration = start.elapsed().as_nanos();
+        
+        println!("benchmark 'compile', elapsed {}", duration as f64 / 1_000_000f64);
+    }
     // дебаг
     if opcodes_debug {
         println!("opcodes debug: ");
-        println!("{:?}", compiled.clone());
+        println!("{:?}", &compiled);
     }
     // возвращаем
     compiled
