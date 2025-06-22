@@ -40,9 +40,9 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         "list@add".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: Option<FnOwner>| {
             // значение
-            let value = vm.pop(addr.clone()).unwrap();
+            let value = vm.pop(&addr).unwrap();
             // список
-            let list_value = vm.pop(addr.clone()).unwrap();
+            let list_value = vm.pop(&addr).unwrap();
             // проверяем
             if let Value::List(list) = list_value {
                 (*list).push(value);
@@ -69,11 +69,11 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         "list@set".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: Option<FnOwner>| {
             // значение
-            let value = vm.pop(addr.clone()).unwrap();
+            let value = vm.pop(&addr).unwrap();
             // индекс
-            let index_value = vm.pop(addr.clone()).unwrap();
+            let index_value = vm.pop(&addr).unwrap();
             // список
-            let list_value = vm.pop(addr.clone()).unwrap();
+            let list_value = vm.pop(&addr).unwrap();
             // проверяем
             if let Value::List(list) = list_value {
                 if let Value::Int(index) = index_value {
@@ -112,9 +112,9 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         "list@get".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: Option<FnOwner>| {
             // индекс
-            let index_value = vm.pop(addr.clone()).unwrap();
+            let index_value = vm.pop(&addr).unwrap();
             // список
-            let list_value = vm.pop(addr.clone()).unwrap();
+            let list_value = vm.pop(&addr).unwrap();
             // проверяем
             if let Value::List(list) = list_value {
                 if let Value::Int(index) = index_value {
@@ -162,9 +162,9 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         "list@delete".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: Option<FnOwner>| {
             // индекс
-            let index_value = vm.pop(addr.clone()).unwrap();
+            let index_value = vm.pop(&addr).unwrap();
             // список
-            let list_value = vm.pop(addr.clone()).unwrap();
+            let list_value = vm.pop(&addr).unwrap();
             // проверяем
             if let Value::List(list) = list_value {
                 if let Value::Int(index) = index_value {
@@ -212,9 +212,9 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         "list@index_of".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: Option<FnOwner>| {
             // индекс
-            let value = vm.pop(addr.clone()).unwrap();
+            let value = vm.pop(&addr).unwrap();
             // список
-            let list_value = vm.pop(addr.clone()).unwrap();
+            let list_value = vm.pop(&addr).unwrap();
             // проверяем
             if let Value::List(list) = list_value {
                 // если надо пушить
@@ -243,7 +243,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         "list@length".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: Option<FnOwner>| {
             // список
-            let list_value = vm.pop(addr.clone()).unwrap();
+            let list_value = vm.pop(&addr).unwrap();
             // проверяем
             if let Value::List(list) = list_value {
                 // если надо пушить
@@ -273,7 +273,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         "list@to_string".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: Option<FnOwner>| {
             // список
-            let list_value = vm.pop(addr.clone()).unwrap();
+            let list_value = vm.pop(&addr).unwrap();
             // проверяем
             if let Value::List(list) = list_value {
                 // если надо пушить

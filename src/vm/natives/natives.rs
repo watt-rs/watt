@@ -1,4 +1,4 @@
-﻿// импорты
+// импорты
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::flow::ControlFlow;
@@ -31,12 +31,12 @@ pub unsafe fn provide(
     native: fn(&mut VM,Address,bool,*mut Table,Option<FnOwner>) -> Result<(), ControlFlow>) {
     // дефайн
     if let Err(e) = (*vm.natives).define(
-        addr,
-        name.clone(),
+        &addr,
+        &name,
         Value::Native(
             memory::alloc_value(
                 Native::new(
-                    Symbol::by_name(name),
+                    Symbol::by_name(name.clone()),
                     params_amount,
                     native
                 )

@@ -22,76 +22,76 @@ impl Table {
         }
     }
 
-    pub unsafe fn exists(&self, name: String) -> bool {
-        if self.fields.contains_key(&name) {
+    pub unsafe fn exists(&self, name: &str) -> bool {
+        if self.fields.contains_key(name) {
             true
-        } else if !self.closure.is_null() && (*self.closure).exists(name.clone()) {
+        } else if !self.closure.is_null() && (*self.closure).exists(name) {
             true
         } else {
             false
         }
     }
 
-    pub unsafe fn find(&self, address: Address, name: String) -> Result<Value, Error> {
-        if self.exists(name.clone()) {
-            if self.fields.contains_key(&name) {
-                Ok(self.fields[&name].clone())
+    pub unsafe fn find(&self, address: &Address, name: &str) -> Result<Value, Error> {
+        if self.exists(name) {
+            if self.fields.contains_key(name) {
+                Ok(self.fields[name].clone())
             } else {
-                Ok((*self.closure).find(address, name.clone())?)
+                Ok((*self.closure).find(address, name)?)
             }
         } else {
             Err(Error::new(
-                address,
-                name.clone() + " is not found.",
+                address.clone(),
+                format!("{name} is not found."),
                 "check variable existence.".to_string()
             ))
         }
     }
 
-    pub fn define(&mut self, address: Address, name: String, value: Value) -> Result<(), Error> {
-        if !self.fields.contains_key(&name) {
-            self.fields.insert(name, value);
+    pub fn define(&mut self, address: &Address, name: &str, value: Value) -> Result<(), Error> {
+        if !self.fields.contains_key(name) {
+            self.fields.insert(name.to_string(), value);
             Ok(())
         } else {
             Err(Error::new(
-                address,
-                name.clone() + " is already defined.",
+                address.clone(),
+                format!("{name} is already defined."),
                 "you can rename variable.".to_string()
             ))
         }
     }
 
-    pub unsafe fn set(&mut self, address: Address, name: String, value: Value) -> Result<(), Error> {
+    pub unsafe fn set(&mut self, address: Address, name: &str, value: Value) -> Result<(), Error> {
         let mut current = self as *mut Table;
-        while !(*current).fields.contains_key(&name) {
+        while !(*current).fields.contains_key(name) {
             if (*current).root.is_null() {
                 return Err(Error::new(
                     address,
-                    name.clone() + " is not defined.",
+                    format!("{name} is not defined."),
                     "you can define it, using := op.".to_string()
                 ))
             }
             current = (*current).root;
         }
-        (*current).fields.insert(name, value);
+        (*current).fields.insert(name.to_string(), value);
         Ok(())
     }
 
-    pub unsafe fn set_local(&mut self, address: Address, name: String, value: Value) -> Result<(), Error> {
-        if !self.fields.contains_key(&name) {
+    pub unsafe fn set_local(&mut self, address: &Address, name: &str, value: Value) -> Result<(), Error> {
+        if !self.fields.contains_key(name) {
             return Err(Error::new(
-                address,
-                name.clone() + " is not defined.",
+                address.clone(),
+                format!("{name} is not defined."),
                 "you can define it, using := op.".to_string()
             ))
         }
-        self.fields.insert(name, value);
+        self.fields.insert(name.to_string(), value);
         Ok(())
     }
 
-    pub unsafe fn has(&mut self, name: String) -> bool {
+    pub unsafe fn has(&mut self, name: &str) -> bool {
         let mut current = self as *mut Table;
-        while !(*current).exists(name.clone()) {
+        while !(*current).exists(name) {
             if (*current).root.is_null() {
                 return false
             }
@@ -100,19 +100,19 @@ impl Table {
         true
     }
 
-    pub unsafe fn lookup(&mut self, address: Address, name: String) -> Result<Value, Error> {
+    pub unsafe fn lookup(&mut self, address: &Address, name: &str) -> Result<Value, Error> {
         let mut current = self as *mut Table;
-        while !(*current).exists(name.clone()) {
+        while !(*current).exists(&name) {
             if (*current).root.is_null() {
                 return Err(Error::new(
-                    address,
-                    name + " is not found.",
+                    address.clone(),
+                    format!("{name} is not found."),
                     "check variable existence.".to_string()
                 ))
             }
             current = (*current).root;
         }
-        Ok((*current).find(address, name.clone())?)
+        Ok((*current).find(address, &name)?)
     }
 
     pub unsafe fn set_root(&mut self, root: *mut Table) {
