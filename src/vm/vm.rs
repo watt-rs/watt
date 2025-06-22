@@ -260,26 +260,28 @@ impl VM {
     }
 
     // бэнг
-    unsafe fn op_bang(&mut self, address: Address) -> Result<(), ControlFlow> {
+    unsafe fn op_bang(&mut self, address: &Address) -> Result<(), ControlFlow> {
         // операнд
-        let operand = self.pop(&address)?;
+        let operand = self.pop(address)?;
         // бэнг
         match operand {
             Value::Bool(b) => {
                 self.push(Value::Bool(!b));
             }
-            _ => { error!(Error::new(
-            address.clone(),
-            format!("could not use 'bang' for {:?}", operand),
-            "check your code.".to_string()
-        )); }
+            _ => { 
+                error!(Error::new(
+                    address.clone(),
+                    format!("could not use 'bang' for {:?}", operand),
+                    "check your code.".to_string()
+                ));
+            }
         }
         // успех
         Ok(())
     }
 
     // условие
-    unsafe fn op_conditional(&mut self, address: Address, op: &str) -> Result<(), ControlFlow> {
+    unsafe fn op_conditional(&mut self, address: &Address, op: &str) -> Result<(), ControlFlow> {
         // операнды
         let operand_a = self.pop(&address)?;
         let operand_b = self.pop(&address)?;
@@ -420,9 +422,9 @@ impl VM {
                 self.push(operand_b);
                 self.push(operand_a);
                 // выполняем ==
-                self.op_conditional(address.clone(), "==")?;
+                self.op_conditional(&address, "==")?;
                 // инверсируем
-                self.op_bang(address)?;
+                self.op_bang(&address)?;
             }
             _ => { panic!("operator {} is not found.", op)}
         }
@@ -1625,19 +1627,19 @@ impl VM {
                     self.pop(&addr)?;
                 }
                 Opcode::Bin { addr, op } => {
-                    self.op_binary(addr, op.as_str(), table)?;
+                    self.op_binary(addr, &op, table)?;
                 }
                 Opcode::Neg { addr } => {
                     self.op_negate(addr)?;
                 }
                 Opcode::Bang { addr } => {
-                    self.op_bang(addr)?;
+                    self.op_bang(&addr)?;
                 }
                 Opcode::Cond { addr, op } => {
-                    self.op_conditional(addr, op.as_str())?;
+                    self.op_conditional(&addr, &op)?;
                 }
                 Opcode::Logic { addr, op } => {
-                    self.op_logical(addr, op.as_str())?
+                    self.op_logical(addr, &op)?
                 }
                 Opcode::If { addr, cond, body, elif } => {
                     self.op_if(addr, cond, body, elif, table)?;
