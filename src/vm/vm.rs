@@ -80,13 +80,22 @@ impl VM {
     }
 
     // shallow очистка
-    pub fn cleanup(&mut self) {
-        // высвобождаем
+    pub unsafe fn cleanup(&mut self) {
+        // todo: add vm debug option
+        // высвобождаем типы
+        (*self.types).free_fields();
         memory::free_value(self.types);
-        memory::free_value(self.units);
+        // высвобождаем трэйты
+        (*self.traits).free_fields();
         memory::free_value(self.traits);
+        // высвобождаем нативные функции
+        (*self.natives).free_fields();
         memory::free_value(self.natives);
+        // высвобождаем таблицу юнитов
+        memory::free_value(self.units);
+        // высвобождаем таблицу глобальных переменные
         memory::free_value(self.globals);
+        // высвобождаем gc
         memory::free_value(self.gc);
     }
 
@@ -566,14 +575,14 @@ impl VM {
     }
 
     // бинды функций
-    unsafe fn bind_functions(&mut self, table: *mut Table, owner: *mut FnOwner) {
+    unsafe fn bind_functions(&mut self, table: *mut Table, owner: FnOwner) {
         // биндим
         for val in (*table).fields.values() {
             if let Value::Fn(function) = *val {
-                (*function).owner = owner;
+                (*function).owner = Some(owner.clone());
             }
             else if let Value::Native(function) = *val {
-                (*function).owner = owner;
+                (*function).owner = Some(owner.clone());
             }
         }
     }
@@ -625,7 +634,7 @@ impl VM {
         // удаляем временный self
         (*(*unit).fields).fields.remove(&"self".to_string());
         // бинды
-        self.bind_functions((*unit).fields, memory::alloc_value(FnOwner::Unit(unit)));
+        self.bind_functions((*unit).fields, FnOwner::Unit(unit));
         // дефайн юнита
         if let Err(e) = (*self.units).define(&addr, &symbol.name, Value::Unit(unit)) {
             error!(e);
@@ -927,8 +936,8 @@ impl VM {
                 memory::free_value(call_table);
             }
             // рут и self
-            if !(*function).owner.is_null() {
-                match (*(*function).owner) {
+            if (*function).owner.is_some() {
+                match (*function).owner.clone().unwrap() {
                     FnOwner::Unit(unit) => {
                         (*call_table).set_root((*unit).fields);
                         if let Err(e) = (*call_table).define(
@@ -988,8 +997,8 @@ impl VM {
                 memory::free_value(call_table);
             }
             // рут и self
-            if !(*function).owner.is_null() {
-                match (*(*function).owner) {
+            if (*function).owner.clone().is_some() {
+                match (*function).owner.clone().unwrap() {
                     FnOwner::Unit(unit) => {
                         (*call_table).set_root((*unit).fields);
                         if let Err(e) = (*call_table).define(
@@ -1014,7 +1023,7 @@ impl VM {
             load_arguments(self, &addr, &name, (*function).params_amount, args, table)?;
             // вызов
             let native = (*function).function;
-            native(self, addr.clone(), should_push, call_table, (*function).owner)?;
+            native(self, addr.clone(), should_push, call_table, (*function).owner.clone())?;
             // успех
             Ok(())
         }
@@ -1305,7 +1314,7 @@ impl VM {
                     // проверка трейтов
                     self.check_traits(addr, instance);
                     // бинды
-                    self.bind_functions((*instance).fields, memory::alloc_value(FnOwner::Instance(instance)));
+                    self.bind_functions((*instance).fields, FnOwner::Instance(instance));
                     // значение экземпляра
                     let instance_value = Value::Instance(
                         instance

@@ -67,7 +67,7 @@ impl Instance {
 // имплементация дропа
 impl Drop for Instance {
     fn drop(&mut self) {
-        memory::free_const_value(self.t);
+        memory::free_value(self.fields);
     }
 }
 
@@ -81,6 +81,12 @@ pub struct Unit {
 impl Unit {
     pub fn new(name: Symbol, fields: *mut Table) -> Unit {
         Unit {name, fields}
+    }
+}
+// имплементация дропа
+impl Drop for Unit {
+    fn drop(&mut self) {
+        memory::free_value(self.fields);
     }
 }
 
@@ -124,7 +130,7 @@ pub struct Function {
     pub name: Symbol,
     pub body: *const Chunk,
     pub params: Vec<String>,
-    pub owner: *mut FnOwner,
+    pub owner: Option<FnOwner>,
     pub closure: *mut Table
 }
 // имплементация
@@ -134,7 +140,7 @@ impl Function {
             name,
             body,
             params,
-            owner: std::ptr::null_mut(),
+            owner: None,
             closure: std::ptr::null_mut()
         }
     }
@@ -142,8 +148,8 @@ impl Function {
 // имплементация дропа
 impl Drop for Function {
     fn drop(&mut self) {
+        memory::free_value(self.closure);
         memory::free_const_value(self.body);
-        memory::free_value(self.owner);
     }
 }
 
@@ -153,22 +159,22 @@ impl Drop for Function {
 pub struct Native {
     pub name: Symbol,
     pub params_amount: usize,
-    pub function: fn(&mut VM,Address,bool,*mut Table,*mut FnOwner) -> Result<(), ControlFlow>,
-    pub owner: *mut FnOwner,
+    pub function: fn(&mut VM,Address,bool,*mut Table,Option<FnOwner>) -> Result<(), ControlFlow>,
+    pub owner: Option<FnOwner>,
 }
 impl Native {
     // новый
     pub fn new(
         name: Symbol,
         params_amount: usize,
-        function: fn(&mut VM,Address,bool,*mut Table,*mut FnOwner
+        function: fn(&mut VM,Address,bool,*mut Table,Option<FnOwner>
         ) -> Result<(), ControlFlow>) -> Native {
         // возвращаем
         Native {
             name,
             params_amount,
             function,
-            owner: std::ptr::null_mut(),
+            owner: None,
         }
     }
 }
@@ -218,7 +224,7 @@ impl Debug for Value {
                     write!(f, "{}", *b)
                 }
                 Value::Type(t) => {
-                    write!(f, "Type{:?}", **t)
+                    write!(f, "Type{:?}", *t)
                 }
                 Value::Int(i) => {
                     write!(f, "{}", *i)
