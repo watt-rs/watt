@@ -226,7 +226,7 @@ unsafe fn run_chunk(chunk: Chunk, gc_threshold: usize, gc_debug: bool, bench: bo
         ));
     }
     // высвобождаем таблицы и gc
-    vm.free();
+    vm.cleanup();
     // конечное время
     if bench {
         let duration = start.elapsed().as_nanos();

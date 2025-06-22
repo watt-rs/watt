@@ -79,8 +79,8 @@ impl VM {
         Ok(self.stack.pop_back().unwrap())
     }
 
-    // высвобождение
-    pub fn free(&mut self) {
+    // shallow очистка
+    pub fn cleanup(&mut self) {
         // высвобождаем
         memory::free_value(self.types);
         memory::free_value(self.units);
