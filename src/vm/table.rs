@@ -47,14 +47,14 @@ impl Table {
         }
     }
 
-    pub fn define(&mut self, address: Address, name: String, value: Value) -> Result<(), Error> {
-        if !self.fields.contains_key(&name) {
-            self.fields.insert(name, value);
+    pub fn define(&mut self, address: &Address, name: &str, value: Value) -> Result<(), Error> {
+        if !self.fields.contains_key(name) {
+            self.fields.insert(name.to_string(), value);
             Ok(())
         } else {
             Err(Error::new(
-                address,
-                name.clone() + " is already defined.",
+                address.clone(),
+                format!("{name} is already defined."),
                 "you can rename variable.".to_string()
             ))
         }

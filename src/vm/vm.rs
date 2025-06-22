@@ -550,12 +550,12 @@ impl VM {
         let function_value = Value::Fn(function);
         self.gc_register(function_value, table);
         // дефайн функции
-        if let Err(e) = (*table).define(addr.clone(), symbol.name.clone(), function_value) {
+        if let Err(e) = (*table).define(&addr, &symbol.name, function_value) {
             error!(e);
         }
         // дефайн функции по full-name
         if symbol.full_name.is_some() {
-            if let Err(e) = (*table).define(addr.clone(), symbol.full_name.unwrap(), function_value) {
+            if let Err(e) = (*table).define(&addr, &symbol.full_name.unwrap(), function_value) {
                 error!(e);
             }
         }
@@ -589,12 +589,12 @@ impl VM {
             )
         );
         // дефайн типа
-        if let Err(e) = (*self.types).define(addr.clone(), symbol.name.clone(), Value::Type(t)) {
+        if let Err(e) = (*self.types).define(&addr, &symbol.name, Value::Type(t)) {
             error!(e);
         }
         // дефайн по full-name
         if symbol.full_name.is_some() {
-            if let Err(e) = (*self.types).define(addr.clone(), symbol.full_name.unwrap().clone(), Value::Type(t)){
+            if let Err(e) = (*self.types).define(&addr, &symbol.full_name.unwrap(), Value::Type(t)){
                 error!(e);
             }
         }
@@ -625,14 +625,12 @@ impl VM {
         // бинды
         self.bind_functions((*unit).fields, memory::alloc_value(FnOwner::Unit(unit)));
         // дефайн юнита
-        if let Err(e) = (*self.units).define(addr.clone(), symbol.name.clone(),
-                                             Value::Unit(unit)) {
+        if let Err(e) = (*self.units).define(&addr, &symbol.name, Value::Unit(unit)) {
             error!(e);
         }
         // дефайн по full-name
         if symbol.full_name.is_some() {
-            if let Err(e) = (*self.units).define(addr.clone(), symbol.full_name.unwrap().clone(),
-                                                 Value::Unit(unit)) {
+            if let Err(e) = (*self.units).define(&addr, &symbol.full_name.unwrap(), Value::Unit(unit)) {
                 error!(e);
             }
         }
@@ -651,14 +649,12 @@ impl VM {
             )
         );
         // дефайн трейта
-        if let Err(e) = (*self.traits).define(addr.clone(), symbol.name.clone(),
-                                             Value::Trait(_trait)) {
+        if let Err(e) = (*self.traits).define(&addr, &symbol.name, Value::Trait(_trait)) {
             error!(e);
         }
         // дефайн по full-name
         if symbol.full_name.is_some() {
-            if let Err(e) = (*self.traits).define(addr.clone(), symbol.full_name.unwrap().clone(),
-                                                 Value::Trait(_trait)) {
+            if let Err(e) = (*self.traits).define(&addr, &symbol.full_name.unwrap(), Value::Trait(_trait)) {
                 error!(e);
             }
         }
@@ -676,7 +672,7 @@ impl VM {
             // получаем значение
             let operand = self.pop(&addr)?;
             // дефайним
-            if let Err(e) = (*table).define(addr.clone(), name, operand) {
+            if let Err(e) = (*table).define(&addr, &name, operand) {
                 error!(e);
             }
         }
@@ -692,7 +688,7 @@ impl VM {
                     // получаем значение
                     let operand = self.pop(&addr)?;
                     // дефайним
-                    if let Err(e) = (*(*instance).fields).define(addr.clone(), name, operand) {
+                    if let Err(e) = (*(*instance).fields).define(&addr, &name, operand) {
                         error!(e);
                     }
                 }
@@ -702,7 +698,7 @@ impl VM {
                     // получаем значение
                     let operand = self.pop(&addr)?;
                     // дефайним
-                    if let Err(e) = (*(*unit).fields).define(addr.clone(), name, operand) {
+                    if let Err(e) = (*(*unit).fields).define(&addr, &name, operand) {
                         error!(e);
                     }
                 }
@@ -870,7 +866,7 @@ impl VM {
                     // получаем аргумент из стека
                     let operand = vm.pop(&addr)?;
                     // устанавливаем в таблице
-                    if let Err(e) = (*call_table).define(addr.clone(), param.clone(), operand) {
+                    if let Err(e) = (*call_table).define(&addr, &param, operand) {
                         error!(e);
                     }
                 }
@@ -934,7 +930,7 @@ impl VM {
                     FnOwner::Unit(unit) => {
                         (*call_table).set_root((*unit).fields);
                         if let Err(e) = (*call_table).define(
-                            addr.clone(), "self".to_string(), Value::Unit(unit)
+                            &addr, "self", Value::Unit(unit)
                         ) {
                             error!(e);
                         }
@@ -942,7 +938,7 @@ impl VM {
                     FnOwner::Instance(instance) => {
                         (*call_table).set_root((*instance).fields);
                         if let Err(e) = (*call_table).define(
-                            addr.clone(), "self".to_string(), Value::Instance(instance)
+                            &addr, "self", Value::Instance(instance)
                         ) {
                             error!(e);
                         }
@@ -995,7 +991,7 @@ impl VM {
                     FnOwner::Unit(unit) => {
                         (*call_table).set_root((*unit).fields);
                         if let Err(e) = (*call_table).define(
-                            addr.clone(), "self".to_string(), Value::Unit(unit)
+                            &addr, "self", Value::Unit(unit)
                         ) {
                             error!(e);
                         }
@@ -1003,7 +999,7 @@ impl VM {
                     FnOwner::Instance(instance) => {
                         (*call_table).set_root((*instance).fields);
                         if let Err(e) = (*call_table).define(
-                            addr.clone(), "self".to_string(), Value::Instance(instance)
+                            &addr, "self", Value::Instance(instance)
                         ) {
                             error!(e);
                         }
@@ -1206,8 +1202,8 @@ impl VM {
                     if function.default.is_some() {
                         // если есть
                         if let Err(e) = (*(*instance).fields).define(
-                            addr.clone(),
-                            function.name.clone(),
+                            &addr,
+                            &function.name,
                             Value::Fn(memory::alloc_value(
                                 function.default.unwrap(),
                             ))
@@ -1257,7 +1253,7 @@ impl VM {
                     // получаем аргумент из стека
                     let operand = vm.pop(&addr)?;
                     // устанавливаем в таблице
-                    if let Err(e) = (*fields_table).define(addr.clone(), param.clone(), operand) {
+                    if let Err(e) = (*fields_table).define(&addr, &param, operand) {
                         error!(e);
                     }
                 }

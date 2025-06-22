@@ -28,11 +28,11 @@ pub unsafe fn provide(
     addr: Address,
     params_amount: usize,
     name: String,
-    native: fn(&mut VM,Address,bool,*mut Table,*mut FnOwner) -> Result<(), ControlFlow>) {
+    native: fn(&mut VM, Address, bool, *mut Table, *mut FnOwner) -> Result<(), ControlFlow>) {
     // дефайн
     if let Err(e) = (*vm.natives).define(
-        addr,
-        name.clone(),
+        &addr,
+        &name.clone(),
         Value::Native(
             memory::alloc_value(
                 Native::new(
