@@ -1,5 +1,6 @@
 ﻿// импорты
 use std::collections::VecDeque;
+use scopeguard::defer;
 use crate::error;
 use crate::errors::errors::{Error};
 use crate::lexer::address::Address;
@@ -477,6 +478,11 @@ impl VM {
         // таблица
         let table = memory::alloc_value(Table::new());
         (*table).set_root(root);
+        // высвобождение
+        defer! {
+            // высвобождение таблицы
+            memory::free_value(table);
+        } 
         // условие
         self.run(cond, table)?;
         let bool = self.pop(addr.clone())?;
@@ -506,6 +512,11 @@ impl VM {
         // таблица
         let table = memory::alloc_value(Table::new());
         (*table).set_root(root);
+        // высвобождение
+        defer! {
+            // высвобождение таблицы
+            memory::free_value(table);
+        }
         // проверка
         loop {
             if let Err(e) = self.run(body.clone(), table) {
@@ -902,6 +913,13 @@ impl VM {
         if let Value::Fn(function) = callable {
             // создаём таблицу под вызов.
             let call_table = memory::alloc_value(Table::new());
+            // замыкание
+            (*call_table).closure = (*function).closure;
+            // высвобождение
+            defer! {
+                // высвобождение таблицы
+                memory::free_value(call_table);
+            }
             // рут и self
             if !(*function).owner.is_null() {
                 match (*(*function).owner) {
@@ -925,8 +943,6 @@ impl VM {
             } else {
                 (*call_table).set_root(self.globals)
             }
-            // замыкание
-            (*call_table).closure = (*function).closure;
             // загрузка аргументов
             pass_arguments(self, addr, name, (*function).params.len(), args,
                            (*function).params.clone(), table, call_table)?;
@@ -937,8 +953,6 @@ impl VM {
                     return match e {
                         // если поймали return
                         ControlFlow::Return(val) => {
-                            // высвобождаем таблицу
-                            memory::free_value(call_table);
                             // пушим
                             if should_push {
                                 self.push(val);
@@ -948,8 +962,6 @@ impl VM {
                         },
                         // если другая ошибка
                         _ => {
-                            // высвобождаем таблицу
-                            memory::free_value(call_table);
                             // пробрасываем
                             Err(e)
                         }
@@ -957,8 +969,6 @@ impl VM {
                 }
                 _ => {}
             }
-            // высвобождаем таблицу
-            memory::free_value(call_table);
             // успех
             Ok(())
         }
@@ -966,6 +976,11 @@ impl VM {
         else if let Value::Native(function) = callable {
             // создаём таблицу под вызов.
             let call_table = memory::alloc_value(Table::new());
+            // высвобождение
+            defer! {
+                // высвобождение таблицы
+                memory::free_value(call_table);
+            }            
             // рут и self
             if !(*function).owner.is_null() {
                 match (*(*function).owner) {
@@ -994,8 +1009,6 @@ impl VM {
             // вызов
             let native = (*function).function;
             native(self, addr.clone(), should_push, call_table, (*function).owner)?;
-            // высвобождаем таблицу
-            memory::free_value(call_table);
             // успех
             Ok(())
         }
