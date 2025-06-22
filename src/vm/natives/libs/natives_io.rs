@@ -1,5 +1,5 @@
 ﻿// импорты
-use std::io;
+use std::io::{self, Write};
 use crate::error;
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
@@ -36,6 +36,21 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             if should_push {
                 vm.push(Value::Null)
             }
+            Ok(())
+        }
+    );
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        0,
+        "io@flush".to_string(),
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: *mut FnOwner| {
+            std::io::stdout().lock().flush().unwrap();
+
+            if should_push {
+                vm.push(Value::Null)
+            }
+            
             Ok(())
         }
     );

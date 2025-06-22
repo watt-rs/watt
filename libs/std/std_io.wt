@@ -17,6 +17,11 @@ unit io {
     native print -> 'io@print'
 
     /*
+     Выводит буферизованные данные на экран.
+    */
+    native flush -> 'io@flush'
+
+    /*
      Запрашивает ввод у пользователя.
     */
     native input -> 'io@input'
