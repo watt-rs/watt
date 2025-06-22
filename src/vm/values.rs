@@ -4,6 +4,7 @@ use std::hash::{Hash, Hasher};
 use crate::lexer::address::Address;
 use crate::vm::bytecode::Chunk;
 use crate::vm::flow::ControlFlow;
+use crate::vm::memory::memory;
 use crate::vm::table::Table;
 use crate::vm::vm::VM;
 
@@ -37,9 +38,16 @@ pub struct Type {
     pub body: *const Chunk,
     pub impls: Vec<String>
 }
+// имплементация
 impl Type {
     pub fn new(name: Symbol, constructor: Vec<String>, body: *const Chunk, impls: Vec<String>) -> Type {
         Type {name, constructor, body, impls}
+    }
+}
+// имплементация дропа
+impl Drop for Type {
+    fn drop(&mut self) {
+        memory::free_const_value(self.body);
     }
 }
 
@@ -50,9 +58,16 @@ pub struct Instance {
     pub t: *mut Type,
     pub fields: *mut Table
 }
+// имплементация
 impl Instance {
     pub fn new(t: *mut Type, fields: *mut Table) -> Instance {
         Instance {t, fields}
+    }
+}
+// имплементация дропа
+impl Drop for Instance {
+    fn drop(&mut self) {
+        memory::free_const_value(self.t);
     }
 }
 
@@ -112,6 +127,7 @@ pub struct Function {
     pub owner: *mut FnOwner,
     pub closure: *mut Table
 }
+// имплементация
 impl Function {
     pub fn new(name: Symbol, body: *const Chunk, params: Vec<String>) -> Function {
         Function {
@@ -121,6 +137,13 @@ impl Function {
             owner: std::ptr::null_mut(),
             closure: std::ptr::null_mut()
         }
+    }
+}
+// имплементация дропа
+impl Drop for Function {
+    fn drop(&mut self) {
+        memory::free_const_value(self.body);
+        memory::free_value(self.owner);
     }
 }
 
