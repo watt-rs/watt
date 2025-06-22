@@ -482,7 +482,7 @@ impl VM {
         defer! {
             // высвобождение таблицы
             memory::free_value(table);
-        } 
+        }
         // условие
         self.run(cond, table)?;
         let bool = self.pop(addr.clone())?;
@@ -980,7 +980,7 @@ impl VM {
             defer! {
                 // высвобождение таблицы
                 memory::free_value(call_table);
-            }            
+            }
             // рут и self
             if !(*function).owner.is_null() {
                 match (*(*function).owner) {

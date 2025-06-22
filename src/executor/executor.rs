@@ -226,6 +226,8 @@ unsafe fn run_chunk(chunk: Chunk, gc_threshold: usize, gc_debug: bool, bench: bo
         ));
     }
     // конечное время
-    let duration = start.elapsed().as_nanos();
-    if bench { println!("benchmark 'runtime', elapsed {}", duration as f64 / 1_000_000f64); }
+    if bench {
+        let duration = start.elapsed().as_nanos();
+        println!("benchmark 'runtime', elapsed {}", duration as f64 / 1_000_000f64); 
+    }
 }
