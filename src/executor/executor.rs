@@ -45,10 +45,10 @@ pub unsafe fn run(
         None
     );
     let analyzed = analyze(
-        ast.as_ref().unwrap()
+        ast.unwrap()
     );
     let compiled = compile(
-        analyzed,
+        &analyzed,
         opcodes_debug.unwrap_or(false),
         compile_bench.unwrap_or(false)
     );
@@ -179,11 +179,12 @@ pub fn parse(file_name: &str, tokens: Vec<Token>,
 }
 
 // семантический анализ
-pub fn analyze(ast: &Node) -> &Node {
+pub fn analyze(ast: Node) -> Node {
     // анализ
-    let analyzed = Analyzer::new().analyze(ast);
-    // возвращаем
-    analyzed
+    Analyzer::new().analyze(&ast);
+
+    // Возвращаем оригинальное дерево
+    ast
 }
 
 // компиляция
