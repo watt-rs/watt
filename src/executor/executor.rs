@@ -182,8 +182,7 @@ pub fn parse(file_name: &str, tokens: Vec<Token>,
 pub fn analyze(ast: Node) -> Node {
     // анализ
     Analyzer::new().analyze(&ast);
-
-    // Возвращаем оригинальное дерево
+    // возвращаем оригинальное дерево
     ast
 }
 
