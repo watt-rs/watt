@@ -28,6 +28,10 @@ pub enum Opcode {
         addr: Address,
         value: Value
     },
+    PushString {
+        addr: Address,
+        value: String
+    },
     Pop {
         addr: Address,
     },

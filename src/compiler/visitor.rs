@@ -246,9 +246,9 @@ impl CompileVisitor {
     // визит строки
     fn visit_string(&mut self, value: &Token) {
         // пуш строки
-        self.push_instr(Opcode::Push {
+        self.push_instr(Opcode::PushString {
             addr: value.address.clone(),
-            value: Value::String(memory::alloc_value(value.value.clone())),
+            value: value.value.clone(),
         });
     }
 
