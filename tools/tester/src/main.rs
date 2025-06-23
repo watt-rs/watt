@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf, process::ExitStatus};
+use std::{collections::HashMap, path::PathBuf};
 
 type TestMap = HashMap<String, Option<String>>;
 
@@ -100,7 +100,7 @@ fn run_tests(watt_path: &str, tests_table: &HashMap<String, Option<String>>) -> 
 }
 
 fn main() {
-    let working_directory = match std::env::args().skip(1).next() {
+    let working_directory = match std::env::args().nth(1) {
         Some(path) => path,
         None => {
             eprintln!("Could not determine a working directory!");
@@ -113,6 +113,8 @@ fn main() {
 
     // println!("{:?}", compiler_path);
     // println!("{:?}", tests_path);
+
+    std::env::set_current_dir(&working_directory).unwrap();
 
     if !std::fs::exists(&compiler_path).unwrap_or(false) {
         eprintln!(
@@ -128,8 +130,6 @@ fn main() {
             std::process::exit(1);
         }
     };
-
-    std::env::set_current_dir(&working_directory).unwrap();
 
     let stats = run_tests(&compiler_path, &tests_table);
 
