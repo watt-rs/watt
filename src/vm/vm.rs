@@ -143,6 +143,21 @@ impl VM {
         Ok(())
     }
 
+    // пуш в стек строки
+    pub unsafe fn op_push_string(&mut self, string: String, table: *mut Table) -> Result<(), ControlFlow> {
+        // создаём строку
+        let new_string = Value::String(
+            memory::alloc_value(
+                string
+            )
+        );
+        // регистрируем и пушим
+        self.gc_register(new_string, table);
+        self.push(new_string);
+        // успех
+        Ok(())
+    }
+
     // бинарная операция
     unsafe fn op_binary(&mut self, address: &Address, op: &str, table: *mut Table) -> Result<(), ControlFlow> {
         // два операнда
@@ -1630,6 +1645,9 @@ impl VM {
             match op {
                 Opcode::Push { addr, value } => {
                     self.op_push(*value, table)?;
+                }
+                Opcode::PushString { addr, value } => {
+                    self.op_push_string((*value).clone(), table)?;
                 }
                 Opcode::Pop { addr } => {
                     self.pop(&addr)?;
