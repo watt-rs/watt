@@ -3,7 +3,7 @@ use std::io::{self, Write};
 use crate::error;
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
-use crate::vm::memory::memory;
+use crate::vm::bytecode::OpcodeValue;
 use crate::vm::natives::natives;
 use crate::vm::table::Table;
 use crate::vm::values::{FnOwner, Value};
@@ -46,7 +46,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         0,
         "io@flush".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: Option<FnOwner>| {
-            std::io::stdout().lock().flush().unwrap();
+            io::stdout().lock().flush().unwrap();
 
             if should_push {
                 vm.push(Value::Null)
@@ -74,8 +74,8 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             // если нужен пуш
             if should_push {
                 vm.op_push(
-                    Value::String(
-                        memory::alloc_value(input)
+                    OpcodeValue::String(
+                        input
                     ),
                     table
                 )?;

@@ -4,7 +4,7 @@ use scopeguard::defer;
 use crate::error;
 use crate::errors::errors::{Error};
 use crate::lexer::address::Address;
-use crate::vm::bytecode::{Chunk, Opcode};
+use crate::vm::bytecode::{Chunk, Opcode, OpcodeValue};
 use crate::vm::flow::ControlFlow;
 use crate::vm::natives::natives;
 use crate::vm::table::Table;
@@ -119,45 +119,42 @@ impl VM {
     }
 
     // пуш в стек
-    pub unsafe fn op_push(&mut self, value: Value, table: *mut Table) -> Result<(), ControlFlow> {
+    pub unsafe fn op_push(&mut self, value: OpcodeValue, table: *mut Table) -> Result<(), ControlFlow> {
         // проверяем значение
         match value {
-            Value::Int(_) | Value::Float(_) | Value::Bool(_) => {
-                self.push(value);
-            }
-            Value::String(s) => {
+            OpcodeValue::Int(int) => { self.push(Value::Int(int)); }
+            OpcodeValue::Float(float) => { self.push(Value::Float(float)); }
+            OpcodeValue::Bool(bool) => { self.push(Value::Bool(bool)); }
+            OpcodeValue::String(string) => {
                 let new_string = Value::String(
                     memory::alloc_value(
-                        (*s).clone()
+                        string
                     )
                 );
                 self.gc_register(new_string, table);
                 self.push(new_string);
             }
-            _ => {
-                self.gc_register(value, table);
-                self.push(value);
+            OpcodeValue::Raw(raw) => {
+                match raw {
+                    Value::Instance(_) | Value::Fn(_) |
+                    Value::Native(_) | Value::String(_) |
+                    Value::Unit(_) | Value::List(_) => {
+                        // добавляем в gc
+                        self.gc_register(raw, table);
+                        // пушим
+                        self.push(raw);
+                    }
+                    _ => {
+                        // пушим
+                        self.push(raw);
+                    }
+                }
             }
         }
         // успех
         Ok(())
     }
-
-    // пуш в стек строки
-    pub unsafe fn op_push_string(&mut self, string: String, table: *mut Table) -> Result<(), ControlFlow> {
-        // создаём строку
-        let new_string = Value::String(
-            memory::alloc_value(
-                string
-            )
-        );
-        // регистрируем и пушим
-        self.gc_register(new_string, table);
-        self.push(new_string);
-        // успех
-        Ok(())
-    }
-
+    
     // бинарная операция
     unsafe fn op_binary(&mut self, address: &Address, op: &str, table: *mut Table) -> Result<(), ControlFlow> {
         // два операнда
@@ -1644,10 +1641,7 @@ impl VM {
         for op in chunk.opcodes() {
             match op {
                 Opcode::Push { addr, value } => {
-                    self.op_push(*value, table)?;
-                }
-                Opcode::PushString { addr, value } => {
-                    self.op_push_string((*value).clone(), table)?;
+                    self.op_push(value.clone(), table)?;
                 }
                 Opcode::Pop { addr } => {
                     self.pop(&addr)?;

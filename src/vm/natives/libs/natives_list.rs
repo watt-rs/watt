@@ -6,6 +6,7 @@ use crate::vm::table::Table;
 use crate::vm::values::{FnOwner, Value};
 use crate::vm::vm::VM;
 use crate::error;
+use crate::vm::bytecode::OpcodeValue;
 use crate::vm::memory::memory;
 
 // провайд
@@ -23,11 +24,11 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                 // список
                 let list = memory::alloc_value(Vec::<Value>::new());
                 // добавляем
-                vm.op_push(
+                vm.op_push(OpcodeValue::Raw(
                     Value::List(
                         list
-                    ), table
-                )?;
+                    )
+                ), table)?;
             }
             // успех
             Ok(())
@@ -278,14 +279,9 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             if let Value::List(list) = list_value {
                 // если надо пушить
                 if should_push {
-                    vm.op_push(
-                        Value::String(
-                            memory::alloc_value(
-                                format!("{:?}", *list)
-                            )
-                        ),
-                        table
-                    )?;
+                    vm.op_push(OpcodeValue::String(
+                        format!("{:?}", *list)
+                    ), table)?;
                 }
             }
             else {

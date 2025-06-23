@@ -2,7 +2,7 @@
 use crate::parser::import::Import;
 use crate::lexer::lexer::*;
 use crate::parser::ast::*;
-use crate::vm::bytecode::{Chunk, Opcode};
+use crate::vm::bytecode::{Chunk, Opcode, OpcodeValue};
 use crate::vm::values::*;
 use crate::vm::memory::memory;
 use std::collections::VecDeque;
@@ -231,14 +231,14 @@ impl CompileVisitor {
         if value.value.contains(".") {
             self.push_instr(Opcode::Push {
                 addr: value.address.clone(),
-                value: Value::Float(value.value.parse::<f64>().unwrap()),
+                value: OpcodeValue::Float(value.value.parse::<f64>().unwrap()),
             });
         }
         // пуш инта
         else {
             self.push_instr(Opcode::Push {
                 addr: value.address.clone(),
-                value: Value::Int(value.value.parse::<i64>().unwrap()),
+                value: OpcodeValue::Int(value.value.parse::<i64>().unwrap()),
             });
         }
     }
@@ -246,9 +246,9 @@ impl CompileVisitor {
     // визит строки
     fn visit_string(&mut self, value: &Token) {
         // пуш строки
-        self.push_instr(Opcode::PushString {
+        self.push_instr(Opcode::Push {
             addr: value.address.clone(),
-            value: value.value.clone(),
+            value: OpcodeValue::String(value.value.clone()),
         });
     }
 
@@ -257,7 +257,7 @@ impl CompileVisitor {
         // пуш бул
         self.push_instr(Opcode::Push {
             addr: value.address.clone(),
-            value: Value::Bool(value.value.parse::<bool>().unwrap()),
+            value: OpcodeValue::Bool(value.value.parse::<bool>().unwrap()),
         });
     }
 
@@ -329,7 +329,7 @@ impl CompileVisitor {
             body: Chunk::new(body_chunk),
             elif: Some(Box::new(Opcode::If {
                 addr: location.address.clone(),
-                cond: Chunk::of(Opcode::Push{ addr: location.address.clone(), value: Value::Bool(true) }),
+                cond: Chunk::of(Opcode::Push{ addr: location.address.clone(), value: OpcodeValue::Bool(true) }),
                 body: Chunk::of(Opcode::EndLoop { addr: location.address.clone(), current_iteration: false }),
                 elif: None
             })),
@@ -816,7 +816,7 @@ impl CompileVisitor {
         // нулл значение
         self.push_instr(Opcode::Push {
             addr: location.address.clone(),
-            value: Value::Null,
+            value: OpcodeValue::Raw(Value::Null),
         });
     }
 
