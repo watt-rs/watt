@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf, process::ExitStatus};
 
 type TestMap = HashMap<String, Option<String>>;
 
@@ -48,6 +48,15 @@ fn run_tests(watt_path: &str, tests_table: &HashMap<String, Option<String>>) -> 
 
         match command.output() {
             Ok(data) => {
+                if !data.status.success() {
+                    println!("[FAIL] {test_file}");
+                    
+                    stats.fail += 1;
+                    stats.ran += 1;
+
+                    continue;
+                }
+
                 if expected_content_file.is_none() {
                     println!("[NO OUTPUT - OK] {test_file}");
 
@@ -84,6 +93,8 @@ fn run_tests(watt_path: &str, tests_table: &HashMap<String, Option<String>>) -> 
 
         stats.ran += 1;
     }
+
+    assert!(stats.ran == stats.ok + stats.fail);
 
     stats
 }
