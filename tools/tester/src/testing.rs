@@ -30,12 +30,14 @@ pub fn build_verification_table(on: &str) -> std::io::Result<TestMap> {
     let tests = find_tests(on)?;
     let outputs_path = on.to_string() + "/output/";
 
+    // Выделяем заранее буфер под мапу
     let mut table = HashMap::with_capacity(tests.len());
 
     for i in tests {
         let output_file: Option<String> = {
             let output_path = outputs_path.clone() + i.file_name().unwrap().to_str().unwrap() + ".stdout";
-
+            
+            // Если есть файл с данными, то добавляем его в список.
             if std::fs::exists(&output_path).unwrap_or(false) {
                 Some(output_path)
             } else {
