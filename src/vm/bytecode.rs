@@ -20,17 +20,23 @@ impl Chunk {
     }
 }
 
+// значение опкода
+#[derive(Clone, Debug)]
+pub enum OpcodeValue {
+    Bool(bool),
+    Int(i64),
+    Float(f64),
+    String(String),
+    Raw(Value)
+}
+
 // опкод
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
 pub enum Opcode {
     Push {
         addr: Address,
-        value: Value
-    },
-    PushString {
-        addr: Address,
-        value: String
+        value: OpcodeValue
     },
     Pop {
         addr: Address,

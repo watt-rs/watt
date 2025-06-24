@@ -77,6 +77,11 @@ f := a()
 f = null
 gc.invoke()
 */
+/*
+import 'std.io'
+list := [1,3,5,7,'hello']
+list.add(9)
+*/
 import 'std.io'
 fun factorial(n) {
     f := 1
