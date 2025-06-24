@@ -527,7 +527,7 @@ impl CompileVisitor {
         self.visit_node(iterable);
         let iterator_chunk = self.pop_chunk();
         // имя для временной переменной
-        let iterator_variable_name = format!("@{}", variable_name.value.clone());
+        let iterator_variable_name = format!("@{}", variable_name.value);
         // создаём временную переменную для итератора
         self.push_instr(Opcode::Define {
             addr: variable_name.address.clone(),
