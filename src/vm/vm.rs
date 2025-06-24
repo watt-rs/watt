@@ -881,7 +881,7 @@ impl VM {
             let new_size = vm.stack.len();
             // количество переданных аргументов
             let passed_amount = new_size-prev_size;
-            // проверяем колличество аргументов и параметров
+            // проверяем количество аргументов и параметров
             // если совпало
             if passed_amount == params_amount {
                 // проходимся по реверсированным параметрам
@@ -1438,7 +1438,7 @@ impl VM {
             if let Ok(callable) = lookup_result {
                 // проверяем, функция ли
                 if let Value::Fn(function) = callable {
-                    // проверяем колличество аргументов
+                    // проверяем количество аргументов
                     if (*function).params.len() != 0 {
                         error!(Error::new(
                             addr.clone(),
@@ -1495,7 +1495,7 @@ impl VM {
                 Ok(callable) => {
                     // проверяем, функция ли
                     if let Value::Fn(function) = callable {
-                        // проверяем колличество аргументов
+                        // проверяем количество аргументов
                         if (*function).params.len() != 0 {
                             error!(Error::new(
                             addr.clone(),

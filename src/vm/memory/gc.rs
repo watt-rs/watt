@@ -32,6 +32,7 @@ impl GC {
     // ресет
     fn reset(&mut self) {
         self.marked = HashSet::new();
+        self.marked_tables = HashSet::new();
     }
     // маркинг значения
     #[allow(unused_parens)]
@@ -45,8 +46,8 @@ impl GC {
         // маркинг
         match value {
             Value::Instance(instance) => unsafe {
-                self.marked.insert(value);
                 self.mark_table((*instance).fields);
+                self.marked.insert(value);
             }
             Value::Fn(f) => unsafe {
                 self.marked.insert(value);
@@ -63,8 +64,8 @@ impl GC {
                 }
             }
             Value::Unit(unit) => unsafe {
+                self.mark_table((*unit).fields);
                 self.marked.insert(value);
-                self.mark_table((*unit).fields)
             }
             Value::Native(_) => {
                 self.marked.insert(value);
@@ -74,7 +75,7 @@ impl GC {
             }
             Value::List(list) => unsafe {
                 for value in (*list).clone() {
-                    self.marked.insert(value);
+                    self.mark_value(value);
                 }
                 self.marked.insert(value);
             }
@@ -167,7 +168,7 @@ impl GC {
     // сборка мусора
     pub unsafe fn collect_garbage(&mut self, vm: &mut VM, table: *mut Table) {
         // лог
-        self.log("gc :: triggered".to_string());
+        self.log("gc :: triggered :: {:?}".to_string());
         // марк
         for val in vm.stack.clone() {
             self.mark_value(val)

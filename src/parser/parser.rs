@@ -496,8 +496,11 @@ impl<'filename> Parser<'filename> {
     fn multiplicative_expr(&mut self) -> Result<Node, Error> {
         let mut left = self.unary_expr()?;
 
-        while self.check(TokenType::Op) &&
-            (self.peek()?.value == "*" || self.peek()?.value == "/") {
+        while self.check(TokenType::Op) && (
+            self.peek()?.value == "*" || 
+            self.peek()?.value == "/" || 
+            self.peek()?.value == "%") 
+        {
             let op = self.consume(TokenType::Op)?.clone();
             let right = self.unary_expr()?;
             left = Node::Bin {

@@ -99,7 +99,8 @@ impl ImportsResolver {
                     Node::Native { .. } |
                     Node::FnDeclaration { .. } |
                     Node::Type { .. } |
-                    Node::Unit { .. } => {
+                    Node::Unit { .. } |
+                    Node::Trait { .. } => {
                         new_body.push(node);
                     }
                     _ => {}

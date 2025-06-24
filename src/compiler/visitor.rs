@@ -521,7 +521,7 @@ impl CompileVisitor {
         iterable: &Node,
         variable_name: &Token,
         body: &Node,
-    ) {
+    ) { // todo: add iterable location
         // чанк итератора
         self.push_chunk();
         self.visit_node(iterable);

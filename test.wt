@@ -82,6 +82,7 @@ import 'std.io'
 list := [1,3,5,7,'hello']
 list.add(9)
 */
+/*
 import 'std.io'
 fun factorial(n) {
     f := 1
@@ -93,3 +94,16 @@ fun factorial(n) {
     return r
 }
 io.println(factorial(15))
+*/
+import 'std.io'
+import 'std.gc'
+map := new Map()
+map.set('banana', 14)
+map.set('apple', 5)
+map.set('plum', 7)
+gc.invoke()
+gc.invoke()
+map.set('plum', 7)
+io.println(map.to_string())
+map.delete('plum')
+io.println(map.to_string())

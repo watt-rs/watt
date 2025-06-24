@@ -171,6 +171,9 @@ impl<'filename> Lexer<'filename> {
                         self.add_tk(TokenType::Op, "*".to_string());
                     }
                 }
+                '%' => {
+                    self.add_tk(TokenType::Op, "%".to_string());
+                }
                 '/' => {
                     if self.is_match('=') {
                         self.add_tk(TokenType::AssignDiv, "/=".to_string());

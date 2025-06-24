@@ -160,7 +160,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         2,
-        "list@delete".to_string(),
+        "list@delete_at".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: Option<FnOwner>| {
             // индекс
             let index_value = vm.pop(&addr).unwrap();
@@ -206,6 +206,36 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             Ok(())
         }
     );
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        2,
+        "list@delete".to_string(),
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: Option<FnOwner>| {
+            // индекс
+            let value = vm.pop(&addr).unwrap();
+            // список
+            let list_value = vm.pop(&addr).unwrap();
+            // проверяем
+            if let Value::List(list) = list_value {
+                for (index, element) in (*list).iter().enumerate() {
+                    if *element == value {
+                        (*list).remove(index);
+                        return Ok(());
+                    }
+                }
+            }
+            else {
+                error!(Error::new(
+                    addr.clone(),
+                    format!("could not get element from {:?}, not a list", list_value),
+                    "check your code".to_string()
+                ));
+            }
+            // успех
+            Ok(())
+        }
+    );    
     natives::provide(
         vm,
         built_in_address.clone(),
