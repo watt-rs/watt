@@ -9,7 +9,8 @@ use crate::vm::memory::memory;
 #[derive(Clone, Debug)]
 pub struct Table {
     pub fields: HashMap<String,Value>,
-    pub root: *mut Table,
+    pub root: *mut Table, // root таблица, например глобальных переменных
+    pub parent: *mut Table, // parent таблица, таблица вызова до этой.
     pub closure: *mut Table
 }
 // имплементация
@@ -18,6 +19,7 @@ impl Table {
         Table {
             fields: HashMap::new(),
             root: std::ptr::null_mut(),
+            parent: std::ptr::null_mut(),
             closure: std::ptr::null_mut(),
         }
     }

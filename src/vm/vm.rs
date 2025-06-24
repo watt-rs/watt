@@ -938,8 +938,11 @@ impl VM {
 
         // проверка на функцию
         if let Value::Fn(function) = callable {
+            println!("call: {}, parent = {:?}", name, table);
             // создаём таблицу под вызов.
             let call_table = memory::alloc_value(Table::new());
+            // parent таблица
+            (*call_table).parent = table;
             // замыкание
             (*call_table).closure = (*function).closure;
             // высвобождение
@@ -1003,6 +1006,8 @@ impl VM {
         else if let Value::Native(function) = callable {
             // создаём таблицу под вызов.
             let call_table = memory::alloc_value(Table::new());
+            // parent таблица
+            (*call_table).parent = table;
             // высвобождение
             defer! {
                 // высвобождение таблицы

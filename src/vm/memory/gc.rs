@@ -91,7 +91,7 @@ impl GC {
         // добавляем
         self.marked_tables.insert(table);
         // лог
-        self.log(format!("gc :: mark :: table = {:?}", table));
+        self.log(format!("gc :: mark :: table = {:?}", *table));
         // значения таблицы
         for val in (*table).fields.values() {
             self.mark_value(*val);
@@ -100,9 +100,13 @@ impl GC {
         if !(*table).closure.is_null() {
             self.mark_table((*table).closure);
         }
-        // маркинг таблицы
+        // маркинг рут таблицы
         if !(*table).root.is_null() {
             self.mark_table((*table).root);
+        }
+        // маркинг parent таблицы
+        if !(*table).parent.is_null() {
+            self.mark_table((*table).parent);
         }
     }
     // очистка
