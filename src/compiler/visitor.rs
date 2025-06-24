@@ -601,9 +601,9 @@ impl CompileVisitor {
     fn visit_match(
         &mut self,
         location: &Token,
-        matchable: &Box<Node>,
+        matchable: &Node,
         cases: &Vec<Node>,
-        default: &Box<Node>,
+        default: &Node,
     ) {
         todo!()
     }

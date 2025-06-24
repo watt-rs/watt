@@ -102,7 +102,7 @@ impl Analyzer {
     }
 
     // иф
-    pub fn analyze_if(&mut self, body: &Box<Node>, logical: &Box<Node>, elseif: &Option<Box<Node>>) {
+    pub fn analyze_if(&mut self, body: &Node, logical: &Node, elseif: &Option<Box<Node>>) {
         // пушим
         self.analyze_stack.push_back(AnalyzerNode::Loop);
         self.analyze(logical);
@@ -116,7 +116,7 @@ impl Analyzer {
     }
 
     // цикл
-    fn analyze_while(&mut self, body: &Box<Node>, logical: &Box<Node>) {
+    fn analyze_while(&mut self, body: &Node, logical: &Node) {
         // пушим
         self.analyze_stack.push_back(AnalyzerNode::If);
         self.analyze(logical);
