@@ -144,6 +144,7 @@ impl GC {
     }
     // высвобождение значения
     fn free_value(&self, value: Value) {
+        self.log(format!("gc :: free :: value = {:?}", value));
         match value {
             Value::Fn(f) => {
                 if !f.is_null() { memory::free_value(f); }
@@ -167,7 +168,6 @@ impl GC {
                 println!("unexpected gc value = {:?}.", value);
             }
         }
-        self.log(format!("gc :: freed :: value = {:?}", value));
     }
     // сборка мусора
     pub unsafe fn collect_garbage(&mut self, vm: &mut VM, table: *mut Table) {

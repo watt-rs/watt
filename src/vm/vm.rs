@@ -938,7 +938,6 @@ impl VM {
 
         // проверка на функцию
         if let Value::Fn(function) = callable {
-            println!("call: {}, parent = {:?}", name, table);
             // создаём таблицу под вызов.
             let call_table = memory::alloc_value(Table::new());
             // parent таблица
