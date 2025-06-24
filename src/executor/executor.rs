@@ -42,7 +42,7 @@ pub unsafe fn run(
         tokens.unwrap(),
         ast_debug.unwrap_or(false),
         parser_bench.unwrap_or(false),
-        None
+        &None
     );
     let analyzed = analyze(
         ast.unwrap()
@@ -127,7 +127,7 @@ pub fn lex(file_name: &str, code: &str, debug: bool, bench: bool) -> Option<Vec<
     // проверяем на дебаг
     if debug {
         println!("tokens debug: ");
-        println!("{:?}", tokens.clone());
+        println!("{:?}", tokens);
     }
     // возвращаем
     Some(tokens)
@@ -136,7 +136,7 @@ pub fn lex(file_name: &str, code: &str, debug: bool, bench: bool) -> Option<Vec<
 
 // парсинг
 pub fn parse(file_name: &str, tokens: Vec<Token>, 
-        debug: bool, bench: bool, full_name_prefix: Option<String>) -> Option<Node> {
+        debug: bool, bench: bool, full_name_prefix: &Option<String>) -> Option<Node> {
     // начальное время
     let start = std::time::Instant::now();
     // удаление расширения файла
@@ -154,7 +154,7 @@ pub fn parse(file_name: &str, tokens: Vec<Token>,
     let raw_ast = Parser::new(
         tokens,
         file_name,
-        delete_extension(full_name_prefix.unwrap_or(file_name.to_string()))
+        delete_extension(full_name_prefix.as_ref().map(String::as_str).unwrap_or(file_name).to_string())
     ).parse();
     // конечное время
     let duration = start.elapsed().as_nanos();
@@ -164,7 +164,7 @@ pub fn parse(file_name: &str, tokens: Vec<Token>,
         // проверяем на дебаг
         if debug {
             println!("ast debug: ");
-            println!("{:?}", ast.clone());
+            println!("{:?}", ast);
         }
         // возвращаем
         return Some(ast)

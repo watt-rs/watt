@@ -54,7 +54,7 @@ impl ImportsResolver {
     fn resolve(
         &mut self,
         addr: Option<Address>,
-        import: Import
+        import: &Import
     ) -> Node {
         // файл
         let file: &str;
@@ -82,7 +82,7 @@ impl ImportsResolver {
             tokens.unwrap(),
             false,
             false,
-            import.full_name
+            &import.full_name
         );
         let mut analyzed = executor::analyze(
             ast.unwrap()
@@ -128,7 +128,7 @@ impl ImportsResolver {
         // проверка на наличие импорта, если его нет
         if !self.imported.contains(&import.name) {
             // ресолвинг
-            let node = self.resolve(addr, import.clone());
+            let node = self.resolve(addr, import);
             // импротируем
             self.imported.push(import.name.clone());
             // возвращаем
