@@ -72,6 +72,46 @@ type Iterator(list) {
 }
 
 /*
+ Итератор.
+ | итератор вокруг диапазона чисел
+*/
+type NumberIterator(start, end) {
+    fun init {
+        self._current := start
+        self._end := end
+
+        // 0 - назад
+        // 1 - вперёд
+        if self._current > self._end {
+            self.direction := 1
+        } else {
+            self.direction := 0
+        }
+    }
+    fun has_next {
+        return self._current < self._end
+    }
+    fun next {
+        if self._current >= self._end {
+            panic(
+                'could not use next.',
+                'iterator has no elements left.'
+            )
+        }
+        
+        value := self._current
+        
+        if self.direction == 0 {
+            self._current += 1
+        } else {
+            self._current -= 1
+        }
+
+        return value
+    }
+}
+
+/*
  Функция паники
  | реализация находится в
  | > crate::vm::natives::libs::natives_base
@@ -80,34 +120,8 @@ native panic -> 'base@panic'
 
 /*
  Функция _range
- | создаёт Iterator от a до b
+ | создаёт NumberIterator от a до b
 */
 fun _range(a, b) {
-    // список для итератора
-    list := []
-    // если a > b, то range должен быть
-    // в виде [3,2,1]
-    if a > b {
-        n := a
-        while n > b {
-            list.add(n)
-            n -= 1
-        }
-    }
-    // если a < b, то range должен быть
-    // в виде [1,2,3]
-    elif a < b {
-        n := a
-        while n < b {
-            list.add(n)
-            n += 1
-        }
-    }
-    // если a == b, то range должен быть
-    // в виде [a] || [b]
-    else {
-        list.add(a)
-    }
-    // возвращаем итератор
-    return new Iterator(list)
+    return new NumberIterator(a, b)
 }
