@@ -1,5 +1,4 @@
 ﻿// импорты
-use std::collections::VecDeque;
 use scopeguard::defer;
 use crate::error;
 use crate::errors::errors::{Error};
@@ -35,7 +34,7 @@ pub struct VM {
     pub natives: *mut Table,
     pub gc: *mut GC,
     settings: VmSettings,
-    pub stack: VecDeque<Value>,
+    pub stack: Vec<Value>,
 }
 // имплементация вм
 #[allow(non_upper_case_globals)]
@@ -51,7 +50,7 @@ impl VM {
             traits: memory::alloc_value(Table::new()),
             natives: memory::alloc_value(Table::new()),
             gc: memory::alloc_value(GC::new(settings.gc_debug)),
-            stack: VecDeque::new(),
+            stack: Vec::new(),
             settings
         };
         // нативы
@@ -64,7 +63,7 @@ impl VM {
 
     // пуш
     pub unsafe fn push(&mut self, value: Value) {
-        self.stack.push_back(value);
+        self.stack.push(value);
     }
 
     // поп
@@ -76,7 +75,7 @@ impl VM {
                 "check your code.".to_string()
             ));
         }
-        Ok(self.stack.pop_back().unwrap())
+        Ok(self.stack.pop().unwrap())
     }
 
     // shallow очистка
@@ -101,12 +100,12 @@ impl VM {
 
     // очистка мусора
     pub unsafe fn gc_invoke(&mut self, table: *mut Table) {
+        // собираем мусор
         (*self.gc).collect_garbage(self, table);
     }
 
     // добавление в учет сборщика мусора
     pub unsafe fn gc_register(&mut self, value: Value, table: *mut Table) {
-        // gil
         // добавляем объект
         (*self.gc).add_object(value);
         // проверяем порог gc
@@ -118,6 +117,18 @@ impl VM {
         }
     }
 
+    // защита значения от очистки
+    pub unsafe fn gc_guard(&mut self, value: Value) {
+        // добавляем объект
+        (*self.gc).push_guard(value);
+    }
+
+    // удаление защиты последнего значения от очистки
+    pub unsafe fn gc_unguard(&mut self) {
+        // добавляем объект
+        (*self.gc).pop_guard();
+    }
+
     // пуш в стек
     pub unsafe fn op_push(&mut self, value: OpcodeValue, table: *mut Table) -> Result<(), ControlFlow> {
         // проверяем значение
@@ -126,23 +137,26 @@ impl VM {
             OpcodeValue::Float(float) => { self.push(Value::Float(float)); }
             OpcodeValue::Bool(bool) => { self.push(Value::Bool(bool)); }
             OpcodeValue::String(string) => {
+                // строка
                 let new_string = Value::String(
                     memory::alloc_value(
                         string
                     )
                 );
-                self.gc_register(new_string, table);
+                // пушим
                 self.push(new_string);
+                // добавляем в gc
+                self.gc_register(new_string, table);
             }
             OpcodeValue::Raw(raw) => {
                 match raw {
                     Value::Instance(_) | Value::Fn(_) |
                     Value::Native(_) | Value::String(_) |
                     Value::Unit(_) | Value::List(_) => {
-                        // добавляем в gc
-                        self.gc_register(raw, table);
                         // пушим
                         self.push(raw);
+                        // добавляем в gc
+                        self.gc_register(raw, table);
                     }
                     _ => {
                         // пушим
@@ -184,8 +198,8 @@ impl VM {
                         let string = Value::String(
                             memory::alloc_value(format!("{}{:?}", *a, operand_b))
                         );
-                        self.gc_register(string, table);
                         self.push(string);
+                        self.gc_register(string, table);
                     }
                     _ => { error!(error); }
                 }
@@ -314,6 +328,13 @@ impl VM {
         // операнды
         let operand_a = self.pop(&address)?;
         let operand_b = self.pop(&address)?;
+        println!("op a: {:?}", operand_a);
+        println!("op b: {:?}", operand_b);
+        let error = Error::new(
+            address.clone(),
+            format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
+            "check your code.".to_string()
+        );
         // условие
         match op {
             ">" => {
@@ -572,8 +593,11 @@ impl VM {
                 params.clone()
             )
         );
-        // создаём значение функции и добавляем в gc
+        // создаём значение функции
         let function_value = Value::Fn(function);
+        // защищаем значение
+        self.gc_guard(function_value);
+        // добавляем в gc
         self.gc_register(function_value, table);
         // дефайн функции
         if let Err(e) = (*table).define(&addr, &symbol.name, function_value) {
@@ -585,6 +609,8 @@ impl VM {
                 error!(e);
             }
         }
+        // удаляем защиту
+        self.gc_unguard();
         // успех
         Ok(())
     }
@@ -638,28 +664,38 @@ impl VM {
                 memory::alloc_value(Table::new())
             )
         );
+        // значение юнита
+        let unit_value = Value::Unit(unit);
+        // защищаем значение
+        self.gc_guard(unit_value);
         // добавляем в учет gc
-        self.gc_register(Value::Unit(unit), table);
+        self.gc_register(unit_value, table);
         // рут
         (*(*unit).fields).set_root(self.globals);
+        // временный parent
+        (*(*unit).fields).parent = self.globals;
         // временный self
         (*(*unit).fields).fields.insert("self".to_string(), Value::Unit(unit));
         // исполняем тело
         self.run(body, (*unit).fields)?;
         // удаляем временный self
         (*(*unit).fields).fields.remove(&"self".to_string());
+        // удаляем временный parent
+        (*(*unit).fields).parent = std::ptr::null_mut();
         // бинды
         self.bind_functions((*unit).fields, FnOwner::Unit(unit));
         // дефайн юнита
-        if let Err(e) = (*self.units).define(&addr, &symbol.name, Value::Unit(unit)) {
+        if let Err(e) = (*self.units).define(&addr, &symbol.name, unit_value) {
             error!(e);
         }
         // дефайн по full-name
         if symbol.full_name.is_some() {
-            if let Err(e) = (*self.units).define(&addr, symbol.full_name.as_ref().unwrap(), Value::Unit(unit)) {
+            if let Err(e) = (*self.units).define(&addr, symbol.full_name.as_ref().unwrap(), unit_value) {
                 error!(e);
             }
         }
+        // удаляем защиту
+        self.gc_unguard();
         // успех
         Ok(())
     }
@@ -1309,6 +1345,10 @@ impl VM {
                         t,
                         memory::alloc_value(Table::new()),
                     ));
+                    // значение экземпляра
+                    let instance_value = Value::Instance(instance);
+                    // добавляем в защиту gc
+                    self.gc_guard(instance_value);
                     // добавляем в учет gc
                     self.gc_register(Value::Instance(instance), table);
                     // конструктор
@@ -1324,6 +1364,8 @@ impl VM {
                     )?;
                     // рут
                     (*(*instance).fields).set_root(self.globals);
+                    // временный parent
+                    (*(*instance).fields).parent = self.globals;
                     // временный self
                     (*(*instance).fields).fields.insert("self".to_string(), Value::Instance(instance));
                     // исполняем тело
@@ -1334,10 +1376,6 @@ impl VM {
                     self.check_traits(addr, instance);
                     // бинды
                     self.bind_functions((*instance).fields, FnOwner::Instance(instance));
-                    // значение экземпляра
-                    let instance_value = Value::Instance(
-                        instance
-                    );
                     // init функция
                     let init_fn = "init".to_string();
                     if (*(*instance).fields).exists(&init_fn) {
@@ -1350,6 +1388,10 @@ impl VM {
                     if should_push {
                         self.push(instance_value);
                     }
+                    // удаляем временный parent
+                    (*(*instance).fields).parent = std::ptr::null_mut();
+                    // удаляем защиту gc
+                    self.gc_unguard();
                     // успех
                     Ok(())
                 }
