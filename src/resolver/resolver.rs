@@ -34,11 +34,11 @@ impl ImportsResolver {
         let mut nodes = vec![];
         // перебираем билт-ины
         for builtin in self.builtins.clone() {
-            if !self.imported.contains(&builtin.clone()) {
+            if !self.imported.contains(&builtin) {
                 // нода
                 let node_option = self.import(
                     None,
-                    &Import::new(None, builtin, None)
+                    &Import::new(None, builtin.to_string(), None)
                 );
                 // импортируем
                 if let Some(node) = node_option {
@@ -54,16 +54,14 @@ impl ImportsResolver {
     fn resolve(
         &mut self,
         addr: Option<Address>,
-        import: Import
+        import: &Import
     ) -> Node {
-        // файл
-        let file: &str;
         // ищем импорт
-        if self.libraries.contains_key(&import.name) {
-            file = self.libraries.get(&import.name).unwrap();
+        let file: &str = if self.libraries.contains_key(&import.name) {
+            self.libraries.get(&import.name).unwrap()
         } else {
-            file = &import.name;
-        }
+            &import.name
+        };
         // путь
         let path = PathBuf::from(file);
         // чтение файла
@@ -72,36 +70,38 @@ impl ImportsResolver {
         let filename = path.file_name().unwrap().to_str().unwrap();
         // компиляция
         let tokens = executor::lex(
-            &filename,
+            filename,
             &code,
             false,
             false
         );
         let ast = executor::parse(
-            &filename,
+            filename,
             tokens.unwrap(),
             false,
             false,
-            import.full_name
+            &import.full_name
         );
-        let analyzed = executor::analyze(
-            ast.as_ref().unwrap()
+        let mut analyzed = executor::analyze(
+            ast.unwrap()
         );
         // блок результата
         let result: Node;
         // проверяем блок
-        if let Node::Block { body } = analyzed {
+        if let Node::Block { body } = &mut analyzed {
             // новое тело
             let mut new_body: Vec<Node> = vec![];
             // добавляем в тело
-            for node in body {
+            
+            while let Some(node) = body.pop() {
                 // перебираем
                 match node {
                     Node::Native { .. } |
                     Node::FnDeclaration { .. } |
                     Node::Type { .. } |
-                    Node::Unit { .. } => {
-                        new_body.push(node.clone());
+                    Node::Unit { .. } |
+                    Node::Trait { .. } => {
+                        new_body.push(node);
                     }
                     _ => {}
                 }
@@ -127,7 +127,7 @@ impl ImportsResolver {
         // проверка на наличие импорта, если его нет
         if !self.imported.contains(&import.name) {
             // ресолвинг
-            let node = self.resolve(addr, import.clone());
+            let node = self.resolve(addr, import);
             // импротируем
             self.imported.push(import.name.clone());
             // возвращаем

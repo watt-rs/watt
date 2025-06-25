@@ -87,8 +87,8 @@ impl<'filename> Parser<'filename> {
     fn to_full_name(&self, tk: Token) -> Token{
         Token::new(
             TokenType::Text,
-            format!("{}:{}", self.full_name_prefix, tk.value.clone()),
-            tk.address.clone(),
+            format!("{}:{}", self.full_name_prefix, tk.value),
+            tk.address,
         )
     }
 
@@ -186,7 +186,7 @@ impl<'filename> Parser<'filename> {
             else if self.check(TokenType::Lparen) {
                 return Ok(Node::Call {
                     previous,
-                    name: identifier.clone(),
+                    name: identifier,
                     args: self.args()?,
                     should_push: true
                 });
@@ -195,7 +195,7 @@ impl<'filename> Parser<'filename> {
             else {
                 return Ok(Node::Get {
                     previous,
-                    name: identifier.clone(),
+                    name: identifier,
                     should_push: true
                 })
             }
@@ -496,8 +496,11 @@ impl<'filename> Parser<'filename> {
     fn multiplicative_expr(&mut self) -> Result<Node, Error> {
         let mut left = self.unary_expr()?;
 
-        while self.check(TokenType::Op) &&
-            (self.peek()?.value == "*" || self.peek()?.value == "/") {
+        while self.check(TokenType::Op) && (
+            self.peek()?.value == "*" || 
+            self.peek()?.value == "/" || 
+            self.peek()?.value == "%") 
+        {
             let op = self.consume(TokenType::Op)?.clone();
             let right = self.unary_expr()?;
             left = Node::Bin {

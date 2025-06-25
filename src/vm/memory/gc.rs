@@ -32,6 +32,7 @@ impl GC {
     // ресет
     fn reset(&mut self) {
         self.marked = HashSet::new();
+        self.marked_tables = HashSet::new();
     }
     // маркинг значения
     #[allow(unused_parens)]
@@ -45,8 +46,8 @@ impl GC {
         // маркинг
         match value {
             Value::Instance(instance) => unsafe {
-                self.marked.insert(value);
                 self.mark_table((*instance).fields);
+                self.marked.insert(value);
             }
             Value::Fn(f) => unsafe {
                 self.marked.insert(value);
@@ -63,8 +64,8 @@ impl GC {
                 }
             }
             Value::Unit(unit) => unsafe {
+                self.mark_table((*unit).fields);
                 self.marked.insert(value);
-                self.mark_table((*unit).fields)
             }
             Value::Native(_) => {
                 self.marked.insert(value);
@@ -74,7 +75,7 @@ impl GC {
             }
             Value::List(list) => unsafe {
                 for value in (*list).clone() {
-                    self.marked.insert(value);
+                    self.mark_value(value);
                 }
                 self.marked.insert(value);
             }
@@ -90,7 +91,7 @@ impl GC {
         // добавляем
         self.marked_tables.insert(table);
         // лог
-        self.log(format!("gc :: mark :: table = {:?}", table));
+        self.log(format!("gc :: mark :: table = {:?}", *table));
         // значения таблицы
         for val in (*table).fields.values() {
             self.mark_value(*val);
@@ -99,9 +100,13 @@ impl GC {
         if !(*table).closure.is_null() {
             self.mark_table((*table).closure);
         }
-        // маркинг таблицы
+        // маркинг рут таблицы
         if !(*table).root.is_null() {
             self.mark_table((*table).root);
+        }
+        // маркинг parent таблицы
+        if !(*table).parent.is_null() {
+            self.mark_table((*table).parent);
         }
     }
     // очистка
@@ -139,6 +144,7 @@ impl GC {
     }
     // высвобождение значения
     fn free_value(&self, value: Value) {
+        self.log(format!("gc :: free :: value = {:?}", value));
         match value {
             Value::Fn(f) => {
                 if !f.is_null() { memory::free_value(f); }
@@ -162,12 +168,11 @@ impl GC {
                 println!("unexpected gc value = {:?}.", value);
             }
         }
-        self.log(format!("gc :: freed :: value = {:?}", value));
     }
     // сборка мусора
     pub unsafe fn collect_garbage(&mut self, vm: &mut VM, table: *mut Table) {
         // лог
-        self.log("gc :: triggered".to_string());
+        self.log("gc :: triggered :: {:?}".to_string());
         // марк
         for val in vm.stack.clone() {
             self.mark_value(val)

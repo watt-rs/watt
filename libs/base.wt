@@ -13,6 +13,7 @@ unit __list_utils {
     native index_of -> 'list@index_of'
     native length -> 'list@length'
     native delete -> 'list@delete'
+    native delete_at -> 'list@delete_at'
     native to_string -> 'list@to_string'
 }
 
@@ -36,6 +37,9 @@ type List {
     fun delete(value) {
         __list_utils.delete(self.internal, value)
     }
+    fun delete_at(index) {
+        __list_utils.delete_at(self.internal, index)
+    }
     fun length {
         return __list_utils.length(self.internal)
     }
@@ -45,13 +49,25 @@ type List {
     fun get(index) {
         return __list_utils.get(self.internal, index)
     }
+    fun iter {
+        return new ListIterator(self)
+    }
+}
+
+/*
+ Трейт Итератора.
+ | Трейт вокруг итераторов
+*/
+trait Iterator {
+    fun has_next
+    fun next
 }
 
 /*
  Итератор.
  | итератор вокруг списка
 */
-type Iterator(list) {
+type ListIterator(list) impl Iterator {
     fun init {
         self.current := 0
     }
@@ -72,6 +88,155 @@ type Iterator(list) {
 }
 
 /*
+ Итератор.
+ | итератор вокруг диапазона чисел
+*/
+type NumbersIterator(start, end) {
+    fun init {
+        self._current := start
+        self._end := end
+
+        // 0 - назад
+        // 1 - вперёд
+        if self._current > self._end {
+            self.direction := 1
+        } else {
+            self.direction := 0
+        }
+    }
+    fun has_next {
+        return self._current < self._end
+    }
+    fun next {
+        if self._current >= self._end {
+            panic(
+                'could not use next.',
+                'iterator has no elements left.'
+            )
+        }
+        
+        value := self._current
+        
+        if self.direction == 0 {
+            self._current += 1
+        } else {
+            self._current -= 1
+        }
+
+        return value
+    }
+}
+
+/*
+ Пара key/value для мапы.
+*/
+type Entry(key, value) {
+    fun to_string {
+        return '(' + key + ',' + value + ')'
+    }
+}
+
+/*
+ Мапа.
+ | словарь ключ/значение.
+*/
+type Map {
+    // пары key/value
+    entries := []
+    // есть ли ключ
+    fun has_key(key) {
+        for entry in entries.iter() {
+            if entry.key == key {
+                return true
+            }
+        }
+        return false
+    }
+    // есть ли значение
+    fun has_value(value) {
+        for entry in entries.iter() {
+            if entry.value == value {
+                return true
+            }
+        }
+        return false
+    }
+    // установка значения по ключу
+    fun set(key, value) {
+        // ищем уже существующую пару
+        for entry in entries.iter() {
+            if entry.key == key {
+                entry.value = value
+                return null
+            }
+        }
+        // добавляем пару
+        entries.add(new Entry(
+            key,
+            value
+        ))
+    }
+    // удаление пары по ключу
+    fun delete(key) {
+        // ищем уже существующую пару
+        to_delete := null
+        for entry in entries.iter() {
+            if entry.key == key {
+                to_delete = entry
+            }
+        }
+        // удаляем, если нашли entry
+        if to_delete != null {
+            entries.delete(to_delete)
+            return true
+        }
+        // если не нашли entry
+        else {
+            return false
+        }
+    }
+    // получение значения по ключу
+    fun get(key) {
+        for entry in entries.iter() {
+            if entry.key == key {
+                return entry.value
+            }
+        }
+    }
+    // ключи
+    fun keys {
+        keys := []
+        for entry in entries.iter() {
+            keys.add(entry.key)
+        }
+        return keys
+    }
+    // значения
+    fun values {
+        values := []
+        for entry in entries.iter() {
+            keys.add(entry.value)
+        }
+        return values
+    }
+    // длина
+    fun length {
+        return self.entries.length()
+    }
+    // в строку
+    fun to_string {
+        // формируем строку
+        string := '['
+        for entry in entries.iter() {
+            string += entry.to_string()
+        }
+        string += ']'
+        // возвращаем
+        return string
+    }
+}
+
+/*
  Функция паники
  | реализация находится в
  | > crate::vm::natives::libs::natives_base
@@ -80,34 +245,8 @@ native panic -> 'base@panic'
 
 /*
  Функция _range
- | создаёт Iterator от a до b
+ | создаёт NumbersIterator от a до b
 */
 fun _range(a, b) {
-    // список для итератора
-    list := []
-    // если a > b, то range должен быть
-    // в виде [3,2,1]
-    if a > b {
-        n := a
-        while n > b {
-            list.add(n)
-            n -= 1
-        }
-    }
-    // если a < b, то range должен быть
-    // в виде [1,2,3]
-    elif a < b {
-        n := a
-        while n < b {
-            list.add(n)
-            n += 1
-        }
-    }
-    // если a == b, то range должен быть
-    // в виде [a] || [b]
-    else {
-        list.add(a)
-    }
-    // возвращаем итератор
-    return new Iterator(list)
+    return new NumbersIterator(a, b)
 }

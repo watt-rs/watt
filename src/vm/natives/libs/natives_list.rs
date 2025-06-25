@@ -6,6 +6,7 @@ use crate::vm::table::Table;
 use crate::vm::values::{FnOwner, Value};
 use crate::vm::vm::VM;
 use crate::error;
+use crate::vm::bytecode::OpcodeValue;
 use crate::vm::memory::memory;
 
 // провайд
@@ -23,11 +24,11 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                 // список
                 let list = memory::alloc_value(Vec::<Value>::new());
                 // добавляем
-                vm.op_push(
+                vm.op_push(OpcodeValue::Raw(
                     Value::List(
                         list
-                    ), table
-                )?;
+                    )
+                ), table)?;
             }
             // успех
             Ok(())
@@ -159,7 +160,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         2,
-        "list@delete".to_string(),
+        "list@delete_at".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: Option<FnOwner>| {
             // индекс
             let index_value = vm.pop(&addr).unwrap();
@@ -205,6 +206,36 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             Ok(())
         }
     );
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        2,
+        "list@delete".to_string(),
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: Option<FnOwner>| {
+            // индекс
+            let value = vm.pop(&addr).unwrap();
+            // список
+            let list_value = vm.pop(&addr).unwrap();
+            // проверяем
+            if let Value::List(list) = list_value {
+                for (index, element) in (*list).iter().enumerate() {
+                    if *element == value {
+                        (*list).remove(index);
+                        return Ok(());
+                    }
+                }
+            }
+            else {
+                error!(Error::new(
+                    addr.clone(),
+                    format!("could not get element from {:?}, not a list", list_value),
+                    "check your code".to_string()
+                ));
+            }
+            // успех
+            Ok(())
+        }
+    );    
     natives::provide(
         vm,
         built_in_address.clone(),
@@ -278,14 +309,9 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             if let Value::List(list) = list_value {
                 // если надо пушить
                 if should_push {
-                    vm.op_push(
-                        Value::String(
-                            memory::alloc_value(
-                                format!("{:?}", *list)
-                            )
-                        ),
-                        table
-                    )?;
+                    vm.op_push(OpcodeValue::String(
+                        format!("{:?}", *list)
+                    ), table)?;
                 }
             }
             else {
