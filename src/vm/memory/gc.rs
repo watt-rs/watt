@@ -184,8 +184,6 @@ impl GC {
     }
     // сборка мусора
     pub unsafe fn collect_garbage(&mut self, vm: &mut VM, table: *mut Table) {
-        // таблицу выводим
-        (*table).print(0);
         // лог
         self.log("gc :: triggered".to_string());
         // марк
