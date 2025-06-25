@@ -1,3 +1,4 @@
+use std::backtrace::Backtrace;
 // импорты
 use crate::vm::table::Table;
 use crate::vm::values::{FnOwner, Value};
@@ -11,6 +12,7 @@ pub struct GC {
     objects: HashSet<Value>,
     marked: HashSet<Value>,
     marked_tables: HashSet<*mut Table>,
+    guard: Vec<Value>,
     debug: bool,
 }
 
@@ -22,6 +24,7 @@ impl GC {
             objects: HashSet::new(),
             marked: HashSet::new(),
             marked_tables: HashSet::new(),
+            guard: Vec::new(),
             debug
         }
     }
@@ -84,6 +87,8 @@ impl GC {
     }
     // маркинг таблицы
     unsafe fn mark_table(&mut self, table: *mut Table) {
+        // проверка на нулл
+        if table.is_null() { return; }
         // проверяем
         if self.marked_tables.contains(&table) {
             return;
@@ -169,16 +174,33 @@ impl GC {
             }
         }
     }
+    // пуш значения в защиту
+    pub fn push_guard(&mut self, value: Value) {
+        self.guard.push(value);
+    }
+    // поп значения из защиту
+    pub fn pop_guard(&mut self) {
+        self.guard.pop();
+    }
     // сборка мусора
     pub unsafe fn collect_garbage(&mut self, vm: &mut VM, table: *mut Table) {
         // лог
-        self.log("gc :: triggered :: {:?}".to_string());
+        self.log("gc :: triggered".to_string());
+        // стэк
+        println!("{}", Backtrace::capture());
         // марк
+        // > stack
         for val in vm.stack.clone() {
             self.mark_value(val)
         };
+        // > units
         self.mark_table(vm.units);
+        // > table
         self.mark_table(table);
+        // > guard
+        for value in self.guard.clone() {
+            self.mark_value(value);
+        }
         // sweep
         self.sweep();
         // ресет
