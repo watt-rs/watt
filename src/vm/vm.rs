@@ -1414,10 +1414,13 @@ impl VM {
         if let Ok(value) = lookup_result {
             // проверяем, функция ли
             if let Value::Fn(function) = value {
+                // создаём замыкание
+                let closure = memory::alloc_value(Table::new());
+                // копируем поля
+                (*closure).fields = (*table).fields.clone();
+                (*closure).closure = (*table).closure.clone();
                 // устанавливаем замыкание
-                let table_clone = memory::alloc_value((*table).clone());
-                (*table_clone).parent = std::ptr::null_mut();
-                (*function).closure = table_clone;
+                (*function).closure = closure;
                 // успех
                 Ok(())
             }
