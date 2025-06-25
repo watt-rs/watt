@@ -96,7 +96,7 @@ impl GC {
         // добавляем
         self.marked_tables.insert(table);
         // лог
-        self.log(format!("gc :: mark :: table = {:?}", *table));
+        self.log(format!("gc :: mark :: table = {:?}", table));
         // значения таблицы
         for val in (*table).fields.values() {
             self.mark_value(*val);
@@ -184,10 +184,10 @@ impl GC {
     }
     // сборка мусора
     pub unsafe fn collect_garbage(&mut self, vm: &mut VM, table: *mut Table) {
+        // таблицу выводим
+        (*table).print(0);
         // лог
         self.log("gc :: triggered".to_string());
-        // стэк
-        println!("{}", Backtrace::capture());
         // марк
         // > stack
         for val in vm.stack.clone() {

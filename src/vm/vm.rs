@@ -320,8 +320,6 @@ impl VM {
         // операнды
         let operand_a = self.pop(&address)?;
         let operand_b = self.pop(&address)?;
-        println!("op a: {:?}", operand_a);
-        println!("op b: {:?}", operand_b);
         let error = Error::new(
             address.clone(),
             format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
@@ -665,15 +663,13 @@ impl VM {
         // рут
         (*(*unit).fields).set_root(self.globals);
         // временный parent
-        (*(*unit).fields).parent = self.globals;
+        (*(*unit).fields).parent = table;
         // временный self
         (*(*unit).fields).fields.insert("self".to_string(), Value::Unit(unit));
         // исполняем тело
         self.run(body, (*unit).fields)?;
         // удаляем временный self
         (*(*unit).fields).fields.remove(&"self".to_string());
-        // удаляем временный parent
-        (*(*unit).fields).parent = std::ptr::null_mut();
         // бинды
         self.bind_functions((*unit).fields, FnOwner::Unit(unit));
         // дефайн юнита
@@ -686,6 +682,8 @@ impl VM {
                 error!(e);
             }
         }
+        // удаляем временный parent
+        (*(*unit).fields).parent = std::ptr::null_mut();
         // удаляем защиту
         self.gc_unguard();
         // успех
@@ -1357,7 +1355,7 @@ impl VM {
                     // рут
                     (*(*instance).fields).set_root(self.globals);
                     // временный parent
-                    (*(*instance).fields).parent = self.globals;
+                    (*(*instance).fields).parent = table;
                     // временный self
                     (*(*instance).fields).fields.insert("self".to_string(), Value::Instance(instance));
                     // исполняем тело
@@ -1418,6 +1416,7 @@ impl VM {
             if let Value::Fn(function) = value {
                 // устанавливаем замыкание
                 let table_clone = memory::alloc_value((*table).clone());
+                (*table_clone).parent = std::ptr::null_mut();
                 (*function).closure = table_clone;
                 // успех
                 Ok(())
