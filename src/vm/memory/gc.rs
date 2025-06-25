@@ -1,4 +1,3 @@
-use std::backtrace::Backtrace;
 // импорты
 use crate::vm::table::Table;
 use crate::vm::values::{FnOwner, Value};
@@ -96,7 +95,7 @@ impl GC {
         // добавляем
         self.marked_tables.insert(table);
         // лог
-        self.log(format!("gc :: mark :: table = {:?}", *table));
+        self.log(format!("gc :: mark :: table = {:?}", table));
         // значения таблицы
         for val in (*table).fields.values() {
             self.mark_value(*val);
@@ -186,8 +185,6 @@ impl GC {
     pub unsafe fn collect_garbage(&mut self, vm: &mut VM, table: *mut Table) {
         // лог
         self.log("gc :: triggered".to_string());
-        // стэк
-        println!("{}", Backtrace::capture());
         // марк
         // > stack
         for val in vm.stack.clone() {

@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use crate::vm::memory::memory;
 
 // таблица
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Table {
     pub fields: HashMap<String,Value>,
 }
@@ -147,6 +147,24 @@ impl Table {
                 }                
                 _ => {}
             }
+        }
+    }
+    
+    // print table
+    pub unsafe fn print(&self, indent: usize) {
+        println!("{space:spaces$}Table:", space=" ", spaces=indent*2);
+        println!("{space:spaces$}> [{:?}]", self.fields.keys(), space=" ", spaces=indent*2);
+        println!("{space:spaces$}> root: ", space=" ", spaces=indent*2);
+        if !self.root.is_null() {
+            (*self.root).print(indent + 1);
+        }
+        println!("{space:spaces$}> parent: ", space=" ", spaces=indent*2);
+        if !self.parent.is_null() {
+            (*self.parent).print(indent + 1);
+        }
+        println!("{space:spaces$}> closure: ", space=" ", spaces=indent*2);
+        if !self.closure.is_null() {
+            (*self.closure).print(indent + 1);
         }
     }
 }
