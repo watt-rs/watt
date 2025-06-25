@@ -1,4 +1,3 @@
-use std::backtrace::Backtrace;
 // импорты
 use crate::vm::table::Table;
 use crate::vm::values::{FnOwner, Value};
