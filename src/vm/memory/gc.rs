@@ -210,10 +210,8 @@ impl GC {
         // возвращаем
         self.objects.len()
     }
-}
-// имплементация drop
-impl Drop for GC {
-    fn drop(&mut self) {
+    // полный cleanup
+    pub fn cleanup(&mut self) {
         // лог
         self.log(format!("gc :: cleanup :: {:?}", self.objects.len()));
         // перебираем, и высвобождаем аллоцированые объекты

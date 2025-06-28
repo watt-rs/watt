@@ -78,24 +78,16 @@ impl VM {
         Ok(self.stack.pop().unwrap())
     }
 
-    // shallow очистка
+    // очистка
     pub unsafe fn cleanup(&mut self) {
-        // todo: add vm debug option
-        // высвобождаем типы
-        (*self.types).free_fields();
+        // освобождаем все значения через gc
+        (*self.gc).cleanup();
+        // высвобождаем таблицы
         memory::free_value(self.types);
-        // высвобождаем трэйты
-        (*self.traits).free_fields();
         memory::free_value(self.traits);
-        // высвобождаем нативные функции
-        (*self.natives).free_fields();
         memory::free_value(self.natives);
-        // высвобождаем таблицу юнитов
         memory::free_value(self.units);
-        // высвобождаем таблицу глобальных переменные
         memory::free_value(self.globals);
-        // высвобождаем gc
-        memory::free_value(self.gc);
     }
 
     // очистка мусора
