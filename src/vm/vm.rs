@@ -82,10 +82,15 @@ impl VM {
     pub unsafe fn cleanup(&mut self) {
         // освобождаем все значения через gc
         (*self.gc).cleanup();
+        // высвобождаем gc
+        memory::free_value(self.gc);
         // высвобождаем типы
         (*self.types).free_fields();
+        // высвобождаем трэйты
+        (*self.traits).free_fields();
         // высвобождаем таблицы
         memory::free_value(self.traits);
+        memory::free_value(self.types);
         memory::free_value(self.natives);
         memory::free_value(self.units);
         memory::free_value(self.globals);
