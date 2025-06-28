@@ -431,7 +431,7 @@ impl<'filename> Parser<'filename> {
     }
 
     // key : value
-    fn key_value_expr(&mut self) -> Result<(Box<Node>, Box<Node>), Error> {
+    fn key_value_expr(&mut self) -> Result<(Node, Node), Error> {
         // ключ
         let l = self.expr()?;
         // :
@@ -439,7 +439,7 @@ impl<'filename> Parser<'filename> {
         // значение
         let r = self.expr()?;
         // возвращаем
-        Ok((Box::new(l), Box::new(r)))
+        Ok((l, r))
     }
 
     // мапа
@@ -459,7 +459,7 @@ impl<'filename> Parser<'filename> {
         }
         // заполненная
         else {
-            let mut nodes: Vec<(Box<Node>, Box<Node>)> = Vec::new();
+            let mut nodes: Vec<(Node, Node)> = Vec::new();
             let key = self.key_value_expr()?;
             nodes.push((key.0, key.1));
             while self.check(TokenType::Comma) {
@@ -815,7 +815,8 @@ impl<'filename> Parser<'filename> {
                 self.to_full_name(name),
             ),
             params,
-            body: Box::new(body)
+            body: Box::new(body),
+            make_closure: true
         })
     }
 
@@ -860,7 +861,8 @@ impl<'filename> Parser<'filename> {
                         name,
                         full_name: None,
                         params,
-                        body
+                        body,
+                        make_closure: false
                     }
                 }
                 Node::Native { .. } |
@@ -974,7 +976,8 @@ impl<'filename> Parser<'filename> {
                         name,
                         full_name: None,
                         params,
-                        body
+                        body,
+                        make_closure: false
                     }
                 }
                 Node::Native { .. } |

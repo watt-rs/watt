@@ -31,7 +31,6 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         built_in_address.clone(),
         1,
         "io@print".to_string(),
-
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: Option<FnOwner>| {
             print!("{:?}", vm.pop(&addr)?);
             if should_push {

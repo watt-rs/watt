@@ -137,8 +137,9 @@ impl CompileVisitor {
                 full_name,
                 params,
                 body,
+                make_closure
             } => {
-                self.visit_fn_decl(name, full_name, params, body);
+                self.visit_fn_decl(name, full_name, params, body, *make_closure);
             }
             Node::AnFnDeclaration { params, body, .. } => {
                 self.visit_an_fn_decl(params, body);
@@ -404,6 +405,7 @@ impl CompileVisitor {
         full_name: &Option<Token>,
         parameters: &Vec<Token>,
         body: &Node,
+        make_closure: bool
     ) {
         // полное имя
         let full_name = full_name.as_ref().map(|n| n.value.clone());
@@ -432,10 +434,12 @@ impl CompileVisitor {
             body: Chunk::new(chunk),
         });
         // замыкание
-        self.push_instr(Opcode::Closure {
-            addr: name.address.clone(),
-            name: name.value.clone()
-        });
+        if make_closure {
+            self.push_instr(Opcode::Closure {
+                addr: name.address.clone(),
+                name: name.value.clone()
+            });
+        }
     }
 
     // визит break
@@ -506,13 +510,44 @@ impl CompileVisitor {
         }
     }
 
-    // todo: map
+    // визит инициализатора мапы
     fn visit_map(
         &mut self,
         location: &Token,
-        map: &Vec<(Box<Node>, Box<Node>)>,
+        map: &Vec<(Node, Node)>,
     ) {
-        todo!()
+        // создаём мапу
+        self.push_instr(Opcode::Instance {
+            addr: location.address.clone(),
+            name: "Map".to_string(),
+            args: Chunk::new(vec![]),
+            should_push: true,
+        });
+        // если длина больше нуля
+        if (*map).len() > 0 {
+            // заполняем
+            for (k, v) in map {
+                // дублируем мапу
+                self.push_instr(Opcode::Duplicate {
+                    addr: location.address.clone(),
+                });
+                // чанк ключа и значения
+                self.push_chunk();
+                self.visit_node(k);
+                self.visit_node(v);
+                let chunk = self.pop_chunk();
+                // добавляем элемент
+                self.push_instr(Opcode::Call {
+                    addr: location.address.clone(),
+                    name: "set".to_string(),
+                    args: Chunk::new(
+                        chunk
+                    ),
+                    has_previous: true,
+                    should_push: false
+                })
+            }
+        }
     }
 
     // цикл for
