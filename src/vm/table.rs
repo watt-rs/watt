@@ -177,6 +177,7 @@ impl Table {
     }
     
     // print table
+    #[allow(unused)]
     pub unsafe fn print(&self, indent: usize) {
         println!("{space:spaces$}Table:", space=" ", spaces=indent*2);
         println!("{space:spaces$}> [{:?}]", self.fields.keys(), space=" ", spaces=indent*2);

@@ -29,19 +29,23 @@ pub unsafe fn provide(
     params_amount: usize,
     name: String,
     native: fn(&mut VM,Address,bool,*mut Table,Option<FnOwner>) -> Result<(), ControlFlow>) {
+    // нативная функция
+    let native_fn = Value::Native(
+        memory::alloc_value(
+            Native::new(
+                Symbol::by_name(name.clone()),
+                params_amount,
+                native
+            )
+        )
+    );
+    // регистрация в gc
+    vm.gc_register(native_fn, vm.globals);
     // дефайн
     if let Err(e) = (*vm.natives).define(
         &addr,
         &name,
-        Value::Native(
-            memory::alloc_value(
-                Native::new(
-                    Symbol::by_name(name.clone()),
-                    params_amount,
-                    native
-                )
-            )
-        )
+        native_fn,
     ) {
         error!(e);
     }

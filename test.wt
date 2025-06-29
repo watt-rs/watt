@@ -83,13 +83,10 @@ list := [1,3,5,7,'hello']
 list.add(9)
 */
 import 'std.io'
-fun factorial(n) {
-    f := 1
-    r := 1
-    while f <= n {
-        r *= f
-        f += 1
-    }
-    return r
+fruits := {
+    'apple': 13,
+    'banana': 14,
+    'peach': 28
 }
-io.println(factorial(15))
+fruits.set('peach', 30)
+io.println(fruits.to_string())
