@@ -39,6 +39,8 @@ pub unsafe fn provide(
             )
         )
     );
+    // защищаем в gc
+    vm.gc_guard(native_fn);
     // регистрация в gc
     vm.gc_register(native_fn, vm.globals);
     // дефайн
@@ -49,4 +51,6 @@ pub unsafe fn provide(
     ) {
         error!(e);
     }
+    // удаляем защиту gc
+    vm.gc_unguard();
 }

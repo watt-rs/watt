@@ -305,7 +305,8 @@ impl<'filename> Parser<'filename> {
         Ok(Node::AnFnDeclaration {
             location,
             params,
-            body: Box::new(body)
+            body: Box::new(body),
+            make_closure: true
         })
     }
 
@@ -324,9 +325,13 @@ impl<'filename> Parser<'filename> {
         let body = self.expr()?;
         // возвращаем
         Ok(Node::AnFnDeclaration {
-            location,
+            location: location.clone(),
             params,
-            body: Box::new(body)
+            body: Box::new(Node::Ret {
+                location,
+                value: Box::new(body)
+            }),
+            make_closure: true
         })
     }
 

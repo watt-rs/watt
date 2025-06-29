@@ -75,7 +75,14 @@ pub enum Opcode {
         full_name: Option<String>,
         params: Vec<String>,
         body: Chunk,
+        make_closure: bool,
     },
+    AnonymousFn {
+        addr: Address,
+        params: Vec<String>,
+        body: Chunk,
+        make_closure: bool,
+    },    
     DefineType {
         addr: Address,
         name: String,
@@ -133,10 +140,6 @@ pub enum Opcode {
     EndLoop {
         addr: Address,
         current_iteration: bool,
-    },
-    Closure {
-        addr: Address,
-        name: String,
     },
     Ret {
         addr: Address,

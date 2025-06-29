@@ -572,7 +572,7 @@ impl VM {
 
     // дефайн функции
     unsafe fn op_define_fn(&mut self, addr: &Address, symbol: &Symbol, body: &Chunk,
-                        params: &Vec<String>, table: *mut Table) -> Result<(), ControlFlow> {
+                        params: &Vec<String>, make_closure: bool, table: *mut Table) -> Result<(), ControlFlow> {
         // создаём функцию
         let function = memory::alloc_value(
             Function::new(
@@ -581,6 +581,16 @@ impl VM {
                 params.clone()
             )
         );
+        // если надо создать замыкание
+        if make_closure {
+            // создаём замыкание
+            let closure = memory::alloc_value(Table::new());
+            // копируем поля
+            (*closure).fields = (*table).fields.clone();
+            (*closure).closure = (*table).closure.clone();
+            // устанавливаем замыкание
+            (*function).closure = closure;
+        }
         // создаём значение функции
         let function_value = Value::Fn(function);
         // защищаем значение
@@ -599,6 +609,37 @@ impl VM {
         }
         // удаляем защиту
         self.gc_unguard();
+        // успех
+        Ok(())
+    }
+
+    // создание анонимной функции и пуш её в стек
+    unsafe fn op_anonymous_fn(&mut self, body: &Chunk, params: &Vec<String>,
+                              make_closure: bool, table: *mut Table) -> Result<(), ControlFlow> {
+        // создаём функцию
+        let function = memory::alloc_value(
+            Function::new(
+                Symbol::by_name("$lambda".to_string()),
+                memory::alloc_value(body.clone()),
+                params.clone()
+            )
+        );
+        // если надо создать замыкание
+        if make_closure {
+            // создаём замыкание
+            let closure = memory::alloc_value(Table::new());
+            // копируем поля
+            (*closure).fields = (*table).fields.clone();
+            (*closure).closure = (*table).closure.clone();
+            // устанавливаем замыкание
+            (*function).closure = closure;
+        }
+        // создаём значение функции
+        let function_value = Value::Fn(function);
+        // пушим в стек
+        self.push(function_value);
+        // регистрируем в gc
+        self.gc_register(function_value, table);
         // успех
         Ok(())
     }
@@ -1404,42 +1445,6 @@ impl VM {
         }
     }
 
-    // создание замыкания
-    unsafe fn op_make_closure(&mut self, addr: &Address, name: &str, table: *mut Table) -> Result<(), ControlFlow> {
-        // ищем
-        let lookup_result = (*table).lookup(&addr, name);
-        // проверяем, нашло ли
-        if let Ok(value) = lookup_result {
-            // проверяем, функция ли
-            if let Value::Fn(function) = value {
-                // создаём замыкание
-                let closure = memory::alloc_value(Table::new());
-                // копируем поля
-                (*closure).fields = (*table).fields.clone();
-                (*closure).closure = (*table).closure.clone();
-                // устанавливаем замыкание
-                (*function).closure = closure;
-                // успех
-                Ok(())
-            }
-            else {
-                // ошибка
-                error!(Error::new(
-                    addr.clone(),
-                    format!("could not make closure for: {}", name),
-                    "not a function.".to_string()
-                ));
-                Ok(())
-            }
-        }
-        else {
-            error!(
-                lookup_result.unwrap_err()
-            );
-            Ok(())
-        }
-    }
-
     // возврат значения из функции
     unsafe fn op_return(&mut self, addr: &Address, value: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         // выполняем
@@ -1708,17 +1713,66 @@ impl VM {
                 Opcode::Loop { addr, body } => {
                     self.op_loop(addr, body, table)?;
                 }
-                Opcode::DefineFn { addr, name, full_name, body, params } => {
-                    self.op_define_fn(addr, &Symbol::new_option(name.clone(), full_name.clone()), body, params, table)?;
+                Opcode::DefineFn {
+                    addr,
+                    name,
+                    full_name,
+                    body,
+                    params,
+                    make_closure
+                } => {
+                    self.op_define_fn(
+                        addr,
+                        &Symbol::new_option(name.clone(), full_name.clone()),
+                        body,
+                        params,
+                        *make_closure,
+                        table
+                    )?;
                 }
-                Opcode::DefineType { addr, name, full_name, body, constructor, impls } => {
-                    self.op_define_type(addr, &Symbol::new_option(name.clone(), full_name.clone()), body, constructor, impls)?
+                Opcode::AnonymousFn {
+                    addr,
+                    body,
+                    params,
+                    make_closure
+                } => {
+                    self.op_anonymous_fn(
+                        body,
+                        params,
+                        *make_closure,
+                        table
+                    )?;
+                }
+                Opcode::DefineType {
+                    addr,
+                    name,
+                    full_name,
+                    body,
+                    constructor,
+                    impls
+                } => {
+                    self.op_define_type(
+                        addr,
+                        &Symbol::new_option(name.clone(), full_name.clone()),
+                        body,
+                        constructor,
+                        impls
+                    )?
                 }
                 Opcode::DefineUnit { addr, name, full_name, body } => {
                     self.op_define_unit(addr, &Symbol::new_option(name.clone(), full_name.clone()), body, table)?
                 }
-                Opcode::DefineTrait { addr, name, full_name, functions } => {
-                    self.op_define_trait(addr, &Symbol::new_option(name.clone(), full_name.clone()), functions)?
+                Opcode::DefineTrait {
+                    addr,
+                    name,
+                    full_name,
+                    functions
+                } => {
+                    self.op_define_trait(
+                        addr,
+                        &Symbol::new_option(name.clone(), full_name.clone()),
+                        functions
+                    )?
                 }
                 Opcode::Define { addr, name, value, has_previous} => {
                     self.op_define(addr, name, *has_previous, value, table)?;
@@ -1729,7 +1783,13 @@ impl VM {
                 Opcode::Load { addr, name, has_previous, should_push } => {
                     self.op_load(addr, name, *has_previous, *should_push, table)?;
                 }
-                Opcode::Call { addr, name, has_previous, should_push, args } => {
+                Opcode::Call {
+                    addr,
+                    name,
+                    has_previous,
+                    should_push,
+                    args
+                } => {
                     self.op_call(addr, name, *has_previous, *should_push, args, table)?
                 }
                 Opcode::Duplicate { addr } => {
@@ -1740,9 +1800,6 @@ impl VM {
                 }
                 Opcode::EndLoop { addr, current_iteration } => {
                     self.op_endloop(addr, *current_iteration)?;
-                }
-                Opcode::Closure { addr, name } => {
-                    self.op_make_closure(addr, name, table)?;
                 }
                 Opcode::Ret { addr, value } => {
                     self.op_return(addr, value, table)?;

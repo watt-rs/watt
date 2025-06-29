@@ -83,10 +83,5 @@ list := [1,3,5,7,'hello']
 list.add(9)
 */
 import 'std.io'
-fruits := {
-    'apple': 13,
-    'banana': 14,
-    'peach': 28
-}
-fruits.set('peach', 30)
-io.println(fruits.to_string())
+hello := lambda(name) -> io.println(name)
+hello('James')

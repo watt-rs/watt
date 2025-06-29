@@ -68,9 +68,10 @@ pub enum Node {
         make_closure: bool
     },
     AnFnDeclaration {
-        location: Token, // .
+        location: Token,
         params: Vec<Token>,
         body: Box<Node>,
+        make_closure: bool
     },
     Break {
         location: Token,
