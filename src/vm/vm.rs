@@ -150,7 +150,8 @@ impl VM {
                 match raw {
                     Value::Instance(_) | Value::Fn(_) |
                     Value::Native(_) | Value::String(_) |
-                    Value::Unit(_) | Value::List(_) => {
+                    Value::Unit(_) | Value::List(_) |
+                    Value::Any(_) => {
                         // пушим
                         self.push(raw);
                         // добавляем в gc
@@ -190,7 +191,7 @@ impl VM {
                                 memory::alloc_value(format!("{}{}", a, *b))
                             );
                             self.push(string);
-                            self.gc_register(string, table);                            
+                            self.gc_register(string, table);
                         }
                         _ => { error!(error); }
                     }}
@@ -203,7 +204,7 @@ impl VM {
                             );
                             self.push(string);
                             self.gc_register(string, table);
-                        }                        
+                        }
                         _ => { error!(error); }
                     }}
                     Value::String(a) => {

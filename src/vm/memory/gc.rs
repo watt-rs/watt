@@ -199,6 +199,8 @@ impl GC {
         };
         // > units
         self.mark_table(vm.units);
+        // > natives
+        self.mark_table(vm.natives);
         // > table
         self.mark_table(table);
         // > guard
