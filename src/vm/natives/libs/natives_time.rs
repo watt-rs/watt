@@ -3,6 +3,7 @@ use chrono::{DateTime, Datelike, Local, Timelike};
 use crate::error;
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
+use crate::vm::bytecode::OpcodeValue;
 use crate::vm::memory::memory;
 use crate::vm::natives::natives;
 use crate::vm::table::Table;
@@ -20,9 +21,9 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         "time@now".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             if should_push {
-                vm.push(Value::Any(
+                vm.op_push(OpcodeValue::Raw(Value::Any(
                     memory::alloc_value(Local::now())
-                ));
+                )), table)?;
             }
             Ok(())
         }
@@ -66,7 +67,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                 }
             }
             if should_push {
-                
+
             }
             Ok(())
         }
@@ -202,7 +203,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             }
             Ok(())
         }
-    );    
+    );
     natives::provide(
         vm,
         built_in_address.clone(),
@@ -334,7 +335,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             }
             Ok(())
         }
-    );        
+    );
     // успех
     Ok(())
 }
