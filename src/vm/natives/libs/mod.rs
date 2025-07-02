@@ -2,3 +2,4 @@
 pub mod natives_list;
 pub mod natives_gc;
 pub mod natives_base;
+pub mod natives_convert;

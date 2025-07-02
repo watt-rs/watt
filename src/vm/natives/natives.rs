@@ -18,6 +18,7 @@ pub unsafe fn provide_builtins(vm: &mut VM) -> Result<(), Error> {
     natives_io::provide(built_in_address.clone(), vm)?;
     natives_list::provide(built_in_address.clone(), vm)?;
     natives_gc::provide(built_in_address.clone(), vm)?;
+    natives_convert::provide(built_in_address.clone(), vm)?;
     // успех
     Ok(())
 }

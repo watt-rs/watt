@@ -82,6 +82,28 @@ import 'std.io'
 list := [1,3,5,7,'hello']
 list.add(9)
 */
+/*
+import 'std.errors'
 import 'std.io'
-hello := lambda(name) -> io.println(name)
-hello('James')
+
+fun a {
+    return result.ok(10)
+}
+
+fun b {
+    return result.err('error found')
+}
+
+fun c {
+    a_val := a()?
+    io.println('a: ' + a_val)
+    b_val := b()?
+    io.println('b: ' + b_val)
+}
+
+io.println(c().unwrap_err())
+*/
+import 'std.io'
+import 'std.convert'
+str := '123.456'
+io.println(convert.to_float(str) + 3.14)
