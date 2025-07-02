@@ -185,11 +185,25 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Float(a + b)); }
                         Value::Int(b) => { self.push(Value::Float(a + (b as f64))); }
+                        Value::String(b) => {
+                            let string = Value::String(
+                                memory::alloc_value(format!("{}{}", a, *b))
+                            );
+                            self.push(string);
+                            self.gc_register(string, table);                            
+                        }
                         _ => { error!(error); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Float((a as f64) + b)); }
                         Value::Int(b) => { self.push(Value::Int(a + b)); }
+                        Value::String(b) => {
+                            let string = Value::String(
+                                memory::alloc_value(format!("{}{}", a, *b))
+                            );
+                            self.push(string);
+                            self.gc_register(string, table);
+                        }                        
                         _ => { error!(error); }
                     }}
                     Value::String(a) => {
@@ -199,7 +213,18 @@ impl VM {
                         self.push(string);
                         self.gc_register(string, table);
                     }
-                    _ => { error!(error); }
+                    _ => {
+                        if let Value::String(_) = operand_b {
+                            let string = Value::String(
+                                memory::alloc_value(format!("{:?}{:?}", operand_a, operand_b))
+                            );
+                            self.push(string);
+                            self.gc_register(string, table);
+                        }
+                        else {
+                            error!(error);
+                        }
+                    }
                 }
             }
             "-" => {
@@ -651,9 +676,6 @@ impl VM {
             if let Value::Fn(function) = *val {
                 (*function).owner = Some(owner.clone());
             }
-            else if let Value::Native(function) = *val {
-                (*function).owner = Some(owner.clone());
-            }
         }
     }
 
@@ -1080,34 +1102,13 @@ impl VM {
                 // высвобождение таблицы
                 memory::free_value(call_table);
             }
-            // рут и self
-            if (*function).owner.clone().is_some() {
-                match (*function).owner.clone().unwrap() {
-                    FnOwner::Unit(unit) => {
-                        (*call_table).set_root((*unit).fields);
-                        if let Err(e) = (*call_table).define(
-                            &addr, "self", Value::Unit(unit)
-                        ) {
-                            error!(e);
-                        }
-                    },
-                    FnOwner::Instance(instance) => {
-                        (*call_table).set_root((*instance).fields);
-                        if let Err(e) = (*call_table).define(
-                            &addr, "self", Value::Instance(instance)
-                        ) {
-                            error!(e);
-                        }
-                    }
-                }
-            } else {
-                (*call_table).set_root(self.globals)
-            }
+            // рут
+            (*call_table).set_root(self.globals);
             // загрузка аргументов
             load_arguments(self, &addr, &name, (*function).params_amount, args, table)?;
             // вызов
             let native = (*function).function;
-            native(self, addr.clone(), should_push, call_table, (*function).owner.clone())?;
+            native(self, addr.clone(), should_push, call_table)?;
             // успех
             Ok(())
         }

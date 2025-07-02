@@ -27,7 +27,7 @@ pub enum OpcodeValue {
     Int(i64),
     Float(f64),
     String(String),
-    Raw(Value)
+    Raw(Value),
 }
 
 // опкод

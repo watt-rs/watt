@@ -5,7 +5,7 @@ use crate::lexer::address::Address;
 use crate::vm::bytecode::OpcodeValue;
 use crate::vm::natives::natives;
 use crate::vm::table::Table;
-use crate::vm::values::{FnOwner, Value};
+use crate::vm::values::{Value};
 use crate::vm::vm::VM;
 
 // провайд
@@ -17,7 +17,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         built_in_address.clone(),
         1,
         "convert@to_int".to_string(),
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: Option<FnOwner>| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let value = vm.pop(&addr)?;
             match value {
                 Value::Float(f) => {
@@ -80,7 +80,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         built_in_address.clone(),
         1,
         "convert@to_float".to_string(),
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: Option<FnOwner>| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let value = vm.pop(&addr)?;
             match value {
                 Value::Float(f) => {
@@ -143,7 +143,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         built_in_address.clone(),
         1,
         "convert@to_string".to_string(),
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: Option<FnOwner>| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let value = vm.pop(&addr)?;
             if should_push {
                 vm.op_push(
@@ -161,7 +161,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         built_in_address.clone(),
         1,
         "convert@to_bool".to_string(),
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table, owner: Option<FnOwner>| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let value = vm.pop(&addr)?;
             match value {
                 Value::Float(f) => {

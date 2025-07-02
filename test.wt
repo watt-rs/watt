@@ -103,10 +103,6 @@ fun c {
 
 io.println(c().unwrap_err())
 */
+import 'std.time'
 import 'std.io'
-import 'std.convert'
-import 'std.typeof'
-str := '123.456'
-io.println(convert.to_float(str) + 3.14)
-io.println(typeof('hello, world'))
-io.println(full_typeof('hello, world'))
+io.println(time.now().to_string())

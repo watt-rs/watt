@@ -6,7 +6,7 @@ use crate::vm::memory::memory;
 use crate::vm::vm::{VM};
 use crate::vm::natives::libs::*;
 use crate::vm::table::Table;
-use crate::vm::values::{FnOwner, Native, Symbol, Value};
+use crate::vm::values::{Native, Symbol, Value};
 use crate::error;
 
 // провайд билтинов
@@ -20,6 +20,7 @@ pub unsafe fn provide_builtins(vm: &mut VM) -> Result<(), Error> {
     natives_gc::provide(built_in_address.clone(), vm)?;
     natives_convert::provide(built_in_address.clone(), vm)?;
     natives_typeof::provide(built_in_address.clone(), vm)?;
+    natives_time::provide(built_in_address.clone(), vm)?;
     // успех
     Ok(())
 }
@@ -30,7 +31,7 @@ pub unsafe fn provide(
     addr: Address,
     params_amount: usize,
     name: String,
-    native: fn(&mut VM,Address,bool,*mut Table,Option<FnOwner>) -> Result<(), ControlFlow>) {
+    native: fn(&mut VM,Address,bool,*mut Table) -> Result<(), ControlFlow>) {
     // нативная функция
     let native_fn = Value::Native(
         memory::alloc_value(
