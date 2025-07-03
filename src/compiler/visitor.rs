@@ -358,7 +358,7 @@ impl CompileVisitor {
         let mut has_previous = false;
         // если есть
         if let Some(prev) = previous {
-            self.visit_node(&prev);
+            self.visit_node(prev);
             has_previous = true;
         }
         // чанк для значения
@@ -386,7 +386,7 @@ impl CompileVisitor {
         let mut has_previous = false;
         // если есть
         if let Some(prev) = previous {
-            self.visit_node(&prev);
+            self.visit_node(prev);
             has_previous = true;
         }
         // чанка аргументов
@@ -483,7 +483,7 @@ impl CompileVisitor {
             should_push: true,
         });
         // если длина больше нуля
-        if (*list).len() > 0 {
+        if !(*list).is_empty() {
             // заполняем
             for item in list {
                 // дублируем список
@@ -522,7 +522,7 @@ impl CompileVisitor {
             should_push: true,
         });
         // если длина больше нуля
-        if (*map).len() > 0 {
+        if !(*map).is_empty() {
             // заполняем
             for (k, v) in map {
                 // дублируем мапу

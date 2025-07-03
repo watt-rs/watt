@@ -42,7 +42,7 @@ impl Error {
             text = self.text,
         );
         println!("│");
-        println!("│ {}:", filename);
+        println!("│ {filename}:");
         println!("│ {gray}{line}{reset} {text}",
             line = self.addr.line,
             text = textline,

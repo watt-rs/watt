@@ -29,7 +29,7 @@ impl GC {
     }
     // лог
     fn log(&self, message: String) {
-        if self.debug { println!("{}", message) };
+        if self.debug { println!("{message}") };
     }
     // ресет
     fn reset(&mut self) {
@@ -44,7 +44,7 @@ impl GC {
             return;
         }
         // лог
-        self.log(format!("gc :: mark :: value = {:?}", value));
+        self.log(format!("gc :: mark :: value = {value:?}"));
         // маркинг
         match value {
             Value::Instance(instance) => unsafe {
@@ -98,7 +98,7 @@ impl GC {
         // добавляем
         self.marked_tables.insert(table);
         // лог
-        self.log(format!("gc :: mark :: table = {:?}", table));
+        self.log(format!("gc :: mark :: table = {table:?}"));
         // значения таблицы
         for val in (*table).fields.values() {
             self.mark_value(*val);
@@ -132,7 +132,7 @@ impl GC {
         });
         // перебираем, и высвобождаем память
         for value in to_free {
-            self.free_value(value.clone());
+            self.free_value(value);
         }
     }
     // добавить в аллоцированные
@@ -152,7 +152,7 @@ impl GC {
     }
     // высвобождение значения
     fn free_value(&self, value: Value) {
-        self.log(format!("gc :: free :: value = {:?}", value));
+        self.log(format!("gc :: free :: value = {value:?}"));
         match value {
             Value::Fn(f) => {
                 if !f.is_null() { memory::free_value(f); }
@@ -176,7 +176,7 @@ impl GC {
                 if !a.is_null() { memory::free_value(a); }
             }
             _ => {
-                println!("unexpected gc value = {:?}.", value);
+                println!("unexpected gc value = {value:?}.");
             }
         }
     }
@@ -225,7 +225,7 @@ impl GC {
         self.log(format!("gc :: cleanup :: {:?}", self.objects.len()));
         // перебираем, и высвобождаем аллоцированые объекты
         for value in &self.objects {
-            self.free_value(value.clone());
+            self.free_value(*value);
         }
     }
 }

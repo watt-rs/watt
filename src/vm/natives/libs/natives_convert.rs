@@ -53,10 +53,8 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                             vm.push(Value::Int(1));
                         }
                     }
-                    else {
-                        if should_push {
-                            vm.push(Value::Int(0));
-                        }
+                    else if should_push {
+                        vm.push(Value::Int(0));
                     }
                 },
                 Value::Null => {
@@ -67,12 +65,12 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                 _ => {
                     error!(Error::new(
                         addr, 
-                        format!("could not cast value: {:?} to int", value), 
+                        format!("could not cast value: {value:?} to int"), 
                         "check your value".to_string()
                     ));
                 }
             }
-            return Ok(())
+            Ok(())
         }
     );
     natives::provide(
@@ -116,10 +114,8 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                             vm.push(Value::Float(1f64));
                         }
                     }
-                    else {
-                        if should_push {
-                            vm.push(Value::Float(0f64));
-                        }
+                    else if should_push {
+                        vm.push(Value::Float(0f64));
                     }
                 },
                 Value::Null => {
@@ -130,12 +126,12 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                 _ => {
                     error!(Error::new(
                         addr, 
-                        format!("could not cast value: {:?} to float", value), 
+                        format!("could not cast value: {value:?} to float"), 
                         "check your value".to_string()
                     ));
                 }
             }
-            return Ok(())
+            Ok(())
         }
     );
     natives::provide(
@@ -148,7 +144,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             if should_push {
                 vm.op_push(
                     OpcodeValue::String(
-                        format!("{:?}", value)
+                        format!("{value:?}")
                     ),
                     table
                 )?;
@@ -212,7 +208,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                 _ => {
                     error!(Error::new(
                         addr, 
-                        format!("could not cast value: {:?} to bool", value), 
+                        format!("could not cast value: {value:?} to bool"), 
                         "check your value".to_string()
                     ));
                 }

@@ -64,7 +64,7 @@ pub unsafe fn run(
 // краш
 pub fn crash(reason: String) {
     // крашим и выходим
-    println!("{}", reason);
+    println!("{reason}");
     std::process::exit(1);
 }
 
@@ -78,14 +78,13 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
             if let Some(address) = addr {
                 error!(Error::new(
                         address,
-                        format!("io error with file: {:?}", path),
+                        format!("io error with file: {path:?}"),
                         "check file existence".to_string()
                     ));
             } else {
                 crash(
                     format!(
-                        "file not found: {:?}",
-                        path
+                        "file not found: {path:?}"
                     )
                 );
             }
@@ -97,14 +96,13 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
         if let Some(address) = addr {
             error!(Error::new(
                     address,
-                    format!("file not found: {:?}", path),
+                    format!("file not found: {path:?}"),
                     "check file existence".to_string()
                 ));
         } else {
             crash(
                 format!(
-                    "file not found: {:?}",
-                    path
+                    "file not found: {path:?}"
                 )
             );
         }
@@ -127,7 +125,7 @@ pub fn lex(file_name: &str, code: &str, debug: bool, bench: bool) -> Option<Vec<
     // проверяем на дебаг
     if debug {
         println!("tokens debug: ");
-        println!("{:?}", tokens);
+        println!("{tokens:?}");
     }
     // возвращаем
     Some(tokens)
@@ -164,7 +162,7 @@ pub fn parse(file_name: &str, tokens: Vec<Token>,
         // проверяем на дебаг
         if debug {
             println!("ast debug: ");
-            println!("{:?}", ast);
+            println!("{ast:?}");
         }
         // возвращаем
         return Some(ast)
@@ -221,7 +219,7 @@ unsafe fn run_chunk(chunk: Chunk, gc_threshold: usize, gc_debug: bool, bench: bo
     if let Err(e) = vm.run(&chunk, vm.globals) {
         error!(Error::new(
             Address::unknown(),
-            format!("control flow leak: {:?}", e),
+            format!("control flow leak: {e:?}"),
             "report this error to the developer.".to_string()
         ));
     }

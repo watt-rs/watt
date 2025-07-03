@@ -47,7 +47,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                                 None => {
                                     error!(Error::new(
                                         addr,
-                                        format!("invalid timestamp: {:?}", ok),
+                                        format!("invalid timestamp: {ok:?}"),
                                         "check your code.".to_string(),
                                     ))
                                 }
@@ -56,7 +56,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                         _ => {
                             error!(Error::new(
                                 addr,
-                                format!("invalid timestamp: {:?}", ok),
+                                format!("invalid timestamp: {ok:?}"),
                                 "check your code.".to_string(),
                             ))
                         }
@@ -66,9 +66,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                     return Err(flow)
                 }
             }
-            if should_push {
-
-            }
+            
             Ok(())
         }
     );
@@ -91,7 +89,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                                 None => {
                                     error!(Error::new(
                                         addr,
-                                        format!("invalid timestamp: {:?}", ok),
+                                        format!("invalid timestamp: {ok:?}"),
                                         "check your code.".to_string(),
                                     ))
                                 }
@@ -100,7 +98,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                         _ => {
                             error!(Error::new(
                                 addr,
-                                format!("invalid timestamp: {:?}", ok),
+                                format!("invalid timestamp: {ok:?}"),
                                 "check your code.".to_string(),
                             ))
                         }
@@ -110,9 +108,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                     return Err(flow)
                 }
             }
-            if should_push {
-
-            }
+            
             Ok(())
         }
     );
@@ -135,7 +131,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                                 None => {
                                     error!(Error::new(
                                         addr,
-                                        format!("invalid timestamp: {:?}", ok),
+                                        format!("invalid timestamp: {ok:?}"),
                                         "check your code.".to_string(),
                                     ))
                                 }
@@ -144,7 +140,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                         _ => {
                             error!(Error::new(
                                 addr,
-                                format!("invalid timestamp: {:?}", ok),
+                                format!("invalid timestamp: {ok:?}"),
                                 "check your code.".to_string(),
                             ))
                         }
@@ -154,9 +150,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                     return Err(flow)
                 }
             }
-            if should_push {
-
-            }
+            
             Ok(())
         }
     );
@@ -179,7 +173,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                                 None => {
                                     error!(Error::new(
                                         addr,
-                                        format!("invalid timestamp: {:?}", ok),
+                                        format!("invalid timestamp: {ok:?}"),
                                         "check your code.".to_string(),
                                     ))
                                 }
@@ -188,7 +182,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                         _ => {
                             error!(Error::new(
                                 addr,
-                                format!("invalid timestamp: {:?}", ok),
+                                format!("invalid timestamp: {ok:?}"),
                                 "check your code.".to_string(),
                             ))
                         }
@@ -198,9 +192,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                     return Err(flow)
                 }
             }
-            if should_push {
-
-            }
+            
             Ok(())
         }
     );
@@ -223,7 +215,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                                 None => {
                                     error!(Error::new(
                                         addr,
-                                        format!("invalid timestamp: {:?}", ok),
+                                        format!("invalid timestamp: {ok:?}"),
                                         "check your code.".to_string(),
                                     ))
                                 }
@@ -232,7 +224,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                         _ => {
                             error!(Error::new(
                                 addr,
-                                format!("invalid timestamp: {:?}", ok),
+                                format!("invalid timestamp: {ok:?}"),
                                 "check your code.".to_string(),
                             ))
                         }
@@ -242,9 +234,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                     return Err(flow)
                 }
             }
-            if should_push {
-
-            }
+            
             Ok(())
         }
     );
@@ -267,7 +257,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                                 None => {
                                     error!(Error::new(
                                         addr,
-                                        format!("invalid timestamp: {:?}", ok),
+                                        format!("invalid timestamp: {ok:?}"),
                                         "check your code.".to_string(),
                                     ))
                                 }
@@ -276,7 +266,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                         _ => {
                             error!(Error::new(
                                 addr,
-                                format!("invalid timestamp: {:?}", ok),
+                                format!("invalid timestamp: {ok:?}"),
                                 "check your code.".to_string(),
                             ))
                         }
@@ -286,9 +276,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                     return Err(flow)
                 }
             }
-            if should_push {
-
-            }
+            
             Ok(())
         }
     );
@@ -311,7 +299,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                                 None => {
                                     error!(Error::new(
                                         addr,
-                                        format!("invalid timestamp: {:?}", ok),
+                                        format!("invalid timestamp: {ok:?}"),
                                         "check your code.".to_string(),
                                     ))
                                 }
@@ -320,7 +308,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                         _ => {
                             error!(Error::new(
                                 addr,
-                                format!("invalid timestamp: {:?}", ok),
+                                format!("invalid timestamp: {ok:?}"),
                                 "check your code.".to_string(),
                             ))
                         }
@@ -330,9 +318,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                     return Err(flow)
                 }
             }
-            if should_push {
-
-            }
+            
             Ok(())
         }
     );

@@ -301,8 +301,8 @@ impl<'filename> Lexer<'filename> {
                                 self.filename.to_string(),
                                 self.line_text.clone(),
                             ),
-                            format!("unexpected char: {}", ch),
-                            format!("delete char: {}", ch),
+                            format!("unexpected char: {ch}"),
+                            format!("delete char: {ch}"),
                         ));
                     }
                 }
@@ -391,7 +391,7 @@ impl<'filename> Lexer<'filename> {
             }
         }
         let tk_type: TokenType = match self.keywords.get(&text) {
-            Some(tk_type) => tk_type.clone(),
+            Some(tk_type) => *tk_type,
             None => TokenType::Id,
         };
         Token {
@@ -417,8 +417,8 @@ impl<'filename> Lexer<'filename> {
     fn char_at(&self, offset: u128) -> char {
         let index = (self.current + offset) as usize;
         if self.code.len() > index {
-            let c = self.code[index];
-            c
+            
+            self.code[index]
         } else {
             '\0'
         }
@@ -469,13 +469,11 @@ impl<'filename> Lexer<'filename> {
     fn is_match(&mut self, ch: char) -> bool {
         if self.is_at_end() {
             false
+        } else if self.char_at(0) == ch {
+            self.advance();
+            true
         } else {
-            if self.char_at(0) == ch {
-                self.advance();
-                true
-            } else {
-                false
-            }
+            false
         }
     }
 
@@ -493,11 +491,11 @@ impl<'filename> Lexer<'filename> {
     }
 
     fn is_digit(&self, ch: char) -> bool {
-        ch >= '0' && ch <= '9'
+        ch.is_ascii_digit()
     }
 
     fn is_letter(&self, ch: char) -> bool {
-        (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch == '_')
+        ch.is_ascii_lowercase() || ch.is_ascii_uppercase() || (ch == '_')
     }
 
     fn is_id(&self, ch: char) -> bool {

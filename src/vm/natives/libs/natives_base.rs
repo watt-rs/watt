@@ -27,8 +27,8 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                     // ошибка
                     error!(Error::new(
                         addr.clone(),
-                        format!("{}", *error_string),
-                        format!("{}", *hint_string)
+                        (*error_string).to_string(),
+                        (*hint_string).to_string()
                     ));
                 }
                 else {

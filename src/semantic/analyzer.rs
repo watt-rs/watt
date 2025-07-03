@@ -128,7 +128,7 @@ impl Analyzer {
     // continue
     fn analyze_continue(&mut self, addr: &Address) {
         // проверяем
-        if self.analyze_stack.len() == 0 {
+        if self.analyze_stack.is_empty() {
             error!(Error::new(
                 addr.clone(),
                 "couldn't use continue without loop.".to_string(),
@@ -211,7 +211,7 @@ impl Analyzer {
     // анализ импорта
     fn analyze_import(&self, addr: &Address) {
         // проверка размера стека вложенности
-        if self.analyze_stack.len() > 0 {
+        if !self.analyze_stack.is_empty() {
             error!(Error::new(
                 addr.clone(),
                 "couldn't use import in any block.".to_string(),

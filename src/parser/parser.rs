@@ -1128,11 +1128,7 @@ impl<'filename> Parser<'filename> {
     fn check(&self, tk_type: TokenType) -> bool {
         match self.tokens.get(self.current as usize) {
             Some(tk) => {
-                if tk.tk_type == tk_type {
-                    true
-                } else {
-                    false
-                }
+                tk.tk_type == tk_type
             },
             None => {
                 false

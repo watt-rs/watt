@@ -51,7 +51,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             else {
                 error!(Error::new(
                     addr.clone(),
-                    format!("could not add element to {:?}, not a list", list_value),
+                    format!("could not add element to {list_value:?}, not a list"),
                     "check your code".to_string()
                 ));
             }
@@ -84,8 +84,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                     error!(Error::new(
                         addr.clone(),
                         format!(
-                            "could not set element to {:?}, index is {:?}, not an int",
-                            list_value, index_value
+                            "could not set element to {list_value:?}, index is {index_value:?}, not an int"
                         ),
                         "check your code".to_string()
                     ))
@@ -94,7 +93,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             else {
                 error!(Error::new(
                     addr.clone(),
-                    format!("could not set element in {:?}, not a list", list_value),
+                    format!("could not set element in {list_value:?}, not a list"),
                     "check your code".to_string()
                 ));
             }
@@ -138,8 +137,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                     error!(Error::new(
                         addr.clone(),
                         format!(
-                            "could not set element to {:?}, index is {:?}, not an int",
-                            list_value, index_value
+                            "could not set element to {list_value:?}, index is {index_value:?}, not an int"
                         ),
                         "check your code".to_string()
                     ))
@@ -148,7 +146,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             else {
                 error!(Error::new(
                     addr.clone(),
-                    format!("could not get element from {:?}, not a list", list_value),
+                    format!("could not get element from {list_value:?}, not a list"),
                     "check your code".to_string()
                 ));
             }
@@ -188,8 +186,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                     error!(Error::new(
                         addr.clone(),
                         format!(
-                            "could not set element to {:?}, index is {:?}, not an int",
-                            list_value, index_value
+                            "could not set element to {list_value:?}, index is {index_value:?}, not an int"
                         ),
                         "check your code".to_string()
                     ))
@@ -198,7 +195,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             else {
                 error!(Error::new(
                     addr.clone(),
-                    format!("could not get element from {:?}, not a list", list_value),
+                    format!("could not get element from {list_value:?}, not a list"),
                     "check your code".to_string()
                 ));
             }
@@ -228,7 +225,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             else {
                 error!(Error::new(
                     addr.clone(),
-                    format!("could not get element from {:?}, not a list", list_value),
+                    format!("could not get element from {list_value:?}, not a list"),
                     "check your code".to_string()
                 ));
             }
@@ -259,7 +256,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             else {
                 error!(Error::new(
                     addr.clone(),
-                    format!("could not get element index from {:?}, not a list", list_value),
+                    format!("could not get element index from {list_value:?}, not a list"),
                     "check your code".to_string()
                 ));
             }
@@ -289,7 +286,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             else {
                 error!(Error::new(
                     addr.clone(),
-                    format!("could not get len of {:?}, not a list", list_value),
+                    format!("could not get len of {list_value:?}, not a list"),
                     "check your code".to_string()
                 ));
             }
@@ -317,7 +314,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             else {
                 error!(Error::new(
                     addr.clone(),
-                    format!("could not use to_string for {:?}, not a list", list_value),
+                    format!("could not use to_string for {list_value:?}, not a list"),
                     "check your code".to_string()
                 ));
             }

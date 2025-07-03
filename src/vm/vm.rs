@@ -171,12 +171,12 @@ impl VM {
     // бинарная операция
     unsafe fn op_binary(&mut self, address: &Address, op: &str, table: *mut Table) -> Result<(), ControlFlow> {
         // два операнда
-        let operand_a = self.pop(&address)?;
-        let operand_b = self.pop(&address)?;
+        let operand_a = self.pop(address)?;
+        let operand_b = self.pop(address)?;
         // ошибка
         let error = Error::new(
             address.clone(),
-            format!("could not use '{}' with {:?} and {:?}", op, operand_a, operand_b),
+            format!("could not use '{op}' with {operand_a:?} and {operand_b:?}"),
             "check your code.".to_string()
         );
         // бинарная операция
@@ -217,7 +217,7 @@ impl VM {
                     _ => {
                         if let Value::String(_) = operand_b {
                             let string = Value::String(
-                                memory::alloc_value(format!("{:?}{:?}", operand_a, operand_b))
+                                memory::alloc_value(format!("{operand_a:?}{operand_b:?}"))
                             );
                             self.push(string);
                             self.gc_register(string, table);
@@ -288,7 +288,7 @@ impl VM {
                     _ => { error!(error); }
                 }
             }
-            _ => { panic!("operator = {} is not found.", op)}
+            _ => { panic!("operator = {op} is not found.")}
         }
         Ok(())
     }
@@ -296,7 +296,7 @@ impl VM {
     // негэйт
     unsafe fn op_negate(&mut self, address: &Address) -> Result<(), ControlFlow> {
         // операнд
-        let operand = self.pop(&address)?;
+        let operand = self.pop(address)?;
         // негэйт
         match operand {
             Value::Float(a) => {
@@ -309,7 +309,7 @@ impl VM {
                 // ошибка
                 error!(Error::new(
                     address.clone(),
-                    format!("could not use 'negate' for {:?}", operand),
+                    format!("could not use 'negate' for {operand:?}"),
                     "check your code.".to_string()
                 ));
             }
@@ -330,7 +330,7 @@ impl VM {
             _ => { 
                 error!(Error::new(
                     address.clone(),
-                    format!("could not use 'bang' for {:?}", operand),
+                    format!("could not use 'bang' for {operand:?}"),
                     "check your code.".to_string()
                 ));
             }
@@ -342,11 +342,11 @@ impl VM {
     // условие
     unsafe fn op_conditional(&mut self, address: &Address, op: &str) -> Result<(), ControlFlow> {
         // операнды
-        let operand_a = self.pop(&address)?;
-        let operand_b = self.pop(&address)?;
+        let operand_a = self.pop(address)?;
+        let operand_b = self.pop(address)?;
         let error = Error::new(
             address.clone(),
-            format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
+            format!("could not use '{op}' for {operand_a:?} and {operand_b:?}"),
             "check your code.".to_string()
         );
         // условие
@@ -481,11 +481,11 @@ impl VM {
                 self.push(operand_b);
                 self.push(operand_a);
                 // выполняем ==
-                self.op_conditional(&address, "==")?;
+                self.op_conditional(address, "==")?;
                 // инверсируем
-                self.op_bang(&address)?;
+                self.op_bang(address)?;
             }
-            _ => { panic!("operator {} is not found.", op)}
+            _ => { panic!("operator {op} is not found.")}
         }
         // успех
         Ok(())
@@ -494,11 +494,11 @@ impl VM {
     // логика
     unsafe fn op_logical(&mut self, address: &Address, op: &str) -> Result<(), ControlFlow> {
         // операнды
-        let operand_a = self.pop(&address)?;
-        let operand_b = self.pop(&address)?;
+        let operand_a = self.pop(address)?;
+        let operand_b = self.pop(address)?;
         let error = Error::new(
             address.clone(),
-            format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
+            format!("could not use '{op}' for {operand_a:?} and {operand_b:?}"),
             "check your code.".to_string()
         );
         // логика
@@ -525,7 +525,7 @@ impl VM {
                     _ => { error!(error); }
                 }
             }
-            _ => { panic!("operator = {} is not found.", op)}
+            _ => { panic!("operator = {op} is not found.")}
         }
         // успех
         Ok(())
@@ -544,20 +544,18 @@ impl VM {
         }
         // условие
         self.run(cond, table)?;
-        let bool = self.pop(&addr)?;
+        let bool = self.pop(addr)?;
         // проверка
         if let Value::Bool(b) = bool {
             if b {
                 self.run(body, table)?
-            } else {
-                if let Option::Some(else_if) = elif {
-                    self.run(&Chunk::of(*else_if.clone()), table)? // todo: chunk::of has high runtime cost!
-                }
+            } else if let Option::Some(else_if) = elif {
+                self.run(&Chunk::of(*else_if.clone()), table)? // todo: chunk::of has high runtime cost!
             }
         } else {
             error!(Error::new(
                 addr.clone(),
-                format!("condition provided not a bool: {:?}", bool),
+                format!("condition provided not a bool: {bool:?}"),
                 "condition should provide a bool.".to_string()
             ))
         }
@@ -578,7 +576,7 @@ impl VM {
         }
         // проверка
         loop {
-            if let Err(e) = self.run(&body, table) {
+            if let Err(e) = self.run(body, table) {
                 match e {
                     ControlFlow::Continue => {
                         continue;
@@ -613,7 +611,7 @@ impl VM {
             let closure = memory::alloc_value(Table::new());
             // копируем поля
             (*closure).fields = (*table).fields.clone();
-            (*closure).closure = (*table).closure.clone();
+            (*closure).closure = (*table).closure;
             // устанавливаем замыкание
             (*function).closure = closure;
         }
@@ -624,12 +622,12 @@ impl VM {
         // добавляем в gc
         self.gc_register(function_value, table);
         // дефайн функции
-        if let Err(e) = (*table).define(&addr, &symbol.name, function_value) {
+        if let Err(e) = (*table).define(addr, &symbol.name, function_value) {
             error!(e);
         }
         // дефайн функции по full-name
         if symbol.full_name.is_some() {
-            if let Err(e) = (*table).define(&addr, symbol.full_name.as_ref().unwrap(), function_value) {
+            if let Err(e) = (*table).define(addr, symbol.full_name.as_ref().unwrap(), function_value) {
                 error!(e);
             }
         }
@@ -656,7 +654,7 @@ impl VM {
             let closure = memory::alloc_value(Table::new());
             // копируем поля
             (*closure).fields = (*table).fields.clone();
-            (*closure).closure = (*table).closure.clone();
+            (*closure).closure = (*table).closure;
             // устанавливаем замыкание
             (*function).closure = closure;
         }
@@ -693,12 +691,12 @@ impl VM {
             )
         );
         // дефайн типа
-        if let Err(e) = (*self.types).define(&addr, &symbol.name, Value::Type(t)) {
+        if let Err(e) = (*self.types).define(addr, &symbol.name, Value::Type(t)) {
             error!(e);
         }
         // дефайн по full-name
         if symbol.full_name.is_some() {
-            if let Err(e) = (*self.types).define(&addr, symbol.full_name.as_ref().unwrap(), Value::Type(t)){
+            if let Err(e) = (*self.types).define(addr, symbol.full_name.as_ref().unwrap(), Value::Type(t)){
                 error!(e);
             }
         }
@@ -763,12 +761,12 @@ impl VM {
             )
         );
         // дефайн трейта
-        if let Err(e) = (*self.traits).define(&addr, &symbol.name, Value::Trait(_trait)) {
+        if let Err(e) = (*self.traits).define(addr, &symbol.name, Value::Trait(_trait)) {
             error!(e);
         }
         // дефайн по full-name
         if symbol.full_name.is_some() {
-            if let Err(e) = (*self.traits).define(&addr, symbol.full_name.as_ref().unwrap(), Value::Trait(_trait)) {
+            if let Err(e) = (*self.traits).define(addr, symbol.full_name.as_ref().unwrap(), Value::Trait(_trait)) {
                 error!(e);
             }
         }
@@ -784,25 +782,25 @@ impl VM {
             // исполняем значение
             self.run(value, table)?;
             // получаем значение
-            let operand = self.pop(&addr)?;
+            let operand = self.pop(addr)?;
             // дефайним
-            if let Err(e) = (*table).define(&addr, &name, operand) {
+            if let Err(e) = (*table).define(addr, name, operand) {
                 error!(e);
             }
         }
         // если есть
         else {
             // получаем значение
-            let previous = self.pop(&addr)?;
+            let previous = self.pop(addr)?;
             // првоеряем
             match previous {
                 Value::Instance(instance) => {
                     // исполняем значение
                     self.run(value, table)?;
                     // получаем значение
-                    let operand = self.pop(&addr)?;
+                    let operand = self.pop(addr)?;
                     // дефайним
-                    if let Err(e) = (*(*instance).fields).define(&addr, &name, operand) {
+                    if let Err(e) = (*(*instance).fields).define(addr, name, operand) {
                         error!(e);
                     }
                 }
@@ -810,16 +808,16 @@ impl VM {
                     // исполняем значение
                     self.run(value, table)?;
                     // получаем значение
-                    let operand = self.pop(&addr)?;
+                    let operand = self.pop(addr)?;
                     // дефайним
-                    if let Err(e) = (*(*unit).fields).define(&addr, &name, operand) {
+                    if let Err(e) = (*(*unit).fields).define(addr, name, operand) {
                         error!(e);
                     }
                 }
                 _ => {
                     error!(Error::new(
                         addr.clone(),
-                        format!("{:?} is not a container.", previous),
+                        format!("{previous:?} is not a container."),
                         "you can define variable for unit or instance.".to_string()
                     ))
                 }
@@ -837,7 +835,7 @@ impl VM {
             // исполняем значение
             self.run(value, table)?;
             // получаем значение
-            let operand = self.pop(&addr)?;
+            let operand = self.pop(addr)?;
             // дефайним
             if let Err(e) = (*table).set(addr.clone(), name, operand) {
                 error!(e);
@@ -846,16 +844,16 @@ impl VM {
         // если есть
         else {
             // получаем значение
-            let previous = self.pop(&addr)?;
+            let previous = self.pop(addr)?;
             // проверяем
             match previous {
                 Value::Instance(instance) => {
                     // исполняем значение
                     self.run(value, table)?;
                     // получаем значение
-                    let operand = self.pop(&addr)?;
+                    let operand = self.pop(addr)?;
                     // устанавливаем значение
-                    if let Err(e) = (*(*instance).fields).set_local(&addr, name, operand) {
+                    if let Err(e) = (*(*instance).fields).set_local(addr, name, operand) {
                         error!(e);
                     }
                 }
@@ -863,16 +861,16 @@ impl VM {
                     // исполняем значение
                     self.run(value, table)?;
                     // получаем значение
-                    let operand = self.pop(&addr)?;
+                    let operand = self.pop(addr)?;
                     // устанавливаем значение
-                    if let Err(e) = (*(*unit).fields).set_local(&addr, name, operand) {
+                    if let Err(e) = (*(*unit).fields).set_local(addr, name, operand) {
                         error!(e);
                     }
                 }
                 _ => {
                     error!(Error::new(
                         addr.clone(),
-                        format!("{:?} is not a container.", previous),
+                        format!("{previous:?} is not a container."),
                         "you can define variable for unit or instance.".to_string()
                     ))
                 }
@@ -889,12 +887,12 @@ impl VM {
         if !has_previous {
             // получаем значение
             let lookup_result;
-            if (*table).has(&name) {
-                lookup_result = (*table).lookup(&addr, &name);
-            } else if (*self.types).has(&name) {
-                lookup_result = (*self.types).find(&addr, &name);
+            if (*table).has(name) {
+                lookup_result = (*table).lookup(addr, name);
+            } else if (*self.types).has(name) {
+                lookup_result = (*self.types).find(addr, name);
             } else {
-                lookup_result = (*self.units).find(&addr, &name);
+                lookup_result = (*self.units).find(addr, name);
             }
             // проверяем на ошибку
             if let Err(e) = lookup_result {
@@ -910,12 +908,12 @@ impl VM {
         // если есть
         else {
             // получаем значение
-            let previous = self.pop(&addr)?;
+            let previous = self.pop(addr)?;
             // проверяем
             match previous {
                 Value::Instance(instance) => {
                     // получаем значение
-                    let lookup_result = (*(*instance).fields).find(&addr, &name);
+                    let lookup_result = (*(*instance).fields).find(addr, name);
                     // проверяем на ошибку
                     if let Err(e) = lookup_result {
                         // ошибка
@@ -929,7 +927,7 @@ impl VM {
                 }
                 Value::Unit(unit) => {
                     // получаем значение
-                    let lookup_result = (*(*unit).fields).find(&addr, &name);
+                    let lookup_result = (*(*unit).fields).find(addr, name);
                     // проверяем на ошибку
                     if let Err(e) = lookup_result {
                         // ошибка
@@ -944,7 +942,7 @@ impl VM {
                 _ => {
                     error!(Error::new(
                         addr.clone(),
-                        format!("{:?} is not a container.", previous),
+                        format!("{previous:?} is not a container."),
                         "you can load variable from unit or instance.".to_string()
                     ))
                 }
@@ -978,9 +976,9 @@ impl VM {
                 // проходимся по реверсированным параметрам
                 for param in params.iter().rev() {
                     // получаем аргумент из стека
-                    let operand = vm.pop(&addr)?;
+                    let operand = vm.pop(addr)?;
                     // устанавливаем в таблице
-                    if let Err(e) = (*call_table).define(&addr, &param, operand) {
+                    if let Err(e) = (*call_table).define(addr, param, operand) {
                         error!(e);
                     }
                 }
@@ -994,7 +992,7 @@ impl VM {
                         "invalid args amount: {} to call: {}. stack: {:?}",
                         passed_amount, name, vm.stack
                     ),
-                    format!("expected {} arguments.", params_amount)
+                    format!("expected {params_amount} arguments.")
                 ));
                 Ok(())
             }
@@ -1021,7 +1019,7 @@ impl VM {
                         "invalid args amount: {} to call: {}. stack: {:?}",
                         passed_amount, name, vm.stack
                     ),
-                    format!("expected {} arguments.", params_amount)
+                    format!("expected {params_amount} arguments.")
                 ));
                 Ok(())
             }
@@ -1046,7 +1044,7 @@ impl VM {
                     FnOwner::Unit(unit) => {
                         (*call_table).set_root((*unit).fields);
                         if let Err(e) = (*call_table).define(
-                            &addr, "self", Value::Unit(unit)
+                            addr, "self", Value::Unit(unit)
                         ) {
                             error!(e);
                         }
@@ -1054,7 +1052,7 @@ impl VM {
                     FnOwner::Instance(instance) => {
                         (*call_table).set_root((*instance).fields);
                         if let Err(e) = (*call_table).define(
-                            &addr, "self", Value::Instance(instance)
+                            addr, "self", Value::Instance(instance)
                         ) {
                             error!(e);
                         }
@@ -1106,7 +1104,7 @@ impl VM {
             // рут
             (*call_table).set_root(self.globals);
             // загрузка аргументов
-            load_arguments(self, &addr, &name, (*function).params_amount, args, table)?;
+            load_arguments(self, addr, name, (*function).params_amount, args, table)?;
             // вызов
             let native = (*function).function;
             native(self, addr.clone(), should_push, call_table)?;
@@ -1116,7 +1114,7 @@ impl VM {
         else {
             error!(Error::new(
                 addr.clone(),
-                format!("{} is not a fn.", name),
+                format!("{name} is not a fn."),
                 "you can call only fn-s.".to_string()
             ));
             Ok(())
@@ -1129,7 +1127,7 @@ impl VM {
         // если нет предыдущего
         if !has_previous {
             // получаем значение
-            let lookup_result = (*table).lookup(&addr, &name);
+            let lookup_result = (*table).lookup(addr, name);
             // проверяем на ошибку
             if let Err(e) = lookup_result {
                 // ошибка
@@ -1137,18 +1135,18 @@ impl VM {
             }
             else if let Ok(value) = lookup_result {
                 // вызываем
-                self.call(addr, &name, value, &args, table, should_push)?;
+                self.call(addr, name, value, args, table, should_push)?;
             }
         }
         // если есть
         else {
             // получаем значение
-            let previous = self.pop(&addr)?;
+            let previous = self.pop(addr)?;
             // проверяем
             match previous {
                 Value::Instance(instance) => {
                     // получаем значение
-                    let lookup_result = (*(*instance).fields).find(&addr, &name);
+                    let lookup_result = (*(*instance).fields).find(addr, name);
                     // проверяем на ошибку
                     if let Err(e) = lookup_result {
                         // ошибка
@@ -1156,12 +1154,12 @@ impl VM {
                     }
                     else if let Ok(value) = lookup_result {
                         // вызываем
-                        self.call(addr, &name, value, args, table, should_push)?;
+                        self.call(addr, name, value, args, table, should_push)?;
                     }
                 }
                 Value::Unit(unit) => {
                     // получаем значение
-                    let lookup_result = (*(*unit).fields).find(&addr, &name);
+                    let lookup_result = (*(*unit).fields).find(addr, name);
                     // проверяем на ошибку
                     if let Err(e) = lookup_result {
                         // ошибка
@@ -1169,13 +1167,13 @@ impl VM {
                     }
                     else if let Ok(value) = lookup_result {
                         // вызываем
-                        self.call(addr, &name, value, args, table, should_push)?;
+                        self.call(addr, name, value, args, table, should_push)?;
                     }
                 }
                 _ => {
                     error!(Error::new(
                         addr.clone(),
-                        format!("couldn't call {} from {:?}.", name, previous),
+                        format!("couldn't call {name} from {previous:?}."),
                         "you can call fn from unit, instance or foreign.".to_string()
                     ))
                 }
@@ -1188,7 +1186,7 @@ impl VM {
     // дублирование значения в стеке
     unsafe fn op_duplicate(&mut self, addr: &Address) -> Result<(), ControlFlow> {
         // операнд
-        let operand = self.pop(&addr)?;
+        let operand = self.pop(addr)?;
         // пушим
         self.push(operand);
         self.push(operand);
@@ -1203,7 +1201,7 @@ impl VM {
         // получение трейта
         unsafe fn get_trait(traits: *mut Table, addr: &Address, trait_name: String) -> Option<*mut Trait> {
             // трейт
-            let trait_result = (*traits).find(&addr, &trait_name);
+            let trait_result = (*traits).find(addr, &trait_name);
             // проверяем результат
             if let Err(e) = trait_result {
                 error!(e);
@@ -1227,7 +1225,7 @@ impl VM {
         // получение имплементации
         unsafe fn get_impl(table: *mut Table, addr: &Address, impl_name: String) -> Option<*mut Function> {
             // трейт
-            let fn_result = (*table).lookup(&addr, &impl_name);
+            let fn_result = (*table).lookup(addr, &impl_name);
             // проверяем результат
             if let Err(e) = fn_result {
                 error!(e);
@@ -1251,7 +1249,7 @@ impl VM {
         // проверка
         for trait_name in (*instance_type).impls.clone() {
             // получаем трейт
-            let _trait = get_trait(self.traits, &addr, trait_name.clone()).unwrap();
+            let _trait = get_trait(self.traits, addr, trait_name.clone()).unwrap();
             // проверяем
             for function in (*_trait).functions.clone() {
                 // проверяем наличие имплементации
@@ -1299,7 +1297,7 @@ impl VM {
                     if function.default.is_some() {
                         // если есть
                         if let Err(e) = (*(*instance).fields).define(
-                            &addr,
+                            addr,
                             &function.name,
                             Value::Fn(memory::alloc_value(
                                 function.default.unwrap(),
@@ -1348,9 +1346,9 @@ impl VM {
                 // проходимся по реверсированным параметрам
                 for param in params.iter().rev() {
                     // получаем аргумент из стека
-                    let operand = vm.pop(&addr)?;
+                    let operand = vm.pop(addr)?;
                     // устанавливаем в таблице
-                    if let Err(e) = (*fields_table).define(&addr, &param, operand) {
+                    if let Err(e) = (*fields_table).define(addr, param, operand) {
                         error!(e);
                     }
                 }
@@ -1358,14 +1356,14 @@ impl VM {
             } else {
                 error!(Error::new(
                     addr.clone(),
-                    format!("invalid args amount: {} to create instance of {}.", passed_amount, name),
-                    format!("expected {} arguments.", params_amount)
+                    format!("invalid args amount: {passed_amount} to create instance of {name}."),
+                    format!("expected {params_amount} arguments.")
                 ));
                 Ok(())
             }
         }
         // ищем тип
-        let lookup_result = (*self.types).lookup(&addr, &name);
+        let lookup_result = (*self.types).lookup(addr, name);
         // проверяем, найден ли
         if let Ok(value) = lookup_result {
             // проверяем тип ли
@@ -1385,7 +1383,7 @@ impl VM {
                     // конструктор
                     pass_constructor(
                         self,
-                        &addr,
+                        addr,
                         name,
                         (*t).constructor.len(),
                         args,
@@ -1451,7 +1449,7 @@ impl VM {
     unsafe fn op_return(&mut self, addr: &Address, value: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         // выполняем
         self.run(value, table)?;
-        let value = self.pop(&addr)?;
+        let value = self.pop(addr)?;
         // возвращаем
         Err(ControlFlow::Return(value))
     }
@@ -1459,7 +1457,7 @@ impl VM {
     // нативная функция
     unsafe fn op_native(&mut self, addr: &Address, name: &str) -> Result<(), ControlFlow> {
         // лукап
-        let result = (*self.natives).find(&addr, &name);
+        let result = (*self.natives).find(addr, name);
         // если нашлась нативная функция
         if let Ok(value) = result {
             self.push(value);
@@ -1477,17 +1475,17 @@ impl VM {
         // выполняем
         self.run(value, table)?;
         // значение
-        let value = self.pop(&addr)?;
+        let value = self.pop(addr)?;
         // вызов is_ok
         unsafe fn call_is_ok(vm: &mut VM, addr: &Address, instance: *mut Instance) -> Result<bool, ControlFlow> {
             // пробуем получить is_ok
-            let lookup_result = (*(*instance).fields).find(&addr, "is_ok");
+            let lookup_result = (*(*instance).fields).find(addr, "is_ok");
             // если успешно
             if let Ok(callable) = lookup_result {
                 // проверяем, функция ли
                 if let Value::Fn(function) = callable {
                     // проверяем количество аргументов
-                    if (*function).params.len() != 0 {
+                    if !(*function).params.is_empty() {
                         error!(Error::new(
                             addr.clone(),
                             format!("is_ok takes {} params", (*function).params.len()),
@@ -1507,13 +1505,13 @@ impl VM {
                 }
                 // вызываем
                 vm.call(
-                    &addr, "is_ok", callable,
+                    addr, "is_ok", callable,
                     &Chunk::new(vec![]),
                     memory::alloc_value(Table::new()),
                     true
                 )?;
                 // получаем значение
-                let is_ok = vm.pop(&addr)?;
+                let is_ok = vm.pop(addr)?;
                 // проверяем, бул ли
                 return if let Value::Bool(boolean) = is_ok {
                     Ok(boolean)
@@ -1521,7 +1519,7 @@ impl VM {
                     error!(Error::new(
                         addr.clone(),
                         "is_ok should return a bool.".to_string(),
-                        format!("it returned: {:?}", is_ok)
+                        format!("it returned: {is_ok:?}")
                     ));
                     Ok(false)
                 }
@@ -1537,14 +1535,14 @@ impl VM {
         // вызов unwrap
         unsafe fn call_unwrap(vm: &mut VM, addr: &Address, instance: *mut Instance) -> Result<(), ControlFlow> {
             // пробуем получить is_ok
-            let lookup_result = (*(*instance).fields).find(&addr, "unwrap");
+            let lookup_result = (*(*instance).fields).find(addr, "unwrap");
             // если успешно
             match lookup_result {
                 Ok(callable) => {
                     // проверяем, функция ли
                     if let Value::Fn(function) = callable {
                         // проверяем количество аргументов
-                        if (*function).params.len() != 0 {
+                        if !(*function).params.is_empty() {
                             error!(Error::new(
                             addr.clone(),
                             format!("unwrap takes {} params", (*function).params.len()),
@@ -1564,7 +1562,7 @@ impl VM {
                     }
                     // вызываем
                     vm.call(
-                        &addr, "unwrap", callable,
+                        addr, "unwrap", callable,
                         &Chunk::new(vec![]),
                         memory::alloc_value(Table::new()),
                         true
@@ -1585,7 +1583,7 @@ impl VM {
             // вызов is_ok
             let is_ok = call_is_ok(
                 self,
-                &addr,
+                addr,
                 instance,
             )?;
             // проверяем is_ok
@@ -1610,7 +1608,7 @@ impl VM {
         else {
             error!(Error::new(
                 addr.clone(),
-                format!("could not use error propagation with {:?}.", value),
+                format!("could not use error propagation with {value:?}."),
                 "requires instance of type that impls .is_ok() and .unwrap() fn-s.".to_string()
             ))
         }
@@ -1624,11 +1622,11 @@ impl VM {
         // выполняем
         self.run(value, table)?;
         // значение
-        let value = self.pop(&addr)?;
+        let value = self.pop(addr)?;
         // проверка, экземпляр ли класс значение
         if let Value::Instance(instance) = value {
             // ищем трейт
-            let lookup_result = (*self.traits).lookup(&addr, &trait_name);
+            let lookup_result = (*self.traits).lookup(addr, trait_name);
             // если нашли
             if let Ok(trait_value) = lookup_result {
                 // проверяем, трейт ли
@@ -1669,7 +1667,7 @@ impl VM {
         else {
             error!(Error::new(
                 addr.clone(),
-                format!("could not use impls with {:?}.", value),
+                format!("could not use impls with {value:?}."),
                 "impls op requires instance.".to_string()
             ))
         }
@@ -1692,22 +1690,22 @@ impl VM {
                     self.op_push(value.clone(), table)?;
                 }
                 Opcode::Pop { addr } => {
-                    self.pop(&addr)?;
+                    self.pop(addr)?;
                 }
                 Opcode::Bin { addr, op } => {
-                    self.op_binary(addr, &op, table)?;
+                    self.op_binary(addr, op, table)?;
                 }
                 Opcode::Neg { addr } => {
                     self.op_negate(addr)?;
                 }
                 Opcode::Bang { addr } => {
-                    self.op_bang(&addr)?;
+                    self.op_bang(addr)?;
                 }
                 Opcode::Cond { addr, op } => {
-                    self.op_conditional(&addr, &op)?;
+                    self.op_conditional(addr, op)?;
                 }
                 Opcode::Logic { addr, op } => {
-                    self.op_logical(addr, &op)?
+                    self.op_logical(addr, op)?
                 }
                 Opcode::If { addr, cond, body, elif } => {
                     self.op_if(addr, cond, body, elif, table)?;
