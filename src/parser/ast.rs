@@ -65,11 +65,13 @@ pub enum Node {
         full_name: Option<Token>,
         params: Vec<Token>,
         body: Box<Node>,
+        make_closure: bool
     },
     AnFnDeclaration {
-        location: Token, // .
+        location: Token,
         params: Vec<Token>,
         body: Box<Node>,
+        make_closure: bool
     },
     Break {
         location: Token,
@@ -97,7 +99,7 @@ pub enum Node {
     },
     Map {
         location: Token,
-        values: Vec<(Box<Node>, Box<Node>)>,
+        values: Vec<(Node, Node)>,
     },
     Match {
         location: Token,

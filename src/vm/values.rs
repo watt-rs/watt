@@ -159,22 +159,20 @@ impl Drop for Function {
 pub struct Native {
     pub name: Symbol,
     pub params_amount: usize,
-    pub function: fn(&mut VM,Address,bool,*mut Table,Option<FnOwner>) -> Result<(), ControlFlow>,
-    pub owner: Option<FnOwner>,
+    pub function: fn(&mut VM,Address,bool,*mut Table) -> Result<(), ControlFlow>,
 }
 impl Native {
     // новый
     pub fn new(
         name: Symbol,
         params_amount: usize,
-        function: fn(&mut VM,Address,bool,*mut Table,Option<FnOwner>
+        function: fn(&mut VM,Address,bool,*mut Table
         ) -> Result<(), ControlFlow>) -> Native {
         // возвращаем
         Native {
             name,
             params_amount,
             function,
-            owner: None,
         }
     }
 }
@@ -193,6 +191,7 @@ pub enum Value {
     Unit(*mut Unit),
     Trait(*mut Trait),
     List(*mut Vec<Value>),
+    Any(*mut dyn std::any::Any),
     Null
 }
 
@@ -252,6 +251,9 @@ impl Debug for Value {
                 Value::List(l) => {
                     write!(f, "List{:?}", *l)
                 }
+                Value::Any(a) => {
+                    write!(f, "Any{:?}", *a)
+                }
             }
         }
     }
@@ -294,6 +296,9 @@ impl PartialEq for Value {
             (Value::List(a), Value::List(b)) => unsafe {
                 a == b
             }
+            (Value::Any(a), Value::Any(b)) => unsafe {
+                std::ptr::addr_eq(a, b)
+            }
             _ => false
         }
     }
@@ -334,6 +339,10 @@ impl Hash for Value {
             }
             Value::List(a) => {
                 (a as usize).hash(state);
+            }
+            Value::Any(a) => {
+                let any_ptr = a as *const () as usize;
+                any_ptr.hash(state);
             }
             Value::Null => {
                 0.hash(state);

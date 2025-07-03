@@ -1,0 +1,40 @@
+/*
+ Timestamp
+*/
+type Timestamp(raw) {
+    // нативные функции
+    native __mills -> 'timestamp@mills'
+    native __month -> 'timestamp@month'
+    native __year -> 'timestamp@year'
+    native __day -> 'timestamp@day'
+    native __hour -> 'timestamp@hour'
+    native __minute -> 'timestamp@minute'
+    native __second -> 'timestamp@second'
+
+    // в строку
+    fun to_string() {
+        return __day(raw) + '.' + __month(raw) + '.' + __year(raw) + ' ' +
+               __hour(raw) + ':' + __minute(raw) + ':' + __second(raw)
+    }
+}
+
+/*
+ Библиотека time.
+ | имплементация now, from, format, at
+ | находится в
+ | > crate::vm::natives::libs::natives_time
+ */
+unit time {
+    /*
+     Текущее время
+    */
+    native __now -> 'time@now'
+
+    /*
+     Получение текущего времени
+    */
+    fun now {
+        raw := self.__now()
+        return new Timestamp(raw)
+    }
+}

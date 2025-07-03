@@ -11,7 +11,6 @@ Built entirely in pure Rust, it offers great performance and a smooth developmen
 Don't be shy, if you can help! We're glad to see your contributions. 
 
 ### Examples
-
 Simple example is here. 🍹
 
 ```geko
@@ -43,3 +42,10 @@ tractor.print()
 tractor.fill(70)
 tractor.print()
 ```
+
+
+### ToDo ⌛
+- std libraries: math, graphics, http, etc...
+- match expr/stmt.
+- map expr.
+- anonymous fn-s.

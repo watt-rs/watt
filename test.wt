@@ -82,14 +82,27 @@ import 'std.io'
 list := [1,3,5,7,'hello']
 list.add(9)
 */
+/*
+import 'std.errors'
 import 'std.io'
-fun factorial(n) {
-    f := 1
-    r := 1
-    while f <= n {
-        r *= f
-        f += 1
-    }
-    return r
+
+fun a {
+    return result.ok(10)
 }
-io.println(factorial(15))
+
+fun b {
+    return result.err('error found')
+}
+
+fun c {
+    a_val := a()?
+    io.println('a: ' + a_val)
+    b_val := b()?
+    io.println('b: ' + b_val)
+}
+
+io.println(c().unwrap_err())
+*/
+import 'std.time'
+import 'std.io'
+io.println(time.now().to_string())

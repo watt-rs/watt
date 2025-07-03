@@ -1,0 +1,32 @@
+/*
+ Библиотека convert.
+ | имплементация to_int, to_float, to_long,
+ | to_string, to_bool
+ | находится в
+ | > crate::vm::natives::libs::natives_convert
+ */
+unit convert {
+    /*
+     Конвертирует
+     значение в int
+    */
+    native to_int -> 'convert@to_int'
+
+    /*
+     Конвертирует
+     значение в float
+    */
+    native to_float -> 'convert@to_float'
+
+    /*
+     Конвертирует
+     значение в string
+    */
+    native to_string -> 'convert@to_string'
+
+    /*
+     Конвертирует
+     значение в bool
+    */
+    native to_bool -> 'convert@to_bool'
+}
