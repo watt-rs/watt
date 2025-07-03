@@ -140,10 +140,10 @@ pub fn parse(file_name: &str, tokens: Vec<Token>,
     // начальное время
     let start = std::time::Instant::now();
     // удаление расширения файла
-    fn delete_extension(full_name: String) -> String {
+    fn delete_extension(full_name: &str) -> &str {
         match full_name.rfind(".") {
             Some(index) => {
-                full_name[..index].to_string()
+                &full_name[..index]
             }
             None => {
                 full_name
@@ -154,7 +154,7 @@ pub fn parse(file_name: &str, tokens: Vec<Token>,
     let raw_ast = Parser::new(
         tokens,
         file_name,
-        delete_extension(full_name_prefix.as_ref().map(String::as_str).unwrap_or(file_name).to_string())
+        delete_extension(full_name_prefix.as_ref().map(String::as_str).unwrap_or(file_name))
     ).parse();
     // конечное время
     let duration = start.elapsed().as_nanos();

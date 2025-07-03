@@ -1,5 +1,5 @@
 ﻿// импорты
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
 use crate::lexer::address::Address;
 use crate::vm::bytecode::Chunk;
@@ -195,28 +195,12 @@ pub enum Value {
     Null
 }
 
-impl Display for Value {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        unsafe {
-            match self {
-                Value::String(s) => {
-                    write!(f, "{}", **s)
-                },
-                value => {
-                    // Все остальные типы выводим как объекты.
-                    write!(f, "{:?}", value)
-                }
-            }
-        }
-    }
-}
-
 impl Debug for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         unsafe {
             match self {
                 Value::String(s) => {
-                    write!(f, "\"{}\"", **s)
+                    write!(f, "{}", **s)
                 },
                 Value::Instance(i) => {
                     write!(f, "Instance{:?}", *i)

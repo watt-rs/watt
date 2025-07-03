@@ -7,17 +7,17 @@ use crate::parser::ast::*;
 use crate::error;
 
 // парсер
-pub struct Parser<'filename> {
+pub struct Parser<'filename, 'prefix> {
     tokens: Vec<Token>,
     current: u128,
     filename: &'filename str,
-    full_name_prefix: String,
+    full_name_prefix: &'prefix str,
 }
 // имплементация
 #[allow(unused_qualifications)]
-impl<'filename> Parser<'filename> {
+impl<'filename, 'prefix> Parser<'filename, 'prefix> {
     // новый
-    pub fn new(tokens: Vec<Token>, filename: &'filename str, full_name_prefix: String) -> Parser<'filename> {
+    pub fn new(tokens: Vec<Token>, filename: &'filename str, full_name_prefix: &'prefix str) -> Self {
         Parser { tokens, current: 0, filename, full_name_prefix }
     }
     
