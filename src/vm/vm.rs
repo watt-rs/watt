@@ -598,13 +598,13 @@ impl VM {
 
     // дефайн функции
     unsafe fn op_define_fn(&mut self, addr: &Address, symbol: &Symbol, body: &Chunk,
-                        params: &Vec<String>, make_closure: bool, table: *mut Table) -> Result<(), ControlFlow> {
+                        params: &[String], make_closure: bool, table: *mut Table) -> Result<(), ControlFlow> {
         // создаём функцию
         let function = memory::alloc_value(
             Function::new(
                 symbol.clone(),
                 memory::alloc_value(body.clone()),
-                params.clone()
+                params.to_owned()
             )
         );
         // если надо создать замыкание
@@ -640,14 +640,14 @@ impl VM {
     }
 
     // создание анонимной функции и пуш её в стек
-    unsafe fn op_anonymous_fn(&mut self, body: &Chunk, params: &Vec<String>,
+    unsafe fn op_anonymous_fn(&mut self, body: &Chunk, params: &[String],
                               make_closure: bool, table: *mut Table) -> Result<(), ControlFlow> {
         // создаём функцию
         let function = memory::alloc_value(
             Function::new(
                 Symbol::by_name("$lambda".to_string()),
                 memory::alloc_value(body.clone()),
-                params.clone()
+                params.to_owned()
             )
         );
         // если надо создать замыкание
@@ -735,12 +735,12 @@ impl VM {
         // бинды
         self.bind_functions((*unit).fields, FnOwner::Unit(unit));
         // дефайн юнита
-        if let Err(e) = (*self.units).define(&addr, &symbol.name, unit_value) {
+        if let Err(e) = (*self.units).define(addr, &symbol.name, unit_value) {
             error!(e);
         }
         // дефайн по full-name
         if symbol.full_name.is_some() {
-            if let Err(e) = (*self.units).define(&addr, symbol.full_name.as_ref().unwrap(), unit_value) {
+            if let Err(e) = (*self.units).define(addr, symbol.full_name.as_ref().unwrap(), unit_value) {
                 error!(e);
             }
         }
@@ -753,13 +753,13 @@ impl VM {
     }
 
     // дефайн тейта
-    unsafe fn op_define_trait(&mut self, addr: &Address, symbol: &Symbol, functions: &Vec<TraitFn>)
+    unsafe fn op_define_trait(&mut self, addr: &Address, symbol: &Symbol, functions: &[TraitFn])
     -> Result<(), ControlFlow> {
         // создаём трейт
         let _trait = memory::alloc_value(
             Trait::new(
                 symbol.clone(),
-                functions.clone()
+                functions.to_owned()
             )
         );
         // дефайн трейта
