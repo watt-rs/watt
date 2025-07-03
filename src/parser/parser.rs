@@ -568,15 +568,14 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
 
         Ok(left)
     }
-
-    // условие
-    fn conditional_expr(&mut self) -> Result<Node, Error> {
+    
+    // сравнение >=, <=, ==, !=
+    fn compare_expr(&mut self) -> Result<Node, Error> {
         let mut left = self.impls_expr()?;
 
-        // <, >, <=, >=, ==, !=
+        // <, >, <=, >=
         if self.check(TokenType::Greater) || self.check(TokenType::Less)
-            || self.check(TokenType::LessEq) || self.check(TokenType::GreaterEq)
-            || self.check(TokenType::Eq) || self.check(TokenType::NotEq) {
+            || self.check(TokenType::LessEq) || self.check(TokenType::GreaterEq) {
             let op = self.peek()?.clone();
             self.current += 1;
             let right = self.impls_expr()?;
@@ -589,10 +588,29 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
 
         Ok(left)
     }
+    
+    // проверка на равность ==, !=
+    fn equality_expr(&mut self) -> Result<Node, Error> {
+        let mut left = self.compare_expr()?;
+
+        // ==, !=
+        if self.check(TokenType::Eq) || self.check(TokenType::NotEq) {
+            let op = self.peek()?.clone();
+            self.current += 1;
+            let right = self.compare_expr()?;
+            left = Node::Cond {
+                left: Box::new(left),
+                right: Box::new(right),
+                op
+            };
+        }
+
+        Ok(left)
+    }
 
     // логическое выражение
     fn logical_expr(&mut self) -> Result<Node, Error> {
-        let mut left = self.conditional_expr()?;
+        let mut left = self.equality_expr()?;
 
         while self.check(TokenType::And) ||
             self.check(TokenType::Or) {
@@ -600,7 +618,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
 
             self.current += 1;
 
-            let right = self.conditional_expr()?;
+            let right = self.equality_expr()?;
 
             left = Node::Logical {
                 left: Box::new(left),

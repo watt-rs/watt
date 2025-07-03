@@ -105,4 +105,4 @@ io.println(c().unwrap_err())
 */
 import 'std.time'
 import 'std.io'
-io.println(time.now().to_string())
+io.println(3 > 5 == true)
