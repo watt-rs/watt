@@ -63,7 +63,7 @@ pub enum Opcode {
         addr: Address,
         cond: Chunk,
         body: Chunk,
-        elif: Option<Box<Opcode>>,
+        elif: Option<Chunk>,
     },
     Loop {
         addr: Address,

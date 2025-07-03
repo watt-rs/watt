@@ -298,11 +298,11 @@ impl<'visitor> CompileVisitor<'visitor> {
         self.visit_node(body);
         let body_chunk = self.pop_chunk();
         // компиляция elif
-        let mut elseif: Option<Box<Opcode>> = None;
+        let mut elseif: Option<Chunk> = None;
         // если есть
         if let Some(n) = elif {
             self.visit_node(n);
-            elseif = Some(Box::new(self.pop_instr()));
+            elseif = Some(Chunk::of(self.pop_instr()));
         }
         // возвращаем if
         self.push_instr(Opcode::If {
@@ -333,7 +333,7 @@ impl<'visitor> CompileVisitor<'visitor> {
             addr: location.address.clone(),
             cond: Chunk::new(logical_chunk),
             body: Chunk::new(body_chunk),
-            elif: Some(Box::new(Opcode::If {
+            elif: Some(Chunk::of(Opcode::If {
                 addr: location.address.clone(),
                 cond: Chunk::of(Opcode::Push{ addr: location.address.clone(), value: OpcodeValue::Bool(true) }),
                 body: Chunk::of(Opcode::EndLoop { addr: location.address.clone(), current_iteration: false }),
@@ -612,7 +612,7 @@ impl<'visitor> CompileVisitor<'visitor> {
                 }
             ]),
             body: Chunk::new(body_chunk),
-            elif: Some(Box::new(Opcode::EndLoop {
+            elif: Some(Chunk::of(Opcode::EndLoop {
                 addr: variable_name.address.clone(),
                 current_iteration: false
             })),

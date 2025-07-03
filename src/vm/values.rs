@@ -31,7 +31,7 @@ impl Symbol {
 }
 
 // тип
-#[derive(Clone, Debug, Eq, PartialEq)] // todo check eq, partialeq
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Type {
     pub name: Symbol,
     pub constructor: Vec<String>,

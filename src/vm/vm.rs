@@ -533,7 +533,7 @@ impl VM {
 
     // иф
     unsafe fn op_if(&mut self, addr: &Address, cond: &Chunk, body: &Chunk,
-                    elif: &Option<Box<Opcode>>, root: *mut Table) -> Result<(), ControlFlow> {
+                    elif: &Option<Chunk>, root: *mut Table) -> Result<(), ControlFlow> {
         // таблица
         let table = memory::alloc_value(Table::new());
         (*table).set_root(root);
@@ -551,7 +551,7 @@ impl VM {
                 self.run(body, table)?
             } else {
                 if let Option::Some(else_if) = elif {
-                    self.run(&Chunk::of(*else_if.clone()), table)? // todo: chunk::of has high runtime cost!
+                    self.run(else_if, table)?
                 }
             }
         } else {
