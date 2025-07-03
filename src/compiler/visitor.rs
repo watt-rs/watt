@@ -11,14 +11,14 @@ use crate::errors::errors::{Error};
 use crate::resolver::resolver::ImportsResolver;
 
 // визитор (компилятор)
-pub struct CompileVisitor {
+pub struct CompileVisitor<'resolver> {
     opcodes: VecDeque<Vec<Opcode>>,
-    resolver: ImportsResolver,
+    resolver: ImportsResolver<'resolver, 'resolver>,
 }
 
 // имплементация визитора
 #[allow(unused_variables)]
-impl CompileVisitor {
+impl CompileVisitor<'_> {
     // новый визитор
     pub fn new() -> Self {
         CompileVisitor {

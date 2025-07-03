@@ -7,25 +7,25 @@ use crate::lexer::address::Address;
 use crate::parser::ast::Node;
 
 // ресолвер импортов
-pub struct ImportsResolver {
+pub struct ImportsResolver<'libname, 'libpath> {
     imported: Vec<String>,
-    libraries: HashMap<String, String>,
+    libraries: HashMap<&'libname str, &'libpath str>,
     builtins: Vec<String>
 }
 // имплементация
 #[allow(unused_qualifications)]
-impl ImportsResolver {
+impl<'ll, 'lp> ImportsResolver<'ll, 'lp> {
     // новый
-    pub fn new() -> ImportsResolver {
-        ImportsResolver {
+    pub fn new() -> Self {
+        Self {
             imported: vec![],
             libraries: HashMap::from([
-                ("std.io".to_string(), "./libs/std/std_io.wt".to_string()),
-                ("std.gc".to_string(), "./libs/std/std_gc.wt".to_string()),
-                ("std.errors".to_string(), "./libs/std/std_errors.wt".to_string()),
-                ("std.convert".to_string(), "./libs/std/std_convert.wt".to_string()),
-                ("std.typeof".to_string(), "./libs/std/std_typeof.wt".to_string()),
-                ("std.time".to_string(), "./libs/std/std_time.wt".to_string()),
+                ("std.io", "./libs/std/std_io.wt"),
+                ("std.gc", "./libs/std/std_gc.wt"),
+                ("std.errors", "./libs/std/std_errors.wt"),
+                ("std.convert", "./libs/std/std_convert.wt"),
+                ("std.typeof", "./libs/std/std_typeof.wt"),
+                ("std.time", "./libs/std/std_time.wt"),
             ]),
             builtins: vec!["./libs/base.wt".to_string()],
         }
@@ -60,8 +60,8 @@ impl ImportsResolver {
         import: &Import
     ) -> Node {
         // ищем импорт
-        let file: &str = if self.libraries.contains_key(&import.name) {
-            self.libraries.get(&import.name).unwrap()
+        let file: &str = if self.libraries.contains_key(import.name.as_str()) {
+            self.libraries.get(import.name.as_str()).unwrap()
         } else {
             &import.name
         };
