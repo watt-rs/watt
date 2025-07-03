@@ -81,6 +81,9 @@ impl GC {
                 }
                 self.marked.insert(value);
             }
+            Value::Any(_) => {
+                self.marked.insert(value);
+            }
             _ => {}
         }
     }
@@ -138,7 +141,8 @@ impl GC {
         match value {
             Value::Instance(_) | Value::Fn(_) |
             Value::Native(_) | Value::String(_) |
-            Value::Unit(_) | Value::List(_) => {
+            Value::Unit(_) | Value::List(_) |
+            Value::Any(_) => {
                 if !self.objects.contains(&value) {
                     self.objects.insert(value);
                 }
@@ -168,6 +172,9 @@ impl GC {
             Value::List(l) => {
                 if !l.is_null() { memory::free_value(l); }
             }
+            Value::Any(a) => {
+                if !a.is_null() { memory::free_value(a); }
+            }
             _ => {
                 println!("unexpected gc value = {:?}.", value);
             }
@@ -177,7 +184,7 @@ impl GC {
     pub fn push_guard(&mut self, value: Value) {
         self.guard.push(value);
     }
-    // поп значения из защиту
+    // поп значения из защиты
     pub fn pop_guard(&mut self) {
         self.guard.pop();
     }
@@ -192,6 +199,8 @@ impl GC {
         };
         // > units
         self.mark_table(vm.units);
+        // > natives
+        self.mark_table(vm.natives);
         // > table
         self.mark_table(table);
         // > guard

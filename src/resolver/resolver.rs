@@ -23,6 +23,9 @@ impl ImportsResolver {
                 ("std.io".to_string(), "./libs/std/std_io.wt".to_string()),
                 ("std.gc".to_string(), "./libs/std/std_gc.wt".to_string()),
                 ("std.errors".to_string(), "./libs/std/std_errors.wt".to_string()),
+                ("std.convert".to_string(), "./libs/std/std_convert.wt".to_string()),
+                ("std.typeof".to_string(), "./libs/std/std_typeof.wt".to_string()),
+                ("std.time".to_string(), "./libs/std/std_time.wt".to_string()),
             ]),
             builtins: vec!["./libs/base.wt".to_string()],
         }

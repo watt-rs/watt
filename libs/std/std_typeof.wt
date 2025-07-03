@@ -1,0 +1,16 @@
+/*
+ Библиотека typeof.
+ | имплементация of, f_of,
+ | находится в
+ | > crate::vm::natives::libs::natives_typeof
+ */
+
+/*
+ Возвращает строку с названием типа значения.
+*/
+native typeof -> 'typeof@of'
+
+/*
+ Возвращает строку с полным названием типа значения.
+*/
+native full_typeof -> 'typeof@fof'

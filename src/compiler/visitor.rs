@@ -141,8 +141,13 @@ impl CompileVisitor {
             } => {
                 self.visit_fn_decl(name, full_name, params, body, *make_closure);
             }
-            Node::AnFnDeclaration { params, body, .. } => {
-                self.visit_an_fn_decl(params, body);
+            Node::AnFnDeclaration {
+                location,
+                params,
+                body,
+                make_closure
+            } => {
+                self.visit_an_fn_decl(location, params, body, *make_closure);
             }
             Node::Break { location } => {
                 self.visit_break(location);
@@ -409,7 +414,6 @@ impl CompileVisitor {
     ) {
         // полное имя
         let full_name = full_name.as_ref().map(|n| n.value.clone());
-        
         // параметры
         let mut params = Vec::new();
         for param in parameters {
@@ -431,15 +435,9 @@ impl CompileVisitor {
             name: name.value.clone(),
             full_name,
             params,
+            make_closure,
             body: Chunk::new(chunk),
         });
-        // замыкание
-        if make_closure {
-            self.push_instr(Opcode::Closure {
-                addr: name.address.clone(),
-                name: name.value.clone()
-            });
-        }
     }
 
     // визит break
@@ -643,9 +641,36 @@ impl CompileVisitor {
         todo!()
     }
 
-    // todo: anonymous fn
-    fn visit_an_fn_decl(&mut self, args: &Vec<Token>, body: &Node) {
-        todo!()
+    // анонимная функция
+    fn visit_an_fn_decl(
+        &mut self,
+        location: &Token,
+        parameters: &Vec<Token>,
+        body: &Node,
+        make_closure: bool
+    ) {
+        // параметры
+        let mut params = Vec::new();
+        for param in parameters {
+            params.push(param.value.clone());
+        }
+        // чанк тела
+        self.push_chunk();
+        self.visit_node(body);
+        self.visit_node(&Node::Ret {
+            location: location.clone(),
+            value: Box::new(Node::Null {
+                location: location.clone(),
+            })
+        });
+        let chunk = self.pop_chunk();
+        // создание анонимной функции
+        self.push_instr(Opcode::AnonymousFn {
+            addr: location.address.clone(),
+            params,
+            make_closure,
+            body: Chunk::new(chunk),
+        });
     }
 
     // нативная функция
