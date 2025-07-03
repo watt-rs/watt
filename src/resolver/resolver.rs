@@ -7,25 +7,25 @@ use crate::lexer::address::Address;
 use crate::parser::ast::Node;
 
 // ресолвер импортов
-pub struct ImportsResolver {
+pub struct ImportsResolver<'import_key, 'import_path> {
     imported: Vec<String>,
-    libraries: HashMap<String, String>,
+    libraries: HashMap<&'import_key str, &'import_path str>,
     builtins: Vec<String>
 }
 // имплементация
 #[allow(unused_qualifications)]
-impl ImportsResolver {
+impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
     // новый
-    pub fn new() -> ImportsResolver {
+    pub fn new() -> Self {
         ImportsResolver {
             imported: vec![],
             libraries: HashMap::from([
-                ("std.io".to_string(), "./libs/std/std_io.wt".to_string()),
-                ("std.gc".to_string(), "./libs/std/std_gc.wt".to_string()),
-                ("std.errors".to_string(), "./libs/std/std_errors.wt".to_string()),
-                ("std.convert".to_string(), "./libs/std/std_convert.wt".to_string()),
-                ("std.typeof".to_string(), "./libs/std/std_typeof.wt".to_string()),
-                ("std.time".to_string(), "./libs/std/std_time.wt".to_string()),
+                ("std.io", "./libs/std/std_io.wt"),
+                ("std.gc", "./libs/std/std_gc.wt"),
+                ("std.errors", "./libs/std/std_errors.wt"),
+                ("std.convert", "./libs/std/std_convert.wt"),
+                ("std.typeof", "./libs/std/std_typeof.wt"),
+                ("std.time", "./libs/std/std_time.wt"),
             ]),
             builtins: vec!["./libs/base.wt".to_string()],
         }
@@ -60,8 +60,8 @@ impl ImportsResolver {
         import: &Import
     ) -> Node {
         // ищем импорт
-        let file: &str = if self.libraries.contains_key(&import.name) {
-            self.libraries.get(&import.name).unwrap()
+        let file: &str = if self.libraries.contains_key(import.name.as_str()) {
+            self.libraries.get(import.name.as_str()).unwrap()
         } else {
             &import.name
         };

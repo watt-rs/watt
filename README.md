@@ -1,6 +1,6 @@
 ﻿<p align="center">
   <h1 align="center" class="huge-text">⚡🍹 Watt</h1>
-  <p align="center"><i>A lightweight, expressive scripting language powered by VoltVM</i></p>
+  <p align="center"><i>A lightweight, expressive scripting language powered by VoltVM</i>
 </p>
 
 ### About
