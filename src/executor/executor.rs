@@ -108,7 +108,8 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
                 )
             );
         }
-        "".to_string()
+        
+        String::new()
     }
 }
 
