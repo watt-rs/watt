@@ -468,16 +468,13 @@ impl<'filename> Lexer<'filename> {
 
     //noinspection ALL
     fn is_match(&mut self, ch: char) -> bool {
-        if self.is_at_end() {
-            false
-        } else {
+        if !self.is_at_end() {
             if self.char_at(0) == ch {
                 self.advance();
                 true
-            } else {
-                false
             }
         }
+        false
     }
 
     fn add_tk(&mut self, tk_type: TokenType, tk_value: &str) {
