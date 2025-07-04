@@ -30,12 +30,12 @@ fn main() {
 
     let compiler_path = working_directory.clone() + "/target/release/Watt";
 
-    if !std::fs::exists(&compiler_path).unwrap_or(false) {
-        eprintln!(
-            "The compiler seem not built yet. Build it first by running `cargo b --release`!"
-        );
+    println!("Building Watt...");
+    if let Err(e) = std::process::Command::new("cargo").args(["b", "-q", "--release"]).spawn().map(|mut ch| ch.wait()) {
+        eprintln!("Error occured when building Watt: {e:?}");
+
         std::process::exit(1);
-    }
+    };
 
     match mode.as_str() {
         "help" => {

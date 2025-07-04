@@ -18,10 +18,14 @@ pub struct TesterResults {
 
 /// Находит все тесты, опираясь на путь `on` и возвращает список путей данных тестов.
 pub fn find_tests(on: &str) -> std::io::Result<Vec<PathBuf>> {
-    Ok(std::fs::read_dir(on)?
+    let mut wt_files = std::fs::read_dir(on)?
         .map(|x| x.unwrap().path())
         .filter(|x| x.extension().map(|k| k.to_str().unwrap()) == Some("wt"))
-        .collect())
+        .collect::<Vec<PathBuf>>();
+    
+    wt_files.sort();
+
+    Ok(wt_files)
 }
 
 /// Собирает список тестов и ищет их данные для сравнения
@@ -67,6 +71,7 @@ pub fn run_tests(watt_path: &str, tests_table: &HashMap<String, Option<String>>)
             	// ...неуспешно, то это провал
                 if !data.status.success() {
                     println!("[FAIL] {test_file}");
+                    println!("{}", str::from_utf8(&data.stdout).unwrap());
                     
                     stats.fail += 1;
                     stats.ran += 1;

@@ -1,0 +1,10 @@
+import 'std.io'
+
+// 6
+io.println(2 + 2 * 2)
+
+// 6
+io.println(2 * 2 + 2)
+
+// 8
+io.println((2 + 2) * 2)
