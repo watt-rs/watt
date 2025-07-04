@@ -93,40 +93,40 @@ pub struct Lexer<'filename> {
     code: Vec<char>,
     filename: &'filename str,
     tokens: Vec<Token>,
-    keywords: HashMap<String, TokenType>,
+    keywords: HashMap<&'static str, TokenType>,
 }
 
 // имплементация
 impl<'filename> Lexer<'filename> {
     pub fn new(code: &str, filename: &'filename str) -> Lexer<'filename> {
         let map = HashMap::from([
-            (String::from("fun"), TokenType::Fun),
-            (String::from("break"), TokenType::Break),
-            (String::from("if"), TokenType::If),
-            (String::from("elif"), TokenType::Elif),
-            (String::from("else"), TokenType::Else),
-            (String::from("and"), TokenType::And),
-            (String::from("or"), TokenType::Or),
-            (String::from("import"), TokenType::Import),
-            (String::from("type"), TokenType::Type),
-            (String::from("new"), TokenType::New),
-            (String::from("match"), TokenType::Match),
-            (String::from("case"), TokenType::Case),
-            (String::from("default"), TokenType::Default),
-            (String::from("lambda"), TokenType::Lambda),
-            (String::from("while"), TokenType::While),
-            (String::from("unit"), TokenType::Unit),
-            (String::from("for"), TokenType::For),
-            (String::from("in"), TokenType::In),
-            (String::from("continue"), TokenType::Continue),
-            (String::from("true"), TokenType::Bool),
-            (String::from("false"), TokenType::Bool),
-            (String::from("null"), TokenType::Null),
-            (String::from("return"), TokenType::Ret),
-            (String::from("trait"), TokenType::Trait),
-            (String::from("impl"), TokenType::Impl),
-            (String::from("native"), TokenType::Native),
-            (String::from("impls"), TokenType::Impls),
+            ("fun", TokenType::Fun),
+            ("break", TokenType::Break),
+            ("if", TokenType::If),
+            ("elif", TokenType::Elif),
+            ("else", TokenType::Else),
+            ("and", TokenType::And),
+            ("or", TokenType::Or),
+            ("import", TokenType::Import),
+            ("type", TokenType::Type),
+            ("new", TokenType::New),
+            ("match", TokenType::Match),
+            ("case", TokenType::Case),
+            ("default", TokenType::Default),
+            ("lambda", TokenType::Lambda),
+            ("while", TokenType::While),
+            ("unit", TokenType::Unit),
+            ("for", TokenType::For),
+            ("in", TokenType::In),
+            ("continue", TokenType::Continue),
+            ("true", TokenType::Bool),
+            ("false", TokenType::Bool),
+            ("null", TokenType::Null),
+            ("return", TokenType::Ret),
+            ("trait", TokenType::Trait),
+            ("impl", TokenType::Impl),
+            ("native", TokenType::Native),
+            ("impls", TokenType::Impls),
         ]);
         // лексер
         let mut lexer = Lexer {
@@ -385,16 +385,16 @@ impl<'filename> Lexer<'filename> {
 
     fn scan_id_or_keyword(&mut self, start: char) -> Token {
         let mut text: String = String::from(start);
+        
         while self.is_id(self.peek()) {
             text.push(self.advance());
             if self.is_at_end() {
                 break;
             }
         }
-        let tk_type: TokenType = match self.keywords.get(&text) {
-            Some(tk_type) => tk_type.clone(),
-            None => TokenType::Id,
-        };
+        
+        let tk_type: TokenType = self.keywords.get(text.as_str()).cloned().unwrap_or(TokenType::Id);
+        
         Token {
             tk_type,
             value: text,
