@@ -428,7 +428,7 @@ impl<'filename> Lexer<'filename> {
     fn get_line_text(&self) -> String {
         // проходимся по тексту
         let mut i = 0;
-        let mut line_text = "".to_string();
+        let mut line_text = String::new();
         while !self.is_at_end_offset(i) && self.char_at(i) != '\n' {
             line_text.push(self.char_at(i));
             i += 1;
