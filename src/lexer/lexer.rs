@@ -95,6 +95,7 @@ pub struct Lexer<'filename> {
     tokens: Vec<Token>,
     keywords: HashMap<String, TokenType>,
 }
+
 // имплементация
 impl<'filename> Lexer<'filename> {
     pub fn new(code: &str, filename: &'filename str) -> Lexer<'filename> {
@@ -150,33 +151,33 @@ impl<'filename> Lexer<'filename> {
             match ch {
                 '+' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenType::AssignAdd, "+=".to_string());
+                        self.add_tk(TokenType::AssignAdd, "+=");
                     } else {
-                        self.add_tk(TokenType::Op, "+".to_string());
+                        self.add_tk(TokenType::Op, "+");
                     }
                 }
                 '-' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenType::AssignSub, "-=".to_string());
+                        self.add_tk(TokenType::AssignSub, "-=");
                     } else if self.is_match('>') {
-                        self.add_tk(TokenType::Arrow, "->".to_string());
+                        self.add_tk(TokenType::Arrow, "->");
                     } else {
-                        self.add_tk(TokenType::Op, "-".to_string());
+                        self.add_tk(TokenType::Op, "-");
                     }
                 }
                 '*' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenType::AssignMul, "*=".to_string());
+                        self.add_tk(TokenType::AssignMul, "*=");
                     } else {
-                        self.add_tk(TokenType::Op, "*".to_string());
+                        self.add_tk(TokenType::Op, "*");
                     }
                 }
                 '%' => {
-                    self.add_tk(TokenType::Op, "%".to_string());
+                    self.add_tk(TokenType::Op, "%");
                 }
                 '/' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenType::AssignDiv, "/=".to_string());
+                        self.add_tk(TokenType::AssignDiv, "/=");
                     } else if self.is_match('/') {
                         while !self.is_match('\n') && !self.is_at_end() {
                             self.advance();
@@ -195,73 +196,73 @@ impl<'filename> Lexer<'filename> {
                         // /
                         self.advance();
                     } else {
-                        self.add_tk(TokenType::Op, "/".to_string());
+                        self.add_tk(TokenType::Op, "/");
                     }
                 }
                 '(' => {
-                    self.add_tk(TokenType::Lparen, "(".to_string());
+                    self.add_tk(TokenType::Lparen, "(");
                 }
                 ')' => {
-                    self.add_tk(TokenType::Rparen, ")".to_string());
+                    self.add_tk(TokenType::Rparen, ")");
                 }
                 '{' => {
-                    self.add_tk(TokenType::Lbrace, "{".to_string());
+                    self.add_tk(TokenType::Lbrace, "{");
                 }
                 '}' => {
-                    self.add_tk(TokenType::Rbrace, "}".to_string());
+                    self.add_tk(TokenType::Rbrace, "}");
                 }
                 '[' => {
-                    self.add_tk(TokenType::Lbracket, "[".to_string());
+                    self.add_tk(TokenType::Lbracket, "[");
                 }
                 ']' => {
-                    self.add_tk(TokenType::Rbracket, "]".to_string());
+                    self.add_tk(TokenType::Rbracket, "]");
                 }
                 ',' => {
-                    self.add_tk(TokenType::Comma, ",".to_string());
+                    self.add_tk(TokenType::Comma, ",");
                 }
                 '.' => {
                     if self.is_match('.') {
-                        self.add_tk(TokenType::Range, "..".to_string());
+                        self.add_tk(TokenType::Range, "..");
                     } else {
-                        self.add_tk(TokenType::Dot, ".".to_string());
+                        self.add_tk(TokenType::Dot, ".");
                     }
                 }
                 '?' => {
-                    self.add_tk(TokenType::Question, "?".to_string());
+                    self.add_tk(TokenType::Question, "?");
                 }
                 ':' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenType::Walrus, ":=".to_string());
+                        self.add_tk(TokenType::Walrus, ":=");
                     } else {
-                        self.add_tk(TokenType::Colon, ":".to_string())
+                        self.add_tk(TokenType::Colon, ":")
                     }
                 }
                 '<' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenType::LessEq, "<=".to_string());
+                        self.add_tk(TokenType::LessEq, "<=");
                     } else {
-                        self.add_tk(TokenType::Less, "<".to_string());
+                        self.add_tk(TokenType::Less, "<");
                     }
                 }
                 '>' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenType::GreaterEq, ">=".to_string());
+                        self.add_tk(TokenType::GreaterEq, ">=");
                     } else {
-                        self.add_tk(TokenType::Greater, ">".to_string());
+                        self.add_tk(TokenType::Greater, ">");
                     }
                 }
                 '!' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenType::NotEq, "!=".to_string());
+                        self.add_tk(TokenType::NotEq, "!=");
                     } else {
-                        self.add_tk(TokenType::Bang, "!".to_string());
+                        self.add_tk(TokenType::Bang, "!");
                     }
                 }
                 '=' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenType::Eq, "==".to_string());
+                        self.add_tk(TokenType::Eq, "==");
                     } else {
-                        self.add_tk(TokenType::Assign, "=".to_string());
+                        self.add_tk(TokenType::Assign, "=");
                     }
                 }
                 // пробелы
@@ -479,10 +480,10 @@ impl<'filename> Lexer<'filename> {
         }
     }
 
-    fn add_tk(&mut self, tk_type: TokenType, tk_value: String) {
+    fn add_tk(&mut self, tk_type: TokenType, tk_value: &str) {
         self.tokens.push(Token::new(
             tk_type,
-            tk_value,
+            tk_value.to_string(),
             Address::new(
                 self.line,
                 self.column,
