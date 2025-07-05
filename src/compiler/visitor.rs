@@ -629,16 +629,55 @@ impl<'visitor> CompileVisitor<'visitor> {
             name: iterator_variable_name
         })
     }
-
-    // todo: match
+    // match
     fn visit_match(
         &mut self,
         location: &Token,
         matchable: &Node,
-        cases: &Vec<Node>,
+        cases: &Vec<MatchCase>,
         default: &Node,
     ) {
-        todo!()
+        // итоговый опкод
+        let mut if_op;
+        // дефолтный кейс
+        self.push_chunk();
+        self.visit_node(default);
+        let body_chunk = self.pop_chunk();
+        if_op = Opcode::If {
+            addr: location.address.clone(),
+            cond: Chunk::of(Opcode::Push {
+                addr: location.address.clone(),
+                value: OpcodeValue::Bool(true)
+            }),
+            body: Chunk::new(body_chunk),
+            elif: None,
+        };
+        // кейсы
+        for case in cases {
+            // кейс
+            // логический чанк
+            self.push_chunk();
+            self.visit_node(&*case.value);
+            self.visit_node(&matchable);
+            self.push_instr(Opcode::Cond {
+                addr: location.address.clone(),
+                op: "==".to_string(),
+            });
+            let logical_chunk = self.pop_chunk();
+            // чанк тела
+            self.push_chunk();
+            self.visit_node(&*case.body);
+            let body_chunk = self.pop_chunk();
+            // новый кейс
+            if_op = Opcode::If {
+                addr: location.address.clone(),
+                cond: Chunk::new(logical_chunk),
+                body: Chunk::new(body_chunk),
+                elif: Some(Chunk::of(if_op))
+            }
+        }
+        // опкод
+        self.push_instr(if_op);
     }
 
     // анонимная функция

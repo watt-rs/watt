@@ -104,7 +104,7 @@ pub enum Node {
     Match {
         location: Token,
         matchable: Box<Node>,
-        cases: Vec<Node>,
+        cases: Vec<MatchCase>,
         default: Box<Node>,
     },
     Native {
@@ -161,6 +161,22 @@ pub enum Node {
     }
 }
 
+// кейс
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct MatchCase {
+    pub value: Box<Node>,
+    pub body: Box<Node>
+}
+// имплементация
+impl MatchCase {
+    pub fn new(value: Box<Node>, body: Box<Node>) -> MatchCase {
+        MatchCase {
+            value,
+            body
+        }
+    }
+}
+
 // функция трейта
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct TraitNodeFn {
@@ -168,6 +184,7 @@ pub struct TraitNodeFn {
     pub params: Vec<Token>,
     pub default: Option<Box<Node>>
 }
+// имплементация
 impl TraitNodeFn {
     pub fn new(name: Token, params: Vec<Token>, default: Option<Box<Node>>) -> Self {
         Self { name, params, default }

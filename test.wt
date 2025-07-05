@@ -103,6 +103,13 @@ fun c {
 
 io.println(c().unwrap_err())
 */
-import 'std.time'
 import 'std.io'
-io.println(3 > 5 == true)
+a := 'world'
+io.println(match a {
+    case 'world' {
+        io.println('hello, world!!!!!!')
+        return 'hello, ' + a + '!'
+    }
+    case 'hello' -> a + ', world 2!'
+    default -> 'nope'
+})

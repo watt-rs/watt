@@ -389,7 +389,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
             }
             // паттерн матчинг
             TokenType::Match => {
-                 todo!()
+                Ok(self.match_expr()?)
             }
             // иное
             _ => Err(Error::new(
@@ -400,6 +400,124 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                 "check your code.".to_string(),
             ))
         }
+    }
+
+    // match выражение
+    fn match_expr(&mut self) -> Result<Node, Error> {
+        // локация
+        let location = self.consume(TokenType::Match)?.clone();
+        // matchable значение
+        let matchable = self.expr()?;
+        // список кейсов
+        let mut cases = vec![];
+        // дефолтный кейс
+        let default;
+        // заворачивание в лямбду
+        fn make_lambda(location: Token, body: Node) -> Node {
+            Node::Block {
+                body: vec![
+                    Node::Define {
+                        previous: None,
+                        name: Token::new(
+                            TokenType::Id,
+                            "@match_lambda".to_string(),
+                            location.address.clone()
+                        ),
+                        value: Box::new(Node::AnFnDeclaration {
+                            location: location.clone(),
+                            params: vec![],
+                            body: Box::new(body),
+                            make_closure: false,
+                        })
+                    },
+                    Node::Call {
+                        previous: None,
+                        name: Token::new(
+                            TokenType::Id,
+                            "@match_lambda".to_string(),
+                            location.address.clone()
+                        ),
+                        args: vec![],
+                        should_push: true
+                    }
+                ]
+            }
+        }
+        // {
+        self.consume(TokenType::Lbrace)?;
+        // кейсы
+        while self.check(TokenType::Case) {
+            // case
+            self.consume(TokenType::Case)?;
+            // значение
+            let value = self.expr()?;
+            // если ->
+            if self.check(TokenType::Arrow) {
+                // ->
+                self.consume(TokenType::Arrow)?;
+                // добавляем кейс
+                cases.push(MatchCase::new(
+                    Box::new(value),
+                    Box::new(self.expr()?),
+                ));
+            }
+            // если тело в фигурных в скобках
+            else if self.check(TokenType::Lbrace) {
+                // тело лямбды
+                self.consume(TokenType::Lbrace)?;
+                let body = self.block()?;
+                self.consume(TokenType::Rbrace)?;
+                // заворачиваем в лямбду
+                cases.push(MatchCase::new(
+                    Box::new(value),
+                    Box::new(make_lambda(location.clone(), body))
+                ));
+            }
+            // в ином случае
+            else {
+                return Err(Error::new(
+                    location.address.clone(),
+                    "expected arrow or brace after case value".to_string(),
+                    "check your code".to_string()
+                ))
+            }
+        }
+        // дефолтный кейс
+        self.consume(TokenType::Default)?;
+        // если ->
+        if self.check(TokenType::Arrow) {
+            // ->
+            self.consume(TokenType::Arrow)?;
+            // дефолтный кейс
+            default = Box::new(self.expr()?);
+        }
+        // если тело в фигурных в скобках
+        else if self.check(TokenType::Lbrace) {
+            // тело лямбды
+            self.consume(TokenType::Lbrace)?;
+            let body = self.block()?;
+            self.consume(TokenType::Rbrace)?;
+            // заворачиваем в лямбду
+            default = Box::new(make_lambda(location.clone(), body))
+        }
+        // в ином случае
+        else {
+            // ошибка
+            return Err(Error::new(
+                location.address.clone(),
+                "expected arrow or brace after case value".to_string(),
+                "check your code".to_string()
+            ))
+        }
+        // }
+        self.consume(TokenType::Rbrace)?;
+        // возвращаем
+        Ok(Node::Match {
+            location,
+            matchable: Box::new(matchable),
+            cases,
+            default
+        })
     }
 
     // список
@@ -800,6 +918,93 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
         }
     }
 
+    // стейтмент match
+    fn match_stmt(&mut self) -> Result<Node, Error> {
+        // локация
+        let location = self.consume(TokenType::Match)?.clone();
+        // matchable значение
+        let matchable = self.expr()?;
+        // список кейсов
+        let mut cases = vec![];
+        // дефолтный кейс
+        let default;
+        // {
+        self.consume(TokenType::Lbrace)?;
+        // кейсы
+        while self.check(TokenType::Case) {
+            // case
+            self.consume(TokenType::Case)?;
+            // значение
+            let value = self.expr()?;
+            // если ->
+            if self.check(TokenType::Arrow) {
+                // ->
+                self.consume(TokenType::Arrow)?;
+                // добавляем кейс
+                cases.push(MatchCase::new(
+                    Box::new(value),
+                    Box::new(self.statement()?),
+                ))
+            }
+            // если тело в фигурных скобках
+            else if self.check(TokenType::Lbrace) {
+                // парсим тело
+                self.consume(TokenType::Lbrace)?;
+                let body = self.block()?;
+                self.consume(TokenType::Rbrace)?;
+                // добавляем кейс
+                cases.push(MatchCase::new(
+                    Box::new(value),
+                    Box::new(body),
+                ))
+            }
+            // в ином случае
+            else {
+                return Err(Error::new(
+                    location.address.clone(),
+                    "expected arrow or brace after case value".to_string(),
+                    "check your code".to_string()
+                ))
+            }
+        }
+        // дефолтный кейс
+        self.consume(TokenType::Default)?;
+        // если ->
+        if self.check(TokenType::Arrow) {
+            // ->
+            self.consume(TokenType::Arrow)?;
+            // дефолтный кейс
+            default = Box::new(self.statement()?);
+        }
+        // если тело в фигурных скобках
+        else if self.check(TokenType::Lbrace) {
+            // парсим тело
+            self.consume(TokenType::Lbrace)?;
+            let body = self.block()?;
+            self.consume(TokenType::Rbrace)?;
+            // дефолтный кейс
+            default = Box::new(body);
+        }
+        // в ином случае
+        else {
+            // ошибка
+            return Err(Error::new(
+                location.address.clone(),
+                "expected arrow or brace after case value".to_string(),
+                "check your code".to_string()
+            ))
+        }
+        // }
+        self.consume(TokenType::Rbrace)?;
+        // возвращаем
+        Ok(Node::Match {
+            location,
+            matchable: Box::new(matchable),
+            cases,
+            default
+        })
+    }
+
     // for
     fn for_stmt(&mut self) -> Result<Node, Error> {
         self.consume(TokenType::For)?;
@@ -1063,7 +1268,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                 self.access_stmt()
             },
             TokenType::Match => {
-                todo!()
+                self.match_stmt()
             },
             TokenType::Continue => {
                 self.continue_stmt()
@@ -1095,8 +1300,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
             _ => {
                 Err(Error::new(
                     tk.address.clone(),
-                    format!("unexpected token: {:?}:{tk_value}",
-                            tk.tk_type, tk_value=tk.value),
+                    format!("unexpected stmt token: {:?}:{}", tk.tk_type, tk.value),
                     "check your code.".to_string(),
                 ))
             }
@@ -1122,7 +1326,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                 } else {
                     Err(Error::new(
                         tk.address.clone(),
-                        format!("unexpected token: {:?}:{:?}", tk.tk_type, tk.value),
+                        format!("unexpected token: '{:?}:{}', expected: '{tk_type:?}'", tk.tk_type, tk.value),
                         "check your code.".to_string()
                     ))
                 }

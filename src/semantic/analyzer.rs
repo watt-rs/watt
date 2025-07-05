@@ -1,5 +1,5 @@
 ﻿// импорты
-use crate::parser::ast::Node;
+use crate::parser::ast::{MatchCase, Node};
 use crate::errors::errors::{Error};
 use std::collections::VecDeque;
 use crate::error;
@@ -51,7 +51,9 @@ impl Analyzer {
             }
             Node::List { .. } => { todo!() }
             Node::Map { .. } => { todo!() }
-            Node::Match { .. } => { todo!() }
+            Node::Match { cases, default, .. } => { 
+                self.analyze_match(cases, default);
+            }
             Node::Ret { location, .. } => {
                 self.analyze_return(&location.address);
             }
@@ -115,6 +117,15 @@ impl Analyzer {
         }
     }
 
+    // match
+    pub fn analyze_match(&mut self, cases: &Vec<MatchCase>, default: &Node) {
+        // анализ
+        self.analyze(default);
+        for case in cases {
+            self.analyze(&*case.body);
+        }
+    }
+    
     // цикл
     fn analyze_while(&mut self, body: &Node, logical: &Node) {
         // пушим
