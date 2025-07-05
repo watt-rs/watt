@@ -43,6 +43,8 @@ In the program, as you can see, we import the "std.io" library and use io.printl
 ## Variable declarations 🧃
 
 Let's learn how to declare variables. Go back to your code editor and write following code:
+
+*main.wt:*
 ```watt
 import 'std.io'
 a := 3
@@ -86,36 +88,38 @@ We will get this error, because we are trying to redeclare a variable:
 ```err
 ┌─ panic: a is already defined.
 │
-│ test.wt:
-│ 107 a := 7
-│     ^
+│ main.wt:
+│ 2 a := 7
+│   ^
 │
 │ hint: you can rename variable.
 ```
 
 Right way to change variable is '=' (assign) op.
 
+*main.wt:*
 ```watt
 import 'std.io'
 a := 3
-a = 5
+a = 8
 b := 7
-io.println(a + b)
+io.println(a - b)
 ```
 Output:
 ```
-12
+1
 ```
 
 ## Types 📐
 
 Watt is a dynamic-typed programming language, that means, we can change variable type at runtime, for example, let's run following code:
 
+*main.wt:*
 ```
 import 'std.io'
 a := 5
 a = 'hello'
-io.println()
+io.println(a)
 ```
 Output:
 ```
@@ -123,7 +127,6 @@ hello
 ```
 
 We changed *a* type from *i64*, to a *string*. Now, let's learn all Watt variable types. Here's a table:
-
 
 | Type       |                         Description |
 |:-----------|------------------------------------:|
@@ -136,3 +139,66 @@ We changed *a* type from *i64*, to a *string*. Now, let's learn all Watt variabl
 | `instance` |                       Type instance |
 | `trait`    | Trait (like a rust trait) reference |
 | `type`     |                      Type reference |
+
+
+We also all over examples can find *binary* op-s. Here's a table, that contains all:
+
+| Op   |  Description |
+|:-----|-------------:|
+| `+`  |       add op |
+| `-`  |  subtract op |
+| `/`  |    divide op |
+| `*`  |  multiply op |
+| `%`  |       mod op |
+
+We also can use parens *( )* to group expr-s. Here's example:
+
+*main.wt:*
+```
+import 'std.io'
+a := (2 + 2) * 2
+io.println('result' + a)
+```
+Output:
+```
+8
+```
+
+To add some number to variable, we can do something like this:
+
+*main.wt:*
+```watt
+import 'std.io'
+a := 2
+a = a + 2
+io.println(a)
+```
+Output:
+```
+4
+```
+
+But, we can use *compound assign* op-s for variables. Here's example:
+
+*main.wt:*
+```watt
+import 'std.io'
+a := 2
+a += 2 
+io.println(a)
+```
+Output:
+```
+4
+```
+
+This code is equivalent to the previous.
+
+*Compound assign* op-s table:
+
+| Op   |       Description |
+|:-----|------------------:|
+| `+=` |            add op |
+| `-=` |       subtract op |
+| `/=` |         divide op |
+| `*=` |       multiply op |
