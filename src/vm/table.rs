@@ -176,7 +176,7 @@ impl Table {
         }
     }
     
-    // print table
+    // вывод таблицы
     #[allow(unused)]
     pub unsafe fn print(&self, indent: usize) {
         println!("{space:spaces$}Table:", space=" ", spaces=indent*2);

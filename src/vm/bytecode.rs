@@ -163,3 +163,152 @@ pub enum Opcode {
         name: String,
     }
 }
+// имплементация
+impl Opcode {
+    // вывод древа опкодов
+    pub fn print(&self, indent: usize) {
+        // вывод с отступом
+        fn print_indent(indent: usize, text: &str) {
+            if indent == 0 {
+                println!("{}", text);
+            } else {
+                println!("{space}{text}", space = "  ".repeat(indent));
+            }
+        }
+        // вывод чанка
+        fn print_chunk(indent: usize, chunk: &Chunk) {
+            for op in &chunk.opcodes {
+                op.print(indent);
+            }
+        }
+        // вывод опкода
+        match self {
+            Opcode::Push { value, .. } => {
+                print_indent(indent, format!("push {value:?}").as_str());
+            }
+            Opcode::Pop { .. } => {
+                print_indent(indent, "pop");
+            }
+            Opcode::Bin { op, .. } => {
+                print_indent(indent, format!("bin {op}").as_str());
+            }
+            Opcode::Neg { .. } => {
+                print_indent(indent, "neg");
+            }
+            Opcode::Bang { .. } => {
+                print_indent(indent, "bang");
+            }
+            Opcode::Cond { op, .. } => {
+                print_indent(indent, format!("cond {op}").as_str());
+            }
+            Opcode::Logic { op, .. } => {
+                print_indent(indent, format!("logic {op}").as_str());
+            }
+            Opcode::If { cond, body, .. } => {
+                print_indent(indent, "if");
+                print_indent(indent + 1, "cond:");
+                print_chunk(indent + 2, cond);
+                print_indent(indent + 1, "body:");
+                print_chunk(indent + 2, body);                
+            }
+            Opcode::Loop { body, .. } => {
+                print_indent(indent, "loop");
+                print_indent(indent + 1, "body:");
+                print_chunk(indent + 2, body);
+            }
+            Opcode::DefineFn { name, full_name, params, body, .. } => {
+                print_indent(indent, format!("fn '{name}' '{full_name:?}'").as_str());
+                print_indent(indent + 1, "params:");
+                for param in params {
+                    print_indent(indent + 2, format!("{param}").as_str());
+                }
+                print_indent(indent + 1, "body:");
+                print_chunk(indent + 2, body);
+            }
+            Opcode::AnonymousFn { params, body, .. } => {
+                print_indent(indent, "anonymous_fn");
+                print_indent(indent + 1, "params:");
+                for param in params {
+                    print_indent(indent + 2, format!("{param}").as_str());
+                }
+                print_indent(indent + 1, "body:");
+                print_chunk(indent + 2, body);
+            }
+            Opcode::DefineType { name, full_name, constructor, body, .. } => {
+                print_indent(indent, format!("define_type '{name}' '{full_name:?}'").as_str());
+                print_indent(indent + 1, "constructor:");
+                for param in constructor {
+                    print_indent(indent + 2, format!("{param}").as_str());
+                }
+                print_indent(indent + 1, "body:");
+                print_chunk(indent + 2, body);                
+            }
+            Opcode::DefineUnit { name, full_name, body, .. } => {
+                print_indent(indent, format!("define_unit '{name}' '{full_name:?}'").as_str());
+                print_indent(indent + 1, "body:");
+                print_chunk(indent + 2, body);
+            }
+            Opcode::DefineTrait { name, full_name, functions, .. } => {
+                print_indent(indent, format!("define_trait '{name}' '{full_name:?}'").as_str());
+                print_indent(indent + 1, "functions:");
+                for function in functions {
+                    print_indent(indent + 2, format!("{function:?}").as_str());
+                }
+            }
+            Opcode::Define { name, value, has_previous, .. } => {
+                print_indent(indent, format!("define '{name}'").as_str());
+                print_indent(indent + 1, format!("has_previous:{has_previous}").as_str());
+                print_indent(indent + 1, "value:");
+                print_chunk(indent + 2, value);
+            }
+            Opcode::Set { name, value, has_previous, .. } => {
+                print_indent(indent, format!("set '{name}'").as_str());
+                print_indent(indent + 1, format!("has_previous:{has_previous}").as_str());
+                print_indent(indent + 1, "value:");
+                print_chunk(indent + 2, value);                
+            }
+            Opcode::Load { name, has_previous, should_push, .. } => {
+                print_indent(indent, format!("load '{name}', should_push:{should_push}").as_str());
+                print_indent(indent + 1, format!("has_previous:{has_previous}").as_str());
+            }
+            Opcode::Call { name, has_previous, should_push, args, .. } => {
+                print_indent(indent, format!("call '{name}', should_push:{should_push}").as_str());
+                print_indent(indent + 1, format!("has_previous:{has_previous}").as_str());
+                print_indent(indent + 1, "args:");
+                print_chunk(indent + 2, args);
+            }
+            Opcode::Duplicate { .. } => {
+                print_indent(indent, "duplicate");
+            }
+            Opcode::Instance { name, args, should_push, .. } => {
+                print_indent(indent, format!("instance '{name}', should_push:{should_push}").as_str());
+                print_indent(indent + 1, "args:");
+                print_chunk(indent + 2, args);
+            }
+            Opcode::EndLoop { current_iteration, .. } => {
+                print_indent(indent, format!("break, current iteration:{current_iteration}").as_str());
+            }
+            Opcode::Ret { value, .. } => {
+                print_indent(indent, "return");
+                print_indent(indent + 1, "value:");
+                print_chunk(indent + 2, value);
+            }
+            Opcode::Native { fn_name, .. } => {
+                print_indent(indent, format!("native {}", fn_name).as_str());
+            }
+            Opcode::ErrorPropagation { value, .. } => {
+                print_indent(indent, "error_propagation");
+                print_indent(indent + 1, "value:");
+                print_chunk(indent + 2, value);
+            }
+            Opcode::Impls { value, trait_name, .. } => {
+                print_indent(indent, format!("impls {:?}", trait_name).as_str());
+                print_indent(indent + 1, "value:");
+                print_chunk(indent + 2, value);
+            }
+            Opcode::DeleteLocal { name, .. } => {
+                print_indent(indent, format!("delete_local {}", name).as_str());
+            }
+        }
+    }
+}

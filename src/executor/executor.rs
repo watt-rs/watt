@@ -202,7 +202,9 @@ pub unsafe fn compile(ast: &Node, opcodes_debug: bool, bench: bool) -> Chunk {
     // дебаг
     if opcodes_debug {
         println!("opcodes debug: ");
-        println!("{:?}", &compiled);
+        for op in compiled.opcodes() {
+            op.print(0);
+        }
     }
     // возвращаем
     compiled
