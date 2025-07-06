@@ -1,0 +1,237 @@
+// импорты
+import 'std.convert'
+
+/*
+ Библиотека math.
+ | имплементация sin, cos, asin, acos
+ | tan, atan, cat, sqrt, cbrt, root, log
+ | pow, exp, log10, abs
+ */
+unit math {
+    /*
+     Константы
+    */
+    pi := 3.141592
+    e := 2.718281
+    tau := 6.283185
+    epsilon := 0.0000000001
+
+    /*
+     Функция модуля числа
+    */
+    fun abs(x) {
+        if x < 0 {
+            return -x
+        }
+        else {
+            return x
+        }
+    }
+
+    /*
+     Функция округления в меньшую сторону.
+    */
+    fun floor(x) {
+        i := convert.to_int(x)
+        if x >= 0 or x == i {
+            return i
+        } else {
+            return i - 1
+        }
+    }
+
+    /*
+     Функция округления в большую сторону.
+    */
+    fun ceil(x) {
+        i := convert.to_int(x)
+        if x >= 0 or x == i {
+            return i
+        } else {
+            return i + 1
+        }
+    }
+
+    /*
+     Функция округления по математическим правилам.
+    */
+    fun round(x) {
+        i := convert.to_int(x)
+        difference := self.abs(x - i)
+        if difference > 0.5 {
+            return i + 1
+        }
+        else {
+            return i
+        }
+    }
+
+    /*
+     Функция экспонента на основе ряда Тейлора
+    */
+    fun exp(x) {
+        result := 1
+        term := 1
+        terms := 10
+        for n in 1..terms {
+            term *= x / n
+            result += term
+        }
+        return result
+    }
+
+    /*
+     Функция степени x по основанию y
+    */
+    fun pow(x, y) {
+        if x == 0 {
+            if y == 0 { return 1 }
+            elif y < 0 { panic('could not raise 0 to negative power.', 'check your code.') }
+            else { return 0 }
+        }
+        y_int := convert.to_int(y)
+        if y == y_int {
+            y = y_int
+            result := 1
+            for _ in 0..abs(y) {
+                result *= x
+            }
+            if y >= 0 {
+                return result
+            } else {
+                return 1 / result
+            }
+        }
+        else {
+            return exp(y * log(x))
+        }
+    }
+
+    /*
+     Квадратный корень от x, основанный на алгоритме Ньютона.
+    */
+    fun sqrt(x) {
+        if x < 0 {
+            panic(
+                'sqrt with negative number: ' + x,
+                'sqrt can be used only with positive numbers.'
+            )
+        }
+        if x == 0 { return 0 }
+
+        guess := 1
+        if x >= 2 {
+            guess = x / 2
+        }
+
+        while true {
+            new_guess := (guess + x / guess) * 0.5
+            if abs(new_guess - guess) < epsilon {
+                return new_guess
+            }
+            guess = new_guess
+        }
+
+        return guess
+    }
+
+    /*
+     Кубический корень от x, основанный на алгоритме Ньютона.
+    */
+    fun cbrt(x) {
+        if x < 0 {
+            panic(
+                'cbrt with negative number: ' + x,
+                'cbrt can be used only with positive numbers.'
+            )
+        }
+        if x == 0 { return 0 }
+
+        guess := x
+        if abs(x) >= 1 {
+            guess = x / 3
+        }
+
+        while true {
+            new_guess := (2 * guess + x / (guess * guess)) / 3
+            if abs(new_guess - guess) < epsilon {
+                return new_guess
+            }
+            guess = new_guess
+        }
+
+        return guess
+    }
+
+    /*
+      Корень от x из n, основанный на алгоритме Ньютона.
+    */
+    fun root(x, n) {
+        if n == 2 { return sqrt(x) }
+        elif n == 3 { return cbrt(x) }
+        else {
+            if x <= 0 {
+                panic(
+                    'root with number <= 0: ' + x,
+                    'sqrt can be used only with positive numbers > 0.'
+                )
+            }
+
+            guess := 1
+            if abs(x) >= 1 {
+                guess = x / n
+            }
+            if guess == 0 {
+                guess = 1
+            }
+
+            while true {
+                new_guess := ((n - 1) * guess + x / pow(guess, (n-1))) / n
+                if abs(new_guess - guess) < epsilon {
+                    return new_guess
+                }
+                guess = new_guess
+            }
+
+            return guess
+        }
+    }
+
+    /*
+     Логарифм x
+    */
+    fun log(x) {
+        terms := 10
+        if x <= 0 {
+            panic(
+                'log with number <= 0: ' + x,
+                'you can use numbers > 0'
+            )
+        }
+        k := 0
+        while x > 2 {
+            x /= self.e
+            k += 1
+        }
+        while x < 0.5 {
+            x *= self.e
+            k -= 1
+        }
+        y := (x - 1) / (x + 1)
+        y2 := pow(y, 2)
+        result := 0
+        for n in 0..terms {
+            term := pow(y, (2 * n + 1)) / (2 * n + 1)
+            result += term
+        }
+        return 2 * result + k
+    }
+
+    /*
+     Логарифм x по основанию 10
+    */
+    fun log10(x) {
+        ln10 := 2.302585092994046
+        return log(x) / ln10
+    }
+}

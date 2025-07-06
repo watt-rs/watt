@@ -471,7 +471,7 @@ impl<'filename> Lexer<'filename> {
         if !self.is_at_end() {
             if self.char_at(0) == ch {
                 self.advance();
-                true
+                return true
             }
         }
         false

@@ -26,6 +26,7 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
                 ("std.convert", "./libs/std/std_convert.wt"),
                 ("std.typeof", "./libs/std/std_typeof.wt"),
                 ("std.time", "./libs/std/std_time.wt"),
+                ("std.math", "./libs/std/std_math.wt")
             ]),
             builtins: vec!["./libs/base.wt".to_string()],
         }
@@ -103,7 +104,8 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
                     Node::FnDeclaration { .. } |
                     Node::Type { .. } |
                     Node::Unit { .. } |
-                    Node::Trait { .. } => {
+                    Node::Trait { .. } | 
+                    Node::Import { .. } => {
                         new_body.push(node);
                     }
                     _ => {}

@@ -727,6 +727,8 @@ impl<'visitor> CompileVisitor<'visitor> {
 
     // унарная операция
     fn visit_unary(&mut self, value: &Node, op: &Token) {
+        // компиляция значения
+        self.visit_node(value);
         // перебираем оператор
         match op.value.as_str() {
             // оператор -

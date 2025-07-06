@@ -103,6 +103,7 @@ fun c {
 
 io.println(c().unwrap_err())
 */
+/*
 import 'std.io'
 a := 'world'
 io.println(match a {
@@ -113,3 +114,14 @@ io.println(match a {
     case 'hello' -> a + ', world 2!'
     default -> 'nope'
 })
+*/
+import 'std.math'
+import 'std.io'
+io.println(math.sqrt(16))
+io.println(math.cbrt(27))
+io.println(math.root(16,4))
+io.println(math.floor(3.5))
+io.println(math.ceil(3.5))
+io.println(math.round(3.5))
+io.println(math.round(3.4))
+io.println(math.pow(3, 3))
