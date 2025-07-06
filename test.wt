@@ -115,6 +115,7 @@ io.println(match a {
     default -> 'nope'
 })
 */
+/*
 import 'std.math'
 import 'std.io'
 io.println(math.sqrt(16))
@@ -125,3 +126,7 @@ io.println(math.ceil(3.5))
 io.println(math.round(3.5))
 io.println(math.round(3.4))
 io.println(math.pow(3, 3))
+*/
+import 'std.random'
+import 'std.io'
+io.println(random.int(1, 100))

@@ -1,0 +1,36 @@
+// импорты
+import 'std.math'
+import 'std.time'
+
+/*
+ Библиотека random.
+ | имплементация int, float, choose
+ */
+unit random {
+    // параметры
+    a := 1664525
+    c := 1013904223
+    m := math.pow(2, 32)
+    seed := time.now().mills()
+
+    // следующий сид
+    fun next {
+        self.seed = (self.a * self.seed + self.c) % self.m
+        return self.seed
+    }
+
+    // флоат от 0 до 1
+    fun _float {
+        return next() / 4294967296
+    }
+
+    // рандомный инт
+    fun int(min, max) {
+        return min + self.next() % (max - min + 1)
+    }
+
+    // рандомный флоат
+    fun float(min, max) {
+        return min + (_float() * (max-min))
+    }
+}

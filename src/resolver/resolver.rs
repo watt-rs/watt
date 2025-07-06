@@ -26,7 +26,8 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
                 ("std.convert", "./libs/std/std_convert.wt"),
                 ("std.typeof", "./libs/std/std_typeof.wt"),
                 ("std.time", "./libs/std/std_time.wt"),
-                ("std.math", "./libs/std/std_math.wt")
+                ("std.math", "./libs/std/std_math.wt"),
+                ("std.random", "./libs/std/std_random.wt"),
             ]),
             builtins: vec!["./libs/base.wt".to_string()],
         }
@@ -96,8 +97,7 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
             // новое тело
             let mut new_body: Vec<Node> = vec![];
             // добавляем в тело
-            
-            while let Some(node) = body.pop() {
+            for node in body.drain(..) {
                 // перебираем
                 match node {
                     Node::Native { .. } |

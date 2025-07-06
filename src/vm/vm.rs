@@ -760,6 +760,14 @@ impl VM {
         (*(*unit).fields).fields.remove(&"self".to_string());
         // бинды
         self.bind_functions((*unit).fields, FnOwner::Unit(unit));
+        // init функция
+        let init_fn = "init".to_string();
+        if (*(*unit).fields).exists(&init_fn) {
+            // пушим юнит
+            self.push(unit_value);
+            // вызываем
+            self.op_call(addr, &init_fn, true, false, &Chunk::new(vec![]), table)?
+        }
         // дефайн юнита
         if let Err(e) = (*self.units).define(&addr, &symbol.name, unit_value) {
             error!(e);
