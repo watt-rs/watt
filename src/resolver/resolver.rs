@@ -76,7 +76,7 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
         // компиляция
         let tokens = executor::lex(
             filename,
-            &code,
+            &code.chars().collect::<Vec<char>>(),
             false,
             false
         );
