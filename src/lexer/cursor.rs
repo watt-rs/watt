@@ -1,13 +1,13 @@
 // курсор
-pub struct Cursor<'code> {
-    code: &'code [char],
+pub struct Cursor<'cursor> {
+    code: &'cursor [char],
     pub(crate) current: usize,
 }
 
 // имплементация
-impl<'code> Cursor<'code> {
+impl<'cursor> Cursor<'cursor> {
     // новый курсор
-    pub fn new(code: &'code [char]) -> Self {
+    pub fn new(code: &'cursor [char]) -> Self {
         Cursor {
             code,
             current: 0,
