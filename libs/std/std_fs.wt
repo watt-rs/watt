@@ -2,7 +2,13 @@ import 'std.errors'
 
 type File(raw_handle) {
     fun read_to_string() {
-        return fs.__internal_read_to_string(self.raw_handle)
+        data := fs.__internal_read_to_string(self.raw_handle)
+
+        if data == null {
+            return result.err(1)
+        }
+
+        return result.ok(data)
     }
 }
 
@@ -14,9 +20,9 @@ unit fs {
         file_hdl := __internal_open(filename)
 
         if file_hdl == null {
-            return null
+            return result.err(1)
         }
 
-        return new File(file_hdl)
+        return result.ok(new File(file_hdl))
     }
 }
