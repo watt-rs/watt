@@ -2,5 +2,5 @@ target/
 flamegraph.svg
 perf.data*
 .vscode
-./docs/mdbook.exe
-./docs/book
+docs/mdbook.exe
+docs/book

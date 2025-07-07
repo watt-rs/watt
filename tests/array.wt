@@ -1,0 +1,9 @@
+import 'std.io'
+
+array := [1, 2, 3, 4]
+
+array.add(5)
+
+array.delete_at(0)
+
+io.println(array.to_string())
