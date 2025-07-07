@@ -27,6 +27,8 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
                 ("std.typeof", "./libs/std/std_typeof.wt"),
                 ("std.time", "./libs/std/std_time.wt"),
                 ("std.fs", "./libs/std/std_fs.wt"),
+                ("std.math", "./libs/std/std_math.wt"),
+                ("std.random", "./libs/std/std_random.wt"),
             ]),
             builtins: vec!["./libs/base.wt".to_string()],
         }
@@ -75,7 +77,7 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
         // компиляция
         let tokens = executor::lex(
             filename,
-            &code,
+            &code.chars().collect::<Vec<char>>(),
             false,
             false
         );
@@ -96,15 +98,15 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
             // новое тело
             let mut new_body: Vec<Node> = vec![];
             // добавляем в тело
-            
-            while let Some(node) = body.pop() {
+            for node in body.drain(..) {
                 // перебираем
                 match node {
                     Node::Native { .. } |
                     Node::FnDeclaration { .. } |
                     Node::Type { .. } |
                     Node::Unit { .. } |
-                    Node::Trait { .. } => {
+                    Node::Trait { .. } | 
+                    Node::Import { .. } => {
                         new_body.push(node);
                     }
                     _ => {}

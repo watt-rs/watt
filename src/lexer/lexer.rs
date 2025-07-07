@@ -3,6 +3,7 @@ use crate::error;
 use crate::errors::errors::Error;
 use crate::lexer::address::*;
 use std::collections::HashMap;
+use crate::lexer::cursor::Cursor;
 
 // тип токена
 #[derive(Debug, Clone, Eq, PartialEq, Copy, Hash)]
@@ -85,55 +86,54 @@ impl Token {
 }
 
 // лексер
-pub struct Lexer<'filename> {
+pub struct Lexer<'filename, 'cursor> {
     line: u64,
     column: u16,
-    current: u128,
+    cursor: Cursor<'cursor>,
     line_text: String,
-    code: Vec<char>,
     filename: &'filename str,
     tokens: Vec<Token>,
-    keywords: HashMap<String, TokenType>,
+    keywords: HashMap<&'static str, TokenType>,
 }
+
 // имплементация
-impl<'filename> Lexer<'filename> {
-    pub fn new(code: &str, filename: &'filename str) -> Lexer<'filename> {
+impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
+    pub fn new(code: &'cursor [char], filename: &'filename str) -> Self {
         let map = HashMap::from([
-            (String::from("fun"), TokenType::Fun),
-            (String::from("break"), TokenType::Break),
-            (String::from("if"), TokenType::If),
-            (String::from("elif"), TokenType::Elif),
-            (String::from("else"), TokenType::Else),
-            (String::from("and"), TokenType::And),
-            (String::from("or"), TokenType::Or),
-            (String::from("import"), TokenType::Import),
-            (String::from("type"), TokenType::Type),
-            (String::from("new"), TokenType::New),
-            (String::from("match"), TokenType::Match),
-            (String::from("case"), TokenType::Case),
-            (String::from("default"), TokenType::Default),
-            (String::from("lambda"), TokenType::Lambda),
-            (String::from("while"), TokenType::While),
-            (String::from("unit"), TokenType::Unit),
-            (String::from("for"), TokenType::For),
-            (String::from("in"), TokenType::In),
-            (String::from("continue"), TokenType::Continue),
-            (String::from("true"), TokenType::Bool),
-            (String::from("false"), TokenType::Bool),
-            (String::from("null"), TokenType::Null),
-            (String::from("return"), TokenType::Ret),
-            (String::from("trait"), TokenType::Trait),
-            (String::from("impl"), TokenType::Impl),
-            (String::from("native"), TokenType::Native),
-            (String::from("impls"), TokenType::Impls),
+            ("fun", TokenType::Fun),
+            ("break", TokenType::Break),
+            ("if", TokenType::If),
+            ("elif", TokenType::Elif),
+            ("else", TokenType::Else),
+            ("and", TokenType::And),
+            ("or", TokenType::Or),
+            ("import", TokenType::Import),
+            ("type", TokenType::Type),
+            ("new", TokenType::New),
+            ("match", TokenType::Match),
+            ("case", TokenType::Case),
+            ("default", TokenType::Default),
+            ("lambda", TokenType::Lambda),
+            ("while", TokenType::While),
+            ("unit", TokenType::Unit),
+            ("for", TokenType::For),
+            ("in", TokenType::In),
+            ("continue", TokenType::Continue),
+            ("true", TokenType::Bool),
+            ("false", TokenType::Bool),
+            ("null", TokenType::Null),
+            ("return", TokenType::Ret),
+            ("trait", TokenType::Trait),
+            ("impl", TokenType::Impl),
+            ("native", TokenType::Native),
+            ("impls", TokenType::Impls),
         ]);
         // лексер
         let mut lexer = Lexer {
             line: 1,
-            current: 0,
             column: 0,
             line_text: String::new(),
-            code: code.chars().collect::<Vec<char>>(),
+            cursor: Cursor::new(code),
             filename,
             tokens: vec![],
             keywords: map,
@@ -144,46 +144,49 @@ impl<'filename> Lexer<'filename> {
         lexer
     }
 
-    pub fn lex(&mut self) -> Vec<Token> {
-        while !self.is_at_end() {
+    pub fn lex(mut self) -> Vec<Token> {
+        if self.tokens.len() > 0 {
+            panic!("tokens len already > 0. report this error to the developer.")
+        }
+        while !self.cursor.is_at_end() {
             let ch = self.advance();
             match ch {
                 '+' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenType::AssignAdd, "+=".to_string());
+                        self.add_tk(TokenType::AssignAdd, "+=");
                     } else {
-                        self.add_tk(TokenType::Op, "+".to_string());
+                        self.add_tk(TokenType::Op, "+");
                     }
                 }
                 '-' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenType::AssignSub, "-=".to_string());
+                        self.add_tk(TokenType::AssignSub, "-=");
                     } else if self.is_match('>') {
-                        self.add_tk(TokenType::Arrow, "->".to_string());
+                        self.add_tk(TokenType::Arrow, "->");
                     } else {
-                        self.add_tk(TokenType::Op, "-".to_string());
+                        self.add_tk(TokenType::Op, "-");
                     }
                 }
                 '*' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenType::AssignMul, "*=".to_string());
+                        self.add_tk(TokenType::AssignMul, "*=");
                     } else {
-                        self.add_tk(TokenType::Op, "*".to_string());
+                        self.add_tk(TokenType::Op, "*");
                     }
                 }
                 '%' => {
-                    self.add_tk(TokenType::Op, "%".to_string());
+                    self.add_tk(TokenType::Op, "%");
                 }
                 '/' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenType::AssignDiv, "/=".to_string());
+                        self.add_tk(TokenType::AssignDiv, "/=");
                     } else if self.is_match('/') {
-                        while !self.is_match('\n') && !self.is_at_end() {
+                        while !self.is_match('\n') && !self.cursor.is_at_end() {
                             self.advance();
                         }
                         self.newline();
                     } else if self.is_match('*') {
-                        while !(self.peek() == '*' && self.next() == '/') && !self.is_at_end() {
+                        while !(self.cursor.peek() == '*' && self.cursor.next() == '/') && !self.cursor.is_at_end() {
                             if self.is_match('\n') {
                                 self.newline();
                                 continue;
@@ -195,73 +198,73 @@ impl<'filename> Lexer<'filename> {
                         // /
                         self.advance();
                     } else {
-                        self.add_tk(TokenType::Op, "/".to_string());
+                        self.add_tk(TokenType::Op, "/");
                     }
                 }
                 '(' => {
-                    self.add_tk(TokenType::Lparen, "(".to_string());
+                    self.add_tk(TokenType::Lparen, "(");
                 }
                 ')' => {
-                    self.add_tk(TokenType::Rparen, ")".to_string());
+                    self.add_tk(TokenType::Rparen, ")");
                 }
                 '{' => {
-                    self.add_tk(TokenType::Lbrace, "{".to_string());
+                    self.add_tk(TokenType::Lbrace, "{");
                 }
                 '}' => {
-                    self.add_tk(TokenType::Rbrace, "}".to_string());
+                    self.add_tk(TokenType::Rbrace, "}");
                 }
                 '[' => {
-                    self.add_tk(TokenType::Lbracket, "[".to_string());
+                    self.add_tk(TokenType::Lbracket, "[");
                 }
                 ']' => {
-                    self.add_tk(TokenType::Rbracket, "]".to_string());
+                    self.add_tk(TokenType::Rbracket, "]");
                 }
                 ',' => {
-                    self.add_tk(TokenType::Comma, ",".to_string());
+                    self.add_tk(TokenType::Comma, ",");
                 }
                 '.' => {
                     if self.is_match('.') {
-                        self.add_tk(TokenType::Range, "..".to_string());
+                        self.add_tk(TokenType::Range, "..");
                     } else {
-                        self.add_tk(TokenType::Dot, ".".to_string());
+                        self.add_tk(TokenType::Dot, ".");
                     }
                 }
                 '?' => {
-                    self.add_tk(TokenType::Question, "?".to_string());
+                    self.add_tk(TokenType::Question, "?");
                 }
                 ':' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenType::Walrus, ":=".to_string());
+                        self.add_tk(TokenType::Walrus, ":=");
                     } else {
-                        self.add_tk(TokenType::Colon, ":".to_string())
+                        self.add_tk(TokenType::Colon, ":")
                     }
                 }
                 '<' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenType::LessEq, "<=".to_string());
+                        self.add_tk(TokenType::LessEq, "<=");
                     } else {
-                        self.add_tk(TokenType::Less, "<".to_string());
+                        self.add_tk(TokenType::Less, "<");
                     }
                 }
                 '>' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenType::GreaterEq, ">=".to_string());
+                        self.add_tk(TokenType::GreaterEq, ">=");
                     } else {
-                        self.add_tk(TokenType::Greater, ">".to_string());
+                        self.add_tk(TokenType::Greater, ">");
                     }
                 }
                 '!' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenType::NotEq, "!=".to_string());
+                        self.add_tk(TokenType::NotEq, "!=");
                     } else {
-                        self.add_tk(TokenType::Bang, "!".to_string());
+                        self.add_tk(TokenType::Bang, "!");
                     }
                 }
                 '=' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenType::Eq, "==".to_string());
+                        self.add_tk(TokenType::Eq, "==");
                     } else {
-                        self.add_tk(TokenType::Assign, "=".to_string());
+                        self.add_tk(TokenType::Assign, "=");
                     }
                 }
                 // пробелы
@@ -308,14 +311,14 @@ impl<'filename> Lexer<'filename> {
                 }
             }
         }
-        self.tokens.clone()
+        self.tokens
     }
 
     fn scan_string(&mut self) -> Result<Token, Error> {
         let mut text: String = String::new();
-        while self.peek() != '\'' {
+        while self.cursor.peek() != '\'' {
             text.push(self.advance());
-            if self.is_at_end() || self.is_match('\n') {
+            if self.cursor.is_at_end() || self.is_match('\n') {
                 return Err(Error::new(
                     Address::new(
                         self.line,
@@ -344,9 +347,9 @@ impl<'filename> Lexer<'filename> {
     fn scan_number(&mut self, start: char) -> Result<Token, Error> {
         let mut text: String = String::from(start);
         let mut is_float: bool = false;
-        while self.is_digit(self.peek()) || self.peek() == '.' {
-            if self.peek() == '.' {
-                if self.next() == '.' {
+        while self.is_digit(self.cursor.peek()) || self.cursor.peek() == '.' {
+            if self.cursor.peek() == '.' {
+                if self.cursor.next() == '.' {
                     break;
                 }
                 if is_float {
@@ -366,7 +369,7 @@ impl<'filename> Lexer<'filename> {
                 continue;
             }
             text.push(self.advance());
-            if self.is_at_end() {
+            if self.cursor.is_at_end() {
                 break;
             }
         }
@@ -384,16 +387,16 @@ impl<'filename> Lexer<'filename> {
 
     fn scan_id_or_keyword(&mut self, start: char) -> Token {
         let mut text: String = String::from(start);
-        while self.is_id(self.peek()) {
+        
+        while self.is_id(self.cursor.peek()) {
             text.push(self.advance());
-            if self.is_at_end() {
+            if self.cursor.is_at_end() {
                 break;
             }
         }
-        let tk_type: TokenType = match self.keywords.get(&text) {
-            Some(tk_type) => tk_type.clone(),
-            None => TokenType::Id,
-        };
+        
+        let tk_type: TokenType = self.keywords.get(text.as_str()).cloned().unwrap_or(TokenType::Id);
+        
         Token {
             tk_type,
             value: text,
@@ -406,30 +409,13 @@ impl<'filename> Lexer<'filename> {
         }
     }
 
-    fn is_at_end(&self) -> bool {
-        self.current >= self.code.len() as u128
-    }
-
-    fn is_at_end_offset(&self, offset: u128) -> bool {
-        self.current + offset >= self.code.len() as u128
-    }
-
-    fn char_at(&self, offset: u128) -> char {
-        let index = (self.current + offset) as usize;
-        if self.code.len() > index {
-            let c = self.code[index];
-            c
-        } else {
-            '\0'
-        }
-    }
 
     fn get_line_text(&self) -> String {
         // проходимся по тексту
         let mut i = 0;
-        let mut line_text = "".to_string();
-        while !self.is_at_end_offset(i) && self.char_at(i) != '\n' {
-            line_text.push(self.char_at(i));
+        let mut line_text = String::new();
+        while !self.cursor.is_at_end_offset(i) && self.cursor.char_at(i) != '\n' {
+            line_text.push(self.cursor.char_at(i));
             i += 1;
         }
         // возвращаем
@@ -443,46 +429,28 @@ impl<'filename> Lexer<'filename> {
     }
 
     fn advance(&mut self) -> char {
-        let ch: char = self.char_at(0);
-        self.current += 1;
+        let ch: char = self.cursor.char_at(0);
+        self.cursor.current += 1;
         self.column += 1;
         ch
     }
 
-    fn peek(&self) -> char {
-        if self.is_at_end() {
-            '\0'
-        } else {
-            self.char_at(0)
-        }
-    }
 
-    fn next(&self) -> char {
-        if self.current + 1 >= self.code.len() as u128 {
-            '\0'
-        } else {
-            self.char_at(1)
-        }
-    }
-
-    //noinspection ALL
+    #[allow(clippy::wrong_self_convention)]
     fn is_match(&mut self, ch: char) -> bool {
-        if self.is_at_end() {
-            false
-        } else {
-            if self.char_at(0) == ch {
+        if !self.cursor.is_at_end() {
+            if self.cursor.char_at(0) == ch {
                 self.advance();
-                true
-            } else {
-                false
+                return true
             }
         }
+        false
     }
 
-    fn add_tk(&mut self, tk_type: TokenType, tk_value: String) {
+    fn add_tk(&mut self, tk_type: TokenType, tk_value: &str) {
         self.tokens.push(Token::new(
             tk_type,
-            tk_value,
+            tk_value.to_string(),
             Address::new(
                 self.line,
                 self.column,
@@ -501,6 +469,6 @@ impl<'filename> Lexer<'filename> {
     }
 
     fn is_id(&self, ch: char) -> bool {
-        self.is_letter(ch) || self.is_digit(ch) || (ch == ':' && self.is_id(self.next()))
+        self.is_letter(ch) || self.is_digit(ch) || (ch == ':' && self.is_id(self.cursor.next()))
     }
 }

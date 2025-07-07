@@ -12,9 +12,32 @@ type Timestamp(raw) {
     native __second -> 'timestamp@second'
 
     // в строку
-    fun to_string() {
+    fun to_string {
         return __day(raw) + '.' + __month(raw) + '.' + __year(raw) + ' ' +
                __hour(raw) + ':' + __minute(raw) + ':' + __second(raw)
+    }
+
+    // конвертеры
+    fun mills {
+        return __mills(raw)
+    }
+    fun month {
+        return __month(raw)
+    }
+    fun year {
+        return __year(raw)
+    }
+    fun day {
+        return __day(raw)
+    }
+    fun hour {
+        return __hour(raw)
+    }
+    fun second {
+        return __seconds(raw)
+    }
+    fun minute {
+        return __minute(raw)
     }
 }
 
