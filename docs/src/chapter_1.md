@@ -115,7 +115,7 @@ Output:
 Watt is a dynamic-typed programming language, that means, we can change variable type at runtime, for example, let's run following code:
 
 *main.wt:*
-```
+```watt
 import 'std.io'
 a := 5
 a = 'hello'
@@ -154,7 +154,7 @@ We also all over examples can find *binary* op-s. Here's a table, that contains 
 We also can use parens *( )* to group expr-s. Here's example:
 
 *main.wt:*
-```
+```watt
 import 'std.io'
 a := (2 + 2) * 2
 io.println('result' + a)
