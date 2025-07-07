@@ -144,9 +144,10 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
         lexer
     }
 
-    pub fn lex(&mut self) {
-        self.tokens.clear();
-
+    pub fn lex(mut self) -> Vec<Token> {
+        if self.tokens.len() > 0 {
+            panic!("tokens len already > 0. report this error to the developer.")
+        }
         while !self.cursor.is_at_end() {
             let ch = self.advance();
             match ch {
@@ -310,6 +311,7 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
                 }
             }
         }
+        self.tokens
     }
 
     fn scan_string(&mut self) -> Result<Token, Error> {
