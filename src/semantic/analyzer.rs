@@ -32,13 +32,18 @@ impl Analyzer {
     pub fn analyze<'node>(&mut self, node: &'node Node) -> &'node Node {
         match node {
             Node::Block { body } => {
-                self.analyze_block(body);
+                for node in body {
+                    self.analyze(&node);
+                }
             }
             Node::If { logical, body, elseif, .. } => {
                 self.analyze_if(body, logical, elseif);
             }
             Node::While { logical, body, .. } => {
                 self.analyze_while(body, logical);
+            }
+            Node::For { iterable, body, .. } => {
+                self.analyze_for(body, iterable);
             }
             Node::FnDeclaration { body, .. } => {
                 self.analyze_fn_decl(body);
@@ -49,8 +54,17 @@ impl Analyzer {
             Node::Continue { location } => {
                 self.analyze_continue(&location.address);
             }
-            Node::List { .. } => { todo!() }
-            Node::Map { .. } => { todo!() }
+            Node::List { values, .. } => {
+                for value in values {
+                    self.analyze(&value);
+                }
+            }
+            Node::Map { values, .. } => {
+                for (k, v) in values {
+                    self.analyze(&k);
+                    self.analyze(&v);
+                }
+            }
             Node::Match { cases, default, .. } => { 
                 self.analyze_match(cases, default);
             }
@@ -58,16 +72,39 @@ impl Analyzer {
                 self.analyze_return(&location.address);
             }
             Node::Type { body, .. } => {
-                self.analyze_type_decl( body);
+                self.analyze(body);
             }
             Node::Unit { body, .. } => {
-                self.analyze_unit_decl(body);
+                self.analyze(body);
             }
             Node::Import { location, .. } => {
                 self.analyze_import(&location.address)
             }
             Node::ErrorPropagation { location, .. } => {
                 self.analyze_error_propagation(&location.address);
+            }
+            Node::Call { args, .. } => {
+                for arg in args {
+                    self.analyze(arg);
+                }
+            }
+            Node::Define { value, .. } => {
+                self.analyze(value);
+            }
+            Node::Unary { value, .. } => {
+                self.analyze(value);
+            }
+            Node::Bin { left, right, .. } => {
+                self.analyze(&*left);
+                self.analyze(&*right);
+            }
+            Node::Instance { constructor, .. } => {
+                for arg in constructor {
+                    self.analyze(arg);
+                }
+            }
+            Node::Assign { value, .. } => {
+                self.analyze(&*value);
             }
             _ => {}
         }
@@ -95,18 +132,10 @@ impl Analyzer {
         false
     }
 
-    // блок
-    pub fn analyze_block(&mut self, body: &Vec<Node>) {
-        // ноды
-        for node in body {
-            self.analyze(node);
-        }
-    }
-
     // иф
     pub fn analyze_if(&mut self, body: &Node, logical: &Node, elseif: &Option<Box<Node>>) {
         // пушим
-        self.analyze_stack.push_back(AnalyzerNode::Loop);
+        self.analyze_stack.push_back(AnalyzerNode::If);
         self.analyze(logical);
         self.analyze(body);
         // попаем
@@ -129,8 +158,18 @@ impl Analyzer {
     // цикл
     fn analyze_while(&mut self, body: &Node, logical: &Node) {
         // пушим
-        self.analyze_stack.push_back(AnalyzerNode::If);
+        self.analyze_stack.push_back(AnalyzerNode::Loop);
         self.analyze(logical);
+        self.analyze(body);
+        // попаем
+        self.analyze_stack.pop_back();
+    }
+
+    // анализ цикла for
+    pub fn analyze_for(&mut self, body: &Node, iterable: &Node) {
+        // пушим
+        self.analyze_stack.push_back(AnalyzerNode::Loop);
+        self.analyze(iterable);
         self.analyze(body);
         // попаем
         self.analyze_stack.pop_back();
@@ -206,19 +245,7 @@ impl Analyzer {
             ));
         }
     }
-
-    // анализ декларации типа
-    fn analyze_type_decl(&mut self,  body: &Box<Node>) {
-        // пуш в стек
-        self.analyze(body);
-    }
-
-    // анализ декларации юнита
-    fn analyze_unit_decl(&mut self, body: &Box<Node>) {
-        // пуш в стек
-        self.analyze(body);
-    }
-
+    
     // анализ импорта
     fn analyze_import(&self, addr: &Address) {
         // проверка размера стека вложенности
@@ -241,5 +268,5 @@ impl Analyzer {
                 "you can use it only inside functions.".to_string()
             ))
         }
-    }    
+    }
 }
