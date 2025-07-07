@@ -92,7 +92,7 @@ pub struct Lexer<'filename, 'cursor> {
     cursor: Cursor<'cursor>,
     line_text: String,
     filename: &'filename str,
-    tokens: Vec<Token>,
+    pub tokens: Vec<Token>,
     keywords: HashMap<&'static str, TokenType>,
 }
 
@@ -144,7 +144,9 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
         lexer
     }
 
-    pub fn lex(&mut self) -> Vec<Token> {
+    pub fn lex(&mut self) {
+        self.tokens.clear();
+
         while !self.cursor.is_at_end() {
             let ch = self.advance();
             match ch {
@@ -308,7 +310,6 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
                 }
             }
         }
-        self.tokens.clone()
     }
 
     fn scan_string(&mut self) -> Result<Token, Error> {
