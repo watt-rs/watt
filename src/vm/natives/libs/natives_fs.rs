@@ -28,7 +28,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                         "check your code".to_string()
                     ));
                 }
-                Err(e) => {
+                Err(_) => {
                     todo!()
                 }
             };
@@ -85,7 +85,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                         "check your code".to_string()
                     ));
                 }
-                Err(e) => {
+                Err(_) => {
                     todo!()
                 }
             };
@@ -103,6 +103,8 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             Ok(())
         }
     );
+
+    // TODO: Write, Close
 
     // успех
     Ok(())
