@@ -92,7 +92,7 @@ pub struct Lexer<'filename, 'cursor> {
     cursor: Cursor<'cursor>,
     line_text: String,
     filename: &'filename str,
-    pub tokens: Vec<Token>,
+    tokens: Vec<Token>,
     keywords: HashMap<&'static str, TokenType>,
 }
 
