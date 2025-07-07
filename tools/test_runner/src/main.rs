@@ -31,7 +31,7 @@ fn main() {
     let compiler_path = working_directory.clone() + "/target/release/Watt";
 
     println!("Building Watt...");
-    if let Err(e) = std::process::Command::new("cargo").args(["b", "-q", "--release"]).spawn().map(|mut ch| ch.wait()) {
+    if let Err(e) = std::process::Command::new("cargo").args(["b", "--release"]).spawn().map(|mut ch| ch.wait()) {
         eprintln!("Error occured when building Watt: {e:?}");
 
         std::process::exit(1);
@@ -55,6 +55,8 @@ fn main() {
                 }
             };
 
+			println!("----- Running tests -----");
+
             // Запускаем тесты.
             let stats = testing::run_tests(&compiler_path, &working_directory, &tests_table);
 
@@ -68,6 +70,8 @@ fn main() {
                     std::process::exit(1);
                 }
             };
+
+			println!("----- Running benchmarks -----");
 
             benchmarking::run_benchmark_on(&compiler_path, &file, &BenchmarkOptions::default());
         }
