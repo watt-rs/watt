@@ -56,7 +56,7 @@ fn main() {
             };
 
             // Запускаем тесты.
-            let stats = testing::run_tests(&compiler_path, &tests_table);
+            let stats = testing::run_tests(&compiler_path, &working_directory, &tests_table);
 
             println!("test results: {} ran: {} ok, {} fail", stats.ran, stats.ok, stats.fail);
         }

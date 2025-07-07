@@ -56,7 +56,7 @@ pub fn build_verification_table(on: &str) -> std::io::Result<TestMap> {
 }
 
 /// Запускает все тесты из таблицы
-pub fn run_tests(watt_path: &str, tests_table: &HashMap<String, Option<String>>) -> TesterResults {
+pub fn run_tests(watt_path: &str, working_directory: &str, tests_table: &HashMap<String, Option<String>>) -> TesterResults {
     let mut stats = TesterResults::default();
 
     for (test_file, expected_content_file) in tests_table {
@@ -65,12 +65,14 @@ pub fn run_tests(watt_path: &str, tests_table: &HashMap<String, Option<String>>)
         // Добавляем аргумент пути файла для запуска
         let command = command.arg(test_file);
 
+       	let short_filename = &test_file[working_directory.len() + 1..];
+
         match command.output() {
         	// Если программа была запущена...
             Ok(data) => {
             	// ...неуспешно, то это провал
                 if !data.status.success() {
-                    println!("[FAIL] {test_file}");
+                    println!("[FAIL] {short_filename}");
                     println!("{}", str::from_utf8(&data.stdout).unwrap());
                     
                     stats.fail += 1;
@@ -81,7 +83,7 @@ pub fn run_tests(watt_path: &str, tests_table: &HashMap<String, Option<String>>)
 
 				// Если нет ожидаемых данных, то это хорошо, поскольку программа была обработана нормально
                 if expected_content_file.is_none() {
-                    println!("[NO OUTPUT - OK] {test_file}");
+                    println!("[NO OUTPUT - OK] {short_filename}");
 
                     stats.ok += 1;
                 } else {
@@ -89,12 +91,12 @@ pub fn run_tests(watt_path: &str, tests_table: &HashMap<String, Option<String>>)
 
                     if verify_data == data.stdout {
                     	// Если даннве совпали, то тест пройден.
-                        println!("[OK] {test_file}");
+                        println!("[OK] {short_filename}");
 
                         stats.ok += 1;
                     } else {
                         // Ну а если нет, то печатаем отчет об ощибке.
-                        println!("[FAIL] {test_file}");
+                        println!("[FAIL] {short_filename}");
                         println!("Expected:\n---");
 
                         print!("{}", str::from_utf8(&verify_data).unwrap());
@@ -112,7 +114,7 @@ pub fn run_tests(watt_path: &str, tests_table: &HashMap<String, Option<String>>)
             Err(err) => {
             	// Если Watt не удалось запустить, то это ошибка
             	// TODO: Возможно если Watt не удастся запустить то все тесты будут считаться проваленными, поэтому необходимо остановить процесс тестирования.
-                println!("[ERR] {test_file}: {err:?}");
+                println!("[ERR] {short_filename}: {err:?}");
 
                 stats.fail += 1;
             },
