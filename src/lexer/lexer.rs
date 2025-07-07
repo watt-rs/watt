@@ -3,6 +3,7 @@ use crate::error;
 use crate::errors::errors::Error;
 use crate::lexer::address::*;
 use std::collections::HashMap;
+use crate::lexer::cursor::Cursor;
 
 // тип токена
 #[derive(Debug, Clone, Eq, PartialEq, Copy, Hash)]
@@ -85,20 +86,19 @@ impl Token {
 }
 
 // лексер
-pub struct Lexer<'filename> {
+pub struct Lexer<'filename, 'cursor> {
     line: u64,
     column: u16,
-    current: u128,
+    cursor: Cursor<'cursor>,
     line_text: String,
-    code: Vec<char>,
     filename: &'filename str,
     pub tokens: Vec<Token>,
     keywords: HashMap<&'static str, TokenType>,
 }
 
 // имплементация
-impl<'filename> Lexer<'filename> {
-    pub fn new(code: &str, filename: &'filename str) -> Lexer<'filename> {
+impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
+    pub fn new(code: &'cursor [char], filename: &'filename str) -> Self {
         let map = HashMap::from([
             ("fun", TokenType::Fun),
             ("break", TokenType::Break),
@@ -131,10 +131,9 @@ impl<'filename> Lexer<'filename> {
         // лексер
         let mut lexer = Lexer {
             line: 1,
-            current: 0,
             column: 0,
             line_text: String::new(),
-            code: code.chars().collect::<Vec<char>>(),
+            cursor: Cursor::new(code),
             filename,
             tokens: vec![],
             keywords: map,
@@ -148,7 +147,7 @@ impl<'filename> Lexer<'filename> {
     pub fn lex(&mut self) {
         self.tokens.clear();
 
-        while !self.is_at_end() {
+        while !self.cursor.is_at_end() {
             let ch = self.advance();
             match ch {
                 '+' => {
@@ -181,12 +180,12 @@ impl<'filename> Lexer<'filename> {
                     if self.is_match('=') {
                         self.add_tk(TokenType::AssignDiv, "/=");
                     } else if self.is_match('/') {
-                        while !self.is_match('\n') && !self.is_at_end() {
+                        while !self.is_match('\n') && !self.cursor.is_at_end() {
                             self.advance();
                         }
                         self.newline();
                     } else if self.is_match('*') {
-                        while !(self.peek() == '*' && self.next() == '/') && !self.is_at_end() {
+                        while !(self.cursor.peek() == '*' && self.cursor.next() == '/') && !self.cursor.is_at_end() {
                             if self.is_match('\n') {
                                 self.newline();
                                 continue;
@@ -315,9 +314,9 @@ impl<'filename> Lexer<'filename> {
 
     fn scan_string(&mut self) -> Result<Token, Error> {
         let mut text: String = String::new();
-        while self.peek() != '\'' {
+        while self.cursor.peek() != '\'' {
             text.push(self.advance());
-            if self.is_at_end() || self.is_match('\n') {
+            if self.cursor.is_at_end() || self.is_match('\n') {
                 return Err(Error::new(
                     Address::new(
                         self.line,
@@ -346,9 +345,9 @@ impl<'filename> Lexer<'filename> {
     fn scan_number(&mut self, start: char) -> Result<Token, Error> {
         let mut text: String = String::from(start);
         let mut is_float: bool = false;
-        while self.is_digit(self.peek()) || self.peek() == '.' {
-            if self.peek() == '.' {
-                if self.next() == '.' {
+        while self.is_digit(self.cursor.peek()) || self.cursor.peek() == '.' {
+            if self.cursor.peek() == '.' {
+                if self.cursor.next() == '.' {
                     break;
                 }
                 if is_float {
@@ -368,7 +367,7 @@ impl<'filename> Lexer<'filename> {
                 continue;
             }
             text.push(self.advance());
-            if self.is_at_end() {
+            if self.cursor.is_at_end() {
                 break;
             }
         }
@@ -387,9 +386,9 @@ impl<'filename> Lexer<'filename> {
     fn scan_id_or_keyword(&mut self, start: char) -> Token {
         let mut text: String = String::from(start);
         
-        while self.is_id(self.peek()) {
+        while self.is_id(self.cursor.peek()) {
             text.push(self.advance());
-            if self.is_at_end() {
+            if self.cursor.is_at_end() {
                 break;
             }
         }
@@ -408,30 +407,13 @@ impl<'filename> Lexer<'filename> {
         }
     }
 
-    fn is_at_end(&self) -> bool {
-        self.current >= self.code.len() as u128
-    }
-
-    fn is_at_end_offset(&self, offset: u128) -> bool {
-        self.current + offset >= self.code.len() as u128
-    }
-
-    fn char_at(&self, offset: u128) -> char {
-        let index = (self.current + offset) as usize;
-        if self.code.len() > index {
-            let c = self.code[index];
-            c
-        } else {
-            '\0'
-        }
-    }
 
     fn get_line_text(&self) -> String {
         // проходимся по тексту
         let mut i = 0;
         let mut line_text = String::new();
-        while !self.is_at_end_offset(i) && self.char_at(i) != '\n' {
-            line_text.push(self.char_at(i));
+        while !self.cursor.is_at_end_offset(i) && self.cursor.char_at(i) != '\n' {
+            line_text.push(self.cursor.char_at(i));
             i += 1;
         }
         // возвращаем
@@ -445,34 +427,19 @@ impl<'filename> Lexer<'filename> {
     }
 
     fn advance(&mut self) -> char {
-        let ch: char = self.char_at(0);
-        self.current += 1;
+        let ch: char = self.cursor.char_at(0);
+        self.cursor.current += 1;
         self.column += 1;
         ch
     }
 
-    fn peek(&self) -> char {
-        if self.is_at_end() {
-            '\0'
-        } else {
-            self.char_at(0)
-        }
-    }
 
-    fn next(&self) -> char {
-        if self.current + 1 >= self.code.len() as u128 {
-            '\0'
-        } else {
-            self.char_at(1)
-        }
-    }
-
-    //noinspection ALL
+    #[allow(clippy::wrong_self_convention)]
     fn is_match(&mut self, ch: char) -> bool {
-        if !self.is_at_end() {
-            if self.char_at(0) == ch {
+        if !self.cursor.is_at_end() {
+            if self.cursor.char_at(0) == ch {
                 self.advance();
-                true
+                return true
             }
         }
         false
@@ -500,6 +467,6 @@ impl<'filename> Lexer<'filename> {
     }
 
     fn is_id(&self, ch: char) -> bool {
-        self.is_letter(ch) || self.is_digit(ch) || (ch == ':' && self.is_id(self.next()))
+        self.is_letter(ch) || self.is_digit(ch) || (ch == ':' && self.is_id(self.cursor.next()))
     }
 }
