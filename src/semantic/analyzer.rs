@@ -46,7 +46,7 @@ impl Analyzer {
                 self.analyze_for(body, iterable);
             }
             Node::FnDeclaration { body, .. } => {
-                self.analyze_fn_decl(body);
+                self.analyze_fn(body);
             }
             Node::Break { location } => {
                 self.analyze_break(&location.address);
@@ -95,8 +95,8 @@ impl Analyzer {
                 self.analyze(value);
             }
             Node::Bin { left, right, .. } => {
-                self.analyze(&*left);
-                self.analyze(&*right);
+                self.analyze(left);
+                self.analyze(right);
             }
             Node::Instance { constructor, .. } => {
                 for arg in constructor {
@@ -105,6 +105,24 @@ impl Analyzer {
             }
             Node::Assign { value, .. } => {
                 self.analyze(&*value);
+            }
+            Node::AnFnDeclaration { body, .. } => {
+                self.analyze_fn(body);
+            }
+            Node::Cond { left, right, .. } => {
+                self.analyze(left);
+                self.analyze(right);
+            }
+            Node::Logical { left, right, .. } => {
+                self.analyze(left);
+                self.analyze(right);
+            }
+            Node::Range { from, to, .. } => {
+                self.analyze(from);
+                self.analyze(to);
+            }
+            Node::Impls { value, .. } => {
+                self.analyze(value);
             }
             _ => {}
         }
@@ -218,7 +236,7 @@ impl Analyzer {
     }
 
     // анализ декларации функции
-    fn analyze_fn_decl(&mut self, body: &Box<Node>) {
+    fn analyze_fn(&mut self, body: &Box<Node>) {
         // пуш в стек
         self.analyze_stack.push_back(AnalyzerNode::Fn);
         self.analyze(body);
