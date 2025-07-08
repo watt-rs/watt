@@ -171,7 +171,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                     }
                     Err(e) => {
                         vm.op_push(
-                            OpcodeValue::Raw(Value::Int(e.raw_os_error().unwrap_or(0) as _)),
+                            OpcodeValue::Int(e.raw_os_error().unwrap_or(0) as _),
                             table,
                         )?;
                     }
@@ -194,7 +194,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             if should_push {
                 let value = instance.stream_position().unwrap_or(0);
 
-                vm.op_push(OpcodeValue::Raw(Value::Int(value as _)), table)?;
+                vm.op_push(OpcodeValue::Int(value as _), table)?;
             }
             // успех
             Ok(())
@@ -243,7 +243,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             if should_push {
                 if let Err(e) = result {
                     vm.op_push(
-                        OpcodeValue::Raw(Value::Int(e.raw_os_error().unwrap_or(0) as _)),
+                        OpcodeValue::Int(e.raw_os_error().unwrap_or(0) as _),
                         table,
                     )?;
                 }
@@ -269,7 +269,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             if should_push {
                 if let Err(e) = result {
                     vm.op_push(
-                        OpcodeValue::Raw(Value::Int(e.raw_os_error().unwrap_or(0) as _)),
+                        OpcodeValue::Int(e.raw_os_error().unwrap_or(0) as _),
                         table,
                     )?;
                 }
@@ -295,7 +295,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             if should_push {
                 if let Err(e) = result {
                     vm.op_push(
-                        OpcodeValue::Raw(Value::Int(e.raw_os_error().unwrap_or(0) as _)),
+                        OpcodeValue::Int(e.raw_os_error().unwrap_or(0) as _),
                         table,
                     )?;
                 }
@@ -321,7 +321,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             if should_push {
                 // if let Err(e) = result {
                 //     vm.op_push(
-                //         OpcodeValue::Raw(Value::Int(e.raw_os_error().unwrap_or(0) as _)),
+                //         OpcodeValue::Int(e.raw_os_error().unwrap_or(0) as _)),
                 //         table,
                 //     )?;
                 // }
@@ -329,6 +329,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                 if let Ok(data) = result {
                     vm.op_push(OpcodeValue::Raw(Value::Bool(data)), table)?;
                 } else {
+                    // TODO: Change it when I learn to use typeof (return errno)
                     vm.op_push(OpcodeValue::Raw(Value::Null), table)?;
                 }
             }
@@ -350,13 +351,13 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                 let result = std::fs::read_dir(name);
 
                 match result {
-                    Err(e) => {
+                    Err(_e) => {
                         // vm.op_push(
-                        //     OpcodeValue::Raw(Value::Int(e.raw_os_error().unwrap_or(0) as _)),
+                        //     OpcodeValue::Int(e.raw_os_error().unwrap_or(0) as _)),
                         //     table,
                         // )?;
 
-                        // TODO: Change it when I learn to use typeof
+                        // TODO: Change it when I learn to use typeof (return errno)
                         vm.op_push(OpcodeValue::Raw(Value::Null), table)?;
                     }
                     Ok(data) => {
