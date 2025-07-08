@@ -22,10 +22,10 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             let filename = match vm.pop(&addr) {
                 Ok(Value::String(filename)) => &*filename,
                 Ok(a) => {
-                    error!(Error::new(
+                    error!(Error::own_text(
                         addr.clone(),
                         format!("Expected string, found {:?}", a),
-                        "check your code".to_string()
+                        "check your code"
                     ));
                 }
                 Err(_) => {
@@ -63,10 +63,10 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             let filename = match vm.pop(&addr) {
                 Ok(Value::String(filename)) => &*filename,
                 Ok(a) => {
-                    error!(Error::new(
+                    error!(Error::own_text(
                         addr.clone(),
                         format!("Expected string, found {:?}", a),
-                        "check your code".to_string()
+                        "check your code"
                     ));
                 }
                 Err(_) => {
@@ -101,21 +101,20 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                 let instance = unsafe { &mut *instance };
 
                 if !instance.is::<std::fs::File>() {
-                    error!(Error::new(
+                    error!(Error::own_text(
                         addr.clone(),
                         format!("Internal type in std.fs.File is not a Rust's `std::io::File`!"),
                         "please file an issue at https://github.com/vyacheslavhere/watt"
-                            .to_string()
                     ));
                 }
 
                 instance.downcast_mut().unwrap()
             }
             Ok(a) => {
-                error!(Error::new(
+                error!(Error::own_text(
                     addr.clone(),
                     format!("Expected instance, found {:?}", a),
-                    "check your code".to_string()
+                    "check your code"
                 ));
             }
             Err(_) => {
@@ -158,10 +157,10 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                     unsafe { &*string }
                 }
                 Ok(a) => {
-                    error!(Error::new(
+                    error!(Error::own_text(
                         addr.clone(),
                         format!("Expected string, found {:?}", a),
-                        "check your code".to_string()
+                        "check your code"
                     ));
                 }
                 Err(_) => {
