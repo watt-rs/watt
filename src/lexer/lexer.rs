@@ -383,7 +383,14 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
     fn scan_number(&mut self, start: char) -> Result<Token, Error> {
         let mut text: String = String::from(start);
         let mut is_float: bool = false;
-        while self.is_digit(self.cursor.peek()) || self.cursor.peek() == '.' {
+        let mut is_hex: bool = false;
+
+        let accepted_characters = ['.', 'x', 'o', 'b'];
+
+        // Если перед нами цифра, или, если парсим шестнадцатиричное число, диапазон букв от A до F, или перед нами точка, или один из трёх показателей системы счисления
+        while self.is_digit(self.cursor.peek())
+            || (is_hex && (('a'..='f').contains(&self.cursor.peek().to_ascii_lowercase())))
+            || accepted_characters.contains(&self.cursor.peek()) {
             if self.cursor.peek() == '.' {
                 if self.cursor.next() == '.' {
                     break;
@@ -403,12 +410,17 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
                 is_float = true;
                 text.push(self.advance());
                 continue;
+            } else if self.cursor.peek() == 'x' {
+                is_hex = true;
             }
+
             text.push(self.advance());
+            
             if self.cursor.is_at_end() {
                 break;
             }
         }
+
         Ok(Token {
             tk_type: TokenType::Number,
             value: text,

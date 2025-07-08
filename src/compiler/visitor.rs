@@ -242,9 +242,21 @@ impl<'visitor> CompileVisitor<'visitor> {
         }
         // пуш инта
         else {
+            let parsed: i64 = {
+                if value.value.starts_with("0x") {
+                    i64::from_str_radix(&value.value[2..], 16).unwrap()
+                } else if value.value.starts_with("0o") {
+                    i64::from_str_radix(&value.value[2..], 8).unwrap()
+                } else if value.value.starts_with("0b") {
+                    i64::from_str_radix(&value.value[2..], 2).unwrap()
+                } else {
+                    value.value.parse::<i64>().unwrap()
+                }
+            };
+
             self.push_instr(Opcode::Push {
                 addr: value.address.clone(),
-                value: OpcodeValue::Int(value.value.parse::<i64>().unwrap()),
+                value: OpcodeValue::Int(parsed),
             });
         }
     }

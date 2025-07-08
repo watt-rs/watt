@@ -1,0 +1,14 @@
+import 'std.io'
+
+// 65535
+hexa := 0xFFFF
+
+// 4095
+octa := 0o7777
+
+// 2025
+bin := 0b11111101001
+
+io.println(hexa)
+io.println(octa)
+io.println(bin)
