@@ -16,7 +16,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         1,
-        "convert@to_int".to_string(),
+        "convert@to_int",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let value = vm.pop(&addr)?;
             match value {
@@ -79,7 +79,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         1,
-        "convert@to_float".to_string(),
+        "convert@to_float",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let value = vm.pop(&addr)?;
             match value {
@@ -142,7 +142,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         1,
-        "convert@to_string".to_string(),
+        "convert@to_string",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let value = vm.pop(&addr)?;
             if should_push {
@@ -160,7 +160,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         1,
-        "convert@to_bool".to_string(),
+        "convert@to_bool",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let value = vm.pop(&addr)?;
             match value {

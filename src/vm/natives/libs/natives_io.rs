@@ -17,7 +17,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         1,
-        "io@println".to_string(),
+        "io@println",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             println!("{:?}", vm.pop(&addr)?);
 
@@ -32,7 +32,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         1,
-        "io@print".to_string(),
+        "io@print",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             print!("{:?}", vm.pop(&addr)?);
 
@@ -47,7 +47,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         0,
-        "io@flush".to_string(),
+        "io@flush",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             io::stdout().lock().flush().unwrap();
 
@@ -62,7 +62,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address,
         0,
-        "io@input".to_string(),
+        "io@input",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // инпут
             let mut input: String = String::new();

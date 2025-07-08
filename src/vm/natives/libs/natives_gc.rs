@@ -14,7 +14,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         0,
-        "gc@invoke".to_string(),
+        "gc@invoke",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             vm.gc_invoke(table);
             if should_push {
