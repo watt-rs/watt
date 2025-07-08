@@ -169,8 +169,8 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                 };
                 // нода для присваивания
                 return Ok(Node::Assign {
-                    previous: previous.clone(),
-                    name: identifier.clone(),
+                    previous: previous,
+                    name: identifier,
                     value: Box::new(Node::Bin {
                         left: Box::new(var),
                         right: Box::new(self.expr()?),
