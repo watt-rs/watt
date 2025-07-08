@@ -1,5 +1,5 @@
 // импорты
-use crate::error;
+use crate::{error, vm::natives::libs::utils};
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::bytecode::OpcodeValue;
@@ -199,23 +199,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         built_in_address.clone(),
         1,
         "fs@tell".to_string(),
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let data = match vm.pop(&addr) {
-                Ok(Value::String(string)) => {
-                    unsafe { &*string }
-                }
-                Ok(a) => {
-                    error!(Error::own_text(
-                        addr.clone(),
-                        format!("Expected string, found {:?}", a),
-                        "check your code"
-                    ));
-                }
-                Err(_) => {
-                    todo!()
-                }
-            };
-            
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {            
             let instance: &mut std::fs::File = get_instance(vm, &addr);
 
             // если надо пушить
@@ -238,37 +222,8 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         3,
         "fs@seek".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let whence = match vm.pop(&addr) {
-                Ok(Value::Int(value)) => {
-                    value
-                }
-                Ok(a) => {
-                    error!(Error::own_text(
-                        addr.clone(),
-                        format!("Expected number, found {:?}", a),
-                        "check your code"
-                    ));
-                }
-                Err(_) => {
-                    todo!()
-                }
-            };
-
-            let position = match vm.pop(&addr) {
-                Ok(Value::Int(value)) => {
-                    value
-                }
-                Ok(a) => {
-                    error!(Error::own_text(
-                        addr.clone(),
-                        format!("Expected number, found {:?}", a),
-                        "check your code"
-                    ));
-                }
-                Err(_) => {
-                    todo!()
-                }
-            };
+            let whence = utils::expect_int(addr.clone(), vm.pop(&addr)?, None);
+            let position = utils::expect_int(addr.clone(), vm.pop(&addr)?, None);
 
             let instance: &mut std::fs::File = get_instance(vm, &addr);
 
