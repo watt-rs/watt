@@ -314,6 +314,33 @@ impl VM {
                     _ => { error!(invalid_op_error); }
                 }
             }
+            "&" => {
+                match operand_a {
+                    Value::Int(a) => { match operand_b {
+                        Value::Int(b) => { self.push(Value::Int(a & b)); }
+                        _ => { error!(invalid_op_error); }
+                    }}
+                    _ => { error!(invalid_op_error); }
+                }
+            }
+            "|" => {
+                match operand_a {
+                    Value::Int(a) => { match operand_b {
+                        Value::Int(b) => { self.push(Value::Int(a | b)); }
+                        _ => { error!(invalid_op_error); }
+                    }}
+                    _ => { error!(invalid_op_error); }
+                }
+            }
+            "^" => {
+                match operand_a {
+                    Value::Int(a) => { match operand_b {
+                        Value::Int(b) => { self.push(Value::Int(a ^ b)); }
+                        _ => { error!(invalid_op_error); }
+                    }}
+                    _ => { error!(invalid_op_error); }
+                }
+            }
             _ => { panic!("operator = {} is not found.", op)}
         }
         Ok(())
@@ -757,16 +784,16 @@ impl VM {
         // исполняем тело
         self.run(body, (*unit).fields)?;
         // удаляем временный self
-        (*(*unit).fields).fields.remove(&"self".to_string());
+        (*(*unit).fields).fields.remove("self");
         // бинды
         self.bind_functions((*unit).fields, FnOwner::Unit(unit));
         // init функция
-        let init_fn = "init".to_string();
+        let init_fn = "init";
         if (*(*unit).fields).exists(&init_fn) {
             // пушим юнит
             self.push(unit_value);
             // вызываем
-            self.op_call(addr, &init_fn, true, false, &Chunk::new(vec![]), table)?
+            self.op_call(addr, init_fn, true, false, &Chunk::new(vec![]), table)?
         }
         // дефайн юнита
         if let Err(e) = (*self.units).define(addr, &symbol.name, unit_value) {

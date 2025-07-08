@@ -15,7 +15,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         1,
-        "typeof@of".to_string(),
+        "typeof@of",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let value = vm.pop(&addr)?;
             if !should_push { return Ok(()) }
@@ -68,7 +68,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         1,
-        "typeof@fof".to_string(),
+        "typeof@fof",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let value = vm.pop(&addr)?;
             if !should_push { return Ok(()) }

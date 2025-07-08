@@ -28,7 +28,7 @@ impl GC {
         }
     }
     // лог
-    fn log(&self, message: String) {
+    fn log(&self, message: &str) {
         if self.debug { println!("{}", message) };
     }
     // ресет
@@ -44,7 +44,7 @@ impl GC {
             return;
         }
         // лог
-        self.log(format!("gc :: mark :: value = {:?}", value));
+        self.log(&format!("gc :: mark :: value = {value:?}"));
         // маркинг
         match value {
             Value::Instance(instance) => unsafe {
@@ -98,7 +98,7 @@ impl GC {
         // добавляем
         self.marked_tables.insert(table);
         // лог
-        self.log(format!("gc :: mark :: table = {:?}", table));
+        self.log(&format!("gc :: mark :: table = {table:?}"));
         // значения таблицы
         for val in (*table).fields.values() {
             self.mark_value(*val);
@@ -119,7 +119,7 @@ impl GC {
     // очистка
     fn sweep(&mut self) {
         // лог
-        self.log("gc :: sweep :: running".to_string());
+        self.log("gc :: sweep :: running");
         // ищем объекты для очистки, и удаляем из списка self.objects
         let mut to_free = vec![];
         self.objects.retain(|value| {
@@ -152,7 +152,7 @@ impl GC {
     }
     // высвобождение значения
     fn free_value(&self, value: Value) {
-        self.log(format!("gc :: free :: value = {:?}", value));
+        self.log(&format!("gc :: free :: value = {:?}", value));
         match value {
             Value::Fn(f) => {
                 if !f.is_null() { memory::free_value(f); }
@@ -191,7 +191,7 @@ impl GC {
     // сборка мусора
     pub unsafe fn collect_garbage(&mut self, vm: &mut VM, table: *mut Table) {
         // лог
-        self.log("gc :: triggered".to_string());
+        self.log("gc :: triggered");
         // марк
         // > stack
         for val in vm.stack.clone() {
@@ -212,7 +212,7 @@ impl GC {
         // ресет
         self.reset();
         // лог
-        self.log("gc :: end".to_string());
+        self.log("gc :: end");
     }
     // количество объектов
     pub fn objects_amount(&mut self) -> usize {
@@ -222,7 +222,7 @@ impl GC {
     // полный cleanup
     pub fn cleanup(&mut self) {
         // лог
-        self.log(format!("gc :: cleanup :: {:?}", self.objects.len()));
+        self.log(&format!("gc :: cleanup :: {:?}", self.objects.len()));
         // перебираем, и высвобождаем аллоцированые объекты
         for value in &self.objects {
             self.free_value(value.clone());
