@@ -623,7 +623,7 @@ impl VM {
     }
 
     // дефайн функции
-    unsafe fn op_define_fn(&mut self, addr: &Address, symbol: &Symbol, body: &Chunk,
+    unsafe fn op_define_fn(&mut self, addr: &Address, symbol: Symbol, body: &Chunk,
                         params: &Vec<String>, make_closure: bool, table: *mut Table) -> Result<(), ControlFlow> {
         // создаём функцию
         let function = memory::alloc_value(
@@ -1759,7 +1759,7 @@ impl VM {
                 } => {
                     self.op_define_fn(
                         addr,
-                        &Symbol::new_option(name.clone(), full_name.clone()),
+                        Symbol::new_option(name.clone(), full_name.clone()),
                         body,
                         params,
                         *make_closure,

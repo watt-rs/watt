@@ -137,25 +137,25 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                 self.check(TokenType::AssignMul) ||
                 self.check(TokenType::AssignDiv) {
                 // оператор и локация
-                let op;
+                let op: &str;
                 let location;
                 // парсим
                 match self.peek()?.tk_type {
                     TokenType::AssignSub => {
                         location = self.consume(TokenType::AssignSub)?.clone();
-                        op = "-".to_string();
+                        op = "-";
                     }
                     TokenType::AssignMul => {
                         location = self.consume(TokenType::AssignMul)?.clone();
-                        op = "*".to_string();
+                        op = "*";
                     }
                     TokenType::AssignDiv => {
                         location = self.consume(TokenType::AssignDiv)?.clone();
-                        op = "/".to_string();
+                        op = "/";
                     }
                     TokenType::AssignAdd => {
                         location = self.consume(TokenType::AssignAdd)?.clone();
-                        op = "+".to_string();
+                        op = "+";
                     }
                     _ => {
                         panic!("invalid AssignOp tk_type. report to developer.");
@@ -169,14 +169,14 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                 };
                 // нода для присваивания
                 return Ok(Node::Assign {
-                    previous: previous.clone(),
-                    name: identifier.clone(),
+                    previous: previous,
+                    name: identifier,
                     value: Box::new(Node::Bin {
                         left: Box::new(var),
                         right: Box::new(self.expr()?),
                         op: Token::new(
                             TokenType::Op,
-                            op,
+                            op.to_string(),
                             location.address,
                         )
                     }),
