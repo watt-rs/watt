@@ -39,7 +39,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                             }
                         }
                         Err(_) => {
-                            error!(Error::new(
+                            error!(Error::own_text(
                                 addr,
                                 format!("could not cast string: {} to int", *s),
                                 "you can convert only number string to int."
@@ -65,7 +65,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                     }
                 },
                 _ => {
-                    error!(Error::new(
+                    error!(Error::own_text(
                         addr, 
                         format!("could not cast value: {:?} to int", value), 
                         "check your value"
@@ -102,7 +102,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                             }
                         }
                         Err(_) => {
-                            error!(Error::new(
+                            error!(Error::own_text(
                                 addr,
                                 format!("could not cast string: {} to float", *s),
                                 "you can convert only number string to float."
@@ -128,7 +128,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                     }
                 },
                 _ => {
-                    error!(Error::new(
+                    error!(Error::own_text(
                         addr, 
                         format!("could not cast value: {:?} to float", value), 
                         "check your value"
@@ -193,7 +193,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                             }
                         }
                         Err(_) => {
-                            error!(Error::new(
+                            error!(Error::own_text(
                                 addr,
                                 format!("could not cast string: {} to int", *s),
                                 "you can convert only number string to int."
@@ -210,7 +210,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                     }
                 },
                 _ => {
-                    error!(Error::new(
+                    error!(Error::own_text(
                         addr, 
                         format!("could not cast value: {:?} to bool", value), 
                         "check your value"

@@ -199,7 +199,7 @@ impl Analyzer {
         if self.analyze_stack.len() == 0 {
             error!(Error::new(
                 addr.clone(),
-                "couldn't use continue without loop.".to_string(),
+                "couldn't use continue without loop.",
                 "remove this keyword"
             ));
             return;
@@ -208,7 +208,7 @@ impl Analyzer {
         if !self.hierarchy_has_loop() {
             error!(Error::new(
                 addr.clone(),
-                "couldn't use continue without loop.".to_string(),
+                "couldn't use continue without loop.",
                 "remove this keyword"
             ));
         }
@@ -220,7 +220,7 @@ impl Analyzer {
         if self.analyze_stack.is_empty() {
             error!(Error::new(
                 addr.clone(),
-                "couldn't use break without loop.".to_string(),
+                "couldn't use break without loop.",
                 "remove this keyword"
             ));
             return;
@@ -229,7 +229,7 @@ impl Analyzer {
         if !self.hierarchy_has_loop() {
             error!(Error::new(
                 addr.clone(),
-                "couldn't use break without loop.".to_string(),
+                "couldn't use break without loop.",
                 "remove this keyword"
             ));
         }
@@ -249,7 +249,7 @@ impl Analyzer {
         if self.analyze_stack.is_empty() {
             error!(Error::new(
                 addr.clone(),
-                "couldn't use return without loop.".to_string(),
+                "couldn't use return without loop.",
                 "remove this keyword"
             ));
             return;
@@ -258,7 +258,7 @@ impl Analyzer {
         if !self.hierarchy_has_fn() {
             error!(Error::new(
                 addr.clone(),
-                "couldn't use break without loop.".to_string(),
+                "couldn't use break without loop.",
                 "remove this keyword"
             ));
         }
@@ -270,7 +270,7 @@ impl Analyzer {
         if self.analyze_stack.len() > 0 {
             error!(Error::new(
                 addr.clone(),
-                "couldn't use import in any block.".to_string(),
+                "couldn't use import in any block.",
                 "you can use import only in main scope."
             ))
         }
@@ -282,7 +282,7 @@ impl Analyzer {
         if !self.hierarchy_has_fn() {
             error!(Error::new(
                 addr.clone(),
-                "couldn't use error propagation outside fn.".to_string(),
+                "couldn't use error propagation outside fn.",
                 "you can use it only inside functions."
             ))
         }

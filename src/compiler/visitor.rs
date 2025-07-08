@@ -741,7 +741,7 @@ impl<'visitor> CompileVisitor<'visitor> {
             }),
             // неизвестный оператор
             _ => {
-                error!(Error::new(
+                error!(Error::own_text(
                     op.address.clone(),
                     format!("undefined unary op: {:?}", op.value),
                     "available: -, !",

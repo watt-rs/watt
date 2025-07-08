@@ -7,7 +7,7 @@ use std::borrow::Cow;
 #[derive(Debug, Clone)]
 pub struct Error {
     addr: Address,
-    text: String,
+    text: Cow<'static, str>,
     hint: Cow<'static, str>,
 }
 
@@ -22,23 +22,42 @@ macro_rules! error {
 // имплементация
 impl Error {
     // новая ошибка
-    pub fn new(addr: Address, text: String, hint: &'static str) -> Self {
+    pub fn new(addr: Address, text: &'static str, hint: &'static str) -> Self {
         Error {
             addr,
-            text,
+            text: Cow::Borrowed(text),
             hint: Cow::Borrowed(hint),
         }
     }
 
     // новая ошибка
-    pub fn new_hint_owned(addr: Address, text: String, hint: String) -> Self {
+    pub fn own(addr: Address, text: String, hint: String) -> Self {
         Error {
             addr,
-            text,
+            text: Cow::Owned(text),
             hint: Cow::Owned(hint),
         }
     }
 
+    // новая ошибка
+    pub fn own_text(addr: Address, text: String, hint: &'static str) -> Self {
+        Error {
+            addr,
+            text: Cow::Owned(text),
+            hint: Cow::Borrowed(hint),
+        }
+    }
+    
+    // новая ошибка
+    #[allow(unused)]
+    pub fn own_hint(addr: Address, text: &'static str, hint: String) -> Self {
+        Error {
+            addr,
+            text: Cow::Borrowed(text),
+            hint: Cow::Owned(hint),
+        }
+    }
+    
     // вывод
     pub fn panic(&self) {
         let filename = self.addr.file.as_ref().map_or("-", |v| v);

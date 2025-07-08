@@ -225,14 +225,14 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                 Node::Define { .. } => {
                     return Err(Error::new(
                         location,
-                        "couldn't use define in expr.".to_string(),
+                        "couldn't use define in expr.",
                         "check your code.",
                     ))
                 }
                 Node::Assign { .. } => {
                     return Err(Error::new(
                         location,
-                        "couldn't use assign in expr.".to_string(),
+                        "couldn't use assign in expr.",
                         "check your code.",
                     ))
                 }
@@ -392,7 +392,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                 Ok(self.match_expr()?)
             }
             // иное
-            _ => Err(Error::new(
+            _ => Err(Error::own_text(
                 self.peek()?.address.clone(),
                 format!("invalid token. {:?}:{:?}",
                     self.peek()?.tk_type, self.peek()?.value
@@ -477,7 +477,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
             else {
                 return Err(Error::new(
                     location.address.clone(),
-                    "expected arrow or brace after case value".to_string(),
+                    "expected arrow or brace after case value",
                     "check your code"
                 ))
             }
@@ -505,7 +505,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
             // ошибка
             return Err(Error::new(
                 location.address.clone(),
-                "expected arrow or brace after case value".to_string(),
+                "expected arrow or brace after case value",
                 "check your code"
             ))
         }
@@ -965,7 +965,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
             else {
                 return Err(Error::new(
                     location.address.clone(),
-                    "expected arrow or brace after case value".to_string(),
+                    "expected arrow or brace after case value",
                     "check your code"
                 ))
             }
@@ -993,7 +993,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
             // ошибка
             return Err(Error::new(
                 location.address.clone(),
-                "expected arrow or brace after case value".to_string(),
+                "expected arrow or brace after case value",
                 "check your code"
             ))
         }
@@ -1101,7 +1101,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                 Node::Define { .. } |
                 Node::Assign { .. } => {}
                 _ => {
-                    return Err(Error::new(
+                    return Err(Error::own_text(
                         location.address,
                         format!("invalid node for type: {:?}:{:?}", location.tk_type, location.value),
                         "check your code.",
@@ -1173,8 +1173,8 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
             else {
                 error!(Error::new(
                     location,
-                    "only fn-s can be declared in trait.".to_string(),
-                    "you can create this declaration: 'fn meow(cat) {}'",
+                    "only fn-s can be declared in trait.",
+                    "you can create this declaration: 'fn meow(cat)'",
                 ))
             }
         }
@@ -1214,7 +1214,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                 Node::Define { .. } |
                 Node::Assign { .. } => {}
                 _ => {
-                    return Err(Error::new(
+                    return Err(Error::own_text(
                         location.address,
                         format!("invalid node for unit: {:?}:{:?}", location.tk_type, location.value),
                         "check your code.",
@@ -1299,7 +1299,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                 self.trait_stmt()
             }
             _ => {
-                Err(Error::new(
+                Err(Error::own_text(
                     tk.address.clone(),
                     format!("unexpected stmt token: {:?}:{}", tk.tk_type, tk.value),
                     "check your code.",
@@ -1325,7 +1325,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                 if tk.tk_type == tk_type {
                     Ok(tk)
                 } else {
-                    Err(Error::new(
+                    Err(Error::own_text(
                         tk.address.clone(),
                         format!("unexpected token: '{:?}:{}', expected: '{tk_type:?}'", tk.tk_type, tk.value),
                         "check your code."
@@ -1340,7 +1340,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                         self.filename.to_string(),
                         "eof".to_string()
                     ),
-                    "unexpected eof".to_string(),
+                    "unexpected eof",
                     "check your code."
                 ))
             }
@@ -1377,7 +1377,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                         self.filename.to_string(),
                         "eof".to_string()
                     ),
-                    "unexpected eof".to_string(),
+                    "unexpected eof",
                     "check your code."
                 ))
             }

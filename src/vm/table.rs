@@ -42,7 +42,7 @@ impl Table {
                 Ok((*self.closure).find(address, name)?)
             }
         } else {
-            Err(Error::new(
+            Err(Error::own_text(
                 address.clone(),
                 format!("{name} is not found."),
                 "check variable existence."
@@ -55,7 +55,7 @@ impl Table {
             self.fields.insert(name.to_string(), value);
             Ok(())
         } else {
-            Err(Error::new(
+            Err(Error::own_text(
                 address.clone(),
                 format!("{name} is already defined."),
                 "you can rename variable."
@@ -67,7 +67,7 @@ impl Table {
         let mut current = self as *mut Table;
         while !(*current).fields.contains_key(name) {
             if (*current).root.is_null() {
-                return Err(Error::new(
+                return Err(Error::own_text(
                     address,
                     format!("{name} is not defined."),
                     "you can define it, using := op."
@@ -81,7 +81,7 @@ impl Table {
 
     pub unsafe fn set_local(&mut self, address: &Address, name: &str, value: Value) -> Result<(), Error> {
         if !self.fields.contains_key(name) {
-            return Err(Error::new(
+            return Err(Error::own_text(
                 address.clone(),
                 format!("{name} is not defined."),
                 "you can define it, using := op."
@@ -106,7 +106,7 @@ impl Table {
         let mut current = self as *mut Table;
         while !(*current).exists(&name) {
             if (*current).root.is_null() {
-                return Err(Error::new(
+                return Err(Error::own_text(
                     address.clone(),
                     format!("{name} is not found."),
                     "check variable existence."

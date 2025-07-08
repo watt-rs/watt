@@ -297,7 +297,7 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
                         let token = self.scan_id_or_keyword(ch);
                         self.tokens.push(token);
                     } else {
-                        error!(Error::new_hint_owned(
+                        error!(Error::own(
                             Address::new(
                                 self.line,
                                 self.column,
@@ -333,7 +333,7 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
                         self.filename.to_string(),
                         self.line_text.clone(),
                     ),
-                    "unclosed string quotes.".to_string(),
+                    "unclosed string quotes.",
                     "did you forget ' symbol?",
                 ));
             }
@@ -369,7 +369,7 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
                             self.filename.to_string(),
                             self.line_text.clone(),
                         ),
-                        "couldn't parse number with two dots".to_string(),
+                        "couldn't parse number with two dots",
                         "check your code.",
                     ));
                 }
