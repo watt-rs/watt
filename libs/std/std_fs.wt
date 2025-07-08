@@ -55,7 +55,7 @@ type File(raw_handle) {
 	/*
 	 чтение в строку
 	*/
-    fun read_to_string() {
+    fun read_to_string {
         // проверка на то, что файл открыт
         self.__ensure_open()
         // результат чтения
@@ -198,7 +198,7 @@ unit fs {
     /*
      cуществует ли путь
     */
-    fun exists(path) {
+    fun is_exists(path) {
         // проверяем
         exists_result := __internal_exists(path)
         // если не успешно
