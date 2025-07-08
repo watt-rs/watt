@@ -104,7 +104,7 @@ impl Analyzer {
                 }
             }
             Node::Assign { value, .. } => {
-                self.analyze(&*value);
+                self.analyze(value);
             }
             Node::AnFnDeclaration { body, .. } => {
                 self.analyze_fn(body);
