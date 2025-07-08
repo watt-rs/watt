@@ -1,6 +1,7 @@
 ﻿// импорт
 use crate::executor::executor;
 use crate::parser::import::Import;
+use core::cell::RefCell;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use crate::lexer::address::Address;
@@ -8,7 +9,7 @@ use crate::parser::ast::Node;
 
 // ресолвер импортов
 pub struct ImportsResolver<'import_key, 'import_path> {
-    imported: Vec<String>,
+    imported: RefCell<Vec<String>>,
     libraries: HashMap<&'import_key str, &'import_path str>,
     builtins: Vec<String>
 }
@@ -18,7 +19,7 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
     // новый
     pub fn new() -> Self {
         ImportsResolver {
-            imported: vec![],
+            imported: RefCell::new(vec![]),
             libraries: HashMap::from([
                 ("std.io", "./libs/std/std_io.wt"),
                 ("std.gc", "./libs/std/std_gc.wt"),
@@ -39,8 +40,8 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
         // ноды
         let mut nodes = vec![];
         // перебираем билт-ины
-        for builtin in self.builtins.clone() {
-            if !self.imported.contains(&builtin) {
+        for builtin in &self.builtins {
+            if !self.imported.borrow().contains(&builtin) {
                 // нода
                 let node_option = self.import(
                     None,
@@ -58,7 +59,7 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
 
     // ресолвинг
     fn resolve(
-        &mut self,
+        &self,
         addr: Option<Address>,
         import: &Import
     ) -> Node {
@@ -126,16 +127,16 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
 
     // импорт
     pub fn import(
-        &mut self,
+        &self,
         addr: Option<Address>,
         import: &Import
     ) -> Option<Node> {
         // проверка на наличие импорта, если его нет
-        if !self.imported.contains(&import.name) {
+        if !self.imported.borrow().contains(&import.name) {
             // ресолвинг
             let node = self.resolve(addr, import);
             // импротируем
-            self.imported.push(import.name.clone());
+            self.imported.borrow_mut().push(import.name.clone());
             // возвращаем
             Option::Some(node)
         }

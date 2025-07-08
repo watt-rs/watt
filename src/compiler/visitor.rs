@@ -415,7 +415,7 @@ impl<'visitor> CompileVisitor<'visitor> {
         // полное имя
         let full_name = full_name.as_ref().map(|n| n.value.clone());
         // параметры
-        let mut params = Vec::new();
+        let mut params = Vec::with_capacity(parameters.len());
         for param in parameters {
             params.push(param.value.clone());
         }

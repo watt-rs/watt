@@ -46,8 +46,6 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                     "check your code."
                 ))
             }
-            // успех
-            Ok(())
         }
     );
     // успех

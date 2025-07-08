@@ -2,7 +2,7 @@
 use crate::errors::errors::{Error};
 use crate::lexer::address::Address;
 use crate::vm::values::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use crate::vm::memory::memory;
 
 // таблица
@@ -139,14 +139,10 @@ impl Table {
 
     // глубокая очистка
     pub unsafe fn free_fields(&self) {
-        let mut to_free = vec![];
-        for v in self.fields.values() {
-            if !to_free.contains(v) {
-                to_free.push(v.clone());
-            }
-        }
+        let to_free: HashSet<&Value> = self.fields.values().collect();
+
         for val in to_free {
-            match val {
+            match *val {
                 Value::Fn(f) => {
                     if !f.is_null() { memory::free_value(f); }
                 }

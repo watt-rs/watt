@@ -1057,7 +1057,6 @@ impl VM {
                     ),
                     format!("expected {} arguments.", params_amount)
                 ));
-                Ok(())
             }
         }
 
@@ -1084,7 +1083,6 @@ impl VM {
                     ),
                     format!("expected {} arguments.", params_amount)
                 ));
-                Ok(())
             }
         }
 
@@ -1180,7 +1178,6 @@ impl VM {
                 format!("{name} is not a fn."),
                 "you can call only fn-s."
             ));
-            Ok(())
         }
     }
 
@@ -1262,13 +1259,12 @@ impl VM {
         // тип инстанса
         let instance_type = (*instance).t;
         // получение трейта
-        unsafe fn get_trait(traits: *mut Table, addr: &Address, trait_name: String) -> Option<*mut Trait> {
+        unsafe fn get_trait(traits: *mut Table, addr: &Address, trait_name: &str) -> Option<*mut Trait> {
             // трейт
-            let trait_result = (*traits).find(addr, &trait_name);
+            let trait_result = (*traits).find(addr, trait_name);
             // проверяем результат
             if let Err(e) = trait_result {
                 error!(e);
-                None
             }
             else if let Ok(trait_value) = trait_result {
                 match trait_value {
@@ -1286,13 +1282,12 @@ impl VM {
             }
         }
         // получение имплементации
-        unsafe fn get_impl(table: *mut Table, addr: &Address, impl_name: String) -> Option<*mut Function> {
+        unsafe fn get_impl(table: *mut Table, addr: &Address, impl_name: &str) -> Option<*mut Function> {
             // трейт
-            let fn_result = (*table).lookup(addr, &impl_name);
+            let fn_result = (*table).lookup(addr, impl_name);
             // проверяем результат
             if let Err(e) = fn_result {
                 error!(e);
-                None
             }
             else if let Ok(trait_value) = fn_result {
                 return match trait_value {
@@ -1310,15 +1305,15 @@ impl VM {
             }
         }
         // проверка
-        for trait_name in (*instance_type).impls.clone() {
+        for trait_name in &(*instance_type).impls {
             // получаем трейт
-            let _trait = get_trait(self.traits, &addr, trait_name.clone()).unwrap();
+            let _trait = get_trait(self.traits, &addr, trait_name).unwrap();
             // проверяем
-            for function in (*_trait).functions.clone() {
+            for function in &(*_trait).functions {
                 // проверяем наличие имплементации
                 if (*(*instance).fields).exists(&function.name) {
                     // имплементация
-                    let _impl = get_impl((*instance).fields, addr, function.name.clone());
+                    let _impl = get_impl((*instance).fields, addr, &function.name);
                     // проверяем
                     if _impl.is_some() {
                         // имплементация
@@ -1363,7 +1358,7 @@ impl VM {
                             &addr,
                             &function.name,
                             Value::Fn(memory::alloc_value(
-                                function.default.unwrap(),
+                                function.default.clone().unwrap(),
                             ))
                         ) {
                             error!(e);
@@ -1422,7 +1417,6 @@ impl VM {
                     format!("invalid args amount: {} to create instance of {}.", passed_amount, name),
                     format!("expected {} arguments.", params_amount)
                 ));
-                Ok(())
             }
         }
         // ищем тип
@@ -1494,7 +1488,6 @@ impl VM {
         }
         else {
             error!(lookup_result.unwrap_err());
-            Ok(())
         }
     }
 
@@ -1554,7 +1547,6 @@ impl VM {
                             format!("is_ok takes {} params", (*function).params.len()),
                             "is_ok should take 0 params."
                         ));
-                        return Ok(false);
                     }
                 }
                 // если нет
@@ -1564,7 +1556,6 @@ impl VM {
                             "is_ok is not a fn.",
                             "is_ok should be fn."
                         ));
-                    return Ok(false);
                 }
                 // вызываем
                 vm.call(
@@ -1584,13 +1575,11 @@ impl VM {
                         "is_ok should return a bool.".to_string(),
                         format!("it returned: {is_ok:?}")
                     ));
-                    Ok(false)
                 }
             }
             // если ошибка
             else if let Err(e) = lookup_result {
                 error!(e);
-                return Ok(false)
             }
             // dead code
             Ok(false)
@@ -1611,7 +1600,6 @@ impl VM {
                                 format!("unwrap takes {} params", (*function).params.len()),
                                 "unwrap should take 0 params."
                             ));
-                            return Ok(());
                         }
                     }
                     // если нет
@@ -1621,7 +1609,6 @@ impl VM {
                             "unwrap is not a fn.",
                             "unwrap should be fn."
                         ));
-                        return Ok(());
                     }
                     // вызываем
                     vm.call(
@@ -1636,8 +1623,6 @@ impl VM {
                 Err(e) => {
                     // ошибка
                     error!(e);
-                    // успех
-                    Ok(())
                 }
             }
         }
