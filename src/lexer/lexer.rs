@@ -317,14 +317,17 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
     fn scan_string(&mut self) -> Result<Token, Error> {
         let mut text: String = String::new();
         while self.cursor.peek() != '\'' {
-            let mut token = self.advance();
-
-            if token == '\\' {
-                token = self.advance();
+            // символ
+            let ch = self.advance();
+            
+            // если текущий символ "\", а следующий "'"
+            if ch == '\\' && self.cursor.peek() == '\'' {
+                text.push(self.advance());
+            } else {
+                text.push(ch);
             }
 
-            text.push(token);
-
+            // проверка на новую линию
             if self.cursor.is_at_end() || self.is_match('\n') {
                 return Err(Error::new(
                     Address::new(
