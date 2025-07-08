@@ -106,7 +106,7 @@ impl<'visitor> CompileVisitor<'visitor> {
                 body,
                 elseif,
             } => {
-                self.visit_if(location, logical, body, elseif);
+                self.visit_if(location, logical, body, elseif.as_deref());
             }
             Node::While { location, logical, body } => {
                 self.visit_while(location, logical, body);
@@ -286,7 +286,7 @@ impl<'visitor> CompileVisitor<'visitor> {
         location: &Token,
         logical: &Node,
         body: &Node,
-        elif: &Option<Box<Node>>,
+        elif: Option<&Node>,
     ) {
         // компиляция if
         // чанк условия
@@ -791,7 +791,7 @@ impl<'visitor> CompileVisitor<'visitor> {
         &mut self,
         name: &Token,
         full_name: &Option<Token>,
-        functions: &Vec<TraitNodeFn>
+        functions: &[TraitNodeFn]
     ) {
         // полное имя
         let full_name = full_name.as_ref().map(|name| name.value.clone());
