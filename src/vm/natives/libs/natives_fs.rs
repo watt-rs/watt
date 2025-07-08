@@ -9,7 +9,7 @@ use crate::vm::table::Table;
 use crate::vm::values::Value;
 use crate::vm::vm::VM;
 
-use std::io::Read;
+use std::io::{Read, Write};
 
 pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Error> {
     // функции
@@ -54,10 +54,51 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         },
     );
 
-    pub fn get_instance(vm: &mut VM) {
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        1,
+        "fs@create".to_string(),
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            let filename = match vm.pop(&addr) {
+                Ok(Value::String(filename)) => &*filename,
+                Ok(a) => {
+                    error!(Error::new(
+                        addr.clone(),
+                        format!("Expected string, found {:?}", a),
+                        "check your code".to_string()
+                    ));
+                }
+                Err(_) => {
+                    todo!()
+                }
+            };
+
+            // если надо пушить
+            if should_push {
+                let file = match std::fs::OpenOptions::new().read(true).write(true).create(true).open(&filename) {
+                    Ok(file) => file,
+                    Err(e) => {
+                        vm.op_push(OpcodeValue::Raw(Value::Null), table)?;
+
+                        return Ok(());
+                    }
+                };
+
+                let file = memory::alloc_value(file);
+
+                // добавляем
+                vm.op_push(OpcodeValue::Raw(Value::Any(file)), table)?;
+            }
+            // успех
+            Ok(())
+        },
+    );
+
+    pub fn get_instance<'vm>(vm: &'vm mut VM, addr: &Address) -> &'vm mut std::fs::File {
         match vm.pop(&addr) {
             Ok(Value::Any(instance)) => {
-                let instance = &mut *instance;
+                let instance = unsafe { &mut *instance };
 
                 if !instance.is::<std::fs::File>() {
                     error!(Error::new(
@@ -89,7 +130,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         1,
         "fs@read_to_string".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let instance: &mut std::fs::File = get_instance(&mut VM);
+            let instance: &mut std::fs::File = get_instance(vm, &addr);
 
             // если надо пушить
             if should_push {
@@ -98,6 +139,44 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
 
                 vm.op_push(
                     OpcodeValue::Raw(Value::String(memory::alloc_value(string))),
+                    table,
+                )?;
+            }
+            // успех
+            Ok(())
+        },
+    );
+
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        2,
+        "fs@write".to_string(),
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            let data = match vm.pop(&addr) {
+                Ok(Value::String(string)) => {
+                    unsafe { &*string }
+                }
+                Ok(a) => {
+                    error!(Error::new(
+                        addr.clone(),
+                        format!("Expected instance, found {:?}", a),
+                        "check your code".to_string()
+                    ));
+                }
+                Err(_) => {
+                    todo!()
+                }
+            };
+            
+            let instance: &mut std::fs::File = get_instance(vm, &addr);
+
+            // если надо пушить
+            if should_push {
+                instance.write(data.as_bytes());
+
+                vm.op_push(                    
+                    OpcodeValue::Raw(Value::Int(0)),
                     table,
                 )?;
             }

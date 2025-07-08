@@ -1,17 +1,38 @@
 import 'std.errors'
 
 type File(raw_handle) {
-	fun write(data) {
-		result := fs.__internal_write(self.raw_handle, data)
+    fun init {
+        self.is_open := true
+    }
 
-		if result == 0 {
+    fun __ensure_open {
+        if self.is_open == false {
+            panic('Attempted to write to closed file!')
+        }
+    }
+
+	fun write(data) {
+        self.__ensure_open()
+
+		res := fs.__internal_write(self.raw_handle, data)
+
+		if res == 0 {
 			return result.ok(null)
 		}
 
-		return result.err(result)
+		return result.err(res)
 	}
+
+    fun close {
+        // fs.__internal_close(self.raw_handle)
+
+        self.is_open = false
+        self.raw_handle = null
+    }
 	
     fun read_to_string() {
+        self.__ensure_open()
+
         data := fs.__internal_read_to_string(self.raw_handle)
 
         if data == null {
@@ -26,7 +47,7 @@ unit fs {
     native __internal_open -> 'fs@open'
     native __internal_create -> 'fs@create'
     native __internal_write -> 'fs@write'
-    native __internal_close -> 'fs@close'
+    // native __internal_close -> 'fs@close'
     native __internal_read_to_string -> 'fs@read_to_string'
 
 	fun create(filename) {
