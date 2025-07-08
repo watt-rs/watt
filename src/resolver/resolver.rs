@@ -28,6 +28,7 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
                 ("std.time", "./libs/std/std_time.wt"),
                 ("std.math", "./libs/std/std_math.wt"),
                 ("std.random", "./libs/std/std_random.wt"),
+                ("std.ffi", "./libs/std/std_ffi.wt"),
             ]),
             builtins: vec!["./libs/base.wt".to_string()],
         }

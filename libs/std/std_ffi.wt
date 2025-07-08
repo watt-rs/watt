@@ -1,0 +1,20 @@
+import 'std.errors'
+
+type Library(raw_ptr) {
+    fun call(name, args) {
+        res := ffi.__internal_call(self.raw_ptr, name, args)
+
+        return result.ok(res)
+    }
+}
+
+unit ffi {
+    native __internal_load -> 'ffi@load'
+    native __internal_call -> 'ffi@call'
+
+    fun load(path) {
+        lib := __internal_load(path)
+
+        return result.ok(new Library(lib))
+    }
+}

@@ -8,3 +8,4 @@ clap = { version = "4.5.40", features = ["derive"] }
 scopeguard = "1.2.0"
 chrono = "0.4.41"
 log = "0.4.27"
+libloading = "0.8.8"
