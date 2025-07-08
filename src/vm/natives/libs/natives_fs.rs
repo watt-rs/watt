@@ -290,8 +290,6 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         },
     );
 
-    // TODO: Write, Close
-
     // успех
     Ok(())
 }
