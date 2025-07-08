@@ -106,23 +106,23 @@ impl<'visitor> CompileVisitor<'visitor> {
                 body,
                 elseif,
             } => {
-                self.visit_if(location, logical, body, elseif);
+                self.visit_if(location, logical, body, elseif.as_deref());
             }
             Node::While { location, logical, body } => {
                 self.visit_while(location, logical, body);
             }
             Node::Define { previous, name, value } => {
-                self.visit_define(previous, name, value);
+                self.visit_define(previous.as_deref(), name, value);
             }
             Node::Assign {
                 previous,
                 name,
                 value,
             } => {
-                self.visit_assign(previous, name, value);
+                self.visit_assign(previous.as_deref(), name, value);
             }
             Node::Get { previous, name, should_push } => {
-                self.visit_get(previous, name, *should_push);
+                self.visit_get(previous.as_deref(), name, *should_push);
             }
             Node::Call {
                 previous,
@@ -130,7 +130,7 @@ impl<'visitor> CompileVisitor<'visitor> {
                 args,
                 should_push,
             } => {
-                self.visit_call(previous, name, args, *should_push);
+                self.visit_call(previous.as_deref(), name, args, *should_push);
             }
             Node::FnDeclaration {
                 name,
@@ -286,7 +286,7 @@ impl<'visitor> CompileVisitor<'visitor> {
         location: &Token,
         logical: &Node,
         body: &Node,
-        elif: &Option<Box<Node>>,
+        elif: Option<&Node>,
     ) {
         // компиляция if
         // чанк условия
@@ -350,7 +350,7 @@ impl<'visitor> CompileVisitor<'visitor> {
     // дефайн переменной
     fn visit_define(
         &mut self,
-        previous: &Option<Box<Node>>,
+        previous: Option<&Node>,
         name: &Token,
         value: &Node
     ) {
@@ -377,7 +377,7 @@ impl<'visitor> CompileVisitor<'visitor> {
     // вызов функции
     fn visit_call(
         &mut self,
-        previous: &Option<Box<Node>>,
+        previous: Option<&Node>,
         name: &Token,
         args: &Vec<Node>,
         should_push: bool,
@@ -791,7 +791,7 @@ impl<'visitor> CompileVisitor<'visitor> {
         &mut self,
         name: &Token,
         full_name: &Option<Token>,
-        functions: &Vec<TraitNodeFn>
+        functions: &[TraitNodeFn]
     ) {
         // полное имя
         let full_name = full_name.as_ref().map(|name| name.value.clone());
@@ -946,7 +946,7 @@ impl<'visitor> CompileVisitor<'visitor> {
     // установка значения переменной
     fn visit_assign(
         &mut self,
-        previous: &Option<Box<Node>>,
+        previous: Option<&Node>,
         name: &Token,
         value: &Node,
     ) {
@@ -972,7 +972,7 @@ impl<'visitor> CompileVisitor<'visitor> {
     // получение значения переменной
     fn visit_get(
         &mut self,
-        previous: &Option<Box<Node>>,
+        previous: Option<&Node>,
         name: &Token,
         should_push: bool,
     ) {

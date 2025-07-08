@@ -56,13 +56,13 @@ impl Analyzer {
             }
             Node::List { values, .. } => {
                 for value in values {
-                    self.analyze(&value);
+                    self.analyze(value);
                 }
             }
             Node::Map { values, .. } => {
                 for (k, v) in values {
-                    self.analyze(&k);
-                    self.analyze(&v);
+                    self.analyze(k);
+                    self.analyze(v);
                 }
             }
             Node::Match { cases, default, .. } => { 
@@ -104,7 +104,7 @@ impl Analyzer {
                 }
             }
             Node::Assign { value, .. } => {
-                self.analyze(&*value);
+                self.analyze(value);
             }
             Node::AnFnDeclaration { body, .. } => {
                 self.analyze_fn(body);
@@ -236,7 +236,7 @@ impl Analyzer {
     }
 
     // анализ декларации функции
-    fn analyze_fn(&mut self, body: &Box<Node>) {
+    fn analyze_fn(&mut self, body: &Node) {
         // пуш в стек
         self.analyze_stack.push_back(AnalyzerNode::Fn);
         self.analyze(body);

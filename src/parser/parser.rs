@@ -1157,9 +1157,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                     functions.push(TraitNodeFn::new(
                         name,
                         params,
-                        Option::Some(
-                            Box::new(body)
-                        )
+                        Option::Some(Box::new(body))
                     ))
                 }
                 else {
@@ -1176,7 +1174,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                 error!(Error::new(
                     location,
                     "only fn-s can be declared in trait.".to_string(),
-                    "you can create this declaration: 'fn meow(cat) {}'".to_string(),
+                    "you can create this declaration: `fn meow(cat) {}`".to_string(),
                 ))
             }
         }
