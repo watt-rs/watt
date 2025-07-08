@@ -422,12 +422,26 @@ impl<'visitor> CompileVisitor<'visitor> {
         // чанк тела
         self.push_chunk();
         self.visit_node(body);
-        self.visit_node(&Node::Ret {
-            location: name.clone(),
-            value: Box::new(Node::Null {
+
+        let needs_inserting_stub = {
+            let last_opcode = self.opcodes.front_mut().and_then(|last| last.last());
+
+            if let Some(&Opcode::Ret { .. }) = last_opcode {
+                false
+            } else {
+                true
+            }
+        };
+
+        if needs_inserting_stub {
+            self.visit_node(&Node::Ret {
                 location: name.clone(),
-            })
-        });
+                value: Box::new(Node::Null {
+                    location: name.clone(),
+                })
+            });
+        }
+
         let chunk = self.pop_chunk();
         // дефайн функции
         self.push_instr(Opcode::DefineFn {
