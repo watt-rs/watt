@@ -422,29 +422,24 @@ impl<'visitor> CompileVisitor<'visitor> {
         // чанк тела
         self.push_chunk();
         self.visit_node(body);
-
-        let needs_inserting_stub = {
-            // Получаем последний опкод который оставил `body`
-            let last_opcode = self.opcodes.back().and_then(|last| last.last());
-
-            // И если он заканчивается на Ret, то тут необходимости вставлять заглушку
-            if let Some(&Opcode::Ret { .. }) = last_opcode {
-                false
-            } else {
-                true
-            }
-        };
-
-        if needs_inserting_stub {
-            // Вставляем заглушку если функция ничего не возвращает.
-            self.visit_node(&Node::Ret {
-                location: name.clone(),
-                value: Box::new(Node::Null {
+        // получаем последний опкод который оставил `body` функции
+        let last_opcode = self.opcodes.front().and_then(|last| last.last());
+        // е если он не заканчивается на Ret, то добавляем заглушку
+        match last_opcode {
+            // если заканчивается
+            Some(&Opcode::Ret { .. }) => {}
+            // если не заканчивается
+            _ => {
+                println!("op ret for {:?}, because of {:?}", name, last_opcode);
+                self.visit_node(&Node::Ret {
                     location: name.clone(),
-                })
-            });
+                    value: Box::new(Node::Null {
+                        location: name.clone(),
+                    })
+                });
+            }
         }
-
+        // получаем чанк тела
         let chunk = self.pop_chunk();
         // дефайн функции
         self.push_instr(Opcode::DefineFn {

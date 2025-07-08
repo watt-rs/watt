@@ -133,5 +133,8 @@ import 'std.errors'
 a := result.err('111')
 io.println(a?)
 */
-import 'std.io'
-io.println('Ayo, what\'s up?')
+fun a() {
+}
+fun b() {
+    return 'hello'
+}
