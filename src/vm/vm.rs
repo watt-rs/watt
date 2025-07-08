@@ -314,6 +314,33 @@ impl VM {
                     _ => { error!(invalid_op_error); }
                 }
             }
+            "&" => {
+                match operand_a {
+                    Value::Int(a) => { match operand_b {
+                        Value::Int(b) => { self.push(Value::Int(a & b)); }
+                        _ => { error!(invalid_op_error); }
+                    }}
+                    _ => { error!(invalid_op_error); }
+                }
+            }
+            "|" => {
+                match operand_a {
+                    Value::Int(a) => { match operand_b {
+                        Value::Int(b) => { self.push(Value::Int(a | b)); }
+                        _ => { error!(invalid_op_error); }
+                    }}
+                    _ => { error!(invalid_op_error); }
+                }
+            }
+            "^" => {
+                match operand_a {
+                    Value::Int(a) => { match operand_b {
+                        Value::Int(b) => { self.push(Value::Int(a ^ b)); }
+                        _ => { error!(invalid_op_error); }
+                    }}
+                    _ => { error!(invalid_op_error); }
+                }
+            }
             _ => { panic!("operator = {} is not found.", op)}
         }
         Ok(())

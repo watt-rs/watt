@@ -624,6 +624,9 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
 
         while self.check(TokenType::Op) && (
             self.peek()?.value == "*" || 
+            self.peek()?.value == "&" || 
+            self.peek()?.value == "|" || 
+            self.peek()?.value == "^" || 
             self.peek()?.value == "/" || 
             self.peek()?.value == "%") 
         {

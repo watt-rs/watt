@@ -46,6 +46,9 @@ pub enum TokenType {
     AssignMul, // assign mul
     AssignDiv, // assign divide
     Break,     // break
+    AssignAnd, // &
+    AssignOr,  // |
+    AssignXor, // ^
     Match,     // match
     Case,      // case
     Default,   // default
@@ -156,6 +159,27 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
                         self.add_tk(TokenType::AssignAdd, "+=");
                     } else {
                         self.add_tk(TokenType::Op, "+");
+                    }
+                }
+                '&' => {
+                    if self.is_match('=') {
+                        self.add_tk(TokenType::AssignAnd, "&=");
+                    } else {
+                        self.add_tk(TokenType::Op, "&");
+                    }
+                }
+                '|' => {
+                    if self.is_match('=') {
+                        self.add_tk(TokenType::AssignOr, "|=");
+                    } else {
+                        self.add_tk(TokenType::Op, "|");
+                    }
+                }
+                '^' => {
+                    if self.is_match('=') {
+                        self.add_tk(TokenType::AssignXor, "^=");
+                    } else {
+                        self.add_tk(TokenType::Op, "^");
                     }
                 }
                 '-' => {
