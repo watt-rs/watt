@@ -52,7 +52,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                 error!(Error::new(
                     addr.clone(),
                     format!("could not add element to {:?}, not a list", list_value),
-                    "check your code".to_string()
+                    "check your code"
                 ));
             }
             // если надо пушить
@@ -87,7 +87,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                             "could not set element to {:?}, index is {:?}, not an int",
                             list_value, index_value
                         ),
-                        "check your code".to_string()
+                        "check your code"
                     ))
                 }
             }
@@ -95,7 +95,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                 error!(Error::new(
                     addr.clone(),
                     format!("could not set element in {:?}, not a list", list_value),
-                    "check your code".to_string()
+                    "check your code"
                 ));
             }
             // если надо пушить
@@ -124,7 +124,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                         error!(Error::new(
                                 addr.clone(),
                                 format!("index {} out of bounds [0, {}]", index, (*list).len()),
-                                "check your code".to_string()
+                                "check your code"
                             ))
                     }
                     // если надо пушить
@@ -141,7 +141,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                             "could not set element to {:?}, index is {:?}, not an int",
                             list_value, index_value
                         ),
-                        "check your code".to_string()
+                        "check your code"
                     ))
                 }
             }
@@ -149,7 +149,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                 error!(Error::new(
                     addr.clone(),
                     format!("could not get element from {:?}, not a list", list_value),
-                    "check your code".to_string()
+                    "check your code"
                 ));
             }
             // успех
@@ -174,7 +174,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                         error!(Error::new(
                             addr.clone(),
                             format!("index {} out of bounds [0, {}]", index, (*list).len()),
-                            "check your code".to_string()
+                            "check your code"
                         ))
                     }
                     // удаляем
@@ -191,7 +191,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                             "could not set element to {:?}, index is {:?}, not an int",
                             list_value, index_value
                         ),
-                        "check your code".to_string()
+                        "check your code"
                     ))
                 }
             }
@@ -199,7 +199,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                 error!(Error::new(
                     addr.clone(),
                     format!("could not get element from {:?}, not a list", list_value),
-                    "check your code".to_string()
+                    "check your code"
                 ));
             }
             // успех
@@ -229,7 +229,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                 error!(Error::new(
                     addr.clone(),
                     format!("could not get element from {:?}, not a list", list_value),
-                    "check your code".to_string()
+                    "check your code"
                 ));
             }
             // успех
@@ -260,7 +260,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                 error!(Error::new(
                     addr.clone(),
                     format!("could not get element index from {:?}, not a list", list_value),
-                    "check your code".to_string()
+                    "check your code"
                 ));
             }
             // успех
@@ -290,7 +290,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                 error!(Error::new(
                     addr.clone(),
                     format!("could not get len of {:?}, not a list", list_value),
-                    "check your code".to_string()
+                    "check your code"
                 ));
             }
             // успех
@@ -318,7 +318,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                 error!(Error::new(
                     addr.clone(),
                     format!("could not use to_string for {:?}, not a list", list_value),
-                    "check your code".to_string()
+                    "check your code"
                 ));
             }
             // успех

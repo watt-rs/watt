@@ -25,7 +25,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             if let Value::String(hint_string) = hint {
                 if let Value::String(error_string) = error {
                     // ошибка
-                    error!(Error::new(
+                    error!(Error::new_hint_owned(
                         addr.clone(),
                         (*error_string).clone(),
                         (*hint_string).clone()
@@ -35,7 +35,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                     error!(Error::new(
                         addr.clone(),
                         "error text should be a string.".to_string(),
-                        "check your code.".to_string(),
+                        "check your code."
                     ))
                 }
             }
@@ -43,7 +43,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                 error!(Error::new(
                     addr.clone(),
                     "hint text should be a string.".to_string(),
-                    "check your code.".to_string(),
+                    "check your code."
                 ))
             }            
             // успех

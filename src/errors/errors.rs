@@ -1,13 +1,14 @@
 // импорты
 use crate::errors::colors;
 use crate::lexer::address::Address;
+use std::borrow::Cow;
 
 // ошибка
 #[derive(Debug, Clone)]
 pub struct Error {
     addr: Address,
     text: String,
-    hint: String,
+    hint: Cow<'static, str>,
 }
 
 // паника
@@ -21,11 +22,20 @@ macro_rules! error {
 // имплементация
 impl Error {
     // новая ошибка
-    pub fn new(addr: Address, text: String, hint: String) -> Self {
+    pub fn new(addr: Address, text: String, hint: &'static str) -> Self {
         Error {
             addr,
             text,
-            hint,
+            hint: Cow::Borrowed(hint),
+        }
+    }
+
+    // новая ошибка
+    pub fn new_hint_owned(addr: Address, text: String, hint: String) -> Self {
+        Error {
+            addr,
+            text,
+            hint: Cow::Owned(hint),
         }
     }
 

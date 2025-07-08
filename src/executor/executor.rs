@@ -79,7 +79,7 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
                 error!(Error::new(
                         address,
                         format!("io error with file: {:?}", path),
-                        "check file existence".to_string()
+                        "check file existence"
                     ));
             } else {
                 crash(
@@ -98,7 +98,7 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
             error!(Error::new(
                     address,
                     format!("file not found: {:?}", path),
-                    "check file existence".to_string()
+                    "check file existence"
                 ));
         } else {
             crash(
@@ -224,8 +224,8 @@ unsafe fn run_chunk(chunk: Chunk, gc_threshold: usize, gc_debug: bool, bench: bo
     if let Err(e) = vm.run(&chunk, vm.globals) {
         error!(Error::new(
             Address::unknown(),
-            format!("control flow leak: {:?}", e),
-            "report this error to the developer.".to_string()
+            format!("control flow leak: {e:?}"),
+            "report this error to the developer."
         ));
     }
     // конечное время
