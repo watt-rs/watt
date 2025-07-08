@@ -41,14 +41,27 @@ type File(raw_handle) {
 
         return result.ok(data)
     }
+
+    fun seek(position, whence) {
+        fs.__internal_seek(self.raw_handle, position, whence)
+    }
+
+    fun tell() {
+        return fs.__internal_tell(self.raw_handle)
+    }
 }
 
 unit fs {
     native __internal_open -> 'fs@open'
     native __internal_create -> 'fs@create'
     native __internal_write -> 'fs@write'
-    // native __internal_close -> 'fs@close'
+    native __internal_seek -> 'fs@seek'
+    native __internal_tell -> 'fs@tell'
     native __internal_read_to_string -> 'fs@read_to_string'
+
+    w_set := 0
+    w_current := 1
+    w_end := 2
 
 	fun create(filename) {
 		file_hdl := __internal_create(filename)

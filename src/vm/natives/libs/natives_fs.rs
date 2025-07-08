@@ -9,7 +9,7 @@ use crate::vm::table::Table;
 use crate::vm::values::Value;
 use crate::vm::vm::VM;
 
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 
 pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Error> {
     // функции
@@ -188,6 +188,102 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                         )?;
                     }
                 }
+            }
+            // успех
+            Ok(())
+        },
+    );
+
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        1,
+        "fs@tell".to_string(),
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            let data = match vm.pop(&addr) {
+                Ok(Value::String(string)) => {
+                    unsafe { &*string }
+                }
+                Ok(a) => {
+                    error!(Error::own_text(
+                        addr.clone(),
+                        format!("Expected string, found {:?}", a),
+                        "check your code"
+                    ));
+                }
+                Err(_) => {
+                    todo!()
+                }
+            };
+            
+            let instance: &mut std::fs::File = get_instance(vm, &addr);
+
+            // если надо пушить
+            if should_push {
+                let value = instance.stream_position().unwrap_or(0);
+
+                vm.op_push(                    
+                    OpcodeValue::Raw(Value::Int(value as _)),
+                    table,
+                )?;
+            }
+            // успех
+            Ok(())
+        },
+    );
+
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        3,
+        "fs@seek".to_string(),
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            let whence = match vm.pop(&addr) {
+                Ok(Value::Int(value)) => {
+                    value
+                }
+                Ok(a) => {
+                    error!(Error::own_text(
+                        addr.clone(),
+                        format!("Expected number, found {:?}", a),
+                        "check your code"
+                    ));
+                }
+                Err(_) => {
+                    todo!()
+                }
+            };
+
+            let position = match vm.pop(&addr) {
+                Ok(Value::Int(value)) => {
+                    value
+                }
+                Ok(a) => {
+                    error!(Error::own_text(
+                        addr.clone(),
+                        format!("Expected number, found {:?}", a),
+                        "check your code"
+                    ));
+                }
+                Err(_) => {
+                    todo!()
+                }
+            };
+
+            let instance: &mut std::fs::File = get_instance(vm, &addr);
+
+            // если надо пушить
+            if should_push {
+                instance.seek(match whence {
+                    1 => std::io::SeekFrom::Current(position as _),
+                    2 => std::io::SeekFrom::End(position as _),
+                    _ => std::io::SeekFrom::Start(position as _)
+                }).unwrap();
+
+                vm.op_push(
+                    OpcodeValue::Raw(Value::Null),
+                    table,
+                )?;
             }
             // успех
             Ok(())
