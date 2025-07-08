@@ -430,7 +430,6 @@ impl<'visitor> CompileVisitor<'visitor> {
             Some(&Opcode::Ret { .. }) => {}
             // если не заканчивается
             _ => {
-                println!("op ret for {:?}, because of {:?}", name, last_opcode);
                 self.visit_node(&Node::Ret {
                     location: name.clone(),
                     value: Box::new(Node::Null {

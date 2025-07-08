@@ -5,6 +5,7 @@ use crate::errors::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::bytecode::OpcodeValue;
 use crate::vm::memory::memory;
+use crate::vm::natives::libs::utils;
 use crate::vm::natives::natives;
 use crate::vm::table::Table;
 use crate::vm::values::{Value};
@@ -34,40 +35,29 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         1,
         "timestamp@mills".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            match vm.pop(&addr) {
-                Ok(ok) => {
-                    match ok {
-                        Value::Any(val) => {
-                            match (*val).downcast_mut::<DateTime<Local>>() {
-                                Some(time) => {
-                                    if should_push {
-                                        vm.push(Value::Int(time.timestamp_millis()));
-                                    }
-                                },
-                                None => {
-                                    error!(Error::own_text(
-                                        addr,
-                                        format!("invalid timestamp: {:?}", ok),
-                                        "check your code.",
-                                    ))
-                                }
-                            }
-                        }
-                        _ => {
-                            error!(Error::own_text(
-                                addr,
-                                format!("invalid timestamp: {:?}", ok),
-                                "check your code.",
-                            ))
-                        }
+            let timestamp_value = vm.pop(&addr.clone())?;
+            let timestamp = utils::expect_any(
+                addr.clone(), 
+                timestamp_value, 
+                Some(Error::own_text(
+                    addr.clone(),
+                    format!("not a timestamp: {:?}", timestamp_value), 
+                    "check your code."
+                ))
+            );
+            match (*timestamp).downcast_mut::<DateTime<Local>>() {
+                Some(time) => {
+                    if should_push {
+                        vm.push(Value::Int(time.timestamp_millis()));
                     }
+                },
+                None => {
+                    error!(Error::own_text(
+                        addr,
+                        format!("invalid timestamp: {:?}", timestamp),
+                        "check your code.",
+                    ))
                 }
-                Err(flow) => {
-                    return Err(flow)
-                }
-            }
-            if should_push {
-
             }
             Ok(())
         }
@@ -78,40 +68,29 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         1,
         "timestamp@second".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            match vm.pop(&addr) {
-                Ok(ok) => {
-                    match ok {
-                        Value::Any(val) => {
-                            match (*val).downcast_mut::<DateTime<Local>>() {
-                                Some(time) => {
-                                    if should_push {
-                                        vm.push(Value::Int(time.second().into()));
-                                    }
-                                },
-                                None => {
-                                    error!(Error::own_text(
-                                        addr,
-                                        format!("invalid timestamp: {:?}", ok),
-                                        "check your code.",
-                                    ))
-                                }
-                            }
-                        }
-                        _ => {
-                            error!(Error::own_text(
-                                addr,
-                                format!("invalid timestamp: {:?}", ok),
-                                "check your code.",
-                            ))
-                        }
+            let timestamp_value = vm.pop(&addr.clone())?;
+            let timestamp = utils::expect_any(
+                addr.clone(),
+                timestamp_value,
+                Some(Error::own_text(
+                    addr.clone(),
+                    format!("not a timestamp: {:?}", timestamp_value),
+                    "check your code."
+                ))
+            );            
+            match (*timestamp).downcast_mut::<DateTime<Local>>() {
+                Some(time) => {
+                    if should_push {
+                        vm.push(Value::Int(time.second().into()));
                     }
+                },
+                None => {
+                    error!(Error::own_text(
+                        addr,
+                        format!("invalid timestamp: {:?}", timestamp),
+                        "check your code.",
+                    ))
                 }
-                Err(flow) => {
-                    return Err(flow)
-                }
-            }
-            if should_push {
-
             }
             Ok(())
         }
@@ -122,40 +101,29 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         1,
         "timestamp@minute".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            match vm.pop(&addr) {
-                Ok(ok) => {
-                    match ok {
-                        Value::Any(val) => {
-                            match (*val).downcast_mut::<DateTime<Local>>() {
-                                Some(time) => {
-                                    if should_push {
-                                        vm.push(Value::Int(time.minute().into()));
-                                    }
-                                },
-                                None => {
-                                    error!(Error::own_text(
-                                        addr,
-                                        format!("invalid timestamp: {:?}", ok),
-                                        "check your code.",
-                                    ))
-                                }
-                            }
-                        }
-                        _ => {
-                            error!(Error::own_text(
-                                addr,
-                                format!("invalid timestamp: {:?}", ok),
-                                "check your code.",
-                            ))
-                        }
+            let timestamp_value = vm.pop(&addr.clone())?;
+            let timestamp = utils::expect_any(
+                addr.clone(),
+                timestamp_value,
+                Some(Error::own_text(
+                    addr.clone(),
+                    format!("not a timestamp: {:?}", timestamp_value),
+                    "check your code."
+                ))
+            );
+            match (*timestamp).downcast_mut::<DateTime<Local>>() {
+                Some(time) => {
+                    if should_push {
+                        vm.push(Value::Int(time.minute().into()));
                     }
+                },
+                None => {
+                    error!(Error::own_text(
+                        addr,
+                        format!("invalid timestamp: {:?}", timestamp),
+                        "check your code.",
+                    ))
                 }
-                Err(flow) => {
-                    return Err(flow)
-                }
-            }
-            if should_push {
-
             }
             Ok(())
         }
@@ -166,40 +134,29 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         1,
         "timestamp@hour".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            match vm.pop(&addr) {
-                Ok(ok) => {
-                    match ok {
-                        Value::Any(val) => {
-                            match (*val).downcast_mut::<DateTime<Local>>() {
-                                Some(time) => {
-                                    if should_push {
-                                        vm.push(Value::Int(time.hour().into()));
-                                    }
-                                },
-                                None => {
-                                    error!(Error::own_text(
-                                        addr,
-                                        format!("invalid timestamp: {ok:?}"),
-                                        "check your code.",
-                                    ))
-                                }
-                            }
-                        }
-                        _ => {
-                            error!(Error::own_text(
-                                addr,
-                                format!("invalid timestamp: {ok:?}"),
-                                "check your code.",
-                            ))
-                        }
+            let timestamp_value = vm.pop(&addr.clone())?;
+            let timestamp = utils::expect_any(
+                addr.clone(), 
+                timestamp_value, 
+                Some(Error::own_text(
+                    addr.clone(),
+                    format!("not a timestamp: {:?}", timestamp_value), 
+                    "check your code."
+                ))
+            );
+            match (*timestamp).downcast_mut::<DateTime<Local>>() {
+                Some(time) => {
+                    if should_push {
+                        vm.push(Value::Int(time.hour().into()));
                     }
+                },
+                None => {
+                    error!(Error::own_text(
+                        addr,
+                        format!("invalid timestamp: {:?}", timestamp),
+                        "check your code.",
+                    ))
                 }
-                Err(flow) => {
-                    return Err(flow)
-                }
-            }
-            if should_push {
-
             }
             Ok(())
         }
@@ -210,40 +167,29 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         1,
         "timestamp@day".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            match vm.pop(&addr) {
-                Ok(ok) => {
-                    match ok {
-                        Value::Any(val) => {
-                            match (*val).downcast_mut::<DateTime<Local>>() {
-                                Some(time) => {
-                                    if should_push {
-                                        vm.push(Value::Int(time.day().into()));
-                                    }
-                                },
-                                None => {
-                                    error!(Error::own_text(
-                                        addr,
-                                        format!("invalid timestamp: {:?}", ok),
-                                        "check your code.",
-                                    ))
-                                }
-                            }
-                        }
-                        _ => {
-                            error!(Error::own_text(
-                                addr,
-                                format!("invalid timestamp: {:?}", ok),
-                                "check your code.",
-                            ))
-                        }
+            let timestamp_value = vm.pop(&addr.clone())?;
+            let timestamp = utils::expect_any(
+                addr.clone(), 
+                timestamp_value, 
+                Some(Error::own_text(
+                    addr.clone(),
+                    format!("not a timestamp: {:?}", timestamp_value), 
+                    "check your code."
+                ))
+            );
+            match (*timestamp).downcast_mut::<DateTime<Local>>() {
+                Some(time) => {
+                    if should_push {
+                        vm.push(Value::Int(time.day().into()));
                     }
+                },
+                None => {
+                    error!(Error::own_text(
+                        addr,
+                        format!("invalid timestamp: {:?}", timestamp),
+                        "check your code.",
+                    ))
                 }
-                Err(flow) => {
-                    return Err(flow)
-                }
-            }
-            if should_push {
-
             }
             Ok(())
         }
@@ -254,40 +200,29 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         1,
         "timestamp@year".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            match vm.pop(&addr) {
-                Ok(ok) => {
-                    match ok {
-                        Value::Any(val) => {
-                            match (*val).downcast_mut::<DateTime<Local>>() {
-                                Some(time) => {
-                                    if should_push {
-                                        vm.push(Value::Int(time.year().into()));
-                                    }
-                                },
-                                None => {
-                                    error!(Error::own_text(
-                                        addr,
-                                        format!("invalid timestamp: {:?}", ok),
-                                        "check your code.",
-                                    ))
-                                }
-                            }
-                        }
-                        _ => {
-                            error!(Error::own_text(
-                                addr,
-                                format!("invalid timestamp: {:?}", ok),
-                                "check your code.",
-                            ))
-                        }
+            let timestamp_value = vm.pop(&addr.clone())?;
+            let timestamp = utils::expect_any(
+                addr.clone(), 
+                timestamp_value, 
+                Some(Error::own_text(
+                    addr.clone(),
+                    format!("not a timestamp: {:?}", timestamp_value), 
+                    "check your code."
+                ))
+            );
+            match (*timestamp).downcast_mut::<DateTime<Local>>() {
+                Some(time) => {
+                    if should_push {
+                        vm.push(Value::Int(time.year().into()));
                     }
+                },
+                None => {
+                    error!(Error::own_text(
+                        addr,
+                        format!("invalid timestamp: {:?}", timestamp),
+                        "check your code.",
+                    ))
                 }
-                Err(flow) => {
-                    return Err(flow)
-                }
-            }
-            if should_push {
-
             }
             Ok(())
         }
@@ -298,40 +233,29 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         1,
         "timestamp@month".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            match vm.pop(&addr) {
-                Ok(ok) => {
-                    match ok {
-                        Value::Any(val) => {
-                            match (*val).downcast_mut::<DateTime<Local>>() {
-                                Some(time) => {
-                                    if should_push {
-                                        vm.push(Value::Int(time.month().into()));
-                                    }
-                                },
-                                None => {
-                                    error!(Error::own_text(
-                                        addr,
-                                        format!("invalid timestamp: {:?}", ok),
-                                        "check your code.",
-                                    ))
-                                }
-                            }
-                        }
-                        _ => {
-                            error!(Error::own_text(
-                                addr,
-                                format!("invalid timestamp: {:?}", ok),
-                                "check your code.",
-                            ))
-                        }
+            let timestamp_value = vm.pop(&addr.clone())?;
+            let timestamp = utils::expect_any(
+                addr.clone(), 
+                timestamp_value, 
+                Some(Error::own_text(
+                    addr.clone(),   
+                    format!("not a timestamp: {:?}", timestamp_value), 
+                    "check your code."
+                ))
+            );
+            match (*timestamp).downcast_mut::<DateTime<Local>>() {
+                Some(time) => {
+                    if should_push {
+                        vm.push(Value::Int(time.month().into()));
                     }
+                },
+                None => {
+                    error!(Error::own_text(
+                        addr,
+                        format!("invalid timestamp: {:?}", timestamp),
+                        "check your code.",
+                    ))
                 }
-                Err(flow) => {
-                    return Err(flow)
-                }
-            }
-            if should_push {
-
             }
             Ok(())
         }
