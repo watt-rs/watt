@@ -137,7 +137,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                 self.check(TokenType::AssignMul) ||
                 self.check(TokenType::AssignDiv) {
                 // оператор и локация
-                let op: &str;
+                let op;
                 let location;
                 // парсим
                 match self.peek()?.tk_type {
@@ -169,7 +169,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                 };
                 // нода для присваивания
                 return Ok(Node::Assign {
-                    previous: previous,
+                    previous,
                     name: identifier,
                     value: Box::new(Node::Bin {
                         left: Box::new(var),
