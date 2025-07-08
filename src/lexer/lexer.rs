@@ -317,7 +317,14 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
     fn scan_string(&mut self) -> Result<Token, Error> {
         let mut text: String = String::new();
         while self.cursor.peek() != '\'' {
-            text.push(self.advance());
+            let mut token = self.advance();
+
+            if token == '\\' {
+                token = self.advance();
+            }
+
+            text.push(token);
+
             if self.cursor.is_at_end() || self.is_match('\n') {
                 return Err(Error::new(
                     Address::new(
@@ -331,7 +338,9 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
                 ));
             }
         }
+
         self.advance();
+
         Ok(Token {
             tk_type: TokenType::Text,
             value: text,
