@@ -30,7 +30,7 @@ pub unsafe fn provide(
     vm: &mut VM,
     addr: Address,
     params_amount: usize,
-    name: &str,
+    name: &'static str,
     native: fn(&mut VM,Address,bool,*mut Table) -> Result<(), ControlFlow>) {
     // нативная функция
     let native_fn = Value::Native(
