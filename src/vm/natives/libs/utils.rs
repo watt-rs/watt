@@ -16,7 +16,6 @@ pub fn expect_int(addr: Address, value: Value, error: Option<Error>) ->i64 {
             format!("expected int, got {:?}", value),
             "check for types"
         )));
-        unreachable!();
     }
 }
 
@@ -31,7 +30,6 @@ pub fn expect_float(addr: Address, value: Value, error: Option<Error>) ->f64 {
             format!("expected float, got {:?}", value),
             "check for types"
         )));
-        unreachable!();
     }
 }
 
@@ -46,7 +44,6 @@ pub fn expect_bool(addr: Address, value: Value, error: Option<Error>) ->bool {
             format!("expected bool, got {:?}", value),
             "check for types"
         )));
-        unreachable!();
     }
 }
 
@@ -61,7 +58,6 @@ pub fn expect_instance(addr: Address, value: Value, error: Option<Error>) ->*mut
             format!("expected instance, got {:?}", value),
             "check for types"
         )));
-        unreachable!();
     }
 }
 
@@ -76,7 +72,6 @@ pub fn expect_unit(addr: Address, value: Value, error: Option<Error>) ->*mut Uni
             format!("expected unit, got {:?}", value),
             "check for types"
         )));
-        unreachable!();
     }
 }
 
@@ -91,7 +86,6 @@ pub fn expect_trait(addr: Address, value: Value, error: Option<Error>) ->*mut Tr
             format!("expected trait, got {:?}", value),
             "check for types"
         )));
-        unreachable!();
     }
 }
 
@@ -106,7 +100,6 @@ pub fn expect_type(addr: Address, value: Value, error: Option<Error>) ->*mut Typ
             format!("expected type, got {:?}", value),
             "check for types"
         )));
-        unreachable!();
     }
 }
 
@@ -121,7 +114,6 @@ pub fn expect_fn(addr: Address, value: Value, error: Option<Error>) ->*mut Funct
             format!("expected fn, got {:?}", value),
             "check for types"
         )));
-        unreachable!();
     }
 }
 
@@ -136,7 +128,6 @@ pub fn expect_native(addr: Address, value: Value, error: Option<Error>) ->*mut N
             format!("expected native, got {:?}", value),
             "check for types"
         )));
-        unreachable!();
     }
 }
 
@@ -151,7 +142,6 @@ pub fn expect_any(addr: Address, value: Value, error: Option<Error>) ->*mut dyn 
             format!("expected any, got {:?}", value),
             "check for types"
         )));
-        unreachable!();
     }
 }
 
@@ -166,7 +156,6 @@ pub fn expect_string(addr: Address, value: Value, error: Option<Error>) ->*const
             format!("expected string, got {:?}", value),
             "check for types"
         )));
-        unreachable!();
     }
 }
 
@@ -182,6 +171,5 @@ pub fn expect_list(addr: Address, value: Value, error: Option<Error>) ->*mut Vec
             format!("expected list, got {:?}", value),
             "check for types"
         )));
-        unreachable!();
     }
 }

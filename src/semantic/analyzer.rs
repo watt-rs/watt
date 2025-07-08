@@ -202,7 +202,6 @@ impl Analyzer {
                 "couldn't use continue without loop.",
                 "remove this keyword"
             ));
-            return;
         }
         // проверяем loop
         if !self.hierarchy_has_loop() {
@@ -223,7 +222,6 @@ impl Analyzer {
                 "couldn't use break without loop.",
                 "remove this keyword"
             ));
-            return;
         }
         // проверяем loop
         if !self.hierarchy_has_loop() {
@@ -252,7 +250,6 @@ impl Analyzer {
                 "couldn't use return without loop.",
                 "remove this keyword"
             ));
-            return;
         }
         // проверяем fn
         if !self.hierarchy_has_fn() {

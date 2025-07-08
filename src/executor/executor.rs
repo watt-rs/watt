@@ -172,8 +172,6 @@ pub fn parse(file_name: &str, tokens: Vec<Token>,
     } else if let Err(error) = raw_ast {
         // ошибка
         error!(error);
-        // ничего не возвращаем
-        return None
     };
     // паника
     panic!("result error in parsing. report to developer.")
