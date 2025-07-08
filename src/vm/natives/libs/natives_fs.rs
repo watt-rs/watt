@@ -1,5 +1,4 @@
 // импорты
-use crate::{error, vm::natives::libs::utils};
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::bytecode::OpcodeValue;
@@ -8,6 +7,7 @@ use crate::vm::natives::natives;
 use crate::vm::table::Table;
 use crate::vm::values::Value;
 use crate::vm::vm::VM;
+use crate::{error, vm::natives::libs::utils};
 
 use std::io::{Read, Seek, Write};
 
@@ -76,7 +76,12 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
 
             // если надо пушить
             if should_push {
-                let file = match std::fs::OpenOptions::new().read(true).write(true).create(true).open(&filename) {
+                let file = match std::fs::OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create(true)
+                    .open(&filename)
+                {
                     Ok(file) => file,
                     Err(_e) => {
                         vm.op_push(OpcodeValue::Raw(Value::Null), table)?;
@@ -153,7 +158,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         "fs@write".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let data = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
-            
+
             let instance: &mut std::fs::File = get_instance(vm, &addr);
 
             // если надо пушить
@@ -162,13 +167,10 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
 
                 match value {
                     Ok(_) => {
-                        vm.op_push(                    
-                            OpcodeValue::Raw(Value::Null),
-                            table,
-                        )?;
+                        vm.op_push(OpcodeValue::Raw(Value::Null), table)?;
                     }
                     Err(e) => {
-                        vm.op_push(                    
+                        vm.op_push(
                             OpcodeValue::Raw(Value::Int(e.raw_os_error().unwrap_or(0) as _)),
                             table,
                         )?;
@@ -185,17 +187,14 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         built_in_address.clone(),
         1,
         "fs@tell".to_string(),
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {            
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let instance: &mut std::fs::File = get_instance(vm, &addr);
 
             // если надо пушить
             if should_push {
                 let value = instance.stream_position().unwrap_or(0);
 
-                vm.op_push(                    
-                    OpcodeValue::Raw(Value::Int(value as _)),
-                    table,
-                )?;
+                vm.op_push(OpcodeValue::Raw(Value::Int(value as _)), table)?;
             }
             // успех
             Ok(())
@@ -213,18 +212,17 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
 
             let instance: &mut std::fs::File = get_instance(vm, &addr);
 
-            instance.seek(match whence {
-                1 => std::io::SeekFrom::Current(position as _),
-                2 => std::io::SeekFrom::End(position as _),
-                _ => std::io::SeekFrom::Start(position as _)
-            }).unwrap();
+            instance
+                .seek(match whence {
+                    1 => std::io::SeekFrom::Current(position as _),
+                    2 => std::io::SeekFrom::End(position as _),
+                    _ => std::io::SeekFrom::Start(position as _),
+                })
+                .unwrap();
 
             // если надо пушить
             if should_push {
-                vm.op_push(
-                    OpcodeValue::Raw(Value::Null),
-                    table,
-                )?;
+                vm.op_push(OpcodeValue::Raw(Value::Null), table)?;
             }
             // успех
             Ok(())
