@@ -15,7 +15,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         2,
-        "base@panic".to_string(),
+        "base@panic",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // текст hint
             let hint = vm.pop(&addr)?;
@@ -45,7 +45,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                     "hint text should be a string.".to_string(),
                     "check your code."
                 ))
-            }            
+            }
             // успех
             Ok(())
         }

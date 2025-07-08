@@ -30,13 +30,13 @@ pub unsafe fn provide(
     vm: &mut VM,
     addr: Address,
     params_amount: usize,
-    name: String,
+    name: &str,
     native: fn(&mut VM,Address,bool,*mut Table) -> Result<(), ControlFlow>) {
     // нативная функция
     let native_fn = Value::Native(
         memory::alloc_value(
             Native::new(
-                Symbol::by_name(name.clone()),
+                Symbol::by_name(name.to_owned()),
                 params_amount,
                 native
             )
@@ -49,7 +49,7 @@ pub unsafe fn provide(
     // дефайн
     if let Err(e) = (*vm.natives).define(
         &addr,
-        &name,
+        name,
         native_fn,
     ) {
         error!(e);

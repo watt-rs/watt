@@ -17,7 +17,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         0,
-        "list@make".to_string(),
+        "list@make",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // если надо пушить
             if should_push {
@@ -38,7 +38,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         2,
-        "list@add".to_string(),
+        "list@add",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // значение
             let value = vm.pop(&addr).unwrap();
@@ -67,7 +67,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         3,
-        "list@set".to_string(),
+        "list@set",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // значение
             let value = vm.pop(&addr).unwrap();
@@ -110,7 +110,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         2,
-        "list@get".to_string(),
+        "list@get",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // индекс
             let index_value = vm.pop(&addr).unwrap();
@@ -160,7 +160,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         2,
-        "list@delete_at".to_string(),
+        "list@delete_at",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // индекс
             let index_value = vm.pop(&addr).unwrap();
@@ -210,7 +210,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         2,
-        "list@delete".to_string(),
+        "list@delete",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // индекс
             let value = vm.pop(&addr).unwrap();
@@ -240,7 +240,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         2,
-        "list@index_of".to_string(),
+        "list@index_of",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // индекс
             let value = vm.pop(&addr).unwrap();
@@ -271,7 +271,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         1,
-        "list@length".to_string(),
+        "list@length",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // список
             let list_value = vm.pop(&addr).unwrap();
@@ -301,7 +301,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         1,
-        "list@to_string".to_string(),
+        "list@to_string",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // список
             let list_value = vm.pop(&addr).unwrap();
