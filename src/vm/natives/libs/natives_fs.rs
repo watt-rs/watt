@@ -78,7 +78,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             if should_push {
                 let file = match std::fs::OpenOptions::new().read(true).write(true).create(true).open(&filename) {
                     Ok(file) => file,
-                    Err(e) => {
+                    Err(_e) => {
                         vm.op_push(OpcodeValue::Raw(Value::Null), table)?;
 
                         return Ok(());
@@ -160,7 +160,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                 Ok(a) => {
                     error!(Error::new(
                         addr.clone(),
-                        format!("Expected instance, found {:?}", a),
+                        format!("Expected string, found {:?}", a),
                         "check your code".to_string()
                     ));
                 }
@@ -173,12 +173,22 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
 
             // если надо пушить
             if should_push {
-                instance.write(data.as_bytes());
+                let value = instance.write(data.as_bytes());
 
-                vm.op_push(                    
-                    OpcodeValue::Raw(Value::Int(0)),
-                    table,
-                )?;
+                match value {
+                    Ok(_) => {
+                        vm.op_push(                    
+                            OpcodeValue::Raw(Value::Null),
+                            table,
+                        )?;
+                    }
+                    Err(e) => {
+                        vm.op_push(                    
+                            OpcodeValue::Raw(Value::Int(e.raw_os_error().unwrap_or(0) as _)),
+                            table,
+                        )?;
+                    }
+                }
             }
             // успех
             Ok(())
