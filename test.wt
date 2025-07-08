@@ -133,6 +133,7 @@ import 'std.errors'
 a := result.err('111')
 io.println(a?)
 */
-import 'std.time'
+import 'std.fs'
 import 'std.io'
-io.println(time.now().to_string())
+io.println(fs.is_directory('F:\RustWatt\libs\std\std_convert.wt').unwrap())
+io.println(fs.is_directory('F:\RustWatt\libs\std').unwrap())

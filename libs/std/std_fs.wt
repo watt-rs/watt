@@ -1,154 +1,245 @@
+// импорты
 import 'std.errors'
 import 'std.io'
 
+/*
+ Файл.
+ | имплементация write, read_to_string,
+ | close, seek, tell
+ */
 type File(raw_handle) {
+    /*
+     инициализация файла
+     | по дефолту is_open = true
+    */
     fun init {
         self.is_open := true
     }
 
+    /*
+     проверка на то, что файл открыт
+    */
     fun __ensure_open {
         if self.is_open == false {
             panic('Attempted to operate with closed file!')
         }
     }
 
+    /*
+     запись данных в файла
+    */
 	fun write(data) {
+	    // проверка на то, что файл открыт
         self.__ensure_open()
-
-		res := fs.__internal_write(self.raw_handle, data)
-
-		if res == 0 {
-			return result.ok(null)
+        // результат записи
+		write_result := fs.__internal_write(self.raw_handle, data)
+        // если код 0, значит успех
+		if write_result == 0 {
+		    // успех
+			return result.ok(true)
 		}
-
-		return result.err(res)
+        // если нет, то ошибка
+		return result.err('could not write file (' + write_result + ')')
 	}
 
+    /*
+     закрытие файла
+    */
     fun close {
-        // fs.__internal_close(self.raw_handle)
-
+        // файл закрыт
         self.is_open = false
+        // стираем рав хэндл
         self.raw_handle = null
     }
-	
+
+	/*
+	 чтение в строку
+	*/
     fun read_to_string() {
+        // проверка на то, что файл открыт
         self.__ensure_open()
-
+        // результат чтения
         data := fs.__internal_read_to_string(self.raw_handle)
-
+        // если не успешно
         if data == null {
-            return result.err(1)
+            // ошибка
+            return result.err('could not read file (1)')
         }
-
+        // если успешно, возвращаем данные
         return result.ok(data)
     }
 
+    /*
+     seek
+    */
     fun seek(position, whence) {
+        // вызов нативной функции
         fs.__internal_seek(self.raw_handle, position, whence)
     }
 
+    /*
+     tell
+    */
     fun tell() {
+        // вызов нативной функции
         return fs.__internal_tell(self.raw_handle)
     }
 }
 
+/*
+ Библиотека fs.
+ | имплементация __internal_*
+ | находится в
+ | > crate::vm::natives::libs::natives_аы
+*/
 unit fs {
+    /*
+     Нативные функции
+    */
     native __internal_open -> 'fs@open'
     native __internal_create -> 'fs@create'
     native __internal_write -> 'fs@write'
     native __internal_seek -> 'fs@seek'
     native __internal_tell -> 'fs@tell'
     native __internal_read_to_string -> 'fs@read_to_string'
-
-    // Направление смещения.
-
-    // От начала файла
-    w_set := 0
-
-    // От текущей позиции
-    w_current := 1
-
-    // От конца файла
-    w_end := 2
-
     native __internal_mkdir -> 'fs@mkdir'
     native __internal_delete_directory -> 'fs@delete_directory'
     native __internal_delete_directory_all -> 'fs@delete_directory_all'
     native __internal_list -> 'fs@list'
     native __internal_exists -> 'fs@exists'
+    native __internal_is_directory -> 'fs@is_directory'
 
+    /*
+     Направление смещения.
+    */
+
+    // От начала файла
+    w_set := 0
+    // От текущей позиции
+    w_current := 1
+    // От конца файла
+    w_end := 2
+
+    /*
+     создание файла
+    */
 	fun create(filename) {
-		file_hdl := __internal_create(filename)
-
-		if file_hdl == null {
-			return result.err(1)
+	    // создаем файл
+		file_handle := __internal_create(filename)
+        // если не успешно
+		if file_handle == null {
+		    // ошибка
+			return result.err('could not create file (1)')
 		}
-
-		return result.ok(new File(file_hdl))
+        // если успешно, возвращаем файл
+		return result.ok(new File(file_handle))
 	}
 
+    /*
+     открытие файла
+    */
     fun open(filename) {
+        // открываем файл
         file_hdl := __internal_open(filename)
-
-        if file_hdl == null {
-            return result.err(1)
-        }
-
-        return result.ok(new File(file_hdl))
+        // если не успешно
+		if file_handle == null {
+		    // ошибка
+			return result.err('could not open file (1)')
+		}
+        // если успешно, возвращаем файл
+        return result.ok(new File(file_handle))
     }
 
+    /*
+     создание директории
+    */
     fun mkdir(dirname) {
-        res := __internal_mkdir(dirname)
-
-        if res != null {
-            return result.err(res)
+        // создаем директорию
+        mkdir_result := __internal_mkdir(dirname)
+        // если не успешно
+		if mkdir_result != null {
+		    // ошибка
+            return result.err('could not create directory (' + mkdir_result + ')')
         }
-
+        // если успешно
         return result.ok(true)
     }
 
+    /*
+     удаление пустой директории
+    */
     fun delete_directory(dirname) {
-        res := __internal_delete_directory(dirname)
-
-        if res != null {
-            return result.err(res)
+        // удаляем директорию
+        delete_result := __internal_delete_directory(dirname)
+        // если не успешно
+		if delete_result != null {
+		    // ошибка
+            return result.err('could not delete directory (' + delete_result + ')')
         }
-
+        // если успешно
         return result.ok(true)
     }
 
+    /*
+     удаление всей директории
+    */
     fun delete_directory_all(dirname) {
-        res := __internal_delete_directory_all(dirname)
-
-        if res != null {
-            return result.err(res)
+        // удаляем директорию
+        delete_result := __internal_delete_directory_all(dirname)
+        // если не успешно
+        if delete_result != null {
+            // ошибка
+            return result.err('could not delete non-empty directory (' + delete_result + ')')
         }
-
+        // если успешно
         return result.ok(true)
     }
 
+    /*
+     cуществует ли путь
+    */
     fun exists(path) {
-        res := __internal_exists(path)
-
-        if res == null {
-            return result.err(0)
+        // проверяем
+        exists_result := __internal_exists(path)
+        // если не успешно
+        if exists_result != null {
+            // ошибка
+            return result.err('could not check existence of path ' + path + '(0)')
         }
-
-        return result.ok(res)
+        // если успешно
+        return result.ok(exists_result)
     }
 
+    /*
+     список файлов в директории
+    */
     fun list(path) {
-        res := __internal_list(path)
-
-
-        // TODO: Change it when I learn to use typeof
+        // список файлов
+        list_result := __internal_list(path)
+        // NDRAEY todo: Change it when I learn to use typeof
         if res == null {
-            return result.err(0)
+            // ошибка
+            return result.err('could not get list of files from ' + path + '(0)')
         }
-
+        // список
         list := new List()
         list.internal = res
-
+        // если успешно
         return result.ok(list)
+    }
+
+    /*
+     директория ли
+    */
+    fun is_directory(path) {
+        // директория ли
+        result_is_dir := __internal_is_directory(path)
+        // проверка на успех
+        if result_is_dir == null {
+            // ошибка
+            return result.err('could not check path ' + path + ' is directory (0)')
+        }
+        // если успешно
+        return result.ok(result_is_dir)
     }
 }
