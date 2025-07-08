@@ -147,7 +147,7 @@ pub fn expect_any(addr: Address, value: Value, error: Option<Error>) ->*mut dyn 
 
 // ожидание строки
 #[allow(unused)]
-pub fn expect_string(addr: Address, value: Value, error: Option<Error>) ->*const String {
+pub fn expect_string(addr: Address, value: Value, error: Option<Error>) -> *const String {
     if let Value::String(s) = value {
         s
     } else {

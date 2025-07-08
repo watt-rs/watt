@@ -1,0 +1,154 @@
+import 'std.errors'
+import 'std.io'
+
+type File(raw_handle) {
+    fun init {
+        self.is_open := true
+    }
+
+    fun __ensure_open {
+        if self.is_open == false {
+            panic('Attempted to operate with closed file!')
+        }
+    }
+
+	fun write(data) {
+        self.__ensure_open()
+
+		res := fs.__internal_write(self.raw_handle, data)
+
+		if res == 0 {
+			return result.ok(null)
+		}
+
+		return result.err(res)
+	}
+
+    fun close {
+        // fs.__internal_close(self.raw_handle)
+
+        self.is_open = false
+        self.raw_handle = null
+    }
+	
+    fun read_to_string() {
+        self.__ensure_open()
+
+        data := fs.__internal_read_to_string(self.raw_handle)
+
+        if data == null {
+            return result.err(1)
+        }
+
+        return result.ok(data)
+    }
+
+    fun seek(position, whence) {
+        fs.__internal_seek(self.raw_handle, position, whence)
+    }
+
+    fun tell() {
+        return fs.__internal_tell(self.raw_handle)
+    }
+}
+
+unit fs {
+    native __internal_open -> 'fs@open'
+    native __internal_create -> 'fs@create'
+    native __internal_write -> 'fs@write'
+    native __internal_seek -> 'fs@seek'
+    native __internal_tell -> 'fs@tell'
+    native __internal_read_to_string -> 'fs@read_to_string'
+
+    // Направление смещения.
+
+    // От начала файла
+    w_set := 0
+
+    // От текущей позиции
+    w_current := 1
+
+    // От конца файла
+    w_end := 2
+
+    native __internal_mkdir -> 'fs@mkdir'
+    native __internal_delete_directory -> 'fs@delete_directory'
+    native __internal_delete_directory_all -> 'fs@delete_directory_all'
+    native __internal_list -> 'fs@list'
+    native __internal_exists -> 'fs@exists'
+
+	fun create(filename) {
+		file_hdl := __internal_create(filename)
+
+		if file_hdl == null {
+			return result.err(1)
+		}
+
+		return result.ok(new File(file_hdl))
+	}
+
+    fun open(filename) {
+        file_hdl := __internal_open(filename)
+
+        if file_hdl == null {
+            return result.err(1)
+        }
+
+        return result.ok(new File(file_hdl))
+    }
+
+    fun mkdir(dirname) {
+        res := __internal_mkdir(dirname)
+
+        if res != null {
+            return result.err(res)
+        }
+
+        return result.ok(true)
+    }
+
+    fun delete_directory(dirname) {
+        res := __internal_delete_directory(dirname)
+
+        if res != null {
+            return result.err(res)
+        }
+
+        return result.ok(true)
+    }
+
+    fun delete_directory_all(dirname) {
+        res := __internal_delete_directory_all(dirname)
+
+        if res != null {
+            return result.err(res)
+        }
+
+        return result.ok(true)
+    }
+
+    fun exists(path) {
+        res := __internal_exists(path)
+
+        if res == null {
+            return result.err(0)
+        }
+
+        return result.ok(res)
+    }
+
+    fun list(path) {
+        res := __internal_list(path)
+
+
+        // TODO: Change it when I learn to use typeof
+        if res == null {
+            return result.err(0)
+        }
+
+        list := new List()
+        list.internal = res
+
+        return result.ok(list)
+    }
+}
