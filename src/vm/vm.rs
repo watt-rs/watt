@@ -71,8 +71,8 @@ impl VM {
         if self.stack.is_empty() {
             error!(Error::new(
                 address.clone(),
-                "stack underflow.".to_string(),
-                "check your code.".to_string()
+                "stack underflow.",
+                "check your code."
             ));
         }
         Ok(self.stack.pop().unwrap())
@@ -174,15 +174,15 @@ impl VM {
         let operand_a = self.pop(&address)?;
         let operand_b = self.pop(&address)?;
         // ошибки
-        let invalid_op_error = Error::new(
+        let invalid_op_error = Error::own_text(
             address.clone(),
             format!("could not use '{}' with {:?} and {:?}", op, operand_a, operand_b),
-            "check your code.".to_string()
+            "check your code."
         );
         let division_error = Error::new(
             address.clone(),
-            "division by zero.".to_string(),
-            "undefined operation.".to_string()
+            "division by zero.",
+            "undefined operation."
         );
         // бинарная операция
         match op {
@@ -333,10 +333,10 @@ impl VM {
             }
             _ => {
                 // ошибка
-                error!(Error::new(
+                error!(Error::own_text(
                     address.clone(),
                     format!("could not use 'negate' for {:?}", operand),
-                    "check your code.".to_string()
+                    "check your code."
                 ));
             }
         }
@@ -354,10 +354,10 @@ impl VM {
                 self.push(Value::Bool(!b));
             }
             _ => { 
-                error!(Error::new(
+                error!(Error::own_text(
                     address.clone(),
                     format!("could not use 'bang' for {:?}", operand),
-                    "check your code.".to_string()
+                    "check your code."
                 ));
             }
         }
@@ -370,10 +370,10 @@ impl VM {
         // операнды
         let operand_a = self.pop(&address)?;
         let operand_b = self.pop(&address)?;
-        let error = Error::new(
+        let error = Error::own_text(
             address.clone(),
             format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
-            "check your code.".to_string()
+            "check your code."
         );
         // условие
         match op {
@@ -522,10 +522,10 @@ impl VM {
         // операнды
         let operand_a = self.pop(&address)?;
         let operand_b = self.pop(&address)?;
-        let error = Error::new(
+        let error = Error::own_text(
             address.clone(),
             format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
-            "check your code.".to_string()
+            "check your code."
         );
         // логика
         match op {
@@ -581,10 +581,10 @@ impl VM {
                 }
             }
         } else {
-            error!(Error::new(
+            error!(Error::own_text(
                 addr.clone(),
                 format!("condition provided not a bool: {:?}", bool),
-                "condition should provide a bool.".to_string()
+                "condition should provide a bool."
             ))
         }
         // успех
@@ -623,7 +623,7 @@ impl VM {
     }
 
     // дефайн функции
-    unsafe fn op_define_fn(&mut self, addr: &Address, symbol: &Symbol, body: &Chunk,
+    unsafe fn op_define_fn(&mut self, addr: &Address, symbol: Symbol, body: &Chunk,
                         params: &Vec<String>, make_closure: bool, table: *mut Table) -> Result<(), ControlFlow> {
         // создаём функцию
         let function = memory::alloc_value(
@@ -769,12 +769,12 @@ impl VM {
             self.op_call(addr, &init_fn, true, false, &Chunk::new(vec![]), table)?
         }
         // дефайн юнита
-        if let Err(e) = (*self.units).define(&addr, &symbol.name, unit_value) {
+        if let Err(e) = (*self.units).define(addr, &symbol.name, unit_value) {
             error!(e);
         }
         // дефайн по full-name
         if symbol.full_name.is_some() {
-            if let Err(e) = (*self.units).define(&addr, symbol.full_name.as_ref().unwrap(), unit_value) {
+            if let Err(e) = (*self.units).define(addr, symbol.full_name.as_ref().unwrap(), unit_value) {
                 error!(e);
             }
         }
@@ -787,13 +787,13 @@ impl VM {
     }
 
     // дефайн тейта
-    unsafe fn op_define_trait(&mut self, addr: &Address, symbol: &Symbol, functions: &Vec<TraitFn>)
+    unsafe fn op_define_trait(&mut self, addr: &Address, symbol: &Symbol, functions: &[TraitFn])
     -> Result<(), ControlFlow> {
         // создаём трейт
         let _trait = memory::alloc_value(
             Trait::new(
                 symbol.clone(),
-                functions.clone()
+                functions.to_owned()
             )
         );
         // дефайн трейта
@@ -851,10 +851,10 @@ impl VM {
                     }
                 }
                 _ => {
-                    error!(Error::new(
+                    error!(Error::own_text(
                         addr.clone(),
                         format!("{:?} is not a container.", previous),
-                        "you can define variable for unit or instance.".to_string()
+                        "you can define variable for unit or instance."
                     ))
                 }
             }
@@ -904,10 +904,10 @@ impl VM {
                     }
                 }
                 _ => {
-                    error!(Error::new(
+                    error!(Error::own_text(
                         addr.clone(),
                         format!("{:?} is not a container.", previous),
-                        "you can define variable for unit or instance.".to_string()
+                        "you can define variable for unit or instance."
                     ))
                 }
             }
@@ -923,12 +923,12 @@ impl VM {
         if !has_previous {
             // получаем значение
             let lookup_result;
-            if (*table).has(&name) {
-                lookup_result = (*table).lookup(&addr, &name);
-            } else if (*self.types).has(&name) {
-                lookup_result = (*self.types).find(&addr, &name);
+            if (*table).has(name) {
+                lookup_result = (*table).lookup(addr, &name);
+            } else if (*self.types).has(name) {
+                lookup_result = (*self.types).find(addr, &name);
             } else {
-                lookup_result = (*self.units).find(&addr, &name);
+                lookup_result = (*self.units).find(addr, &name);
             }
             // проверяем на ошибку
             if let Err(e) = lookup_result {
@@ -949,7 +949,7 @@ impl VM {
             match previous {
                 Value::Instance(instance) => {
                     // получаем значение
-                    let lookup_result = (*(*instance).fields).find(&addr, &name);
+                    let lookup_result = (*(*instance).fields).find(addr, &name);
                     // проверяем на ошибку
                     if let Err(e) = lookup_result {
                         // ошибка
@@ -963,7 +963,7 @@ impl VM {
                 }
                 Value::Unit(unit) => {
                     // получаем значение
-                    let lookup_result = (*(*unit).fields).find(&addr, &name);
+                    let lookup_result = (*(*unit).fields).find(addr, &name);
                     // проверяем на ошибку
                     if let Err(e) = lookup_result {
                         // ошибка
@@ -976,10 +976,10 @@ impl VM {
                     }
                 }
                 _ => {
-                    error!(Error::new(
+                    error!(Error::own_text(
                         addr.clone(),
                         format!("{:?} is not a container.", previous),
-                        "you can load variable from unit or instance.".to_string()
+                        "you can load variable from unit or instance."
                     ))
                 }
             }
@@ -1014,7 +1014,7 @@ impl VM {
                     // получаем аргумент из стека
                     let operand = vm.pop(&addr)?;
                     // устанавливаем в таблице
-                    if let Err(e) = (*call_table).define(&addr, &param, operand) {
+                    if let Err(e) = (*call_table).define(addr, &param, operand) {
                         error!(e);
                     }
                 }
@@ -1022,7 +1022,7 @@ impl VM {
             }
             // если не совпало
             else {
-                error!(Error::new(
+                error!(Error::own(
                     addr.clone(),
                     format!(
                         "invalid args amount: {} to call: {}. stack: {:?}",
@@ -1049,7 +1049,7 @@ impl VM {
             if passed_amount == params_amount {
                 Ok(())
             } else {
-                error!(Error::new(
+                error!(Error::own(
                     addr.clone(),
                     format!(
                         "invalid args amount: {} to call: {}. stack: {:?}",
@@ -1148,10 +1148,10 @@ impl VM {
             Ok(())
         }
         else {
-            error!(Error::new(
+            error!(Error::own_text(
                 addr.clone(),
-                format!("{} is not a fn.", name),
-                "you can call only fn-s.".to_string()
+                format!("{name} is not a fn."),
+                "you can call only fn-s."
             ));
             Ok(())
         }
@@ -1207,10 +1207,10 @@ impl VM {
                     }
                 }
                 _ => {
-                    error!(Error::new(
+                    error!(Error::own_text(
                         addr.clone(),
                         format!("couldn't call {} from {:?}.", name, previous),
-                        "you can call fn from unit, instance or foreign.".to_string()
+                        "you can call fn from unit, instance or foreign."
                     ))
                 }
             }
@@ -1237,7 +1237,7 @@ impl VM {
         // получение трейта
         unsafe fn get_trait(traits: *mut Table, addr: &Address, trait_name: String) -> Option<*mut Trait> {
             // трейт
-            let trait_result = (*traits).find(&addr, &trait_name);
+            let trait_result = (*traits).find(addr, &trait_name);
             // проверяем результат
             if let Err(e) = trait_result {
                 error!(e);
@@ -1261,7 +1261,7 @@ impl VM {
         // получение имплементации
         unsafe fn get_impl(table: *mut Table, addr: &Address, impl_name: String) -> Option<*mut Function> {
             // трейт
-            let fn_result = (*table).lookup(&addr, &impl_name);
+            let fn_result = (*table).lookup(addr, &impl_name);
             // проверяем результат
             if let Err(e) = fn_result {
                 error!(e);
@@ -1299,7 +1299,7 @@ impl VM {
                         // проверяем имплементацию
                         if (*implementation).params.len() != function.params_amount {
                             // ошибка
-                            error!(Error::new(
+                            error!(Error::own(
                                 addr.clone(),
                                 format!(
                                     "type {} impls {}, but fn {} has wrong impl.",
@@ -1316,7 +1316,7 @@ impl VM {
                     }
                     else {
                         // ошибка
-                        error!(Error::new(
+                        error!(Error::own(
                             addr.clone(),
                             format!(
                                 "type {} impls {}, but doesn't impl fn {}({})",
@@ -1345,7 +1345,7 @@ impl VM {
                     // если нет
                     else {
                         // ошибка
-                        error!(Error::new(
+                        error!(Error::own(
                             addr.clone(),
                             format!(
                                 "type {} impls {}, but doesn't impl fn {}({})",
@@ -1390,7 +1390,7 @@ impl VM {
                 }
                 Ok(())
             } else {
-                error!(Error::new(
+                error!(Error::own(
                     addr.clone(),
                     format!("invalid args amount: {} to create instance of {}.", passed_amount, name),
                     format!("expected {} arguments.", params_amount)
@@ -1399,7 +1399,7 @@ impl VM {
             }
         }
         // ищем тип
-        let lookup_result = (*self.types).lookup(&addr, &name);
+        let lookup_result = (*self.types).lookup(addr, name);
         // проверяем, найден ли
         if let Ok(value) = lookup_result {
             // проверяем тип ли
@@ -1436,14 +1436,14 @@ impl VM {
                     // исполняем тело
                     self.run(&*(*t).body, (*instance).fields)?;
                     // удаляем временный self
-                    (*(*instance).fields).fields.remove(&"self".to_string());
+                    (*(*instance).fields).fields.remove("self");
                     // проверка трейтов
                     self.check_traits(addr, instance);
                     // бинды
                     self.bind_functions((*instance).fields, FnOwner::Instance(instance));
                     // init функция
-                    let init_fn = "init".to_string();
-                    if (*(*instance).fields).exists(&init_fn) {
+                    let init_fn = "init";
+                    if (*(*instance).fields).exists(init_fn) {
                         // пушим инстанс
                         self.push(instance_value);
                         // вызываем
@@ -1485,7 +1485,7 @@ impl VM {
     unsafe fn op_return(&mut self, addr: &Address, value: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         // выполняем
         self.run(value, table)?;
-        let value = self.pop(&addr)?;
+        let value = self.pop(addr)?;
         // возвращаем
         Err(ControlFlow::Return(value))
     }
@@ -1493,7 +1493,7 @@ impl VM {
     // нативная функция
     unsafe fn op_native(&mut self, addr: &Address, name: &str) -> Result<(), ControlFlow> {
         // лукап
-        let result = (*self.natives).find(&addr, &name);
+        let result = (*self.natives).find(addr, &name);
         // если нашлась нативная функция
         if let Ok(value) = result {
             self.push(value);
@@ -1511,7 +1511,7 @@ impl VM {
         // выполняем
         self.run(value, table)?;
         // значение
-        let value = self.pop(&addr)?;
+        let value = self.pop(addr)?;
         // вызов is_ok
         unsafe fn call_is_ok(vm: &mut VM, addr: &Address, instance: *mut Instance) -> Result<bool, ControlFlow> {
             // пробуем получить is_ok
@@ -1522,10 +1522,10 @@ impl VM {
                 if let Value::Fn(function) = callable {
                     // проверяем количество аргументов
                     if (*function).params.len() != 0 {
-                        error!(Error::new(
+                        error!(Error::own_text(
                             addr.clone(),
                             format!("is_ok takes {} params", (*function).params.len()),
-                            "is_ok should take 0 params.".to_string()
+                            "is_ok should take 0 params."
                         ));
                         return Ok(false);
                     }
@@ -1534,8 +1534,8 @@ impl VM {
                 else {
                     error!(Error::new(
                             addr.clone(),
-                            "is_ok is not a fn.".to_string(),
-                            "is_ok should be fn.".to_string()
+                            "is_ok is not a fn.",
+                            "is_ok should be fn."
                         ));
                     return Ok(false);
                 }
@@ -1547,15 +1547,15 @@ impl VM {
                     true
                 )?;
                 // получаем значение
-                let is_ok = vm.pop(&addr)?;
+                let is_ok = vm.pop(addr)?;
                 // проверяем, бул ли
                 return if let Value::Bool(boolean) = is_ok {
                     Ok(boolean)
                 } else {
-                    error!(Error::new(
+                    error!(Error::own(
                         addr.clone(),
                         "is_ok should return a bool.".to_string(),
-                        format!("it returned: {:?}", is_ok)
+                        format!("it returned: {is_ok:?}")
                     ));
                     Ok(false)
                 }
@@ -1571,7 +1571,7 @@ impl VM {
         // вызов unwrap
         unsafe fn call_unwrap(vm: &mut VM, addr: &Address, instance: *mut Instance) -> Result<(), ControlFlow> {
             // пробуем получить is_ok
-            let lookup_result = (*(*instance).fields).find(&addr, "unwrap");
+            let lookup_result = (*(*instance).fields).find(addr, "unwrap");
             // если успешно
             match lookup_result {
                 Ok(callable) => {
@@ -1579,11 +1579,11 @@ impl VM {
                     if let Value::Fn(function) = callable {
                         // проверяем количество аргументов
                         if (*function).params.len() != 0 {
-                            error!(Error::new(
-                            addr.clone(),
-                            format!("unwrap takes {} params", (*function).params.len()),
-                            "unwrap should take 0 params.".to_string()
-                        ));
+                            error!(Error::own_text(
+                                addr.clone(),
+                                format!("unwrap takes {} params", (*function).params.len()),
+                                "unwrap should take 0 params."
+                            ));
                             return Ok(());
                         }
                     }
@@ -1591,8 +1591,8 @@ impl VM {
                     else {
                         error!(Error::new(
                             addr.clone(),
-                            "unwrap is not a fn.".to_string(),
-                            "unwrap should be fn.".to_string()
+                            "unwrap is not a fn.",
+                            "unwrap should be fn."
                         ));
                         return Ok(());
                     }
@@ -1642,10 +1642,10 @@ impl VM {
         }
         // если неверный тип значения - ошибка
         else {
-            error!(Error::new(
+            error!(Error::own_text(
                 addr.clone(),
                 format!("could not use error propagation with {:?}.", value),
-                "requires instance of type that impls .is_ok() and .unwrap() fn-s.".to_string()
+                "requires instance of type that impls .is_ok() and .unwrap() fn-s."
             ))
         }
         // успех
@@ -1670,10 +1670,10 @@ impl VM {
                     // если трейт
                     Value::Trait(_trait) => {
                         // список имплементаций
-                        let impls = (*(*instance).t).impls.clone();
+                        let impls = &(*(*instance).t).impls;
                         // имена трейта
-                        let name = (*_trait).name.name.clone();
-                        let full_name_option = (*_trait).name.full_name.clone();
+                        let name = &(*_trait).name.name;
+                        let full_name_option = &(*_trait).name.full_name;
                         // если есть полное имя
                         if let Some(full_name) = full_name_option {
                             // пушим бул, есть ли трейт в имплементациях
@@ -1701,10 +1701,10 @@ impl VM {
             }
         }
         else {
-            error!(Error::new(
+            error!(Error::own_text(
                 addr.clone(),
                 format!("could not use impls with {:?}.", value),
-                "impls op requires instance.".to_string()
+                "impls op requires instance."
             ))
         }
         // успех
@@ -1759,7 +1759,7 @@ impl VM {
                 } => {
                     self.op_define_fn(
                         addr,
-                        &Symbol::new_option(name.clone(), full_name.clone()),
+                        Symbol::new_option(name.clone(), full_name.clone()),
                         body,
                         params,
                         *make_closure,

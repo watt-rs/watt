@@ -297,7 +297,7 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
                         let token = self.scan_id_or_keyword(ch);
                         self.tokens.push(token);
                     } else {
-                        error!(Error::new(
+                        error!(Error::own(
                             Address::new(
                                 self.line,
                                 self.column,
@@ -317,7 +317,17 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
     fn scan_string(&mut self) -> Result<Token, Error> {
         let mut text: String = String::new();
         while self.cursor.peek() != '\'' {
-            text.push(self.advance());
+            // символ
+            let ch = self.advance();
+            
+            // если текущий символ "\", а следующий "'"
+            if ch == '\\' && self.cursor.peek() == '\'' {
+                text.push(self.advance());
+            } else {
+                text.push(ch);
+            }
+
+            // проверка на новую линию
             if self.cursor.is_at_end() || self.is_match('\n') {
                 return Err(Error::new(
                     Address::new(
@@ -326,12 +336,14 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
                         self.filename.to_string(),
                         self.line_text.clone(),
                     ),
-                    "unclosed string quotes.".to_string(),
-                    "did you forget ' symbol?".to_string(),
+                    "unclosed string quotes.",
+                    "did you forget ' symbol?",
                 ));
             }
         }
+
         self.advance();
+
         Ok(Token {
             tk_type: TokenType::Text,
             value: text,
@@ -360,8 +372,8 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
                             self.filename.to_string(),
                             self.line_text.clone(),
                         ),
-                        "couldn't parse number with two dots".to_string(),
-                        "check your code.".to_string(),
+                        "couldn't parse number with two dots",
+                        "check your code.",
                     ));
                 }
                 is_float = true;

@@ -127,7 +127,14 @@ io.println(math.round(3.5))
 io.println(math.round(3.4))
 io.println(math.pow(3, 3))
 */
+/*
 import 'std.io'
 import 'std.errors'
 a := result.err('111')
 io.println(a?)
+*/
+fun a() {
+}
+fun b() {
+    return 'hello'
+}

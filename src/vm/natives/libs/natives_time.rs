@@ -45,19 +45,19 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                                     }
                                 },
                                 None => {
-                                    error!(Error::new(
+                                    error!(Error::own_text(
                                         addr,
                                         format!("invalid timestamp: {:?}", ok),
-                                        "check your code.".to_string(),
+                                        "check your code.",
                                     ))
                                 }
                             }
                         }
                         _ => {
-                            error!(Error::new(
+                            error!(Error::own_text(
                                 addr,
                                 format!("invalid timestamp: {:?}", ok),
-                                "check your code.".to_string(),
+                                "check your code.",
                             ))
                         }
                     }
@@ -89,19 +89,19 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                                     }
                                 },
                                 None => {
-                                    error!(Error::new(
+                                    error!(Error::own_text(
                                         addr,
                                         format!("invalid timestamp: {:?}", ok),
-                                        "check your code.".to_string(),
+                                        "check your code.",
                                     ))
                                 }
                             }
                         }
                         _ => {
-                            error!(Error::new(
+                            error!(Error::own_text(
                                 addr,
                                 format!("invalid timestamp: {:?}", ok),
-                                "check your code.".to_string(),
+                                "check your code.",
                             ))
                         }
                     }
@@ -133,19 +133,19 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                                     }
                                 },
                                 None => {
-                                    error!(Error::new(
+                                    error!(Error::own_text(
                                         addr,
                                         format!("invalid timestamp: {:?}", ok),
-                                        "check your code.".to_string(),
+                                        "check your code.",
                                     ))
                                 }
                             }
                         }
                         _ => {
-                            error!(Error::new(
+                            error!(Error::own_text(
                                 addr,
                                 format!("invalid timestamp: {:?}", ok),
-                                "check your code.".to_string(),
+                                "check your code.",
                             ))
                         }
                     }
@@ -177,19 +177,19 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                                     }
                                 },
                                 None => {
-                                    error!(Error::new(
+                                    error!(Error::own_text(
                                         addr,
-                                        format!("invalid timestamp: {:?}", ok),
-                                        "check your code.".to_string(),
+                                        format!("invalid timestamp: {ok:?}"),
+                                        "check your code.",
                                     ))
                                 }
                             }
                         }
                         _ => {
-                            error!(Error::new(
+                            error!(Error::own_text(
                                 addr,
-                                format!("invalid timestamp: {:?}", ok),
-                                "check your code.".to_string(),
+                                format!("invalid timestamp: {ok:?}"),
+                                "check your code.",
                             ))
                         }
                     }
@@ -221,19 +221,19 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                                     }
                                 },
                                 None => {
-                                    error!(Error::new(
+                                    error!(Error::own_text(
                                         addr,
                                         format!("invalid timestamp: {:?}", ok),
-                                        "check your code.".to_string(),
+                                        "check your code.",
                                     ))
                                 }
                             }
                         }
                         _ => {
-                            error!(Error::new(
+                            error!(Error::own_text(
                                 addr,
                                 format!("invalid timestamp: {:?}", ok),
-                                "check your code.".to_string(),
+                                "check your code.",
                             ))
                         }
                     }
@@ -265,19 +265,19 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                                     }
                                 },
                                 None => {
-                                    error!(Error::new(
+                                    error!(Error::own_text(
                                         addr,
                                         format!("invalid timestamp: {:?}", ok),
-                                        "check your code.".to_string(),
+                                        "check your code.",
                                     ))
                                 }
                             }
                         }
                         _ => {
-                            error!(Error::new(
+                            error!(Error::own_text(
                                 addr,
                                 format!("invalid timestamp: {:?}", ok),
-                                "check your code.".to_string(),
+                                "check your code.",
                             ))
                         }
                     }
@@ -309,19 +309,19 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                                     }
                                 },
                                 None => {
-                                    error!(Error::new(
+                                    error!(Error::own_text(
                                         addr,
                                         format!("invalid timestamp: {:?}", ok),
-                                        "check your code.".to_string(),
+                                        "check your code.",
                                     ))
                                 }
                             }
                         }
                         _ => {
-                            error!(Error::new(
+                            error!(Error::own_text(
                                 addr,
                                 format!("invalid timestamp: {:?}", ok),
-                                "check your code.".to_string(),
+                                "check your code.",
                             ))
                         }
                     }

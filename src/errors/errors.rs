@@ -1,13 +1,14 @@
 // импорты
 use crate::errors::colors;
 use crate::lexer::address::Address;
+use std::borrow::Cow;
 
 // ошибка
 #[derive(Debug, Clone)]
 pub struct Error {
     addr: Address,
-    text: String,
-    hint: String,
+    text: Cow<'static, str>,
+    hint: Cow<'static, str>,
 }
 
 // паника
@@ -21,16 +22,44 @@ macro_rules! error {
 // имплементация
 impl Error {
     // новая ошибка
-    pub fn new(addr: Address, text: String, hint: String) -> Self {
+    pub fn new(addr: Address, text: &'static str, hint: &'static str) -> Self {
         Error {
             addr,
-            text,
-            hint,
+            text: Cow::Borrowed(text),
+            hint: Cow::Borrowed(hint),
         }
     }
 
+    // новая ошибка
+    pub fn own(addr: Address, text: String, hint: String) -> Self {
+        Error {
+            addr,
+            text: Cow::Owned(text),
+            hint: Cow::Owned(hint),
+        }
+    }
+
+    // новая ошибка
+    pub fn own_text(addr: Address, text: String, hint: &'static str) -> Self {
+        Error {
+            addr,
+            text: Cow::Owned(text),
+            hint: Cow::Borrowed(hint),
+        }
+    }
+    
+    // новая ошибка
+    #[allow(unused)]
+    pub fn own_hint(addr: Address, text: &'static str, hint: String) -> Self {
+        Error {
+            addr,
+            text: Cow::Borrowed(text),
+            hint: Cow::Owned(hint),
+        }
+    }
+    
     // вывод
-    pub fn panic(&self) -> ! {
+    pub fn panic(&self) {
         let filename = self.addr.file.as_ref().map_or("-", |v| v);
         let textline = self.addr.line_text.as_ref().map_or("-", |v| v);
 

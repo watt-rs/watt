@@ -56,13 +56,13 @@ impl Analyzer {
             }
             Node::List { values, .. } => {
                 for value in values {
-                    self.analyze(&value);
+                    self.analyze(value);
                 }
             }
             Node::Map { values, .. } => {
                 for (k, v) in values {
-                    self.analyze(&k);
-                    self.analyze(&v);
+                    self.analyze(k);
+                    self.analyze(v);
                 }
             }
             Node::Match { cases, default, .. } => { 
@@ -104,7 +104,7 @@ impl Analyzer {
                 }
             }
             Node::Assign { value, .. } => {
-                self.analyze(&*value);
+                self.analyze(value);
             }
             Node::AnFnDeclaration { body, .. } => {
                 self.analyze_fn(body);
@@ -199,8 +199,8 @@ impl Analyzer {
         if self.analyze_stack.len() == 0 {
             error!(Error::new(
                 addr.clone(),
-                "couldn't use continue without loop.".to_string(),
-                "remove this keyword".to_string()
+                "couldn't use continue without loop.",
+                "remove this keyword"
             ));
             return;
         }
@@ -208,8 +208,8 @@ impl Analyzer {
         if !self.hierarchy_has_loop() {
             error!(Error::new(
                 addr.clone(),
-                "couldn't use continue without loop.".to_string(),
-                "remove this keyword".to_string()
+                "couldn't use continue without loop.",
+                "remove this keyword"
             ));
         }
     }
@@ -220,8 +220,8 @@ impl Analyzer {
         if self.analyze_stack.is_empty() {
             error!(Error::new(
                 addr.clone(),
-                "couldn't use break without loop.".to_string(),
-                "remove this keyword".to_string()
+                "couldn't use break without loop.",
+                "remove this keyword"
             ));
             return;
         }
@@ -229,14 +229,14 @@ impl Analyzer {
         if !self.hierarchy_has_loop() {
             error!(Error::new(
                 addr.clone(),
-                "couldn't use break without loop.".to_string(),
-                "remove this keyword".to_string()
+                "couldn't use break without loop.",
+                "remove this keyword"
             ));
         }
     }
 
     // анализ декларации функции
-    fn analyze_fn(&mut self, body: &Box<Node>) {
+    fn analyze_fn(&mut self, body: &Node) {
         // пуш в стек
         self.analyze_stack.push_back(AnalyzerNode::Fn);
         self.analyze(body);
@@ -249,8 +249,8 @@ impl Analyzer {
         if self.analyze_stack.is_empty() {
             error!(Error::new(
                 addr.clone(),
-                "couldn't use return without loop.".to_string(),
-                "remove this keyword".to_string()
+                "couldn't use return without loop.",
+                "remove this keyword"
             ));
             return;
         }
@@ -258,8 +258,8 @@ impl Analyzer {
         if !self.hierarchy_has_fn() {
             error!(Error::new(
                 addr.clone(),
-                "couldn't use break without loop.".to_string(),
-                "remove this keyword".to_string()
+                "couldn't use break without loop.",
+                "remove this keyword"
             ));
         }
     }
@@ -270,8 +270,8 @@ impl Analyzer {
         if self.analyze_stack.len() > 0 {
             error!(Error::new(
                 addr.clone(),
-                "couldn't use import in any block.".to_string(),
-                "you can use import only in main scope.".to_string()
+                "couldn't use import in any block.",
+                "you can use import only in main scope."
             ))
         }
     }
@@ -282,8 +282,8 @@ impl Analyzer {
         if !self.hierarchy_has_fn() {
             error!(Error::new(
                 addr.clone(),
-                "couldn't use error propagation outside fn.".to_string(),
-                "you can use it only inside functions.".to_string()
+                "couldn't use error propagation outside fn.",
+                "you can use it only inside functions."
             ))
         }
     }
