@@ -8,7 +8,7 @@ type File(raw_handle) {
 
     fun __ensure_open {
         if self.is_open == false {
-            panic('Attempted to write to closed file!')
+            panic('Attempted to operate with closed file!')
         }
     }
 
