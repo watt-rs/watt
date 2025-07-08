@@ -17,14 +17,14 @@ use crate::vm::vm::{VmSettings, VM};
 pub unsafe fn run(
     path: PathBuf,
     gc_threshold: Option<usize>,
-    gc_debug: Option<bool>,
-    lexer_debug: Option<bool>,
-    ast_debug: Option<bool>,
-    opcodes_debug: Option<bool>,
-    lexer_bench: Option<bool>,
-    parser_bench: Option<bool>,
-    compile_bench: Option<bool>,
-    runtime_bench: Option<bool>,
+    gc_debug: bool,
+    lexer_debug: bool,
+    ast_debug: bool,
+    opcodes_debug: bool,
+    lexer_bench: bool,
+    parser_bench: bool,
+    compile_bench: bool,
+    runtime_bench: bool,
 ) {
     // чтение файла
     let code = read_file(Option::None, &path);
@@ -34,14 +34,14 @@ pub unsafe fn run(
     let tokens = lex(
         filename,
         &code.chars().collect::<Vec<char>>(),
-        lexer_debug.unwrap_or(false),
-        lexer_bench.unwrap_or(false)
+        lexer_debug,
+        lexer_bench
     );
     let ast = parse(
         filename,
         tokens.unwrap(),
-        ast_debug.unwrap_or(false),
-        parser_bench.unwrap_or(false),
+        ast_debug,
+        parser_bench,
         &None
     );
     let analyzed = analyze(
@@ -49,15 +49,15 @@ pub unsafe fn run(
     );
     let compiled = compile(
         &analyzed,
-        opcodes_debug.unwrap_or(false),
-        compile_bench.unwrap_or(false)
+        opcodes_debug,
+        compile_bench
     );
     // запуск
     run_chunk(
         compiled,
         gc_threshold.unwrap_or(200),
-        gc_debug.unwrap_or(false),
-        runtime_bench.unwrap_or(false)
+        gc_debug,
+        runtime_bench
     );
 }
 
