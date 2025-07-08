@@ -229,6 +229,32 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         },
     );
 
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        3,
+        "fs@mkdir".to_string(),
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            let name = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
+
+            let result = std::fs::create_dir(&name);
+
+            // если надо пушить
+            if should_push {
+                if let Err(e) = result {
+                    vm.op_push(
+                        OpcodeValue::Raw(Value::Int(e.raw_os_error().unwrap_or(0) as _)),
+                        table,
+                    )?;
+                }
+
+                vm.op_push(OpcodeValue::Raw(Value::Null), table)?;
+            }
+            // успех
+            Ok(())
+        },
+    );
+
     // успех
     Ok(())
 }

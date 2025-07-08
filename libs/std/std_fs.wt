@@ -63,6 +63,8 @@ unit fs {
     w_current := 1
     w_end := 2
 
+    native __internal_mkdir -> 'fs@mkdir'
+
 	fun create(filename) {
 		file_hdl := __internal_create(filename)
 
@@ -81,5 +83,15 @@ unit fs {
         }
 
         return result.ok(new File(file_hdl))
+    }
+
+    fun mkdir(dirname) {
+        res := __internal_mkdir(dirname)
+
+        if res != null {
+            return result.err(res)
+        }
+
+        return result.ok(null)
     }
 }
