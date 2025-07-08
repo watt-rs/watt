@@ -1262,9 +1262,9 @@ impl VM {
         // тип инстанса
         let instance_type = (*instance).t;
         // получение трейта
-        unsafe fn get_trait(traits: *mut Table, addr: &Address, trait_name: String) -> Option<*mut Trait> {
+        unsafe fn get_trait(traits: *mut Table, addr: &Address, trait_name: &str) -> Option<*mut Trait> {
             // трейт
-            let trait_result = (*traits).find(addr, &trait_name);
+            let trait_result = (*traits).find(addr, trait_name);
             // проверяем результат
             if let Err(e) = trait_result {
                 error!(e);
@@ -1286,9 +1286,9 @@ impl VM {
             }
         }
         // получение имплементации
-        unsafe fn get_impl(table: *mut Table, addr: &Address, impl_name: String) -> Option<*mut Function> {
+        unsafe fn get_impl(table: *mut Table, addr: &Address, impl_name: &str) -> Option<*mut Function> {
             // трейт
-            let fn_result = (*table).lookup(addr, &impl_name);
+            let fn_result = (*table).lookup(addr, impl_name);
             // проверяем результат
             if let Err(e) = fn_result {
                 error!(e);
@@ -1310,15 +1310,15 @@ impl VM {
             }
         }
         // проверка
-        for trait_name in (*instance_type).impls.clone() {
+        for trait_name in &(*instance_type).impls {
             // получаем трейт
-            let _trait = get_trait(self.traits, &addr, trait_name.clone()).unwrap();
+            let _trait = get_trait(self.traits, &addr, trait_name).unwrap();
             // проверяем
-            for function in (*_trait).functions.clone() {
+            for function in &(*_trait).functions {
                 // проверяем наличие имплементации
                 if (*(*instance).fields).exists(&function.name) {
                     // имплементация
-                    let _impl = get_impl((*instance).fields, addr, function.name.clone());
+                    let _impl = get_impl((*instance).fields, addr, &function.name);
                     // проверяем
                     if _impl.is_some() {
                         // имплементация
@@ -1363,7 +1363,7 @@ impl VM {
                             &addr,
                             &function.name,
                             Value::Fn(memory::alloc_value(
-                                function.default.unwrap(),
+                                function.default.clone().unwrap(),
                             ))
                         ) {
                             error!(e);
