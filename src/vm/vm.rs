@@ -769,12 +769,12 @@ impl VM {
             self.op_call(addr, &init_fn, true, false, &Chunk::new(vec![]), table)?
         }
         // дефайн юнита
-        if let Err(e) = (*self.units).define(&addr, &symbol.name, unit_value) {
+        if let Err(e) = (*self.units).define(addr, &symbol.name, unit_value) {
             error!(e);
         }
         // дефайн по full-name
         if symbol.full_name.is_some() {
-            if let Err(e) = (*self.units).define(&addr, symbol.full_name.as_ref().unwrap(), unit_value) {
+            if let Err(e) = (*self.units).define(addr, symbol.full_name.as_ref().unwrap(), unit_value) {
                 error!(e);
             }
         }
@@ -787,13 +787,13 @@ impl VM {
     }
 
     // дефайн тейта
-    unsafe fn op_define_trait(&mut self, addr: &Address, symbol: &Symbol, functions: &Vec<TraitFn>)
+    unsafe fn op_define_trait(&mut self, addr: &Address, symbol: &Symbol, functions: &[TraitFn])
     -> Result<(), ControlFlow> {
         // создаём трейт
         let _trait = memory::alloc_value(
             Trait::new(
                 symbol.clone(),
-                functions.clone()
+                functions.to_owned()
             )
         );
         // дефайн трейта
@@ -923,12 +923,12 @@ impl VM {
         if !has_previous {
             // получаем значение
             let lookup_result;
-            if (*table).has(&name) {
-                lookup_result = (*table).lookup(&addr, &name);
-            } else if (*self.types).has(&name) {
-                lookup_result = (*self.types).find(&addr, &name);
+            if (*table).has(name) {
+                lookup_result = (*table).lookup(addr, &name);
+            } else if (*self.types).has(name) {
+                lookup_result = (*self.types).find(addr, &name);
             } else {
-                lookup_result = (*self.units).find(&addr, &name);
+                lookup_result = (*self.units).find(addr, &name);
             }
             // проверяем на ошибку
             if let Err(e) = lookup_result {
@@ -949,7 +949,7 @@ impl VM {
             match previous {
                 Value::Instance(instance) => {
                     // получаем значение
-                    let lookup_result = (*(*instance).fields).find(&addr, &name);
+                    let lookup_result = (*(*instance).fields).find(addr, &name);
                     // проверяем на ошибку
                     if let Err(e) = lookup_result {
                         // ошибка
@@ -963,7 +963,7 @@ impl VM {
                 }
                 Value::Unit(unit) => {
                     // получаем значение
-                    let lookup_result = (*(*unit).fields).find(&addr, &name);
+                    let lookup_result = (*(*unit).fields).find(addr, &name);
                     // проверяем на ошибку
                     if let Err(e) = lookup_result {
                         // ошибка
@@ -1014,7 +1014,7 @@ impl VM {
                     // получаем аргумент из стека
                     let operand = vm.pop(&addr)?;
                     // устанавливаем в таблице
-                    if let Err(e) = (*call_table).define(&addr, &param, operand) {
+                    if let Err(e) = (*call_table).define(addr, &param, operand) {
                         error!(e);
                     }
                 }
@@ -1237,7 +1237,7 @@ impl VM {
         // получение трейта
         unsafe fn get_trait(traits: *mut Table, addr: &Address, trait_name: String) -> Option<*mut Trait> {
             // трейт
-            let trait_result = (*traits).find(&addr, &trait_name);
+            let trait_result = (*traits).find(addr, &trait_name);
             // проверяем результат
             if let Err(e) = trait_result {
                 error!(e);
@@ -1261,7 +1261,7 @@ impl VM {
         // получение имплементации
         unsafe fn get_impl(table: *mut Table, addr: &Address, impl_name: String) -> Option<*mut Function> {
             // трейт
-            let fn_result = (*table).lookup(&addr, &impl_name);
+            let fn_result = (*table).lookup(addr, &impl_name);
             // проверяем результат
             if let Err(e) = fn_result {
                 error!(e);
@@ -1399,7 +1399,7 @@ impl VM {
             }
         }
         // ищем тип
-        let lookup_result = (*self.types).lookup(&addr, &name);
+        let lookup_result = (*self.types).lookup(addr, name);
         // проверяем, найден ли
         if let Ok(value) = lookup_result {
             // проверяем тип ли
@@ -1436,14 +1436,14 @@ impl VM {
                     // исполняем тело
                     self.run(&*(*t).body, (*instance).fields)?;
                     // удаляем временный self
-                    (*(*instance).fields).fields.remove(&"self".to_string());
+                    (*(*instance).fields).fields.remove("self");
                     // проверка трейтов
                     self.check_traits(addr, instance);
                     // бинды
                     self.bind_functions((*instance).fields, FnOwner::Instance(instance));
                     // init функция
-                    let init_fn = "init".to_string();
-                    if (*(*instance).fields).exists(&init_fn) {
+                    let init_fn = "init";
+                    if (*(*instance).fields).exists(init_fn) {
                         // пушим инстанс
                         self.push(instance_value);
                         // вызываем
@@ -1485,7 +1485,7 @@ impl VM {
     unsafe fn op_return(&mut self, addr: &Address, value: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         // выполняем
         self.run(value, table)?;
-        let value = self.pop(&addr)?;
+        let value = self.pop(addr)?;
         // возвращаем
         Err(ControlFlow::Return(value))
     }
@@ -1493,7 +1493,7 @@ impl VM {
     // нативная функция
     unsafe fn op_native(&mut self, addr: &Address, name: &str) -> Result<(), ControlFlow> {
         // лукап
-        let result = (*self.natives).find(&addr, &name);
+        let result = (*self.natives).find(addr, &name);
         // если нашлась нативная функция
         if let Ok(value) = result {
             self.push(value);
@@ -1511,7 +1511,7 @@ impl VM {
         // выполняем
         self.run(value, table)?;
         // значение
-        let value = self.pop(&addr)?;
+        let value = self.pop(addr)?;
         // вызов is_ok
         unsafe fn call_is_ok(vm: &mut VM, addr: &Address, instance: *mut Instance) -> Result<bool, ControlFlow> {
             // пробуем получить is_ok
@@ -1547,7 +1547,7 @@ impl VM {
                     true
                 )?;
                 // получаем значение
-                let is_ok = vm.pop(&addr)?;
+                let is_ok = vm.pop(addr)?;
                 // проверяем, бул ли
                 return if let Value::Bool(boolean) = is_ok {
                     Ok(boolean)
@@ -1571,7 +1571,7 @@ impl VM {
         // вызов unwrap
         unsafe fn call_unwrap(vm: &mut VM, addr: &Address, instance: *mut Instance) -> Result<(), ControlFlow> {
             // пробуем получить is_ok
-            let lookup_result = (*(*instance).fields).find(&addr, "unwrap");
+            let lookup_result = (*(*instance).fields).find(addr, "unwrap");
             // если успешно
             match lookup_result {
                 Ok(callable) => {
@@ -1670,10 +1670,10 @@ impl VM {
                     // если трейт
                     Value::Trait(_trait) => {
                         // список имплементаций
-                        let impls = (*(*instance).t).impls.clone();
+                        let impls = &(*(*instance).t).impls;
                         // имена трейта
-                        let name = (*_trait).name.name.clone();
-                        let full_name_option = (*_trait).name.full_name.clone();
+                        let name = &(*_trait).name.name;
+                        let full_name_option = &(*_trait).name.full_name;
                         // если есть полное имя
                         if let Some(full_name) = full_name_option {
                             // пушим бул, есть ли трейт в имплементациях

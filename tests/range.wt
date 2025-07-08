@@ -1,0 +1,25 @@
+import 'std.io'
+
+io.println('- forward')
+
+for i in 0..3 {
+    io.println(i)
+}
+
+io.println('- backwards')
+
+for i in 3..0 {
+    io.println(i)
+}
+
+io.println('- negative numbers forward')
+
+for i in -3..0 {
+    io.println(i)
+}
+
+io.println('- negative numbers backwards')
+
+for i in 0..-3 {
+    io.println(i)
+}

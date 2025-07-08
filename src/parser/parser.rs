@@ -1,4 +1,4 @@
-﻿// импорты
+// импорты
 use crate::lexer::address::*;
 use crate::errors::errors::{Error};
 use crate::parser::import::Import;
@@ -601,9 +601,12 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
     // унарная операция
     fn unary_expr(&mut self) -> Result<Node, Error> {
         let tk = self.peek()?;
+
         match tk {
-            Token { tk_type: TokenType::Op, value, .. } if value == "-" || value == "!"  => {
-                let op = self.consume(TokenType::Op)?.clone();
+            Token { tk_type, value, .. }
+            if (tk_type == &TokenType::Op && value == "-") || (tk_type == &TokenType::Bang) => {
+                let op = self.consume(*tk_type)?.clone();
+                
                 Ok(Node::Unary {
                     op,
                     value: Box::new(self.primary_expr()?)
@@ -1154,9 +1157,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                     functions.push(TraitNodeFn::new(
                         name,
                         params,
-                        Option::Some(
-                            Box::new(body)
-                        )
+                        Option::Some(Box::new(body))
                     ))
                 }
                 else {

@@ -1,0 +1,25 @@
+import 'std.io'
+
+if 3 == 7 {
+    io.println('fail')
+} else {
+    io.println('ok')
+}
+
+if 4 != 8 {
+    io.println('ok')
+} else {
+    io.println('fail')
+}
+
+if 4 > 3 {
+    io.println('ok')
+} else {
+    io.println('fail')
+}
+
+if 99 < 121 {
+    io.println('ok')
+} else {
+    io.println('fail')
+}
