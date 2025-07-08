@@ -31,7 +31,7 @@ fn main() {
     let compiler_path = working_directory.clone() + "/target/release/Watt";
 
     println!("Building Watt...");
-    if let Err(e) = std::process::Command::new("cargo").args(["b", "-q", "--release"]).spawn().map(|mut ch| ch.wait()) {
+    if let Err(e) = std::process::Command::new("cargo").args(["b", "--release"]).spawn().map(|mut ch| ch.wait()) {
         eprintln!("Error occured when building Watt: {e:?}");
 
         std::process::exit(1);
@@ -55,10 +55,16 @@ fn main() {
                 }
             };
 
-            // Запускаем тесты.
-            let stats = testing::run_tests(&compiler_path, &tests_table);
+			println!("----- Running tests -----");
 
-            println!("test results: {} ran: {} ok, {} fail", stats.ran, stats.ok, stats.fail);
+            // Запускаем тесты.
+            let stats = testing::run_tests(&compiler_path, &working_directory, &tests_table);
+
+            println!("test results: {} ran: {color_green}{}{color_end} ok, {color_red}{}{color_end} fail", stats.ran, stats.ok, stats.fail, color_green = "\x1b[32;1m", color_red = "\x1b[31;1m", color_end = "\x1b[0m");
+
+            if stats.fail != 0 {
+                std::process::exit(1);
+            }
         }
         "bench" => {
             let file = match arguments.next() {
@@ -68,6 +74,8 @@ fn main() {
                     std::process::exit(1);
                 }
             };
+
+			println!("----- Running benchmarks -----");
 
             benchmarking::run_benchmark_on(&compiler_path, &file, &BenchmarkOptions::default());
         }
