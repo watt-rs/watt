@@ -130,7 +130,7 @@ impl<'visitor> CompileVisitor<'visitor> {
                 args,
                 should_push,
             } => {
-                self.visit_call(previous, name, args, *should_push);
+                self.visit_call(previous.as_deref(), name, args, *should_push);
             }
             Node::FnDeclaration {
                 name,
@@ -377,7 +377,7 @@ impl<'visitor> CompileVisitor<'visitor> {
     // вызов функции
     fn visit_call(
         &mut self,
-        previous: &Option<Box<Node>>,
+        previous: Option<&Node>,
         name: &Token,
         args: &Vec<Node>,
         should_push: bool,
