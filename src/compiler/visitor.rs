@@ -424,8 +424,10 @@ impl<'visitor> CompileVisitor<'visitor> {
         self.visit_node(body);
 
         let needs_inserting_stub = {
-            let last_opcode = self.opcodes.front_mut().and_then(|last| last.last());
+            // Получаем последний опкод который оставил `body`
+            let last_opcode = self.opcodes.back().and_then(|last| last.last());
 
+            // И если он заканчивается на Ret, то тут необходимости вставлять заглушку
             if let Some(&Opcode::Ret { .. }) = last_opcode {
                 false
             } else {
@@ -434,6 +436,7 @@ impl<'visitor> CompileVisitor<'visitor> {
         };
 
         if needs_inserting_stub {
+            // Вставляем заглушку если функция ничего не возвращает.
             self.visit_node(&Node::Ret {
                 location: name.clone(),
                 value: Box::new(Node::Null {
