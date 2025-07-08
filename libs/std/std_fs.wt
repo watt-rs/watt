@@ -64,6 +64,10 @@ unit fs {
     w_end := 2
 
     native __internal_mkdir -> 'fs@mkdir'
+    native __internal_delete_directory -> 'fs@delete_directory'
+    native __internal_delete_directory_all -> 'fs@delete_directory_all'
+    native __internal_list -> 'fs@list'
+    native __internal_exists -> 'fs@exists'
 
 	fun create(filename) {
 		file_hdl := __internal_create(filename)
@@ -93,5 +97,46 @@ unit fs {
         }
 
         return result.ok(null)
+    }
+
+    fun delete_directory(dirname) {
+        res := __internal_delete_directory(dirname)
+
+        if res != null {
+            return result.err(res)
+        }
+
+        return result.ok(null)
+    }
+
+    fun delete_directory_all(dirname) {
+        res := __internal_delete_directory_all(dirname)
+
+        if res != null {
+            return result.err(res)
+        }
+
+        return result.ok(null)
+    }
+
+    fun exists(path) {
+        res := __internal_exists(path)
+
+        if res == null {
+            return result.err(res)
+        }
+
+        return result.ok(res)
+    }
+
+    fun list(path) {
+        res := __internal_list(path)
+
+        // TODO: Change it when I learn to use typeof
+        if res == null {
+            return result.err(res)
+        }
+
+        return result.ok(res)
     }
 }

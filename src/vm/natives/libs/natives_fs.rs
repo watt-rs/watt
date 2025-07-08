@@ -17,7 +17,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         1,
-        "fs@open".to_string(),
+        "fs@open",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let filename = match vm.pop(&addr) {
                 Ok(Value::String(filename)) => &*filename,
@@ -58,7 +58,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         1,
-        "fs@create".to_string(),
+        "fs@create",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let filename = match vm.pop(&addr) {
                 Ok(Value::String(filename)) => &*filename,
@@ -132,7 +132,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         1,
-        "fs@read_to_string".to_string(),
+        "fs@read_to_string",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let instance: &mut std::fs::File = get_instance(vm, &addr);
 
@@ -155,7 +155,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         2,
-        "fs@write".to_string(),
+        "fs@write",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let data = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
 
@@ -186,7 +186,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         1,
-        "fs@tell".to_string(),
+        "fs@tell",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let instance: &mut std::fs::File = get_instance(vm, &addr);
 
@@ -205,7 +205,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         3,
-        "fs@seek".to_string(),
+        "fs@seek",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let whence = utils::expect_int(addr.clone(), vm.pop(&addr)?, None);
             let position = utils::expect_int(addr.clone(), vm.pop(&addr)?, None);
@@ -232,8 +232,8 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
     natives::provide(
         vm,
         built_in_address.clone(),
-        3,
-        "fs@mkdir".to_string(),
+        1,
+        "fs@mkdir",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let name = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
 
@@ -249,6 +249,128 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                 }
 
                 vm.op_push(OpcodeValue::Raw(Value::Null), table)?;
+            }
+            // успех
+            Ok(())
+        },
+    );
+
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        1,
+        "fs@delete_directory",
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            let name = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
+
+            let result = std::fs::remove_dir(name);
+
+            // если надо пушить
+            if should_push {
+                if let Err(e) = result {
+                    vm.op_push(
+                        OpcodeValue::Raw(Value::Int(e.raw_os_error().unwrap_or(0) as _)),
+                        table,
+                    )?;
+                }
+
+                vm.op_push(OpcodeValue::Raw(Value::Null), table)?;
+            }
+            // успех
+            Ok(())
+        },
+    );
+
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        1,
+        "fs@delete_directory_all",
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            let name = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
+
+            let result = std::fs::remove_dir_all(name);
+
+            // если надо пушить
+            if should_push {
+                if let Err(e) = result {
+                    vm.op_push(
+                        OpcodeValue::Raw(Value::Int(e.raw_os_error().unwrap_or(0) as _)),
+                        table,
+                    )?;
+                }
+
+                vm.op_push(OpcodeValue::Raw(Value::Null), table)?;
+            }
+            // успех
+            Ok(())
+        },
+    );
+
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        1,
+        "fs@exists",
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            let name = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
+
+            let result = std::fs::exists(name);
+
+            // если надо пушить
+            if should_push {
+                // if let Err(e) = result {
+                //     vm.op_push(
+                //         OpcodeValue::Raw(Value::Int(e.raw_os_error().unwrap_or(0) as _)),
+                //         table,
+                //     )?;
+                // }
+
+                if let Ok(data) = result {
+                    vm.op_push(OpcodeValue::Raw(Value::Bool(data)), table)?;
+                } else {
+                    vm.op_push(OpcodeValue::Raw(Value::Null), table)?;
+                }
+            }
+            // успех
+            Ok(())
+        },
+    );
+
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        1,
+        "fs@list",
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            let name = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
+
+            // если надо пушить
+            if should_push {
+                let result = std::fs::read_dir(name);
+
+                match result {
+                    Err(e) => {
+                        // vm.op_push(
+                        //     OpcodeValue::Raw(Value::Int(e.raw_os_error().unwrap_or(0) as _)),
+                        //     table,
+                        // )?;
+
+                        // TODO: Change it when I learn to use typeof
+                        vm.op_push(OpcodeValue::Raw(Value::Null), table)?;
+                    }
+                    Ok(data) => {
+                        let paths: Vec<Value> = data
+                            .filter(Result::is_ok)
+                            .map(|x| x.unwrap().path().to_string_lossy().to_string())
+                            .map(|st| Value::String(memory::alloc_value(st)))
+                            .collect();
+
+                        let watt_paths = Value::List(memory::alloc_value(paths));
+
+                        vm.op_push(OpcodeValue::Raw(watt_paths), table)?;
+                    }
+                }
             }
             // успех
             Ok(())
