@@ -91,7 +91,7 @@ type ListIterator(list) impl Iterator {
  Итератор.
  | итератор вокруг диапазона чисел
 */
-type NumbersIterator(start, end) {
+type NumbersIterator(start, end) impl Iterator {
     fun init {
         self._current := start
         self._end := end
@@ -104,11 +104,18 @@ type NumbersIterator(start, end) {
             self.direction := 0
         }
     }
+
     fun has_next {
-        return self._current < self._end
+        if self.direction == 0 {
+            return self._current < self._end
+        } else {
+            return self._current > self._end
+        }
     }
+    
     fun next {
-        if self._current >= self._end {
+        if self.has_next() {
+        } else {
             panic(
                 'could not use next.',
                 'iterator has no elements left.'
