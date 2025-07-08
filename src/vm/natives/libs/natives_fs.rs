@@ -152,21 +152,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         2,
         "fs@write".to_string(),
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let data = match vm.pop(&addr) {
-                Ok(Value::String(string)) => {
-                    unsafe { &*string }
-                }
-                Ok(a) => {
-                    error!(Error::own_text(
-                        addr.clone(),
-                        format!("Expected string, found {:?}", a),
-                        "check your code"
-                    ));
-                }
-                Err(_) => {
-                    todo!()
-                }
-            };
+            let data = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
             
             let instance: &mut std::fs::File = get_instance(vm, &addr);
 
@@ -227,14 +213,14 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
 
             let instance: &mut std::fs::File = get_instance(vm, &addr);
 
+            instance.seek(match whence {
+                1 => std::io::SeekFrom::Current(position as _),
+                2 => std::io::SeekFrom::End(position as _),
+                _ => std::io::SeekFrom::Start(position as _)
+            }).unwrap();
+
             // если надо пушить
             if should_push {
-                instance.seek(match whence {
-                    1 => std::io::SeekFrom::Current(position as _),
-                    2 => std::io::SeekFrom::End(position as _),
-                    _ => std::io::SeekFrom::Start(position as _)
-                }).unwrap();
-
                 vm.op_push(
                     OpcodeValue::Raw(Value::Null),
                     table,
