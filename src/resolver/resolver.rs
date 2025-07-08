@@ -39,7 +39,6 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
         // ноды
         let mut nodes = vec![];
         // перебираем билт-ины
-
         for builtin in &self.builtins {
             if !self.imported.borrow().contains(&builtin) {
                 // нода
