@@ -78,7 +78,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             // проверяем
             if let Value::List(list) = list_value {
                 if let Value::Int(index) = index_value {
-                    (*list)[index as usize] = value;
+                    (&mut (*list))[index as usize] = value;
                 }
                 else {
                     error!(Error::new(
@@ -130,7 +130,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                     // если надо пушить
                     if should_push {
                         // получение значения
-                        let value = *((*list).get(index as usize).unwrap());
+                        let value = *(&(*list)).get(index as usize).unwrap();
                         vm.push(value);
                     }
                 }
