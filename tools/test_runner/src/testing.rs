@@ -18,12 +18,10 @@ pub struct TesterResults {
 
 /// Находит все тесты, опираясь на путь `on` и возвращает список путей данных тестов.
 pub fn find_tests(on: &str) -> std::io::Result<Vec<PathBuf>> {
-    let mut wt_files = std::fs::read_dir(on)?
+    let wt_files: Vec<PathBuf> = std::fs::read_dir(on)?
         .map(|x| x.unwrap().path())
         .filter(|x| x.extension().map(|k| k.to_str().unwrap()) == Some("wt"))
-        .collect::<Vec<PathBuf>>();
-
-    wt_files.sort();
+        .collect();
 
     Ok(wt_files)
 }
@@ -91,8 +89,14 @@ pub fn run_tests(
 ) -> TesterResults {
     let mut stats = TesterResults::default();
 
-    for (test_file, expected_content_file) in tests_table {
-        // Создаём команду для запуска Watt
+    let mut keys: Vec<&String> = tests_table.keys().collect();
+
+    keys.sort();
+
+    for test_file in keys {
+        let expected_content_file = &tests_table[test_file];
+
+    	// Создаём команду для запуска Watt
         let mut command = std::process::Command::new(watt_path);
         // Добавляем аргумент пути файла для запуска
         let command = command.arg(test_file);
