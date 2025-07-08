@@ -137,25 +137,25 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                 self.check(TokenType::AssignMul) ||
                 self.check(TokenType::AssignDiv) {
                 // оператор и локация
-                let op;
+                let op: &str;
                 let location;
                 // парсим
                 match self.peek()?.tk_type {
                     TokenType::AssignSub => {
                         location = self.consume(TokenType::AssignSub)?.clone();
-                        op = "-".to_string();
+                        op = "-";
                     }
                     TokenType::AssignMul => {
                         location = self.consume(TokenType::AssignMul)?.clone();
-                        op = "*".to_string();
+                        op = "*";
                     }
                     TokenType::AssignDiv => {
                         location = self.consume(TokenType::AssignDiv)?.clone();
-                        op = "/".to_string();
+                        op = "/";
                     }
                     TokenType::AssignAdd => {
                         location = self.consume(TokenType::AssignAdd)?.clone();
-                        op = "+".to_string();
+                        op = "+";
                     }
                     _ => {
                         panic!("invalid AssignOp tk_type. report to developer.");
@@ -176,7 +176,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                         right: Box::new(self.expr()?),
                         op: Token::new(
                             TokenType::Op,
-                            op,
+                            op.to_string(),
                             location.address,
                         )
                     }),
