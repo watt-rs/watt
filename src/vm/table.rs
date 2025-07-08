@@ -45,7 +45,7 @@ impl Table {
             Err(Error::new(
                 address.clone(),
                 format!("{name} is not found."),
-                "check variable existence.".to_string()
+                "check variable existence."
             ))
         }
     }
@@ -58,7 +58,7 @@ impl Table {
             Err(Error::new(
                 address.clone(),
                 format!("{name} is already defined."),
-                "you can rename variable.".to_string()
+                "you can rename variable."
             ))
         }
     }
@@ -70,7 +70,7 @@ impl Table {
                 return Err(Error::new(
                     address,
                     format!("{name} is not defined."),
-                    "you can define it, using := op.".to_string()
+                    "you can define it, using := op."
                 ))
             }
             current = (*current).root;
@@ -84,7 +84,7 @@ impl Table {
             return Err(Error::new(
                 address.clone(),
                 format!("{name} is not defined."),
-                "you can define it, using := op.".to_string()
+                "you can define it, using := op."
             ))
         }
         self.fields.insert(name.to_string(), value);
@@ -109,7 +109,7 @@ impl Table {
                 return Err(Error::new(
                     address.clone(),
                     format!("{name} is not found."),
-                    "check variable existence.".to_string()
+                    "check variable existence."
                 ))
             }
             current = (*current).root;

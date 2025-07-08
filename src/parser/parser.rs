@@ -226,14 +226,14 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                     return Err(Error::new(
                         location,
                         "couldn't use define in expr.".to_string(),
-                        "check your code.".to_string(),
+                        "check your code.",
                     ))
                 }
                 Node::Assign { .. } => {
                     return Err(Error::new(
                         location,
                         "couldn't use assign in expr.".to_string(),
-                        "check your code.".to_string(),
+                        "check your code.",
                     ))
                 }
                 _ => {}
@@ -397,7 +397,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                 format!("invalid token. {:?}:{:?}",
                     self.peek()?.tk_type, self.peek()?.value
                 ),
-                "check your code.".to_string(),
+                "check your code."
             ))
         }
     }
@@ -478,7 +478,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                 return Err(Error::new(
                     location.address.clone(),
                     "expected arrow or brace after case value".to_string(),
-                    "check your code".to_string()
+                    "check your code"
                 ))
             }
         }
@@ -506,7 +506,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
             return Err(Error::new(
                 location.address.clone(),
                 "expected arrow or brace after case value".to_string(),
-                "check your code".to_string()
+                "check your code"
             ))
         }
         // }
@@ -963,7 +963,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                 return Err(Error::new(
                     location.address.clone(),
                     "expected arrow or brace after case value".to_string(),
-                    "check your code".to_string()
+                    "check your code"
                 ))
             }
         }
@@ -991,7 +991,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
             return Err(Error::new(
                 location.address.clone(),
                 "expected arrow or brace after case value".to_string(),
-                "check your code".to_string()
+                "check your code"
             ))
         }
         // }
@@ -1101,7 +1101,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                     return Err(Error::new(
                         location.address,
                         format!("invalid node for type: {:?}:{:?}", location.tk_type, location.value),
-                        "check your code.".to_string(),
+                        "check your code.",
                     ));
                 }
             }
@@ -1173,7 +1173,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                 error!(Error::new(
                     location,
                     "only fn-s can be declared in trait.".to_string(),
-                    "you can create this declaration: 'fn meow(cat) {}'".to_string(),
+                    "you can create this declaration: 'fn meow(cat) {}'",
                 ))
             }
         }
@@ -1216,7 +1216,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                     return Err(Error::new(
                         location.address,
                         format!("invalid node for unit: {:?}:{:?}", location.tk_type, location.value),
-                        "check your code.".to_string(),
+                        "check your code.",
                     ));
                 }
             }
@@ -1301,7 +1301,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                 Err(Error::new(
                     tk.address.clone(),
                     format!("unexpected stmt token: {:?}:{}", tk.tk_type, tk.value),
-                    "check your code.".to_string(),
+                    "check your code.",
                 ))
             }
         }
@@ -1327,7 +1327,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                     Err(Error::new(
                         tk.address.clone(),
                         format!("unexpected token: '{:?}:{}', expected: '{tk_type:?}'", tk.tk_type, tk.value),
-                        "check your code.".to_string()
+                        "check your code."
                     ))
                 }
             },
@@ -1340,7 +1340,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                         "eof".to_string()
                     ),
                     "unexpected eof".to_string(),
-                    "check your code.".to_string()
+                    "check your code."
                 ))
             }
         }
@@ -1377,7 +1377,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                         "eof".to_string()
                     ),
                     "unexpected eof".to_string(),
-                    "check your code.".to_string()
+                    "check your code."
                 ))
             }
         }

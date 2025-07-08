@@ -72,7 +72,7 @@ impl VM {
             error!(Error::new(
                 address.clone(),
                 "stack underflow.".to_string(),
-                "check your code.".to_string()
+                "check your code."
             ));
         }
         Ok(self.stack.pop().unwrap())
@@ -177,12 +177,12 @@ impl VM {
         let invalid_op_error = Error::new(
             address.clone(),
             format!("could not use '{}' with {:?} and {:?}", op, operand_a, operand_b),
-            "check your code.".to_string()
+            "check your code."
         );
         let division_error = Error::new(
             address.clone(),
             "division by zero.".to_string(),
-            "undefined operation.".to_string()
+            "undefined operation."
         );
         // бинарная операция
         match op {
@@ -336,7 +336,7 @@ impl VM {
                 error!(Error::new(
                     address.clone(),
                     format!("could not use 'negate' for {:?}", operand),
-                    "check your code.".to_string()
+                    "check your code."
                 ));
             }
         }
@@ -357,7 +357,7 @@ impl VM {
                 error!(Error::new(
                     address.clone(),
                     format!("could not use 'bang' for {:?}", operand),
-                    "check your code.".to_string()
+                    "check your code."
                 ));
             }
         }
@@ -373,7 +373,7 @@ impl VM {
         let error = Error::new(
             address.clone(),
             format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
-            "check your code.".to_string()
+            "check your code."
         );
         // условие
         match op {
@@ -525,7 +525,7 @@ impl VM {
         let error = Error::new(
             address.clone(),
             format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
-            "check your code.".to_string()
+            "check your code."
         );
         // логика
         match op {
@@ -584,7 +584,7 @@ impl VM {
             error!(Error::new(
                 addr.clone(),
                 format!("condition provided not a bool: {:?}", bool),
-                "condition should provide a bool.".to_string()
+                "condition should provide a bool."
             ))
         }
         // успех
@@ -854,7 +854,7 @@ impl VM {
                     error!(Error::new(
                         addr.clone(),
                         format!("{:?} is not a container.", previous),
-                        "you can define variable for unit or instance.".to_string()
+                        "you can define variable for unit or instance."
                     ))
                 }
             }
@@ -907,7 +907,7 @@ impl VM {
                     error!(Error::new(
                         addr.clone(),
                         format!("{:?} is not a container.", previous),
-                        "you can define variable for unit or instance.".to_string()
+                        "you can define variable for unit or instance."
                     ))
                 }
             }
@@ -979,7 +979,7 @@ impl VM {
                     error!(Error::new(
                         addr.clone(),
                         format!("{:?} is not a container.", previous),
-                        "you can load variable from unit or instance.".to_string()
+                        "you can load variable from unit or instance."
                     ))
                 }
             }
@@ -1022,7 +1022,7 @@ impl VM {
             }
             // если не совпало
             else {
-                error!(Error::new(
+                error!(Error::new_hint_owned(
                     addr.clone(),
                     format!(
                         "invalid args amount: {} to call: {}. stack: {:?}",
@@ -1049,7 +1049,7 @@ impl VM {
             if passed_amount == params_amount {
                 Ok(())
             } else {
-                error!(Error::new(
+                error!(Error::new_hint_owned(
                     addr.clone(),
                     format!(
                         "invalid args amount: {} to call: {}. stack: {:?}",
@@ -1150,8 +1150,8 @@ impl VM {
         else {
             error!(Error::new(
                 addr.clone(),
-                format!("{} is not a fn.", name),
-                "you can call only fn-s.".to_string()
+                format!("{name} is not a fn."),
+                "you can call only fn-s."
             ));
             Ok(())
         }
@@ -1210,7 +1210,7 @@ impl VM {
                     error!(Error::new(
                         addr.clone(),
                         format!("couldn't call {} from {:?}.", name, previous),
-                        "you can call fn from unit, instance or foreign.".to_string()
+                        "you can call fn from unit, instance or foreign."
                     ))
                 }
             }
@@ -1299,7 +1299,7 @@ impl VM {
                         // проверяем имплементацию
                         if (*implementation).params.len() != function.params_amount {
                             // ошибка
-                            error!(Error::new(
+                            error!(Error::new_hint_owned(
                                 addr.clone(),
                                 format!(
                                     "type {} impls {}, but fn {} has wrong impl.",
@@ -1316,7 +1316,7 @@ impl VM {
                     }
                     else {
                         // ошибка
-                        error!(Error::new(
+                        error!(Error::new_hint_owned(
                             addr.clone(),
                             format!(
                                 "type {} impls {}, but doesn't impl fn {}({})",
@@ -1345,7 +1345,7 @@ impl VM {
                     // если нет
                     else {
                         // ошибка
-                        error!(Error::new(
+                        error!(Error::new_hint_owned(
                             addr.clone(),
                             format!(
                                 "type {} impls {}, but doesn't impl fn {}({})",
@@ -1390,7 +1390,7 @@ impl VM {
                 }
                 Ok(())
             } else {
-                error!(Error::new(
+                error!(Error::new_hint_owned(
                     addr.clone(),
                     format!("invalid args amount: {} to create instance of {}.", passed_amount, name),
                     format!("expected {} arguments.", params_amount)
@@ -1525,7 +1525,7 @@ impl VM {
                         error!(Error::new(
                             addr.clone(),
                             format!("is_ok takes {} params", (*function).params.len()),
-                            "is_ok should take 0 params.".to_string()
+                            "is_ok should take 0 params."
                         ));
                         return Ok(false);
                     }
@@ -1535,7 +1535,7 @@ impl VM {
                     error!(Error::new(
                             addr.clone(),
                             "is_ok is not a fn.".to_string(),
-                            "is_ok should be fn.".to_string()
+                            "is_ok should be fn."
                         ));
                     return Ok(false);
                 }
@@ -1552,10 +1552,10 @@ impl VM {
                 return if let Value::Bool(boolean) = is_ok {
                     Ok(boolean)
                 } else {
-                    error!(Error::new(
+                    error!(Error::new_hint_owned(
                         addr.clone(),
                         "is_ok should return a bool.".to_string(),
-                        format!("it returned: {:?}", is_ok)
+                        format!("it returned: {is_ok:?}")
                     ));
                     Ok(false)
                 }
@@ -1582,7 +1582,7 @@ impl VM {
                             error!(Error::new(
                             addr.clone(),
                             format!("unwrap takes {} params", (*function).params.len()),
-                            "unwrap should take 0 params.".to_string()
+                            "unwrap should take 0 params."
                         ));
                             return Ok(());
                         }
@@ -1592,7 +1592,7 @@ impl VM {
                         error!(Error::new(
                             addr.clone(),
                             "unwrap is not a fn.".to_string(),
-                            "unwrap should be fn.".to_string()
+                            "unwrap should be fn."
                         ));
                         return Ok(());
                     }
@@ -1645,7 +1645,7 @@ impl VM {
             error!(Error::new(
                 addr.clone(),
                 format!("could not use error propagation with {:?}.", value),
-                "requires instance of type that impls .is_ok() and .unwrap() fn-s.".to_string()
+                "requires instance of type that impls .is_ok() and .unwrap() fn-s."
             ))
         }
         // успех
@@ -1704,7 +1704,7 @@ impl VM {
             error!(Error::new(
                 addr.clone(),
                 format!("could not use impls with {:?}.", value),
-                "impls op requires instance.".to_string()
+                "impls op requires instance."
             ))
         }
         // успех

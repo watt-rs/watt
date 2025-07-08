@@ -744,7 +744,7 @@ impl<'visitor> CompileVisitor<'visitor> {
                 error!(Error::new(
                     op.address.clone(),
                     format!("undefined unary op: {:?}", op.value),
-                    "available: -, !".to_string(),
+                    "available: -, !",
                 ))
             }
         }

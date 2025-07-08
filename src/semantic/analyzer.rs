@@ -200,7 +200,7 @@ impl Analyzer {
             error!(Error::new(
                 addr.clone(),
                 "couldn't use continue without loop.".to_string(),
-                "remove this keyword".to_string()
+                "remove this keyword"
             ));
             return;
         }
@@ -209,7 +209,7 @@ impl Analyzer {
             error!(Error::new(
                 addr.clone(),
                 "couldn't use continue without loop.".to_string(),
-                "remove this keyword".to_string()
+                "remove this keyword"
             ));
         }
     }
@@ -221,7 +221,7 @@ impl Analyzer {
             error!(Error::new(
                 addr.clone(),
                 "couldn't use break without loop.".to_string(),
-                "remove this keyword".to_string()
+                "remove this keyword"
             ));
             return;
         }
@@ -230,7 +230,7 @@ impl Analyzer {
             error!(Error::new(
                 addr.clone(),
                 "couldn't use break without loop.".to_string(),
-                "remove this keyword".to_string()
+                "remove this keyword"
             ));
         }
     }
@@ -250,7 +250,7 @@ impl Analyzer {
             error!(Error::new(
                 addr.clone(),
                 "couldn't use return without loop.".to_string(),
-                "remove this keyword".to_string()
+                "remove this keyword"
             ));
             return;
         }
@@ -259,7 +259,7 @@ impl Analyzer {
             error!(Error::new(
                 addr.clone(),
                 "couldn't use break without loop.".to_string(),
-                "remove this keyword".to_string()
+                "remove this keyword"
             ));
         }
     }
@@ -271,7 +271,7 @@ impl Analyzer {
             error!(Error::new(
                 addr.clone(),
                 "couldn't use import in any block.".to_string(),
-                "you can use import only in main scope.".to_string()
+                "you can use import only in main scope."
             ))
         }
     }
@@ -283,7 +283,7 @@ impl Analyzer {
             error!(Error::new(
                 addr.clone(),
                 "couldn't use error propagation outside fn.".to_string(),
-                "you can use it only inside functions.".to_string()
+                "you can use it only inside functions."
             ))
         }
     }
