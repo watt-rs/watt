@@ -1,4 +1,5 @@
 import 'std.errors'
+import 'std.io'
 
 type File(raw_handle) {
     fun init {
@@ -96,7 +97,7 @@ unit fs {
             return result.err(res)
         }
 
-        return result.ok(null)
+        return result.ok(true)
     }
 
     fun delete_directory(dirname) {
@@ -106,7 +107,7 @@ unit fs {
             return result.err(res)
         }
 
-        return result.ok(null)
+        return result.ok(true)
     }
 
     fun delete_directory_all(dirname) {
@@ -116,14 +117,14 @@ unit fs {
             return result.err(res)
         }
 
-        return result.ok(null)
+        return result.ok(true)
     }
 
     fun exists(path) {
         res := __internal_exists(path)
 
         if res == null {
-            return result.err(res)
+            return result.err(0)
         }
 
         return result.ok(res)
@@ -132,11 +133,15 @@ unit fs {
     fun list(path) {
         res := __internal_list(path)
 
+
         // TODO: Change it when I learn to use typeof
         if res == null {
-            return result.err(res)
+            return result.err(0)
         }
 
-        return result.ok(res)
+        list := new List()
+        list.internal = res
+
+        return result.ok(list)
     }
 }
