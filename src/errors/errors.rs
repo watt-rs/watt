@@ -61,7 +61,7 @@ impl Error {
     // вывод
     pub fn panic(&self) -> ! {
         let filename = self.addr.file.as_ref().map_or("-", |v| v);
-        let textline = self.addr.line_text.as_ref().map_or("-", |v| v);
+        let text_line = self.addr.line_text.as_ref().map_or("-", |v| v);
 
         // выводим
         println!(
@@ -73,10 +73,10 @@ impl Error {
         println!("│");
         println!("│ {}:", filename);
         println!("│ {gray}{line}{reset} {text}",
-            line = self.addr.line,
-            text = textline,
-            gray = colors::WhiteColor,
-            reset = colors::ResetColor,
+                 line = self.addr.line,
+                 text = text_line,
+                 gray = colors::WhiteColor,
+                 reset = colors::ResetColor,
         );
         println!("│ {space:count$}^",
                  space = " ",
