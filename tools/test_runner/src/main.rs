@@ -61,6 +61,10 @@ fn main() {
             let stats = testing::run_tests(&compiler_path, &working_directory, &tests_table);
 
             println!("test results: {} ran: {color_green}{}{color_end} ok, {color_red}{}{color_end} fail", stats.ran, stats.ok, stats.fail, color_green = "\x1b[32;1m", color_red = "\x1b[31;1m", color_end = "\x1b[0m");
+
+            if stats.fail != 0 {
+                std::process::exit(1);
+            }
         }
         "bench" => {
             let file = match arguments.next() {
