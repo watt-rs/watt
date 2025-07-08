@@ -5,4 +5,3 @@ pub mod natives_base;
 pub mod natives_convert;
 pub mod natives_typeof;
 pub mod natives_time;
-pub mod natives_fs;
