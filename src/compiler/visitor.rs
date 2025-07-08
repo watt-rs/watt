@@ -112,17 +112,17 @@ impl<'visitor> CompileVisitor<'visitor> {
                 self.visit_while(location, logical, body);
             }
             Node::Define { previous, name, value } => {
-                self.visit_define(previous, name, value);
+                self.visit_define(previous.as_deref(), name, value);
             }
             Node::Assign {
                 previous,
                 name,
                 value,
             } => {
-                self.visit_assign(previous, name, value);
+                self.visit_assign(previous.as_deref(), name, value);
             }
             Node::Get { previous, name, should_push } => {
-                self.visit_get(previous, name, *should_push);
+                self.visit_get(previous.as_deref(), name, *should_push);
             }
             Node::Call {
                 previous,
@@ -350,7 +350,7 @@ impl<'visitor> CompileVisitor<'visitor> {
     // дефайн переменной
     fn visit_define(
         &mut self,
-        previous: &Option<Box<Node>>,
+        previous: Option<&Node>,
         name: &Token,
         value: &Node
     ) {
@@ -946,7 +946,7 @@ impl<'visitor> CompileVisitor<'visitor> {
     // установка значения переменной
     fn visit_assign(
         &mut self,
-        previous: &Option<Box<Node>>,
+        previous: Option<&Node>,
         name: &Token,
         value: &Node,
     ) {
@@ -972,7 +972,7 @@ impl<'visitor> CompileVisitor<'visitor> {
     // получение значения переменной
     fn visit_get(
         &mut self,
-        previous: &Option<Box<Node>>,
+        previous: Option<&Node>,
         name: &Token,
         should_push: bool,
     ) {
