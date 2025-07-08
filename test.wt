@@ -127,6 +127,7 @@ io.println(math.round(3.5))
 io.println(math.round(3.4))
 io.println(math.pow(3, 3))
 */
-import 'std.random'
 import 'std.io'
-io.println(random.int(1, 100))
+import 'std.errors'
+a := result.err('111')
+io.println(a?)
