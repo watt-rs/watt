@@ -23,11 +23,6 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         1,
         "system@getenv",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            if !should_push {
-                vm.push(Value::Null);
-                return Ok(());
-            }
-
             let env_key = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
 
             match std::env::vars().find(|x| &x.0 == env_key) {
@@ -210,14 +205,6 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         1,
         "system@process_spawn_shell",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            if !should_push {
-                error!(Error::new(
-                    addr.clone(),
-                    "A value must be taken.",
-                    "Give it a name: `process = std.process.spawn(...)`"
-                ));
-            }
-
             let command = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
 
             let mut descriptor = if cfg!(target_os = "windows") {
