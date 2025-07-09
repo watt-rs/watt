@@ -1363,6 +1363,12 @@ impl VM {
                                 default_impl.params.clone(),
                             ),
                         ));
+                        // защита gc
+                        self.gc_guard(default_fn);
+                        // добавляем в gc
+                        self.gc_register(default_fn, table);
+                        // удаляем защиту gc
+                        self.gc_unguard();
                         // если есть
                         if let Err(e) = (*(*instance).fields).define(
                             &addr,
@@ -1371,8 +1377,6 @@ impl VM {
                         ) {
                             error!(e);
                         }
-                        // добавляем в gc
-                        self.gc_register(default_fn, table);
                     }
                     // если нет
                     else {
