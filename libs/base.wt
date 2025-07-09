@@ -61,15 +61,6 @@ type List {
 trait Iterator {
     fun has_next
     fun next
-    fun to_list {
-    	list := new List()
-
-    	while self.has_next() {
-    		list.add(self.next())
-    	}
-
-    	return list
-    }
 }
 
 /*
@@ -140,6 +131,15 @@ type NumbersIterator(start, end) impl Iterator {
         }
 
         return value
+    }
+    fun to_list {
+    	list := new List()
+
+    	while self.has_next() {
+    		list.add(self.next())
+    	}
+
+    	return list
     }
 }
 
