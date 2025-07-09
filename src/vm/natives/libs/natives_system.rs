@@ -343,6 +343,20 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         },
     );
 
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        0,
+        "system@get_osname",
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            if should_push {
+                vm.push(Value::String(memory::alloc_value(std::env::consts::OS.to_string())));
+            }
+
+            Ok(())
+        },
+    );
+
     // успех
     Ok(())
 }

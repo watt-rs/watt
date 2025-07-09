@@ -69,6 +69,7 @@ unit system {
     native __internal_setenv -> 'system@setenv'
     native __internal_getcwd -> 'system@getcwd'
     native __internal_getargs -> 'system@getargs'
+    native __internal_get_osname -> 'system@get_osname'
 
     native __internal_memory_total -> 'system@memory_total'
     native __internal_memory_used -> 'system@memory_used'
@@ -135,5 +136,9 @@ unit system {
         proc := new ProcessBuilder()
 
         return proc.spawn_with_shell(command)
+    }
+
+    fun os_name() {
+        return __internal_get_osname()
     }
 }
