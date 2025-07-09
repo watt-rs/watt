@@ -1,0 +1,86 @@
+/*
+ Библиотека system.
+ | имплементация находится в
+ | > crate::vm::natives::libs::natives_system
+ */
+
+import 'std.errors'
+
+type System {
+    fun memory_total() {
+        return system.__internal_memory_total()
+    }
+
+    fun memory_used() {
+        return system.__internal_memory_used()
+    }
+
+    fun cpu_count() {
+        return system.__internal_cpu_count()
+    }
+}
+
+type Process {
+    fun id() {
+        return system.__internal_process_id()
+    }
+
+    fun exit(code) {
+        system.__internal_process_exit(code)
+    }
+}
+
+unit system {
+    native __internal_getenv -> 'system@getenv'
+    native __internal_setenv -> 'system@setenv'
+    native __internal_getcwd -> 'system@getcwd'
+    native __internal_getargs -> 'system@getargs'
+
+    native __internal_memory_total -> 'system@memory_total'
+    native __internal_memory_used -> 'system@memory_used'
+    native __internal_cpu_count -> 'system@cpu_count'
+    
+    native __internal_process_id -> 'system@process_id'
+    native __internal_process_exit -> 'system@process_exit'
+
+    fun env(name) {
+        internal := __internal_getenv(name)
+
+        if internal == null {
+            return result.err(0)
+        }
+
+        return result.ok(internal)
+    }
+
+    fun set_env(name, value) {
+        __internal_setenv(name, value)
+    }
+
+    fun cwd() {
+        internal := __internal_getcwd()
+
+        if internal == null {
+            return result.err(0)
+        }
+
+        return result.ok(internal)
+    }
+
+    fun get_args() {
+        internal_list := __internal_getargs()
+
+        real_list := new List()
+        real_list.internal = internal_list
+
+        return real_list
+    }
+
+    fun summary() {
+        return new System()
+    }
+
+    fun process() {
+        return new Process()
+    }
+}
