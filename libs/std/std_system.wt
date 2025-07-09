@@ -1,9 +1,4 @@
-/*
- Библиотека system.
- | имплементация находится в
- | > crate::vm::natives::libs::natives_system
- */
-
+// импорты
 import 'std.errors'
 
 // Объект системы
@@ -41,47 +36,68 @@ type ThisProcess {
 type Process(raw_handle) {
     // Завершить процесс
     fun terminate {
-        system.__internal_process_terminate(self.raw_handle)
+        process.__internal_process_terminate(self.raw_handle)
     }
 
     // Ждать окончания выполнения процесса
     fun wait {
-        return system.__internal_process_wait(self.raw_handle)
+        return process.__internal_process_wait(self.raw_handle)
     }
 
     // Получает PID запущенного процесса
     fun id {
-        return system.__internal_process_id(self.raw_handle)
+        return process.__internal_process_id(self.raw_handle)
     }
 }
 
 // Тип-помощник. Позволяет собирать будущий процесс.
 type ProcessBuilder {
     fun spawn_with_shell(command) {
-        internal := system.__internal_process_spawn_shell(command)
+        internal := process.__internal_process_spawn_shell(command)
 
         return new Process(internal)
     }
 }
 
+/*
+ Библиотека system. Юнит process.
+ | имплементация находится в
+ | > crate::vm::natives::libs::natives_system
+ */
+unit process {
+    // нативные функции для процессов
+    native __internal_process_spawn_shell -> 'system@process_spawn_shell'
+    native __internal_process_id -> 'system@process_id'
+    native __internal_process_wait -> 'system@process_wait'
+    native __internal_process_terminate -> 'system@process_terminate'
+
+    // Запуск нового процесса по команде для командной оболочки (`sh` для Unix, `cmd` для Windows)
+    fun spawn_with_shell(command) {
+        proc := new ProcessBuilder()
+
+        return proc.spawn_with_shell(command)
+    }
+}
+
+/*
+ Библиотека system. Юнит system.
+ | имплементация находится в
+ | > crate::vm::natives::libs::natives_system
+ */
 unit system {
+    // базовые нативные функции
     native __internal_getenv -> 'system@getenv'
     native __internal_setenv -> 'system@setenv'
     native __internal_getcwd -> 'system@getcwd'
     native __internal_getargs -> 'system@getargs'
     native __internal_get_osname -> 'system@get_osname'
-
+    // нативные функции информации о системе
     native __internal_memory_total -> 'system@memory_total'
     native __internal_memory_used -> 'system@memory_used'
     native __internal_cpu_count -> 'system@cpu_count'
-
-    native __internal_process_spawn_shell -> 'system@process_spawn_shell'
-    native __internal_process_id -> 'system@process_id'
-    native __internal_process_wait -> 'system@process_wait'
-    native __internal_process_terminate -> 'system@process_terminate'
-    
+    // нативные функции для текущих процессоров
     native __internal_this_process_id -> 'system@this_process_id'
-    native __internal_process_exit -> 'system@process_exit'
+    native __internal_this_process_terminate -> 'system@this_process_terminate'
 
     // Получает переменную среды по имени
     fun env(name) {
@@ -130,14 +146,7 @@ unit system {
         return new ThisProcess()
     }
 
-    // Запуск нового процесса по команде для командной оболочки (`sh` для Unix, `cmd` для Windows)
-    // TODO: Должно быть во вложенном юните `process`
-    fun spawn_with_shell(command) {
-        proc := new ProcessBuilder()
-
-        return proc.spawn_with_shell(command)
-    }
-
+    // Имя ос
     fun os_name() {
         return __internal_get_osname()
     }
