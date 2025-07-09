@@ -174,7 +174,7 @@ impl VM {
         let operand_a = self.pop(&address)?;
         let operand_b = self.pop(&address)?;
         // ошибки
-        let throw_invalid_op_error = || {
+        let invalid_op_error = || {
             error!(Error::own_text(
                 address.clone(),
                 format!("could not use '{}' with {:?} and {:?}", op, operand_a, operand_b),
@@ -182,7 +182,7 @@ impl VM {
             ));
         };
 
-        let throw_division_error = || {
+        let division_error = || {
             error!(Error::new(
                 address.clone(),
                 "division by zero.",
@@ -204,7 +204,7 @@ impl VM {
                             self.push(string);
                             self.gc_register(string, table);
                         }
-                        _ => { throw_invalid_op_error(); }
+                        _ => { invalid_op_error(); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Float((a as f64) + b)); }
@@ -216,7 +216,7 @@ impl VM {
                             self.push(string);
                             self.gc_register(string, table);
                         }
-                        _ => { throw_invalid_op_error(); }
+                        _ => { invalid_op_error(); }
                     }}
                     Value::String(a) => {
                         let string = Value::String(
@@ -234,7 +234,7 @@ impl VM {
                             self.gc_register(string, table);
                         }
                         else {
-                            throw_invalid_op_error();
+                            invalid_op_error();
                         }
                     }
                 }
@@ -244,14 +244,14 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Float(a - b)); }
                         Value::Int(b) => { self.push(Value::Float(a - (b as f64))); }
-                        _ => { throw_invalid_op_error(); }
+                        _ => { invalid_op_error(); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Float((a as f64) - b)); }
                         Value::Int(b) => { self.push(Value::Int(a - b)); }
-                        _ => { throw_invalid_op_error(); }
+                        _ => { invalid_op_error(); }
                     }}
-                    _ => { throw_invalid_op_error(); }
+                    _ => { invalid_op_error(); }
                 }
             }
             "*" => {
@@ -259,14 +259,14 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Float(a * b)); }
                         Value::Int(b) => { self.push(Value::Float(a * (b as f64))); }
-                        _ => { throw_invalid_op_error(); }
+                        _ => { invalid_op_error(); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Float((a as f64) * b)); }
                         Value::Int(b) => { self.push(Value::Int(a * b)); }
-                        _ => { throw_invalid_op_error(); }
+                        _ => { invalid_op_error(); }
                     }}
-                    _ => { throw_invalid_op_error(); }
+                    _ => { invalid_op_error(); }
                 }
             }
             "/" => {
@@ -274,35 +274,35 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => {
                             // проверка на деление на 0
-                            if b == 0f64 { throw_division_error(); }
+                            if b == 0f64 { division_error(); }
                             // деление
                             self.push(Value::Float(a / b));
                         }
                         Value::Int(b) => {
                             // проверка на деление на 0
-                            if b == 0 { throw_division_error(); }
+                            if b == 0 { division_error(); }
                             // деление
                             self.push(Value::Float(a / (b as f64)));
                         }
-                        _ => { throw_invalid_op_error(); }
+                        _ => { invalid_op_error(); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => {
                             // проверка на деление на 0
-                            if b == 0f64 { throw_division_error(); }
+                            if b == 0f64 { division_error(); }
                             // деление
                             self.push(Value::Float((a as f64) / b));
                         }
                         Value::Int(b) => {
                             // проверка на деление на 0
-                            if b == 0 { throw_division_error(); }
+                            if b == 0 { division_error(); }
                             // деление
                             if a % b == 0 { self.push(Value::Int(a / b)); }
                             else { self.push(Value::Float(a as f64 / b as f64)) }
                         }
-                        _ => { throw_invalid_op_error(); }
+                        _ => { invalid_op_error(); }
                     }}
-                    _ => { throw_invalid_op_error(); }
+                    _ => { invalid_op_error(); }
                 }
             }
             "%" => {
@@ -310,41 +310,41 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Float(a % b)); }
                         Value::Int(b) => { self.push(Value::Float(a % (b as f64))); }
-                        _ => { throw_invalid_op_error(); }
+                        _ => { invalid_op_error(); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Float((a as f64) % b)); }
                         Value::Int(b) => { self.push(Value::Int(a % b)); }
-                        _ => { throw_invalid_op_error(); }
+                        _ => { invalid_op_error(); }
                     }}
-                    _ => { throw_invalid_op_error(); }
+                    _ => { invalid_op_error(); }
                 }
             }
             "&" => {
                 match operand_a {
                     Value::Int(a) => { match operand_b {
                         Value::Int(b) => { self.push(Value::Int(a & b)); }
-                        _ => { throw_invalid_op_error(); }
+                        _ => { invalid_op_error(); }
                     }}
-                    _ => { throw_invalid_op_error(); }
+                    _ => { invalid_op_error(); }
                 }
             }
             "|" => {
                 match operand_a {
                     Value::Int(a) => { match operand_b {
                         Value::Int(b) => { self.push(Value::Int(a | b)); }
-                        _ => { throw_invalid_op_error(); }
+                        _ => { invalid_op_error(); }
                     }}
-                    _ => { throw_invalid_op_error(); }
+                    _ => { invalid_op_error(); }
                 }
             }
             "^" => {
                 match operand_a {
                     Value::Int(a) => { match operand_b {
                         Value::Int(b) => { self.push(Value::Int(a ^ b)); }
-                        _ => { throw_invalid_op_error(); }
+                        _ => { invalid_op_error(); }
                     }}
-                    _ => { throw_invalid_op_error(); }
+                    _ => { invalid_op_error(); }
                 }
             }
             _ => { panic!("operator = {} is not found.", op)}
