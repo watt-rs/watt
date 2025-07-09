@@ -133,16 +133,9 @@ import 'std.errors'
 a := result.err('111')
 io.println(a?)
 */
-trait A {
-    fun has_next
-    fun next
-    fun to_list {
-        list := new List()
+import 'std.io'
 
-        while self.has_next() {
-            list.add(self.next())
-        }
+iterator := new NumbersIterator(1, 10)
+numbers := iterator.to_list() 
 
-        return list
-    }
-}
+io.println(numbers.to_string())

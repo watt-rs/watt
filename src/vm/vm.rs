@@ -1255,7 +1255,7 @@ impl VM {
     }
 
     // проверка трейтов
-    unsafe fn check_traits(&mut self, addr: &Address, instance: *mut Instance) {
+    unsafe fn check_traits(&mut self, addr: &Address, instance: *mut Instance, table: *mut Table) {
         // тип инстанса
         let instance_type = (*instance).t;
         // получение трейта
@@ -1355,20 +1355,24 @@ impl VM {
                     if function.default.is_some() {
                         // реализация
                         let default_impl = function.default.as_ref().unwrap();
+                        // функция
+                        let default_fn = Value::Fn(memory::alloc_value(
+                            Function::new(
+                                Symbol::by_name(function.name.clone()),
+                                memory::alloc_value(default_impl.chunk.clone()),
+                                default_impl.params.clone(),
+                            ),
+                        ));
                         // если есть
                         if let Err(e) = (*(*instance).fields).define(
                             &addr,
                             &function.name,
-                            Value::Fn(memory::alloc_value(
-                                Function::new(
-                                    Symbol::by_name(function.name.clone()),
-                                    memory::alloc_value(default_impl.chunk.clone()),
-                                    default_impl.params.clone(),
-                                ),
-                            ))
+                            default_fn
                         ) {
                             error!(e);
                         }
+                        // добавляем в gc
+                        self.gc_register(default_fn, table);
                     }
                     // если нет
                     else {
@@ -1465,7 +1469,7 @@ impl VM {
                     // удаляем временный self
                     (*(*instance).fields).fields.remove("self");
                     // проверка трейтов
-                    self.check_traits(addr, instance);
+                    self.check_traits(addr, instance, table);
                     // бинды
                     self.bind_functions((*instance).fields, FnOwner::Instance(instance));
                     // init функция
