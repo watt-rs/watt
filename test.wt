@@ -134,8 +134,6 @@ a := result.err('111')
 io.println(a?)
 */
 import 'std.io'
+import 'std.system'
 
-iterator := new NumbersIterator(1, 10)
-numbers := iterator.to_list() 
-
-io.println(numbers.to_string())
+process.spawn_with_shell('echo Hello, world!')

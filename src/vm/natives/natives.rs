@@ -22,6 +22,7 @@ pub unsafe fn provide_builtins(vm: &mut VM) -> Result<(), Error> {
     natives_typeof::provide(&built_in_address, vm)?;
     natives_time::provide(&built_in_address, vm)?;
     natives_fs::provide(&built_in_address, vm)?;
+    natives_system::provide(&built_in_address, vm)?;
     // успех
     Ok(())
 }
