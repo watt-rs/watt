@@ -11,7 +11,7 @@ use crate::vm::vm::VM;
 
 // провайд
 #[allow(unused_variables)]
-pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Error> {
+pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Error> {
     // функции
     natives::provide(
         vm,
@@ -60,7 +60,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
     );
     natives::provide(
         vm,
-        built_in_address,
+        built_in_address.clone(),
         0,
         "io@input",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
