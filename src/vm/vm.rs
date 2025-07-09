@@ -1353,12 +1353,18 @@ impl VM {
                 else {
                     // проверяем есть ли дефолтная имплементация
                     if function.default.is_some() {
+                        // реализация
+                        let default_impl = function.default.as_ref().unwrap();
                         // если есть
                         if let Err(e) = (*(*instance).fields).define(
                             &addr,
                             &function.name,
                             Value::Fn(memory::alloc_value(
-                                function.default.clone().unwrap(),
+                                Function::new(
+                                    Symbol::by_name(function.name.clone()),
+                                    memory::alloc_value(default_impl.chunk.clone()),
+                                    default_impl.params.clone(),
+                                ),
                             ))
                         ) {
                             error!(e);

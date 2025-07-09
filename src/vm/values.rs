@@ -90,15 +90,32 @@ impl Drop for Unit {
     }
 }
 
+// дефолтная функция трейта
+#[derive(Clone, Debug)]
+pub struct DefaultTraitFn {
+    pub params: Vec<String>,
+    pub chunk: Chunk
+}
+// имплементация
+impl DefaultTraitFn {
+    pub fn new(params: Vec<String>, chunk: Chunk) -> DefaultTraitFn {
+        DefaultTraitFn {
+            params, 
+            chunk
+        }
+    }
+}
+
 // функция трейта
 #[derive(Clone, Debug)]
 pub struct TraitFn {
     pub name: String,
     pub params_amount: usize,
-    pub default: Option<Function>
+    pub default: Option<DefaultTraitFn>
 }
+// имплементация
 impl TraitFn {
-    pub fn new(name: String, params_amount: usize, default: Option<Function>) -> TraitFn {
+    pub fn new(name: String, params_amount: usize, default: Option<DefaultTraitFn>) -> TraitFn {
         TraitFn {name, params_amount, default}
     }
 }
@@ -110,9 +127,18 @@ pub struct Trait {
     pub name: Symbol,
     pub functions: Vec<TraitFn>
 }
+// имплементация
 impl Trait {
     pub fn new(name: Symbol, functions: Vec<TraitFn>) -> Trait {
         Trait {name, functions}
+    }
+}
+// имплементация дропа
+impl Drop for Trait {
+    fn drop(&mut self) {
+        for function in self.functions.drain(..) {
+            drop(function);
+        }
     }
 }
 

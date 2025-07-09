@@ -133,7 +133,16 @@ import 'std.errors'
 a := result.err('111')
 io.println(a?)
 */
-import 'std.fs'
-import 'std.io'
-io.println(fs.is_directory('F:\RustWatt\libs\std\std_convert.wt').unwrap())
-io.println(fs.is_directory('F:\RustWatt\libs\std').unwrap())
+trait A {
+    fun has_next
+    fun next
+    fun to_list {
+        list := new List()
+
+        while self.has_next() {
+            list.add(self.next())
+        }
+
+        return list
+    }
+}

@@ -4,7 +4,6 @@ use crate::lexer::lexer::*;
 use crate::parser::ast::*;
 use crate::vm::bytecode::{Chunk, Opcode, OpcodeValue};
 use crate::vm::values::*;
-use crate::vm::memory::memory;
 use std::collections::VecDeque;
 use crate::error;
 use crate::errors::errors::{Error};
@@ -811,24 +810,19 @@ impl<'visitor> CompileVisitor<'visitor> {
         // перебираем
         for node_fn in functions {
             // дефолтная реализация
-            let default: Option<Function>;
+            let default: Option<DefaultTraitFn>;
             // проверяем, если есть дефолтная реализация
             if node_fn.default.is_some() {
                 // тело
                 self.push_chunk();
                 self.visit_node(node_fn.default.as_ref().unwrap());
-                let chunk = memory::alloc_value(
-                    Chunk::new(self.pop_chunk()),
-                );
+                let chunk = Chunk::new(self.pop_chunk());
                 // параметры
                 let params: Vec<String> = node_fn.params.iter().map(|param| param.value.clone()).collect();
                 // дефолтная реализация
-                default = Some(Function::new(
-                    Symbol::by_name(
-                        node_fn.name.value.clone(),
-                    ),
+                default = Some(DefaultTraitFn::new(
+                    params,
                     chunk,
-                    params
                 ))
             }
             // если нет
