@@ -174,7 +174,6 @@ impl VM {
         let operand_a = self.pop(&address)?;
         let operand_b = self.pop(&address)?;
         // ошибки
-
         let throw_invalid_op_error = || {
             error!(Error::own_text(
                 address.clone(),
@@ -183,11 +182,14 @@ impl VM {
             ));
         };
 
-        let division_error = Error::new(
-            address.clone(),
-            "division by zero.",
-            "undefined operation."
-        );
+        let throw_division_error = || {
+            error!(Error::new(
+                address.clone(),
+                "division by zero.",
+                "undefined operation."
+            ));
+        };
+
         // бинарная операция
         match op {
             "+" => {
@@ -272,13 +274,13 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => {
                             // проверка на деление на 0
-                            if b == 0f64 { error!(division_error); }
+                            if b == 0f64 { throw_division_error(); }
                             // деление
                             self.push(Value::Float(a / b));
                         }
                         Value::Int(b) => {
                             // проверка на деление на 0
-                            if b == 0 { error!(division_error); }
+                            if b == 0 { throw_division_error(); }
                             // деление
                             self.push(Value::Float(a / (b as f64)));
                         }
@@ -287,13 +289,13 @@ impl VM {
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => {
                             // проверка на деление на 0
-                            if b == 0f64 { error!(division_error); }
+                            if b == 0f64 { throw_division_error(); }
                             // деление
                             self.push(Value::Float((a as f64) / b));
                         }
                         Value::Int(b) => {
                             // проверка на деление на 0
-                            if b == 0 { error!(division_error); }
+                            if b == 0 { throw_division_error(); }
                             // деление
                             if a % b == 0 { self.push(Value::Int(a / b)); }
                             else { self.push(Value::Float(a as f64 / b as f64)) }
