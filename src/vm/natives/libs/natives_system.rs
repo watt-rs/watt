@@ -338,10 +338,6 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
                 }
             }
 
-            if should_push {
-                vm.push(Value::Null);
-            }
-
             Ok(())
         },
     );

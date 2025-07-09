@@ -48,6 +48,10 @@ type Process(raw_handle) {
     fun wait {
         return system.__internal_process_wait(self.raw_handle)
     }
+
+    fun id() {
+        return system.__internal_process_id(self.raw_handle)
+    }
 }
 
 // Тип-помощник. Позволяет собирать будущий процесс.
@@ -70,6 +74,7 @@ unit system {
     native __internal_cpu_count -> 'system@cpu_count'
 
     native __internal_process_spawn_shell -> 'system@process_spawn_shell'
+    native __internal_process_id -> 'system@process_id'
     native __internal_process_wait -> 'system@process_wait'
     native __internal_process_terminate -> 'system@process_terminate'
     
