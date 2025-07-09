@@ -1340,8 +1340,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                     Address::new(
                         0,
                         0,
-                        self.filename.to_string(),
-                        "eof".to_string()
+                        self.filename.to_string()
                     ),
                     "unexpected eof",
                     "check your code."
@@ -1378,7 +1377,6 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                         0,
                         0,
                         self.filename.to_string(),
-                        "eof".to_string()
                     ),
                     "unexpected eof",
                     "check your code."

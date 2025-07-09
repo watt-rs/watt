@@ -61,7 +61,7 @@ impl Error {
     // вывод
     pub fn panic(&self) -> ! {
         let filename = self.addr.file.as_ref().map_or("-", |v| v);
-        let text_line = self.addr.line_text.as_ref().map_or("-", |v| v);
+        let text_line = self.addr.get_line().unwrap_or(String::from("-"));
 
         // выводим
         println!(
