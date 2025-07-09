@@ -233,7 +233,11 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
 
             match descriptor.spawn() {
                 Ok(child) => {
-                    vm.push(Value::Any(alloc_value(child)));
+                    let value = Value::Any(alloc_value(child));
+
+                    vm.gc_register(value, table);
+
+                    vm.push(value);
                 }
                 Err(_e) => {
                     vm.push(Value::Null);
