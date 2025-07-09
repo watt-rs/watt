@@ -6,6 +6,7 @@ use sysinfo::System;
 use crate::error;
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
+use crate::vm::bytecode::OpcodeValue;
 use crate::vm::memory::memory::{self, alloc_value};
 use crate::vm::natives::libs::utils;
 use crate::vm::natives::natives;
@@ -233,11 +234,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
 
             match descriptor.spawn() {
                 Ok(child) => {
-                    let value = Value::Any(alloc_value(child));
-
-                    vm.gc_register(value, table);
-
-                    vm.push(value);
+                    vm.op_push(OpcodeValue::Raw(Value::Any(alloc_value(child))), table)?;
                 }
                 Err(_e) => {
                     vm.push(Value::Null);
