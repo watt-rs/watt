@@ -1,11 +1,13 @@
+use std::process::Command;
+
 use sysinfo::System;
 
 // импорты
 use crate::error;
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
-use crate::vm::memory::memory;
-use crate::vm::natives::libs::{sysinfo_provider, utils};
+use crate::vm::memory::memory::{self, alloc_value};
+use crate::vm::natives::libs::utils;
 use crate::vm::natives::natives;
 use crate::vm::table::Table;
 use crate::vm::values::Value;
@@ -181,7 +183,7 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
         vm,
         built_in_address.clone(),
         0,
-        "system@process_id",
+        "system@this_process_id",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             vm.push(Value::Int(std::process::id() as _));
 
@@ -198,6 +200,149 @@ pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Erro
             let code = utils::expect_int(addr.clone(), vm.pop(&addr)?, None);
 
             std::process::exit(code as _);
+        },
+    );
+
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        1,
+        "system@process_spawn_shell",
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            if !should_push {
+                error!(Error::new(
+                    addr.clone(),
+                    "A value must be taken.",
+                    "Give it a name: `process = std.process.spawn(...)`"
+                ));
+            }
+
+            let command = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
+
+            let mut descriptor = if cfg!(target_os = "windows") {
+                let mut shell = Command::new("cmd");
+                shell.args(["/C", command]);
+
+                shell
+            } else {
+                let mut shell = Command::new("sh");
+                shell.arg("-c").arg(command);
+
+                shell
+            };
+
+            match descriptor.spawn() {
+                Ok(child) => {
+                    vm.push(Value::Any(alloc_value(child)));
+                }
+                Err(_e) => {
+                    vm.push(Value::Null);
+                }
+            };
+
+            Ok(())
+        },
+    );
+
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        1,
+        "system@process_wait",
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            let child = &mut *utils::expect_any(addr.clone(), vm.pop(&addr)?, None);
+
+            let child: Option<&mut std::process::Child> = child.downcast_mut();
+
+            match child {
+                Some(ch) => {
+                    let value = ch.wait();
+
+                    if should_push {
+                        match value {
+                            Ok(status) => {
+                                vm.push(Value::Int(status.code().unwrap_or(0) as _));
+                            }
+                            Err(e) => {
+                                vm.push(Value::Null);
+                            }
+                        }
+                    }
+                }
+                None => {
+                    error!(Error::new(
+                        addr.clone(),
+                        "The inner raw value is not a `std::process::Child`",
+                        "please file an issue at https://github.com/vyacheslavhere/watt"
+                    ))
+                }
+            }
+
+            Ok(())
+        },
+    );
+
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        1,
+        "system@process_terminate",
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            let child = &mut *utils::expect_any(addr.clone(), vm.pop(&addr)?, None);
+
+            let child: Option<&mut std::process::Child> = child.downcast_mut();
+
+            match child {
+                Some(ch) => {
+                    let _ = ch.kill();
+                }
+                None => {
+                    error!(Error::new(
+                        addr.clone(),
+                        "The inner raw value is not a `std::process::Child`",
+                        "please file an issue at https://github.com/vyacheslavhere/watt"
+                    ))
+                }
+            }
+
+            if should_push {
+                vm.push(Value::Null);
+            }
+
+            Ok(())
+        },
+    );
+
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        1,
+        "system@process_id",
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            let child = &mut *utils::expect_any(addr.clone(), vm.pop(&addr)?, None);
+
+            let child: Option<&mut std::process::Child> = child.downcast_mut();
+
+            match child {
+                Some(ch) => {
+                    if should_push {
+                        vm.push(Value::Int(ch.id() as _));
+                    }
+                }
+                None => {
+                    error!(Error::new(
+                        addr.clone(),
+                        "The inner raw value is not a `std::process::Child`",
+                        "please file an issue at https://github.com/vyacheslavhere/watt"
+                    ))
+                }
+            }
+
+            if should_push {
+                vm.push(Value::Null);
+            }
+
+            Ok(())
         },
     );
 

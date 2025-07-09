@@ -20,13 +20,31 @@ type System {
     }
 }
 
-type Process {
+type ThisProcess {
     fun id() {
-        return system.__internal_process_id()
+        return system.__internal_this_process_id()
     }
 
     fun exit(code) {
         system.__internal_process_exit(code)
+    }
+}
+
+type Process(raw_handle) {
+    fun terminate {
+        system.__internal_process_terminate(self.raw_handle)
+    }
+
+    fun wait {
+        return system.__internal_process_wait(self.raw_handle)
+    }
+}
+
+type ProcessBuilder {
+    fun spawn_with_shell(command) {
+        internal := system.__internal_process_spawn_shell(command)
+
+        return new Process(internal)
     }
 }
 
@@ -39,8 +57,12 @@ unit system {
     native __internal_memory_total -> 'system@memory_total'
     native __internal_memory_used -> 'system@memory_used'
     native __internal_cpu_count -> 'system@cpu_count'
+
+    native __internal_process_spawn_shell -> 'system@process_spawn_shell'
+    native __internal_process_wait -> 'system@process_wait'
+    native __internal_process_terminate -> 'system@process_terminate'
     
-    native __internal_process_id -> 'system@process_id'
+    native __internal_this_process_id -> 'system@this_process_id'
     native __internal_process_exit -> 'system@process_exit'
 
     fun env(name) {
@@ -80,7 +102,14 @@ unit system {
         return new System()
     }
 
-    fun process() {
-        return new Process()
+    fun this() {
+        return new ThisProcess()
+    }
+
+    // supposed to be in a nested `process` unit
+    fun spawn_with_shell(command) {
+        proc := new ProcessBuilder()
+
+        return proc.spawn_with_shell(command)
     }
 }
