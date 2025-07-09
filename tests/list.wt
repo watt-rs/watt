@@ -1,0 +1,15 @@
+import 'std.io'
+
+a := [1, 2, 3, 4, 5]
+
+a.delete_at(0)
+a.delete(2)
+a.delete(3)
+a.add(6)
+a.add(7)
+a.add(8)
+a.add(9)
+
+a.delete(4)
+
+io.println(a.to_string())
