@@ -1,0 +1,144 @@
+/*
+ Библиотека system.
+ | имплементация находится в
+ | > crate::vm::natives::libs::natives_system
+ */
+
+import 'std.errors'
+
+// Объект системы
+type System {
+    // Количество ОЗУ, установленной на устройстве
+    fun memory_total() {
+        return system.__internal_memory_total()
+    }
+
+    // Количество использованной ОЗУ
+    fun memory_used() {
+        return system.__internal_memory_used()
+    }
+
+    // Количество вычислительных ядер
+    fun cpu_count() {
+        return system.__internal_cpu_count()
+    }
+}
+
+// Объект, содержащий информацию о текущем процессе
+type ThisProcess {
+    // PID
+    fun id() {
+        return system.__internal_this_process_id()
+    }
+
+    // Выход с кодом
+    fun exit(code) {
+        system.__internal_process_exit(code)
+    }
+}
+
+// Объект, содержащий информацию о запущенном процессе
+type Process(raw_handle) {
+    // Завершить процесс
+    fun terminate {
+        system.__internal_process_terminate(self.raw_handle)
+    }
+
+    // Ждать окончания выполнения процесса
+    fun wait {
+        return system.__internal_process_wait(self.raw_handle)
+    }
+
+    // Получает PID запущенного процесса
+    fun id {
+        return system.__internal_process_id(self.raw_handle)
+    }
+}
+
+// Тип-помощник. Позволяет собирать будущий процесс.
+type ProcessBuilder {
+    fun spawn_with_shell(command) {
+        internal := system.__internal_process_spawn_shell(command)
+
+        return new Process(internal)
+    }
+}
+
+unit system {
+    native __internal_getenv -> 'system@getenv'
+    native __internal_setenv -> 'system@setenv'
+    native __internal_getcwd -> 'system@getcwd'
+    native __internal_getargs -> 'system@getargs'
+    native __internal_get_osname -> 'system@get_osname'
+
+    native __internal_memory_total -> 'system@memory_total'
+    native __internal_memory_used -> 'system@memory_used'
+    native __internal_cpu_count -> 'system@cpu_count'
+
+    native __internal_process_spawn_shell -> 'system@process_spawn_shell'
+    native __internal_process_id -> 'system@process_id'
+    native __internal_process_wait -> 'system@process_wait'
+    native __internal_process_terminate -> 'system@process_terminate'
+    
+    native __internal_this_process_id -> 'system@this_process_id'
+    native __internal_process_exit -> 'system@process_exit'
+
+    // Получает переменную среды по имени
+    fun env(name) {
+        internal := __internal_getenv(name)
+
+        if internal == null {
+            return result.err(0)
+        }
+
+        return result.ok(internal)
+    }
+
+    // Устанавливает переменную среды
+    fun set_env(name, value) {
+        __internal_setenv(name, value)
+    }
+
+    // Получает текущую рабочую директорию
+    fun cwd() {
+        internal := __internal_getcwd()
+
+        if internal == null {
+            return result.err(0)
+        }
+
+        return result.ok(internal)
+    }
+
+    // Получает список аргументов, переданные программе
+    fun get_args() {
+        internal_list := __internal_getargs()
+
+        real_list := new List()
+        real_list.internal = internal_list
+
+        return real_list
+    }
+
+    // Создает объект системы для получения данных о системе
+    fun summary() {
+        return new System()
+    }
+
+    // Получает текущий процесс
+    fun this() {
+        return new ThisProcess()
+    }
+
+    // Запуск нового процесса по команде для командной оболочки (`sh` для Unix, `cmd` для Windows)
+    // TODO: Должно быть во вложенном юните `process`
+    fun spawn_with_shell(command) {
+        proc := new ProcessBuilder()
+
+        return proc.spawn_with_shell(command)
+    }
+
+    fun os_name() {
+        return __internal_get_osname()
+    }
+}
