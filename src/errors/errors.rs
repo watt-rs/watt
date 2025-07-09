@@ -16,7 +16,7 @@ pub struct Error {
 macro_rules! error {
     ($err:expr) => {
         $err.panic()
-    }
+    };
 }
 
 // имплементация
@@ -47,7 +47,7 @@ impl Error {
             hint: Cow::Borrowed(hint),
         }
     }
-    
+
     // новая ошибка
     #[allow(unused)]
     pub fn own_hint(addr: Address, text: &'static str, hint: String) -> Self {
@@ -57,10 +57,16 @@ impl Error {
             hint: Cow::Owned(hint),
         }
     }
-    
+
     // вывод
     pub fn panic(&self) -> ! {
-        let filename = self.addr.file.as_ref().map_or("-", |v| v);
+        let filename = self
+            .addr
+            .file
+            .as_ref()
+            .and_then(|x| x.file_name())
+            .and_then(|x| x.to_str().map(|y| y.to_string()))
+            .unwrap_or(String::from("-"));
         let text_line = self.addr.get_line().unwrap_or(String::from("-"));
 
         // выводим
@@ -72,16 +78,17 @@ impl Error {
         );
         println!("│");
         println!("│ {}:", filename);
-        println!("│ {gray}{line}{reset} {text}",
-                 line = self.addr.line,
-                 text = text_line,
-                 gray = colors::WhiteColor,
-                 reset = colors::ResetColor,
+        println!(
+            "│ {gray}{line}{reset} {text}",
+            line = self.addr.line,
+            text = text_line,
+            gray = colors::WhiteColor,
+            reset = colors::ResetColor,
         );
-        println!("│ {space:count$}^",
-                 space = " ",
-                 count = self.addr.column as usize
-                     + self.addr.line.to_string().len()
+        println!(
+            "│ {space:count$}^",
+            space = " ",
+            count = self.addr.column as usize + self.addr.line.to_string().len()
         );
         println!("│");
         println!("│ hint: {hint}", hint = self.hint);

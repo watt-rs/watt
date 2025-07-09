@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 // импорты
 use crate::lexer::address::*;
 use crate::errors::errors::{Error};
@@ -10,14 +12,14 @@ use crate::error;
 pub struct Parser<'filename, 'prefix> {
     tokens: Vec<Token>,
     current: u128,
-    filename: &'filename str,
+    filename: &'filename PathBuf,
     full_name_prefix: &'prefix str,
 }
 // имплементация
 #[allow(unused_qualifications)]
 impl<'filename, 'prefix> Parser<'filename, 'prefix> {
     // новый
-    pub fn new(tokens: Vec<Token>, filename: &'filename str, full_name_prefix: &'prefix str) -> Self {
+    pub fn new(tokens: Vec<Token>, filename: &'filename PathBuf, full_name_prefix: &'prefix str) -> Self {
         Parser { tokens, current: 0, filename, full_name_prefix }
     }
     
@@ -1340,7 +1342,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                     Address::new(
                         0,
                         0,
-                        self.filename.to_string()
+                        self.filename.clone()
                     ),
                     "unexpected eof",
                     "check your code."
@@ -1376,7 +1378,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                     Address::new(
                         0,
                         0,
-                        self.filename.to_string(),
+                        self.filename.clone(),
                     ),
                     "unexpected eof",
                     "check your code."
