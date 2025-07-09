@@ -217,13 +217,13 @@ unit fs {
         // список файлов
         list_result := __internal_list(path)
         // NDRAEY todo: Change it when I learn to use typeof
-        if res == null {
+        if list_result == null {
             // ошибка
             return result.err('could not get list of files from ' + path + '(0)')
         }
         // список
         list := new List()
-        list.internal = res
+        list.internal = list_result
         // если успешно
         return result.ok(list)
     }
