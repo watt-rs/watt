@@ -1,4 +1,4 @@
-﻿use std::{io::Read, path::PathBuf};
+﻿use std::{io::{BufRead, Read}, path::PathBuf};
 
 // адрес
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -22,11 +22,9 @@ impl Address {
     pub fn get_line(&self) -> Option<String> {
         let filepath = self.file.as_ref()?;
 
-        let mut file = std::fs::OpenOptions::new().read(true).open(filepath).ok()?;
-        let mut string = String::new();
+        let file = std::fs::OpenOptions::new().read(true).open(filepath).ok()?;
+        let reader = std::io::BufReader::new(file);
 
-        file.read_to_string(&mut string).ok()?;        
-        
-        return string.split('\n').nth(self.line as usize - 1).map(String::from);
+        reader.lines().nth(self.line as usize - 1)?.ok()
     }
 }
