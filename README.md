@@ -1,6 +1,6 @@
 ﻿<p align="center">
   <img width="363" height="136" alt="⚡🍹 Watt" src="https://github.com/user-attachments/assets/eb7c78b0-3605-4531-b3a4-d8e8bb164571" />
-  <p align="center"><i>A lightweight, expressive scripting language powered by VoltVM</i>
+  <p align="center"><i>A lightweight, expressive scripting language powered by VoltVM ⚡🍹</i>
 </p>
 
 ### About
