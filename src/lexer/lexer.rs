@@ -154,6 +154,7 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
         while !self.cursor.is_at_end() {
             let ch = self.advance();
             match ch {
+                // спец символы
                 '+' => {
                     if self.is_match('=') {
                         self.add_tk(TokenType::AssignAdd, "+=");
@@ -295,32 +296,42 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
                 '\r' => {}
                 '\t' => {}
                 '\0' => {}
+                ' ' => {}
+                // новая строка
                 '\n' => {
                     self.newline();
                 }
-                ' ' => {}
-                '\'' => match self.scan_string() {
-                    Ok(tk) => {
+                // кавычка
+                '\'' => {
+                    let tk = self.scan_string();
+                    self.tokens.push(tk)
+                }
+                // остальное
+                _ => {
+                    // числа
+                    if self.is_digit(ch) {
+                        // токен
+                        let tk;
+                        // разные типы чисел
+                        if self.cursor.peek() == 'x' {
+                            tk = self.scan_hexadecimal_number();
+                        } else if self.cursor.peek() == 'o' {
+                            tk = self.scan_octal_number();
+                        } else if self.cursor.peek() == 'b' {
+                            tk = self.scan_binary_number();
+                        } else {
+                            tk = self.scan_number(ch);
+                        }
+                        // добавляем
                         self.tokens.push(tk);
                     }
-                    Err(err) => {
-                        error!(err);
-                    }
-                },
-                _ => {
-                    if self.is_digit(ch) {
-                        match self.scan_number(ch) {
-                            Ok(tk) => {
-                                self.tokens.push(tk);
-                            }
-                            Err(err) => {
-                                error!(err);
-                            }
-                        }
-                    } else if self.is_id(ch) {
+                    // айди
+                    else if self.is_id(ch) {
                         let token = self.scan_id_or_keyword(ch);
                         self.tokens.push(token);
-                    } else {
+                    }
+                    // другое
+                    else {
                         error!(Error::own(
                             Address::new(
                                 self.line,
@@ -338,7 +349,7 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
         self.tokens
     }
 
-    fn scan_string(&mut self) -> Result<Token, Error> {
+    fn scan_string(&mut self) -> Token {
         let mut text: String = String::new();
         while self.cursor.peek() != '\'' {
             // символ
@@ -353,7 +364,7 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
 
             // проверка на новую линию
             if self.cursor.is_at_end() || self.is_match('\n') {
-                return Err(Error::new(
+                error!(Error::new(
                     Address::new(
                         self.line,
                         self.column,
@@ -365,10 +376,8 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
                 ));
             }
         }
-
         self.advance();
-
-        Ok(Token {
+        Token {
             tk_type: TokenType::Text,
             value: text,
             address: Address::new(
@@ -377,10 +386,10 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
                 self.filename.to_string(),
                 self.line_text.clone(),
             ),
-        })
+        }
     }
 
-    fn scan_number(&mut self, start: char) -> Result<Token, Error> {
+    fn scan_number(&mut self, start: char) -> Token {
         let mut text: String = String::from(start);
         let mut is_float: bool = false;
         while self.is_digit(self.cursor.peek()) || self.cursor.peek() == '.' {
@@ -389,7 +398,7 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
                     break;
                 }
                 if is_float {
-                    return Err(Error::new(
+                    error!(Error::new(
                         Address::new(
                             self.line,
                             self.column,
@@ -409,7 +418,7 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
                 break;
             }
         }
-        Ok(Token {
+        Token {
             tk_type: TokenType::Number,
             value: text,
             address: Address::new(
@@ -418,8 +427,96 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
                 self.filename.to_string(),
                 self.line_text.clone(),
             ),
-        })
+        }
     }
+
+    fn scan_hexadecimal_number(&mut self) -> Token {
+        // след символ
+        self.advance(); // 'x'
+        // число
+        let mut text: String = String::from("0x");
+        // это шестндарцатерчиное?
+        fn is_16(ch: &char) -> bool {
+            ('0'..='9').contains(&ch) || ('a'..='f').contains(&ch) ||  ('A'..='F').contains(&ch)
+        }
+        // парсинг
+        while is_16(&self.cursor.peek()) {
+            text.push(self.advance());
+            if self.cursor.is_at_end() {
+                break;
+            }
+        }
+        // возвращаем
+        Token {
+            tk_type: TokenType::Number,
+            value: text,
+            address: Address::new(
+                self.line,
+                self.column,
+                self.filename.to_string(),
+                self.line_text.clone(),
+            ),
+        }
+    }
+
+    fn scan_octal_number(&mut self) -> Token {
+        // след символ
+        self.advance(); // 'o'
+        // число
+        let mut text: String = String::from("0o");
+        // это восьмеричное?
+        fn is_8(ch: &char) -> bool {
+            ('0'..='7').contains(ch)
+        }
+        // парсинг
+        while is_8(&self.cursor.peek()) {
+            text.push(self.advance());
+            if self.cursor.is_at_end() {
+                break;
+            }
+        }
+        // возвращаем
+        Token {
+            tk_type: TokenType::Number,
+            value: text,
+            address: Address::new(
+                self.line,
+                self.column,
+                self.filename.to_string(),
+                self.line_text.clone(),
+            ),
+        }
+    }
+
+    fn scan_binary_number(&mut self) -> Token {
+        // след символ
+        self.advance(); // 'b'
+        // число
+        let mut text: String = String::from("0b");
+        // это восьмеричное?
+        fn is_2(ch: &char) -> bool {
+            ('0'..='1').contains(ch)
+        }
+        // парсинг
+        while is_2(&self.cursor.peek()) {
+            text.push(self.advance());
+            if self.cursor.is_at_end() {
+                break;
+            }
+        }
+        // возвращаем
+        Token {
+            tk_type: TokenType::Number,
+            value: text,
+            address: Address::new(
+                self.line,
+                self.column,
+                self.filename.to_string(),
+                self.line_text.clone(),
+            ),
+        }
+    }    
+
 
     fn scan_id_or_keyword(&mut self, start: char) -> Token {
         let mut text: String = String::from(start);

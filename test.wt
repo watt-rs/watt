@@ -134,6 +134,20 @@ a := result.err('111')
 io.println(a?)
 */
 import 'std.io'
-import 'std.system'
 
-process.spawn_with_shell('echo Hello, world!')
+// 65535
+hexa := 0xFFFF
+
+// 4095
+octa := 0o7777
+
+// 2025
+bin := 0b11111101001
+
+// 4024
+decimal := 4024
+
+io.println(hexa)
+io.println(octa)
+io.println(bin)
+io.println(decimal)
