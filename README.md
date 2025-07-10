@@ -1,4 +1,5 @@
 ﻿<p align="center">
+ <img width="32" height="13" alt="Watt-02" src="https://github.com/user-attachments/assets/400f45c9-2173-4ea7-96b0-8bc2052f497a" />
   <h1 align="center" class="huge-text">⚡🍹 Watt</h1>
   <p align="center"><i>A lightweight, expressive scripting language powered by VoltVM</i>
 </p>
