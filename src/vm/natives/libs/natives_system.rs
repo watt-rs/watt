@@ -14,7 +14,7 @@ use sysinfo::System;
 
 // провайд
 #[allow(unused_variables)]
-pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Error> {
+pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Error> {
     natives::provide(
         vm,
         built_in_address.clone(),
