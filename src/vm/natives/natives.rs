@@ -14,15 +14,15 @@ pub unsafe fn provide_builtins(vm: &mut VM) -> Result<(), Error> {
     // билт-ин адрес
     let built_in_address: Address = Address::unknown();
     // io
-    natives_base::provide(built_in_address.clone(), vm)?;
-    natives_io::provide(built_in_address.clone(), vm)?;
-    natives_list::provide(built_in_address.clone(), vm)?;
-    natives_gc::provide(built_in_address.clone(), vm)?;
-    natives_convert::provide(built_in_address.clone(), vm)?;
-    natives_typeof::provide(built_in_address.clone(), vm)?;
-    natives_time::provide(built_in_address.clone(), vm)?;
-    natives_fs::provide(built_in_address.clone(), vm)?;
-    natives_system::provide(built_in_address.clone(), vm)?;
+    natives_base::provide(&built_in_address, vm)?;
+    natives_io::provide(&built_in_address, vm)?;
+    natives_list::provide(&built_in_address, vm)?;
+    natives_gc::provide(&built_in_address, vm)?;
+    natives_convert::provide(&built_in_address, vm)?;
+    natives_typeof::provide(&built_in_address, vm)?;
+    natives_time::provide(&built_in_address, vm)?;
+    natives_fs::provide(&built_in_address, vm)?;
+    natives_system::provide(&built_in_address, vm)?;
     // успех
     Ok(())
 }
