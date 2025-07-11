@@ -29,16 +29,17 @@ pub unsafe fn run(
     // чтение файла
     let code = read_file(Option::None, &path);
     // имя файла
-    let filename = path.file_name().unwrap().to_str().unwrap();
+    // let filepath = path.into_os_string();
+    // let filepath = filepath.as_os_str().to_str().unwrap();
     // компиляция
     let tokens = lex(
-        filename,
+        &path,
         &code.chars().collect::<Vec<char>>(),
         lexer_debug,
         lexer_bench
     );
     let ast = parse(
-        filename,
+        &path,
         tokens.unwrap(),
         ast_debug,
         parser_bench,
@@ -114,13 +115,13 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
 }
 
 // лексинг
-pub fn lex(file_name: &str, code: &[char], debug: bool, bench: bool) -> Option<Vec<Token>> {
+pub fn lex(filepath: &PathBuf, code: &[char], debug: bool, bench: bool) -> Option<Vec<Token>> {
     // начальное время
     let start = std::time::Instant::now();
     // сканнинг токенов
     let tokens = Lexer::new(
         code,
-        file_name
+        filepath
     ).lex();
     // конечное время
     let duration = start.elapsed().as_nanos();
@@ -136,11 +137,13 @@ pub fn lex(file_name: &str, code: &[char], debug: bool, bench: bool) -> Option<V
 
 
 // парсинг
-pub fn parse(file_name: &str, tokens: Vec<Token>, 
+pub fn parse(file_name: &PathBuf, tokens: Vec<Token>, 
         debug: bool, bench: bool, full_name_prefix: &Option<String>) -> Option<Node> {
     // начальное время
     let start = std::time::Instant::now();
     // удаление расширения файла
+    let path = file_name.file_name().and_then(|x| x.to_str()).unwrap();
+
     fn delete_extension(full_name: &str) -> &str {
         match full_name.rfind(".") {
             Some(index) => {
@@ -155,7 +158,7 @@ pub fn parse(file_name: &str, tokens: Vec<Token>,
     let raw_ast = Parser::new(
         tokens,
         file_name,
-        delete_extension(full_name_prefix.as_ref().map(String::as_str).unwrap_or(file_name))
+        delete_extension(full_name_prefix.as_ref().map(String::as_str).unwrap_or(path))
     ).parse();
     // конечное время
     let duration = start.elapsed().as_nanos();

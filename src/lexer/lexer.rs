@@ -3,6 +3,7 @@ use crate::error;
 use crate::errors::errors::Error;
 use crate::lexer::address::*;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use crate::lexer::cursor::Cursor;
 
 // тип токена
@@ -89,19 +90,18 @@ impl Token {
 }
 
 // лексер
-pub struct Lexer<'filename, 'cursor> {
+pub struct Lexer<'filepath, 'cursor> {
     line: u64,
     column: u16,
     cursor: Cursor<'cursor>,
-    line_text: String,
-    filename: &'filename str,
+    filepath: &'filepath PathBuf,
     tokens: Vec<Token>,
     keywords: HashMap<&'static str, TokenType>,
 }
 
 // имплементация
-impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
-    pub fn new(code: &'cursor [char], filename: &'filename str) -> Self {
+impl<'filepath, 'cursor> Lexer<'filepath, 'cursor> {
+    pub fn new(code: &'cursor [char], filepath: &'filepath PathBuf) -> Self {
         let map = HashMap::from([
             ("fun", TokenType::Fun),
             ("break", TokenType::Break),
@@ -131,20 +131,15 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
             ("native", TokenType::Native),
             ("impls", TokenType::Impls),
         ]);
-        // лексер
-        let mut lexer = Lexer {
+        // возвращаем лексер
+        Lexer {
             line: 1,
             column: 0,
-            line_text: String::new(),
             cursor: Cursor::new(code),
-            filename,
+            filepath,
             tokens: vec![],
             keywords: map,
-        };
-        // текст первой линии
-        lexer.line_text = lexer.get_line_text();
-        // возвращаем
-        lexer
+        }
     }
 
     pub fn lex(mut self) -> Vec<Token> {
@@ -336,8 +331,7 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
                             Address::new(
                                 self.line,
                                 self.column,
-                                self.filename.to_string(),
-                                self.line_text.clone(),
+                                self.filepath.clone(),
                             ),
                             format!("unexpected char: {}", ch),
                             format!("delete char: {}", ch),
@@ -368,8 +362,7 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
                     Address::new(
                         self.line,
                         self.column,
-                        self.filename.to_string(),
-                        self.line_text.clone(),
+                        self.filepath.clone(),
                     ),
                     "unclosed string quotes.",
                     "did you forget ' symbol?",
@@ -383,8 +376,7 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
             address: Address::new(
                 self.line,
                 self.column,
-                self.filename.to_string(),
-                self.line_text.clone(),
+                self.filepath.clone(),
             ),
         }
     }
@@ -402,8 +394,7 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
                         Address::new(
                             self.line,
                             self.column,
-                            self.filename.to_string(),
-                            self.line_text.clone(),
+                            self.filepath.clone(),
                         ),
                         "couldn't parse number with two dots",
                         "check your code.",
@@ -424,8 +415,7 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
             address: Address::new(
                 self.line,
                 self.column,
-                self.filename.to_string(),
-                self.line_text.clone(),
+                self.filepath.clone(),
             ),
         }
     }
@@ -536,29 +526,14 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
             address: Address::new(
                 self.line,
                 self.column,
-                self.filename.to_string(),
-                self.line_text.clone(),
+                self.filepath.clone(),
             ),
         }
-    }
-
-
-    fn get_line_text(&self) -> String {
-        // проходимся по тексту
-        let mut i = 0;
-        let mut line_text = String::new();
-        while !self.cursor.is_at_end_offset(i) && self.cursor.char_at(i) != '\n' {
-            line_text.push(self.cursor.char_at(i));
-            i += 1;
-        }
-        // возвращаем
-        line_text
     }
 
     fn newline(&mut self) {
         self.line += 1;
         self.column = 0;
-        self.line_text = self.get_line_text();
     }
 
     fn advance(&mut self) -> char {
@@ -587,8 +562,7 @@ impl<'filename, 'cursor> Lexer<'filename, 'cursor> {
             Address::new(
                 self.line,
                 self.column,
-                self.filename.to_string(),
-                self.line_text.clone(),
+                self.filepath.clone(),
             ),
         ));
     }

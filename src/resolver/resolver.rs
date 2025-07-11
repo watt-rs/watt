@@ -75,16 +75,16 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
         // чтение файла
         let code = executor::read_file(addr, &path);
         // имя файла
-        let filename = path.file_name().unwrap().to_str().unwrap();
+        // let filename = path.file_name().unwrap().to_str().unwrap();
         // компиляция
         let tokens = executor::lex(
-            filename,
+            &path,
             &code.chars().collect::<Vec<char>>(),
             false,
             false
         );
         let ast = executor::parse(
-            filename,
+            &path,
             tokens.unwrap(),
             false,
             false,
