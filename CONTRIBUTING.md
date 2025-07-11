@@ -6,30 +6,28 @@ Thanks you for considering contribution to this project. To make collaboration s
 
 Make sure you have the following installed:
 
-- [Rust](https://www.rust-lang.org/tools/install) (1.88)
+- [Rust](https://www.rust-lang.org/tools/install) (v 1.88)
 - Git
-- Cargo (comes with Rust)
-- Rustup
 
-Optional:
-- Rust analyzer (recommended for IDE integration)
+Optional requirements:
+
+- `rust-analyzer` (recommended for IDE integration)
 
 ## Getting Started 📚
 
 1. **Fork** this repository
 2. **Clone** your fork to your local machine folder:
-   ```bash
-   git clone https://github.com/your-username/project-name.git
-   ```
-3. Try to build and run project.
-  debug:
-  ```bash
-  cargo build
-  ```
-  release:
-  ```bash
-  cargo build --release
-  ```
+
+```bash
+git clone https://github.com/vyacheslavhere/watt.git
+```
+
+3. Ensure that project builds successfully:
+
+```bash
+cargo build
+```
+
 4. Contribute!
 
 ## Code style 🌡️
@@ -61,29 +59,26 @@ How to:
 
 ## Before Submitting a Pull Request ✅
 
-Please make sure:
+Please make sure that:
 
-- [ ] Your code builds without errors
-- [ ] Your code is formatted (`cargo fmt`)
-- [ ] You’ve written tests for new features or bugfixes
-- [ ] Your branch is up to date with `main`
-- [ ] Your branch haven't any conflicts with `main`
+- [x] Your code builds without errors
+- [x] Your code is formatted (`cargo fmt`)
+- [x] You’ve written tests for new features or bugfixes
+- [x] Your branch is up to date with `main`
+- [x] Your branch haven't any conflicts with `main`
 
 ## Pull requests and commits format 📑
 
-- Write commit names in the past tense. For example:
-    ```
-    fixed bug related to ...
-    ```
-    instead of
-    ```
-    fix bug
-    ```
-- Use clear, descriptive titles for PRs and commits
-- Reference related issues using Fixes #issue_number or Closes #issue_number when applicable
+- Write commit names in the past tense.
+   - ✅ Correct: `Fixed bug related to ...`
+   - ❌ Wrong: `Fix bug`
+- Use clear, descriptive titles for PRs and commits.
+- Reference related issues using "Fixes #issue_number" or "Closes #issue_number" when applicable.
 
 ## Code of Conduct 📐
+
 Please, be respectful and open to feedback. Constructive discussion and diverse perspectives are always welcome.
 
 ## Need help? 🐞
+
 Open an issue or contact the maintainer. We're happy to help!
