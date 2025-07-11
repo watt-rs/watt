@@ -2,10 +2,10 @@
 
 ## Supported Versions 🧭
 
-| Version | Supported          |
-| ------- | ------------------ |
-| latest  | :white_check_mark: |
-| nightly | :x:                |
+| Version         | Supported          |
+| --------------- | ------------------ |
+| release         | :white_check_mark: |
+| nightly < 1.0.0 | :x:                |
 
 ## Reporting a Vulnerability 😨
 
