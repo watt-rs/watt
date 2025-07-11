@@ -151,3 +151,6 @@ io.println(hexa)
 io.println(octa)
 io.println(bin)
 io.println(decimal)
+io.println(fun {
+    return 1
+})

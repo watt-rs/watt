@@ -719,12 +719,23 @@ impl<'visitor> CompileVisitor<'visitor> {
         // чанк тела
         self.push_chunk();
         self.visit_node(body);
-        self.visit_node(&Node::Ret {
-            location: location.clone(),
-            value: Box::new(Node::Null {
-                location: location.clone(),
-            })
-        });
+        // получаем последний опкод который оставил `body` функции
+        let last_opcode = self.opcodes.front().and_then(|last| last.last());
+        // е если он не заканчивается на Ret, то добавляем заглушку
+        match last_opcode {
+            // если заканчивается
+            Some(&Opcode::Ret { .. }) => {}
+            // если не заканчивается
+            _ => {
+                self.visit_node(&Node::Ret {
+                    location: location.clone(),
+                    value: Box::new(Node::Null {
+                        location: location.clone(),
+                    })
+                });
+            }
+        }
+        // получаем чанк тела
         let chunk = self.pop_chunk();
         // создание анонимной функции
         self.push_instr(Opcode::AnonymousFn {
