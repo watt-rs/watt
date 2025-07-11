@@ -9,4 +9,4 @@
 
 ## Reporting a Vulnerability 😨
 
-If you can report a vulnerability, create an issue with all detail.
+If you can report a vulnerability, create an issue with all details.
