@@ -1,9 +1,9 @@
-﻿// импорты
+﻿// imports
 use clap::{Parser};
 use std::path::PathBuf;
 use crate::executor::executor;
 
-// инструмент командной строки
+/// Cli clap parser
 #[derive(Parser)]
 struct CLI {
     #[arg(value_name = "file")]
@@ -37,11 +37,12 @@ struct CLI {
     runtime_bench: bool,
 }
 
+/// Run cli
 pub unsafe fn cli() {
-    // аргументы
+    // parsing args
     let args = CLI::parse();
 
-    // запускаем
+    // run executor with parsed args
     executor::run(
         args.file,
         args.gc_threshold,

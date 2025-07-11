@@ -943,7 +943,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         })
     }
 
-    /// Function declaration parsing
+    /// Fn declaration parsing
     fn function_stmt(&mut self) -> Result<Node, Error> {
         self.consume(TokenKind::Fun)?;
 
