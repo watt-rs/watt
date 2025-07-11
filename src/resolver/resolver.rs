@@ -1,4 +1,4 @@
-﻿// импорт
+﻿// imports
 use crate::executor::executor;
 use crate::parser::import::Import;
 use core::cell::RefCell;
@@ -7,16 +7,21 @@ use std::path::PathBuf;
 use crate::lexer::address::Address;
 use crate::parser::ast::Node;
 
-// ресолвер импортов
+/// Imports resolver structure
+/// 
+/// Contains current imported files, contains 
+/// builtin libraries map by HashMap, 
+/// where key - library name, value - library path
+/// 
 pub struct ImportsResolver<'import_key, 'import_path> {
     imported: RefCell<Vec<String>>,
     libraries: HashMap<&'import_key str, &'import_path str>,
     builtins: Vec<String>
 }
-// имплементация
+/// Import resolver implementation
 #[allow(unused_qualifications)]
 impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
-    // новый
+    /// New import resolver
     pub fn new() -> Self {
         ImportsResolver {
             imported: RefCell::new(vec![]),
@@ -35,54 +40,68 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
             builtins: vec!["./libs/base.wt".to_string()],
         }
     }
-
-    // импорт билт-инов
+    
+    /// imports base.wt file, that contains
+    /// basic natives and types, such as 
+    /// `List`, `Map`, `Iterators`, `panic`, 
+    /// etc.
+    /// 
     pub fn import_builtins(&mut self) -> Vec<Node> {
-        // ноды
         let mut nodes = vec![];
-        // перебираем билт-ины
+        
         for builtin in &self.builtins {
             if !self.imported.borrow().contains(&builtin) {
-                // нода
                 let node_option = self.import(
                     None,
                     &Import::new(None, builtin.to_string(), None)
                 );
-                // импортируем
                 if let Some(node) = node_option {
                     nodes.push(node);
                 }
             }
         }
-        // возвращаем
+
         nodes
     }
 
-    // ресолвинг
+    /// Resolves import
+    /// 
+    /// 1. Checking `import.file`
+    /// - is it a library, if library, gets path from `libraries`,
+    /// else represents `import.file` as `file path`
+    /// 
+    /// 2. Reading the file
+    /// - from a resolved path
+    /// 
+    /// 3. Lexing, parsing, analyzing, source files
+    /// - leaves only `Import`, `Trait`, `Unit`,
+    /// `Type`, `FnDeclaration`, `Native` node types.  
+    /// 
+    /// returns: analyzed AST node
+    /// 
     fn resolve(
         &self,
         addr: Option<Address>,
         import: &Import
     ) -> Node {
-        // ищем импорт
-        let file: &str = if self.libraries.contains_key(import.name.as_str()) {
-            self.libraries.get(import.name.as_str()).unwrap()
+        // file
+        let file: &str = if self.libraries.contains_key(import.file.as_str()) {
+            self.libraries.get(import.file.as_str()).unwrap()
         } else {
-            &import.name
+            &import.file
         };
-        // путь
         let path = PathBuf::from(file);
-        // чтение файла
         let code = executor::read_file(addr, &path);
-        // имя файла
-        // let filename = path.file_name().unwrap().to_str().unwrap();
-        // компиляция
+        
+        // lexing
         let tokens = executor::lex(
             &path,
             &code.chars().collect::<Vec<char>>(),
             false,
             false
         );
+        
+        // parsing
         let ast = executor::parse(
             &path,
             tokens.unwrap(),
@@ -90,18 +109,17 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
             false,
             &import.full_name
         );
+        
+        // analyzing
         let mut analyzed = executor::analyze(
             ast.unwrap()
         );
-        // блок результата
+        
+        // getting necessary nodes
         let result: Node;
-        // проверяем блок
         if let Node::Block { body } = &mut analyzed {
-            // новое тело
             let mut new_body: Vec<Node> = vec![];
-            // добавляем в тело
             for node in body.drain(..) {
-                // перебираем
                 match node {
                     Node::Native { .. } |
                     Node::FnDeclaration { .. } |
@@ -114,34 +132,34 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
                     _ => {}
                 }
             }
-            // результат
             result = Node::Block { body: new_body };
         }
-        // в случае ошибки
         else {
-            // ошибка
             panic!("parser returned non-block node as result. report to the developer.");
         }
-        // возвращаем
+        
+        
         result
     }
 
-    // импорт
+    
+    /// Resolving wrapper
+    /// 
+    /// Checks if import is already in project, if not
+    /// resoles it, and then returns
+    /// 
     pub fn import(
         &self,
         addr: Option<Address>,
         import: &Import
     ) -> Option<Node> {
-        // проверка на наличие импорта, если его нет
-        if !self.imported.borrow().contains(&import.name) {
-            // ресолвинг
+        // if file is not imported
+        if !self.imported.borrow().contains(&import.file) {
             let node = self.resolve(addr, import);
-            // импротируем
-            self.imported.borrow_mut().push(import.name.clone());
-            // возвращаем
+            self.imported.borrow_mut().push(import.file.clone());
             Option::Some(node)
         }
-        // ничего
+        // else
         else {
             Option::None
         }

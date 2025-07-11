@@ -1,18 +1,25 @@
-﻿use crate::lexer::address::Address;
+﻿// imports
+use crate::lexer::address::Address;
 
-// импорт
+/// Import structure
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Import {
     pub addr: Option<Address>,
-    pub name: String,
+    pub file: String,
     pub full_name: Option<String>,
 }
-// имплементация
+/// Import implementation
 impl Import {
-    pub fn new(addr: Option<Address>, name: String, full_name: Option<String>) -> Self {
+    /// New import
+    ///
+    /// * `addr`: optional import address
+    /// * `file`: import file
+    /// * `full_name`: optional full name prefix override
+    ///
+    pub fn new(addr: Option<Address>, file: String, full_name: Option<String>) -> Self {
         Import {
             addr,
-            name,
+            file,
             full_name,
         }
     }

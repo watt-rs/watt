@@ -1,4 +1,4 @@
-﻿// импорты
+﻿// imports
 use std::fs;
 use std::path::PathBuf;
 use crate::compiler::visitor::CompileVisitor;
@@ -12,7 +12,20 @@ use crate::semantic::analyzer::Analyzer;
 use crate::vm::bytecode::Chunk;
 use crate::vm::vm::{VmSettings, VM};
 
-// запуск кода
+/// Runs code from a file
+///
+/// # Run args
+///
+/// * `gc_threshold`: garbage collector threshold
+/// * `gc_debug`: on/off garbage collector debug
+/// * `lexer_debug`: on/off lexer debug
+/// * `ast_debug`: on/off ast debug
+/// * `opcodes_debug`: on/of opcodes debug
+/// * `lexer_bench`: on/off lexer benchmark
+/// * `parser_bench`: on/off parser benchmark
+/// * `compile_bench`: on/off compile benchmark
+/// * `runtime_bench`: on/off runtime benchmark
+///
 #[allow(unused_qualifications)]
 pub unsafe fn run(
     path: PathBuf,
@@ -26,18 +39,18 @@ pub unsafe fn run(
     compile_bench: bool,
     runtime_bench: bool,
 ) {
-    // чтение файла
+    // reading file
     let code = read_file(Option::None, &path);
-    // имя файла
-    // let filepath = path.into_os_string();
-    // let filepath = filepath.as_os_str().to_str().unwrap();
-    // компиляция
+
+    // lexing
     let tokens = lex(
         &path,
         &code.chars().collect::<Vec<char>>(),
         lexer_debug,
         lexer_bench
     );
+
+    // parsing
     let ast = parse(
         &path,
         tokens.unwrap(),
@@ -45,15 +58,20 @@ pub unsafe fn run(
         parser_bench,
         &None
     );
+
+    // analyzing
     let analyzed = analyze(
         ast.unwrap()
     );
+
+    // compiling
     let compiled = compile(
         &analyzed,
         opcodes_debug,
         compile_bench
     );
-    // запуск
+
+    // run compiled opcodes chunk with vm
     run_chunk(
         compiled,
         gc_threshold.unwrap_or(200),
@@ -62,16 +80,18 @@ pub unsafe fn run(
     );
 }
 
-// краш
-pub fn crash(reason: String) {
-    // крашим и выходим
+/// Crashes program with text
+pub fn crash(reason: String) -> ! {
     println!("{}", reason);
     std::process::exit(1);
 }
 
-// чтение файла
+/// Reading file
+///
+/// raises error if path is not exists,
+/// or file can not be read.
+///
 pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
-    // проверяем наличие пути, если есть
     if path.exists() {
         if let Ok(result) = fs::read_to_string(path) {
             result
@@ -90,10 +110,8 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
                     )
                 );
             }
-            String::new()
         }
     }
-    // если нет
     else {
         if let Some(address) = addr {
             error!(Error::own_text(
@@ -109,41 +127,46 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
                 )
             );
         }
-        
-        String::new()
     }
 }
 
-// лексинг
-pub fn lex(filepath: &PathBuf, code: &[char], debug: bool, bench: bool) -> Option<Vec<Token>> {
-    // начальное время
+/// Lexing source code
+/// Provides tokens on the exhaust
+pub fn lex(file_path: &PathBuf, code: &[char], debug: bool, bench: bool) -> Option<Vec<Token>> {
+    // benchmark
     let start = std::time::Instant::now();
-    // сканнинг токенов
+
+    // lexing
     let tokens = Lexer::new(
         code,
-        filepath
+        file_path
     ).lex();
-    // конечное время
-    let duration = start.elapsed().as_nanos();
-    if bench { println!("benchmark 'lexer', elapsed {}", duration as f64 / 1_000_000f64); }
-    // проверяем на дебаг
+
+    // benchmark end
+    if bench {
+        let duration = start.elapsed().as_nanos();
+        println!("benchmark 'lexer', elapsed {}", duration as f64 / 1_000_000f64);
+    }
+
+    // debug
     if debug {
         println!("tokens debug: ");
         println!("{:?}", tokens);
     }
-    // возвращаем
+
     Some(tokens)
 }
 
 
-// парсинг
-pub fn parse(file_name: &PathBuf, tokens: Vec<Token>, 
-        debug: bool, bench: bool, full_name_prefix: &Option<String>) -> Option<Node> {
-    // начальное время
+/// Parsing
+/// Provides AST node on the exhaust
+pub fn parse(file_path: &PathBuf, tokens: Vec<Token>,
+             debug: bool, bench: bool, full_name_prefix: &Option<String>) -> Option<Node> {
+    // benchmark
     let start = std::time::Instant::now();
-    // удаление расширения файла
-    let path = file_name.file_name().and_then(|x| x.to_str()).unwrap();
 
+    // creating default full_name_prefix
+    let file_name = file_path.file_name().and_then(|x| x.to_str()).unwrap();
     fn delete_extension(full_name: &str) -> &str {
         match full_name.rfind(".") {
             Some(index) => {
@@ -154,74 +177,84 @@ pub fn parse(file_name: &PathBuf, tokens: Vec<Token>,
             }
         }
     }
-    // стройка аст
+
+    // building ast
     let raw_ast = Parser::new(
         tokens,
-        file_name,
-        delete_extension(full_name_prefix.as_ref().map(String::as_str).unwrap_or(path))
+        file_path,
+        delete_extension(full_name_prefix.as_ref().map(String::as_str).unwrap_or(file_name))
     ).parse();
-    // конечное время
-    let duration = start.elapsed().as_nanos();
-    if bench { println!("benchmark 'parse', elapsed {}", duration as f64 / 1_000_000f64); }
-    // проверяем на ошибку
+
+    // benchmark end
+    if bench {
+        let duration = start.elapsed().as_nanos();
+        println!("benchmark 'parse', elapsed {}", duration as f64 / 1_000_000f64);
+    }
+
+    // handling errors
     if let Ok(ast) = raw_ast {
-        // проверяем на дебаг
+        // debug
         if debug {
             println!("ast debug: ");
             println!("{:?}", ast);
         }
-        // возвращаем
         return Some(ast)
     } else if let Err(error) = raw_ast {
-        // ошибка
         error!(error);
     };
-    // паника
+
+    // panic, if something went wrong
     panic!("result error in parsing. report to developer.")
 }
 
-// семантический анализ
+/// Semantic analyzer
+/// Provides analyzed node on the exhaust
 pub fn analyze(ast: Node) -> Node {
-    // анализ
     Analyzer::new().analyze(&ast);
-    // возвращаем оригинальное дерево
     ast
 }
 
-// компиляция
+/// Compilation
+/// Provides compiled chunk on the exhaust
 pub unsafe fn compile(ast: &Node, opcodes_debug: bool, bench: bool) -> Chunk {
-    // начальное время
+    // benchmark
     let start = std::time::Instant::now();
-    // компилируем
+
+    // compile
     let compiled = CompileVisitor::new().compile(ast);
-    // конечное время
+
+    // benchmark end
     if bench {
         let duration = start.elapsed().as_nanos();
-        
         println!("benchmark 'compile', elapsed {}", duration as f64 / 1_000_000f64);
     }
-    // дебаг
+
+    // debug
     if opcodes_debug {
         println!("opcodes debug: ");
         for op in compiled.opcodes() {
             op.print(0);
         }
     }
-    // возвращаем
+
     compiled
 }
 
-// запуск
+/// Runs chunk on the vm
+/// 
+/// * gc_threshold: garbage collector threshold
 #[allow(unused_qualifications)]
 unsafe fn run_chunk(chunk: Chunk, gc_threshold: usize, gc_debug: bool, bench: bool) {
-    // начальное время
+    // benchmark
     let start = std::time::Instant::now();
-    // вм
+
+    // creating vm and running
     let mut vm = VM::new(VmSettings::new(
         gc_threshold,
         gc_debug,
     ));
-    // запуск
+    
+    // handling errors
     if let Err(e) = vm.run(&chunk, vm.globals) {
         error!(Error::own_text(
             Address::unknown(),
@@ -229,11 +262,13 @@ unsafe fn run_chunk(chunk: Chunk, gc_threshold: usize, gc_debug: bool, bench: bo
             "report this error to the developer."
         ));
     }
-    // конечное время
+
+    // benchmark end
     if bench {
         let duration = start.elapsed().as_nanos();
         println!("benchmark 'runtime', elapsed {}", duration as f64 / 1_000_000f64);
     }
-    // высвобождаем таблицы и gc
+
+    // cleanup
     vm.cleanup();
 }
