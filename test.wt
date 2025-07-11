@@ -134,5 +134,4 @@ a := result.err('111')
 io.println(a?)
 */
 import 'std.io'
-
 panic('panic','here')

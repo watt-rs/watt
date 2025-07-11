@@ -27,7 +27,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         // список
         let mut nodes: Vec<Node> = Vec::new();
         // до } или конца файла
-        while !self.is_at_end() && !self.check(TokenType::Rbrace) {
+        while !self.is_at_end() && !self.check(TokenKind::Rbrace) {
             nodes.push(self.statement()?);
         }
         // возвращаем
@@ -41,21 +41,21 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         // список
         let mut nodes: Vec<Node> = Vec::new();
         // (
-        self.consume(TokenType::Lparen)?;
+        self.consume(TokenKind::Lparen)?;
         // до )
-        if !self.check(TokenType::Rparen) {
+        if !self.check(TokenKind::Rparen) {
             // аргумент
             nodes.push(self.expr()?);
             // через запятую
-            while !self.is_at_end() && self.check(TokenType::Comma) {
+            while !self.is_at_end() && self.check(TokenKind::Comma) {
                 // ,
-                self.consume(TokenType::Comma)?;
+                self.consume(TokenKind::Comma)?;
                 // аргумент
                 nodes.push(self.expr()?);
             }
         }
         // )
-        self.consume(TokenType::Rparen)?;
+        self.consume(TokenKind::Rparen)?;
         // возвращаем
         Ok(nodes)
     }
@@ -65,21 +65,21 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         // список
         let mut nodes: Vec<Token> = Vec::new();
         // (
-        self.consume(TokenType::Lparen)?;
+        self.consume(TokenKind::Lparen)?;
         // до )
-        if !self.check(TokenType::Rparen) {
+        if !self.check(TokenKind::Rparen) {
             // параметр
-            nodes.push(self.consume(TokenType::Id)?.clone());
+            nodes.push(self.consume(TokenKind::Id)?.clone());
             // через запятую
-            while !self.is_at_end() && self.check(TokenType::Comma) {
+            while !self.is_at_end() && self.check(TokenKind::Comma) {
                 // ,
-                self.consume(TokenType::Comma)?;
+                self.consume(TokenKind::Comma)?;
                 // параметр
-                nodes.push(self.consume(TokenType::Id)?.clone());
+                nodes.push(self.consume(TokenKind::Id)?.clone());
             }
         }
         // )
-        self.consume(TokenType::Rparen)?;
+        self.consume(TokenKind::Rparen)?;
         // возвращаем
         Ok(nodes)
     }
@@ -87,7 +87,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     // преобразовывает name в full name
     fn to_full_name(&self, tk: Token) -> Token{
         Token::new(
-            TokenType::Text,
+            TokenKind::Text,
             format!("{}:{}", self.full_name_prefix, tk.value),
             tk.address,
         )
@@ -96,9 +96,9 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     // парсинг new
     fn object_creation_expr(&mut self) -> Result<Node, Error> {
         // new
-        self.consume(TokenType::New)?;
+        self.consume(TokenKind::New)?;
         // имя и аргументы
-        let name = self.consume(TokenType::Id)?.clone();
+        let name = self.consume(TokenKind::Id)?.clone();
         let args = self.args()?;
         // возвращаем
         Ok(Node::Instance {
@@ -111,12 +111,12 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     // часть access
     fn access_part(&mut self, previous: Option<Box<Node>>) -> Result<Node, Error> {
         // если есть id
-        if self.check(TokenType::Id) {
+        if self.check(TokenKind::Id) {
             // id
-            let identifier = self.consume(TokenType::Id)?.clone();
+            let identifier = self.consume(TokenKind::Id)?.clone();
             // дефайн ':='
-            if self.check(TokenType::Walrus) {
-                self.consume(TokenType::Walrus)?;
+            if self.check(TokenKind::Walrus) {
+                self.consume(TokenKind::Walrus)?;
                 Ok(Node::Define {
                     previous,
                     name: identifier,
@@ -124,8 +124,8 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                 })
             }
             // присваивание '='
-            else if self.check(TokenType::Assign) {
-                self.consume(TokenType::Assign)?;
+            else if self.check(TokenKind::Assign) {
+                self.consume(TokenKind::Assign)?;
                 Ok(Node::Assign {
                     previous,
                     name: identifier,
@@ -133,29 +133,29 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                 })
             }
             // +=, -=, *=, /=
-            else if self.check(TokenType::AssignAdd) ||
-                self.check(TokenType::AssignSub) ||
-                self.check(TokenType::AssignMul) ||
-                self.check(TokenType::AssignDiv) {
+            else if self.check(TokenKind::AssignAdd) ||
+                self.check(TokenKind::AssignSub) ||
+                self.check(TokenKind::AssignMul) ||
+                self.check(TokenKind::AssignDiv) {
                 // оператор и локация
                 let op;
                 let location;
                 // парсим
                 match self.peek()?.tk_type {
-                    TokenType::AssignSub => {
-                        location = self.consume(TokenType::AssignSub)?.clone();
+                    TokenKind::AssignSub => {
+                        location = self.consume(TokenKind::AssignSub)?.clone();
                         op = "-";
                     }
-                    TokenType::AssignMul => {
-                        location = self.consume(TokenType::AssignMul)?.clone();
+                    TokenKind::AssignMul => {
+                        location = self.consume(TokenKind::AssignMul)?.clone();
                         op = "*";
                     }
-                    TokenType::AssignDiv => {
-                        location = self.consume(TokenType::AssignDiv)?.clone();
+                    TokenKind::AssignDiv => {
+                        location = self.consume(TokenKind::AssignDiv)?.clone();
                         op = "/";
                     }
-                    TokenType::AssignAdd => {
-                        location = self.consume(TokenType::AssignAdd)?.clone();
+                    TokenKind::AssignAdd => {
+                        location = self.consume(TokenKind::AssignAdd)?.clone();
                         op = "+";
                     }
                     _ => {
@@ -176,7 +176,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                         left: Box::new(var),
                         right: Box::new(self.expr()?),
                         op: Token::new(
-                            TokenType::Op,
+                            TokenKind::Op,
                             op.to_string(),
                             location.address,
                         )
@@ -184,7 +184,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                 });
             }
             // вызов функции
-            else if self.check(TokenType::Lparen) {
+            else if self.check(TokenKind::Lparen) {
                 return Ok(Node::Call {
                     previous,
                     name: identifier,
@@ -212,9 +212,9 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         // access part
         let mut left = self.access_part(Option::None)?;
         // через точку
-        while self.check(TokenType::Dot) {
+        while self.check(TokenKind::Dot) {
             // .
-            self.consume(TokenType::Dot)?;
+            self.consume(TokenKind::Dot)?;
             // адрес
             let location = self.peek()?.address.clone();
             // access part
@@ -251,9 +251,9 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         // парсинг access
         let mut node = self.access(is_expr)?;
         // проверяем на вопросик
-        if self.check(TokenType::Question) {
+        if self.check(TokenKind::Question) {
             // вопросительный знак
-            let question = self.consume(TokenType::Question)?.clone();
+            let question = self.consume(TokenKind::Question)?.clone();
             // нода
             node = Node::ErrorPropagation {
                 location: question,
@@ -267,24 +267,24 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     
     // access выражение
     fn access_expr(&mut self) -> Result<Node, Error> {
-        if self.check(TokenType::New) { self.access(true) }
+        if self.check(TokenKind::New) { self.access(true) }
         else { self.error_propagation(true) }
     }
 
     // access стейтмент
     fn access_stmt(&mut self) -> Result<Node, Error> {
-        if self.check(TokenType::New) { self.access(false) }
+        if self.check(TokenKind::New) { self.access(false) }
         else { self.error_propagation(false) }
     }
 
     // скобки
     fn grouping_expr(&mut self) -> Result<Node, Error> {
         // (
-        self.consume(TokenType::Lparen)?;
+        self.consume(TokenKind::Lparen)?;
         // выражение
         let expr = self.expr()?;
         // )
-        self.consume(TokenType::Rparen)?;
+        self.consume(TokenKind::Rparen)?;
         // возвращаем
         Ok(expr)
     }
@@ -292,16 +292,16 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     // анонимная функция
     fn anonymous_fn_expr(&mut self) -> Result<Node, Error> {
         // fun
-        let location = self.consume(TokenType::Fun)?.clone();
+        let location = self.consume(TokenKind::Fun)?.clone();
         // параметры
         let mut params: Vec<Token> = Vec::new();
-        if self.check(TokenType::Lparen) {
+        if self.check(TokenKind::Lparen) {
             params = self.params()?;
         }
         // тело
-        self.consume(TokenType::Lbrace)?;
+        self.consume(TokenKind::Lbrace)?;
         let body = self.block()?;
-        self.consume(TokenType::Rbrace)?;
+        self.consume(TokenKind::Rbrace)?;
         // возвращаем
         Ok(Node::AnFnDeclaration {
             location,
@@ -314,14 +314,14 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     // лямбда
     fn lambda_fn_expr(&mut self) -> Result<Node, Error> {
         // lambda
-        let location = self.consume(TokenType::Lambda)?.clone();
+        let location = self.consume(TokenKind::Lambda)?.clone();
         // параметры
         let mut params: Vec<Token> = Vec::new();
-        if self.check(TokenType::Lparen) {
+        if self.check(TokenKind::Lparen) {
             params = self.params()?;
         }
         // ->
-        self.consume(TokenType::Arrow)?;
+        self.consume(TokenKind::Arrow)?;
         // тело
         let body = self.expr()?;
         // возвращаем
@@ -341,55 +341,55 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         // матч
         match self.peek()?.tk_type {
             // access
-            TokenType::Id | TokenType::New => {
+            TokenKind::Id | TokenKind::New => {
                 Ok(self.access_expr()?)
             }
             // число
-            TokenType::Number => {
+            TokenKind::Number => {
                 Ok(Node::Number {
-                    value: self.consume(TokenType::Number)?.clone()
+                    value: self.consume(TokenKind::Number)?.clone()
                 })
             }
             // текст
-            TokenType::Text => {
+            TokenKind::Text => {
                 Ok(Node::String {
-                    value: self.consume(TokenType::Text)?.clone()
+                    value: self.consume(TokenKind::Text)?.clone()
                 })
             }
             // бул
-            TokenType::Bool => {
+            TokenKind::Bool => {
                 Ok(Node::Bool {
-                    value: self.consume(TokenType::Bool)?.clone()
+                    value: self.consume(TokenKind::Bool)?.clone()
                 })
             }
             // в скобках
-            TokenType::Lparen => {
+            TokenKind::Lparen => {
                 Ok(self.grouping_expr()?)
             }
             // мапа
-            TokenType::Lbrace => {
+            TokenKind::Lbrace => {
                 Ok(self.map_expr()?)
             }
             // список
-            TokenType::Lbracket => {
+            TokenKind::Lbracket => {
                 Ok(self.list_expr()?)
             }
             // null
-            TokenType::Null => {
+            TokenKind::Null => {
                 Ok(Node::Null {
-                    location: self.consume(TokenType::Null)?.clone()
+                    location: self.consume(TokenKind::Null)?.clone()
                 })
             }
             // анонимная функция
-            TokenType::Fun => {
+            TokenKind::Fun => {
                 Ok(self.anonymous_fn_expr()?)
             }
             // лямбда
-            TokenType::Lambda => {
+            TokenKind::Lambda => {
                 Ok(self.lambda_fn_expr()?)
             }
             // паттерн матчинг
-            TokenType::Match => {
+            TokenKind::Match => {
                 Ok(self.match_expr()?)
             }
             // иное
@@ -406,7 +406,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     // match выражение
     fn match_expr(&mut self) -> Result<Node, Error> {
         // локация
-        let location = self.consume(TokenType::Match)?.clone();
+        let location = self.consume(TokenKind::Match)?.clone();
         // matchable значение
         let matchable = self.expr()?;
         // список кейсов
@@ -420,7 +420,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                     Node::Define {
                         previous: None,
                         name: Token::new(
-                            TokenType::Id,
+                            TokenKind::Id,
                             "@match_lambda".to_string(),
                             location.address.clone()
                         ),
@@ -434,7 +434,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                     Node::Call {
                         previous: None,
                         name: Token::new(
-                            TokenType::Id,
+                            TokenKind::Id,
                             "@match_lambda".to_string(),
                             location.address.clone()
                         ),
@@ -445,17 +445,17 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             }
         }
         // {
-        self.consume(TokenType::Lbrace)?;
+        self.consume(TokenKind::Lbrace)?;
         // кейсы
-        while self.check(TokenType::Case) {
+        while self.check(TokenKind::Case) {
             // case
-            self.consume(TokenType::Case)?;
+            self.consume(TokenKind::Case)?;
             // значение
             let value = self.expr()?;
             // если ->
-            if self.check(TokenType::Arrow) {
+            if self.check(TokenKind::Arrow) {
                 // ->
-                self.consume(TokenType::Arrow)?;
+                self.consume(TokenKind::Arrow)?;
                 // добавляем кейс
                 cases.push(MatchCase::new(
                     Box::new(value),
@@ -463,11 +463,11 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                 ));
             }
             // если тело в фигурных в скобках
-            else if self.check(TokenType::Lbrace) {
+            else if self.check(TokenKind::Lbrace) {
                 // тело лямбды
-                self.consume(TokenType::Lbrace)?;
+                self.consume(TokenKind::Lbrace)?;
                 let body = self.block()?;
-                self.consume(TokenType::Rbrace)?;
+                self.consume(TokenKind::Rbrace)?;
                 // заворачиваем в лямбду
                 cases.push(MatchCase::new(
                     Box::new(value),
@@ -484,20 +484,20 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             }
         }
         // дефолтный кейс
-        self.consume(TokenType::Default)?;
+        self.consume(TokenKind::Default)?;
         // если ->
-        if self.check(TokenType::Arrow) {
+        if self.check(TokenKind::Arrow) {
             // ->
-            self.consume(TokenType::Arrow)?;
+            self.consume(TokenKind::Arrow)?;
             // дефолтный кейс
             default = Box::new(self.expr()?);
         }
         // если тело в фигурных в скобках
-        else if self.check(TokenType::Lbrace) {
+        else if self.check(TokenKind::Lbrace) {
             // тело лямбды
-            self.consume(TokenType::Lbrace)?;
+            self.consume(TokenKind::Lbrace)?;
             let body = self.block()?;
-            self.consume(TokenType::Rbrace)?;
+            self.consume(TokenKind::Rbrace)?;
             // заворачиваем в лямбду
             default = Box::new(make_lambda(location.clone(), body))
         }
@@ -511,7 +511,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             ))
         }
         // }
-        self.consume(TokenType::Rbrace)?;
+        self.consume(TokenKind::Rbrace)?;
         // возвращаем
         Ok(Node::Match {
             location,
@@ -524,11 +524,11 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     // список
     fn list_expr(&mut self) -> Result<Node, Error> {
         // [
-        let location = self.consume(TokenType::Lbracket)?.clone();
+        let location = self.consume(TokenKind::Lbracket)?.clone();
         // парсинг тела
         // пустой список
-        if self.check(TokenType::Rbracket) {
-            self.consume(TokenType::Rbracket)?;
+        if self.check(TokenKind::Rbracket) {
+            self.consume(TokenKind::Rbracket)?;
             Ok(
                 Node::List {
                     location,
@@ -540,12 +540,12 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         else {
             let mut nodes: Vec<Node> = vec![self.expr()?];
 
-            while self.check(TokenType::Comma) {
-                self.consume(TokenType::Comma)?;
+            while self.check(TokenKind::Comma) {
+                self.consume(TokenKind::Comma)?;
                 nodes.push(self.expr()?);
             }
             
-            self.consume(TokenType::Rbracket)?;
+            self.consume(TokenKind::Rbracket)?;
             
             Ok(Node::List {
                 location,
@@ -559,7 +559,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         // ключ
         let l = self.expr()?;
         // :
-        self.consume(TokenType::Colon)?;
+        self.consume(TokenKind::Colon)?;
         // значение
         let r = self.expr()?;
         // возвращаем
@@ -569,11 +569,11 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     // мапа
     fn map_expr(&mut self) -> Result<Node, Error> {
         // {
-        let location = self.consume(TokenType::Lbrace)?.clone();
+        let location = self.consume(TokenKind::Lbrace)?.clone();
         // парсинг тела
         // пустая мапа
-        if self.check(TokenType::Rbrace) {
-            self.consume(TokenType::Rbrace)?;
+        if self.check(TokenKind::Rbrace) {
+            self.consume(TokenKind::Rbrace)?;
             Ok(
                 Node::Map {
                     location,
@@ -586,12 +586,12 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             let mut nodes: Vec<(Node, Node)> = Vec::new();
             let key = self.key_value_expr()?;
             nodes.push((key.0, key.1));
-            while self.check(TokenType::Comma) {
-                self.consume(TokenType::Comma)?;
+            while self.check(TokenKind::Comma) {
+                self.consume(TokenKind::Comma)?;
                 let key = self.key_value_expr()?;
                 nodes.push((key.0, key.1));
             }
-            self.consume(TokenType::Rbrace)?;
+            self.consume(TokenKind::Rbrace)?;
             Ok(Node::Map {
                 location,
                 values: nodes
@@ -605,7 +605,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
         match tk {
             Token { tk_type, value, .. }
-            if (tk_type == &TokenType::Op && value == "-") || (tk_type == &TokenType::Bang) => {
+            if (tk_type == &TokenKind::Op && value == "-") || (tk_type == &TokenKind::Bang) => {
                 let op = self.consume(*tk_type)?.clone();
                 
                 Ok(Node::Unary {
@@ -623,7 +623,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     fn multiplicative_expr(&mut self) -> Result<Node, Error> {
         let mut left = self.unary_expr()?;
 
-        while self.check(TokenType::Op) && (
+        while self.check(TokenKind::Op) && (
             self.peek()?.value == "*" || 
             self.peek()?.value == "&" || 
             self.peek()?.value == "|" || 
@@ -631,7 +631,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             self.peek()?.value == "/" || 
             self.peek()?.value == "%") 
         {
-            let op = self.consume(TokenType::Op)?.clone();
+            let op = self.consume(TokenKind::Op)?.clone();
             let right = self.unary_expr()?;
             left = Node::Bin {
                 left: Box::new(left),
@@ -647,9 +647,9 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     fn additive_expr(&mut self) -> Result<Node, Error> {
         let mut left = self.multiplicative_expr()?;
 
-        while self.check(TokenType::Op) &&
+        while self.check(TokenKind::Op) &&
             (self.peek()?.value == "+" || self.peek()?.value == "-") {
-            let op = self.consume(TokenType::Op)?.clone();
+            let op = self.consume(TokenKind::Op)?.clone();
             let right = self.multiplicative_expr()?;
             left = Node::Bin {
                 left: Box::new(left),
@@ -665,8 +665,8 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     fn range_expr(&mut self) -> Result<Node, Error> {
         let mut left = self.additive_expr()?;
         
-        if self.check(TokenType::Range) {
-            let location = self.consume(TokenType::Range)?.clone();
+        if self.check(TokenKind::Range) {
+            let location = self.consume(TokenKind::Range)?.clone();
             let right = self.additive_expr()?;
             left = Node::Range {
                 location,
@@ -682,9 +682,9 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     fn impls_expr(&mut self) -> Result<Node, Error> {
         let mut left = self.range_expr()?;
 
-        if self.check(TokenType::Impls) {
-            self.consume(TokenType::Impls)?;
-            let trait_name = self.consume(TokenType::Id)?.clone();
+        if self.check(TokenKind::Impls) {
+            self.consume(TokenKind::Impls)?;
+            let trait_name = self.consume(TokenKind::Id)?.clone();
             left = Node::Impls {
                 value: Box::new(left),
                 trait_name,
@@ -699,8 +699,8 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         let mut left = self.impls_expr()?;
 
         // <, >, <=, >=
-        if self.check(TokenType::Greater) || self.check(TokenType::Less)
-            || self.check(TokenType::LessEq) || self.check(TokenType::GreaterEq) {
+        if self.check(TokenKind::Greater) || self.check(TokenKind::Less)
+            || self.check(TokenKind::LessEq) || self.check(TokenKind::GreaterEq) {
             let op = self.peek()?.clone();
             self.current += 1;
             let right = self.impls_expr()?;
@@ -719,7 +719,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         let mut left = self.compare_expr()?;
 
         // ==, !=
-        if self.check(TokenType::Eq) || self.check(TokenType::NotEq) {
+        if self.check(TokenKind::Eq) || self.check(TokenKind::NotEq) {
             let op = self.peek()?.clone();
             self.current += 1;
             let right = self.compare_expr()?;
@@ -737,8 +737,8 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     fn logical_expr(&mut self) -> Result<Node, Error> {
         let mut left = self.equality_expr()?;
 
-        while self.check(TokenType::And) ||
-            self.check(TokenType::Or) {
+        while self.check(TokenKind::And) ||
+            self.check(TokenKind::Or) {
             let op = self.peek()?.clone();
 
             self.current += 1;
@@ -762,7 +762,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
     // стейтмент continue
     fn continue_stmt(&mut self) -> Result<Node, Error> {
-        let location = self.consume(TokenType::Continue)?.clone();
+        let location = self.consume(TokenKind::Continue)?.clone();
         Ok(Node::Continue {
             location
         })
@@ -770,7 +770,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
     // стейтмент break
     fn break_stmt(&mut self) -> Result<Node, Error> {
-        let location = self.consume(TokenType::Break)?.clone();
+        let location = self.consume(TokenKind::Break)?.clone();
         Ok(Node::Break {
             location
         })
@@ -778,7 +778,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
     // стейтмент return
     fn return_stmt(&mut self) -> Result<Node, Error> {
-        let location = self.consume(TokenType::Ret)?.clone();
+        let location = self.consume(TokenKind::Ret)?.clone();
         let value = Box::new(self.expr()?);
         Ok(Node::Ret {
             location,
@@ -788,14 +788,14 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
     // один import
     fn single_import(&mut self) -> Result<Import, Error> {
-        let name = self.consume(TokenType::Text)?.clone();
-        if self.check(TokenType::With) {
-            self.consume(TokenType::With)?;
+        let name = self.consume(TokenKind::Text)?.clone();
+        if self.check(TokenKind::With) {
+            self.consume(TokenKind::With)?;
             Ok(Import::new(
                 Option::Some(name.address),
                 name.value,
                 Option::Some(
-                    self.consume(TokenType::Text)?.value.clone()
+                    self.consume(TokenKind::Text)?.value.clone()
                 )
             ))
         } else {
@@ -810,14 +810,14 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     // стейтмент импорт
     fn import_stmt(&mut self) -> Result<Node, Error> {
         // локация
-        let location = self.consume(TokenType::Import)?.clone();
+        let location = self.consume(TokenKind::Import)?.clone();
         // парсинг импортов
         let mut imports = Vec::new();
-        if self.check(TokenType::Lparen) {
-            self.consume(TokenType::Lparen)?;
+        if self.check(TokenKind::Lparen) {
+            self.consume(TokenKind::Lparen)?;
             imports.push(self.single_import()?);
-            while self.check(TokenType::Comma) {
-                self.consume(TokenType::Comma)?;
+            while self.check(TokenKind::Comma) {
+                self.consume(TokenKind::Comma)?;
                 imports.push(self.single_import()?);
             }
         }
@@ -833,11 +833,11 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
     // стейтмент while
     fn while_stmt(&mut self) -> Result<Node, Error> {
-        let location = self.consume(TokenType::While)?.clone();
+        let location = self.consume(TokenKind::While)?.clone();
         let logical = self.expr()?;
-        self.consume(TokenType::Lbrace)?;
+        self.consume(TokenKind::Lbrace)?;
         let body = self.block()?;
-        self.consume(TokenType::Rbrace)?;
+        self.consume(TokenKind::Rbrace)?;
         Ok(Node::While {
             location,
             logical: Box::new(logical),
@@ -847,14 +847,14 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
     // else
     fn else_stmt(&mut self) -> Result<Node, Error> {
-        let location = self.consume(TokenType::Else)?.clone();
-        self.consume(TokenType::Lbrace)?;
+        let location = self.consume(TokenKind::Else)?.clone();
+        self.consume(TokenKind::Lbrace)?;
         let body = self.block()?;
-        self.consume(TokenType::Rbrace)?;
+        self.consume(TokenKind::Rbrace)?;
         Ok(Node::If {
             location: location.clone(),
             logical: Box::new(Node::Bool { value: Token::new(
-                TokenType::Bool,
+                TokenKind::Bool,
                 "true".to_string(),
                 location.address
             )}),
@@ -865,19 +865,19 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
     // elif
     fn elif_stmt(&mut self) -> Result<Node, Error> {
-        let location = self.consume(TokenType::Elif)?.clone();
+        let location = self.consume(TokenKind::Elif)?.clone();
         let logical = self.expr()?;
-        self.consume(TokenType::Lbrace)?;
+        self.consume(TokenKind::Lbrace)?;
         let body = self.block()?;
-        self.consume(TokenType::Rbrace)?;
-        if self.check(TokenType::Elif) {
+        self.consume(TokenKind::Rbrace)?;
+        if self.check(TokenKind::Elif) {
             Ok(Node::If {
                 location,
                 logical: Box::new(logical),
                 body: Box::new(body),
                 elseif: Some(Box::new(self.elif_stmt()?))
             })
-        } else if self.check(TokenType::Else) {
+        } else if self.check(TokenKind::Else) {
             Ok(Node::If {
                 location,
                 logical: Box::new(logical),
@@ -896,19 +896,19 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
     // if
     fn if_stmt(&mut self) -> Result<Node, Error> {
-        let location = self.consume(TokenType::If)?.clone();
+        let location = self.consume(TokenKind::If)?.clone();
         let logical = self.expr()?;
-        self.consume(TokenType::Lbrace)?;
+        self.consume(TokenKind::Lbrace)?;
         let body = self.block()?;
-        self.consume(TokenType::Rbrace)?;
-        if self.check(TokenType::Elif) {
+        self.consume(TokenKind::Rbrace)?;
+        if self.check(TokenKind::Elif) {
             Ok(Node::If {
                 location,
                 logical: Box::new(logical),
                 body: Box::new(body),
                 elseif: Some(Box::new(self.elif_stmt()?))
             })
-        } else if self.check(TokenType::Else) {
+        } else if self.check(TokenKind::Else) {
             Ok(Node::If {
                 location,
                 logical: Box::new(logical),
@@ -928,7 +928,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     // стейтмент match
     fn match_stmt(&mut self) -> Result<Node, Error> {
         // локация
-        let location = self.consume(TokenType::Match)?.clone();
+        let location = self.consume(TokenKind::Match)?.clone();
         // matchable значение
         let matchable = self.expr()?;
         // список кейсов
@@ -936,17 +936,17 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         // дефолтный кейс
         let default;
         // {
-        self.consume(TokenType::Lbrace)?;
+        self.consume(TokenKind::Lbrace)?;
         // кейсы
-        while self.check(TokenType::Case) {
+        while self.check(TokenKind::Case) {
             // case
-            self.consume(TokenType::Case)?;
+            self.consume(TokenKind::Case)?;
             // значение
             let value = self.expr()?;
             // если ->
-            if self.check(TokenType::Arrow) {
+            if self.check(TokenKind::Arrow) {
                 // ->
-                self.consume(TokenType::Arrow)?;
+                self.consume(TokenKind::Arrow)?;
                 // добавляем кейс
                 cases.push(MatchCase::new(
                     Box::new(value),
@@ -954,11 +954,11 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                 ))
             }
             // если тело в фигурных скобках
-            else if self.check(TokenType::Lbrace) {
+            else if self.check(TokenKind::Lbrace) {
                 // парсим тело
-                self.consume(TokenType::Lbrace)?;
+                self.consume(TokenKind::Lbrace)?;
                 let body = self.block()?;
-                self.consume(TokenType::Rbrace)?;
+                self.consume(TokenKind::Rbrace)?;
                 // добавляем кейс
                 cases.push(MatchCase::new(
                     Box::new(value),
@@ -975,20 +975,20 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             }
         }
         // дефолтный кейс
-        self.consume(TokenType::Default)?;
+        self.consume(TokenKind::Default)?;
         // если ->
-        if self.check(TokenType::Arrow) {
+        if self.check(TokenKind::Arrow) {
             // ->
-            self.consume(TokenType::Arrow)?;
+            self.consume(TokenKind::Arrow)?;
             // дефолтный кейс
             default = Box::new(self.statement()?);
         }
         // если тело в фигурных скобках
-        else if self.check(TokenType::Lbrace) {
+        else if self.check(TokenKind::Lbrace) {
             // парсим тело
-            self.consume(TokenType::Lbrace)?;
+            self.consume(TokenKind::Lbrace)?;
             let body = self.block()?;
-            self.consume(TokenType::Rbrace)?;
+            self.consume(TokenKind::Rbrace)?;
             // дефолтный кейс
             default = Box::new(body);
         }
@@ -1002,7 +1002,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             ))
         }
         // }
-        self.consume(TokenType::Rbrace)?;
+        self.consume(TokenKind::Rbrace)?;
         // возвращаем
         Ok(Node::Match {
             location,
@@ -1014,13 +1014,13 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
     // for
     fn for_stmt(&mut self) -> Result<Node, Error> {
-        self.consume(TokenType::For)?;
-        let name = self.consume(TokenType::Id)?.clone();
-        self.consume(TokenType::In)?;
+        self.consume(TokenKind::For)?;
+        let name = self.consume(TokenKind::Id)?.clone();
+        self.consume(TokenKind::In)?;
         let value = self.expr()?;
-        self.consume(TokenType::Lbrace)?;
+        self.consume(TokenKind::Lbrace)?;
         let body = self.block()?;
-        self.consume(TokenType::Rbrace)?;
+        self.consume(TokenKind::Rbrace)?;
         Ok(Node::For {
             variable_name: name,
             iterable: Box::new(value),
@@ -1031,18 +1031,18 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     // определение функции
     fn function_stmt(&mut self) -> Result<Node, Error> {
         // fun
-        self.consume(TokenType::Fun)?;
+        self.consume(TokenKind::Fun)?;
         // имя
-        let name = self.consume(TokenType::Id)?.clone();
+        let name = self.consume(TokenKind::Id)?.clone();
         // параметры
         let mut params: Vec<Token> = Vec::new();
-        if self.check(TokenType::Lparen) {
+        if self.check(TokenKind::Lparen) {
             params = self.params()?;
         }
-        self.consume(TokenType::Lbrace)?;
+        self.consume(TokenKind::Lbrace)?;
         // тело
         let body = self.block()?;
-        self.consume(TokenType::Rbrace)?;
+        self.consume(TokenKind::Rbrace)?;
         // возвращаем
         Ok(Node::FnDeclaration {
             name: name.clone(),
@@ -1058,36 +1058,36 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     // определение типа
     fn type_stmt(&mut self) -> Result<Node, Error> {
         // type
-        self.consume(TokenType::Type)?;
+        self.consume(TokenKind::Type)?;
         // имя
-        let name = self.consume(TokenType::Id)?.clone();
+        let name = self.consume(TokenKind::Id)?.clone();
         // параметры
         let mut constructor: Vec<Token> = Vec::new();
-        if self.check(TokenType::Lparen) {
+        if self.check(TokenKind::Lparen) {
             constructor = self.params()?;
         }
         // имплементация трейтов
         let mut impls: Vec<Token> = Vec::new();
-        if self.check(TokenType::Impl) {
+        if self.check(TokenKind::Impl) {
             // impl
-            self.consume(TokenType::Impl)?;
+            self.consume(TokenKind::Impl)?;
             // парсим
-            if !self.check(TokenType::Lbrace) {
+            if !self.check(TokenKind::Lbrace) {
                 // параметр
-                impls.push(self.consume(TokenType::Id)?.clone());
+                impls.push(self.consume(TokenKind::Id)?.clone());
                 // через запятую
-                while !self.is_at_end() && self.check(TokenType::Comma) {
+                while !self.is_at_end() && self.check(TokenKind::Comma) {
                     // ,
-                    self.consume(TokenType::Comma)?;
+                    self.consume(TokenKind::Comma)?;
                     // параметр
-                    impls.push(self.consume(TokenType::Id)?.clone());
+                    impls.push(self.consume(TokenKind::Id)?.clone());
                 }
             }
         }
         // тело
-        self.consume(TokenType::Lbrace)?;
+        self.consume(TokenKind::Lbrace)?;
         let mut body = Vec::new();
-        while !self.is_at_end() && !self.check(TokenType::Rbrace) {
+        while !self.is_at_end() && !self.check(TokenKind::Rbrace) {
             let location = self.peek()?.clone();
             let mut node = self.statement()?;
             match node {
@@ -1114,7 +1114,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             }
             body.push(node);
         }
-        self.consume(TokenType::Rbrace)?;
+        self.consume(TokenKind::Rbrace)?;
         // возвращаем
         Ok(Node::Type {
             name: name.clone(),
@@ -1130,33 +1130,33 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     // определение трейта
     fn trait_stmt(&mut self) -> Result<Node, Error> {
         // trait
-        self.consume(TokenType::Trait)?;
+        self.consume(TokenKind::Trait)?;
         // имя
-        let name = self.consume(TokenType::Id)?.clone();
+        let name = self.consume(TokenKind::Id)?.clone();
         // функции
         let mut functions: Vec<TraitNodeFn> = Vec::new();
         // тело
-        self.consume(TokenType::Lbrace)?;
-        while !self.is_at_end() && !self.check(TokenType::Rbrace) {
+        self.consume(TokenKind::Lbrace)?;
+        while !self.is_at_end() && !self.check(TokenKind::Rbrace) {
             // локация
             let location = self.peek()?.address.clone();
             // функция
-            if self.check(TokenType::Fun) {
+            if self.check(TokenKind::Fun) {
                 // fun
-                self.consume(TokenType::Fun)?;
+                self.consume(TokenKind::Fun)?;
                 // имя функции
-                let name = self.consume(TokenType::Id)?.clone();
+                let name = self.consume(TokenKind::Id)?.clone();
                 // параметры
                 let mut params: Vec<Token> = Vec::new();
-                if self.check(TokenType::Lparen) {
+                if self.check(TokenKind::Lparen) {
                     params = self.params()?;
                 }
                 // если есть тело
-                if self.check(TokenType::Lbrace) {
+                if self.check(TokenKind::Lbrace) {
                     // тело
-                    self.consume(TokenType::Lbrace)?;
+                    self.consume(TokenKind::Lbrace)?;
                     let body = self.block()?;
-                    self.consume(TokenType::Rbrace)?;
+                    self.consume(TokenKind::Rbrace)?;
                     // добавляем
                     functions.push(TraitNodeFn::new(
                         name,
@@ -1182,7 +1182,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                 ))
             }
         }
-        self.consume(TokenType::Rbrace)?;
+        self.consume(TokenKind::Rbrace)?;
         // возвращаем
         Ok(Node::Trait {
             name: name.clone(),
@@ -1194,13 +1194,13 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     // определение юнита
     fn unit_stmt(&mut self) -> Result<Node, Error> {
         // unit
-        self.consume(TokenType::Unit)?;
+        self.consume(TokenKind::Unit)?;
         // имя
-        let name = self.consume(TokenType::Id)?.clone();
+        let name = self.consume(TokenKind::Id)?.clone();
         // тело
-        self.consume(TokenType::Lbrace)?;
+        self.consume(TokenKind::Lbrace)?;
         let mut body = Vec::new();
-        while !self.is_at_end() && !self.check(TokenType::Rbrace) {
+        while !self.is_at_end() && !self.check(TokenKind::Rbrace) {
             let location = self.peek()?.clone();
             let mut node = self.statement()?;
             match node {
@@ -1228,7 +1228,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             body.push(node);
         }
         // }
-        self.consume(TokenType::Rbrace)?;
+        self.consume(TokenKind::Rbrace)?;
         // возвращаем
         Ok(Node::Unit {
             name: name.clone(),
@@ -1242,13 +1242,13 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     // определение нативной функции
     fn native_stmt(&mut self) -> Result<Node, Error> {
         // native
-        self.consume(TokenType::Native)?;
+        self.consume(TokenKind::Native)?;
         // имя
-        let name = self.consume(TokenType::Id)?.clone();
+        let name = self.consume(TokenKind::Id)?.clone();
         // ->
-        self.consume(TokenType::Arrow)?;
+        self.consume(TokenKind::Arrow)?;
         // имя нативной функции
-        let fn_name = self.consume(TokenType::Text)?.clone();
+        let fn_name = self.consume(TokenKind::Text)?.clone();
         // возвращаем
         Ok(Node::Native {
             name,
@@ -1260,46 +1260,46 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     fn statement(&mut self) -> Result<Node, Error> {
         let tk = self.peek()?;
         match tk.tk_type {
-            TokenType::Type => {
+            TokenKind::Type => {
                 self.type_stmt()
             },
-            TokenType::Unit => {
+            TokenKind::Unit => {
                 self.unit_stmt()
             },
-            TokenType::If => {
+            TokenKind::If => {
                 self.if_stmt()
             },
-            TokenType::New | TokenType::Id => {
+            TokenKind::New | TokenKind::Id => {
                 self.access_stmt()
             },
-            TokenType::Match => {
+            TokenKind::Match => {
                 self.match_stmt()
             },
-            TokenType::Continue => {
+            TokenKind::Continue => {
                 self.continue_stmt()
             },
-            TokenType::Break => {
+            TokenKind::Break => {
                 self.break_stmt()
             },
-            TokenType::Ret => {
+            TokenKind::Ret => {
                 self.return_stmt()
             },
-            TokenType::Fun => {
+            TokenKind::Fun => {
                 self.function_stmt()
             },
-            TokenType::Native => {
+            TokenKind::Native => {
                 self.native_stmt()
             },
-            TokenType::Import => {
+            TokenKind::Import => {
                 self.import_stmt()
             }
-            TokenType::For => {
+            TokenKind::For => {
                 self.for_stmt()
             }
-            TokenType::While => {
+            TokenKind::While => {
                 self.while_stmt()
             }
-            TokenType::Trait => {
+            TokenKind::Trait => {
                 self.trait_stmt()
             }
             _ => {
@@ -1322,7 +1322,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
      */
 
     // consume
-    fn consume(&mut self, tk_type: TokenType) -> Result<&Token, Error> {
+    fn consume(&mut self, tk_type: TokenKind) -> Result<&Token, Error> {
         match self.tokens.get(self.current as usize) {
             Some(tk) => {
                 self.current += 1;
@@ -1351,7 +1351,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     }
 
     // check
-    fn check(&self, tk_type: TokenType) -> bool {
+    fn check(&self, tk_type: TokenKind) -> bool {
         match self.tokens.get(self.current as usize) {
             Some(tk) => {
                 if tk.tk_type == tk_type {
