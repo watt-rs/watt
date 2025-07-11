@@ -1,4 +1,5 @@
-﻿use std::{io::{BufRead, Read}, path::PathBuf};
+﻿// импорты
+use std::{io::{BufRead}, path::PathBuf};
 
 // адрес
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -11,8 +12,8 @@ pub struct Address {
 // имплементация
 impl Address {
     pub fn new(line: u64, column: u16,
-               file: PathBuf) -> Address {
-        Address { line, column, file: Some(file) }
+               file_path: PathBuf) -> Address {
+        Address { line, column, file: Some(file_path) }
     }
 
     pub fn unknown() -> Address {

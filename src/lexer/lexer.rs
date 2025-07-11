@@ -90,18 +90,18 @@ impl Token {
 }
 
 // лексер
-pub struct Lexer<'filepath, 'cursor> {
+pub struct Lexer<'file_path, 'cursor> {
     line: u64,
     column: u16,
     cursor: Cursor<'cursor>,
-    filepath: &'filepath PathBuf,
+    file_path: &'file_path PathBuf,
     tokens: Vec<Token>,
     keywords: HashMap<&'static str, TokenType>,
 }
 
 // имплементация
-impl<'filepath, 'cursor> Lexer<'filepath, 'cursor> {
-    pub fn new(code: &'cursor [char], filepath: &'filepath PathBuf) -> Self {
+impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
+    pub fn new(code: &'cursor [char], filepath: &'file_path PathBuf) -> Self {
         let map = HashMap::from([
             ("fun", TokenType::Fun),
             ("break", TokenType::Break),
@@ -136,7 +136,7 @@ impl<'filepath, 'cursor> Lexer<'filepath, 'cursor> {
             line: 1,
             column: 0,
             cursor: Cursor::new(code),
-            filepath,
+            file_path: filepath,
             tokens: vec![],
             keywords: map,
         }
@@ -331,7 +331,7 @@ impl<'filepath, 'cursor> Lexer<'filepath, 'cursor> {
                             Address::new(
                                 self.line,
                                 self.column,
-                                self.filepath.clone(),
+                                self.file_path.clone(),
                             ),
                             format!("unexpected char: {}", ch),
                             format!("delete char: {}", ch),
@@ -362,7 +362,7 @@ impl<'filepath, 'cursor> Lexer<'filepath, 'cursor> {
                     Address::new(
                         self.line,
                         self.column,
-                        self.filepath.clone(),
+                        self.file_path.clone(),
                     ),
                     "unclosed string quotes.",
                     "did you forget ' symbol?",
@@ -376,7 +376,7 @@ impl<'filepath, 'cursor> Lexer<'filepath, 'cursor> {
             address: Address::new(
                 self.line,
                 self.column,
-                self.filepath.clone(),
+                self.file_path.clone(),
             ),
         }
     }
@@ -394,7 +394,7 @@ impl<'filepath, 'cursor> Lexer<'filepath, 'cursor> {
                         Address::new(
                             self.line,
                             self.column,
-                            self.filepath.clone(),
+                            self.file_path.clone(),
                         ),
                         "couldn't parse number with two dots",
                         "check your code.",
@@ -415,7 +415,7 @@ impl<'filepath, 'cursor> Lexer<'filepath, 'cursor> {
             address: Address::new(
                 self.line,
                 self.column,
-                self.filepath.clone(),
+                self.file_path.clone(),
             ),
         }
     }
@@ -443,8 +443,7 @@ impl<'filepath, 'cursor> Lexer<'filepath, 'cursor> {
             address: Address::new(
                 self.line,
                 self.column,
-                self.filename.to_string(),
-                self.line_text.clone(),
+                self.file_path.clone(),
             ),
         }
     }
@@ -472,8 +471,7 @@ impl<'filepath, 'cursor> Lexer<'filepath, 'cursor> {
             address: Address::new(
                 self.line,
                 self.column,
-                self.filename.to_string(),
-                self.line_text.clone(),
+                self.file_path.clone(),
             ),
         }
     }
@@ -501,8 +499,7 @@ impl<'filepath, 'cursor> Lexer<'filepath, 'cursor> {
             address: Address::new(
                 self.line,
                 self.column,
-                self.filename.to_string(),
-                self.line_text.clone(),
+                self.file_path.clone(),
             ),
         }
     }    
@@ -526,7 +523,7 @@ impl<'filepath, 'cursor> Lexer<'filepath, 'cursor> {
             address: Address::new(
                 self.line,
                 self.column,
-                self.filepath.clone(),
+                self.file_path.clone(),
             ),
         }
     }
@@ -562,7 +559,7 @@ impl<'filepath, 'cursor> Lexer<'filepath, 'cursor> {
             Address::new(
                 self.line,
                 self.column,
-                self.filepath.clone(),
+                self.file_path.clone(),
             ),
         ));
     }

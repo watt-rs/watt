@@ -37,11 +37,6 @@ impl<'cursor> Cursor<'cursor> {
         self.current >= self.code.len()
     }
 
-    // в конце ли относительно текущей позиции + оффсет
-    pub fn is_at_end_offset(&self, offset: usize) -> bool {
-        self.current + offset >= self.code.len()
-    }
-
     // символ с оффсетом
     pub fn char_at(&self, offset: usize) -> char {
         let index = self.current + offset;

@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 // импорты
 use crate::lexer::address::*;
 use crate::errors::errors::{Error};
@@ -7,20 +5,21 @@ use crate::parser::import::Import;
 use crate::lexer::lexer::*;
 use crate::parser::ast::*;
 use crate::error;
+use std::path::PathBuf;
 
 // парсер
-pub struct Parser<'filename, 'prefix> {
+pub struct Parser<'file_path, 'prefix> {
     tokens: Vec<Token>,
     current: u128,
-    filename: &'filename PathBuf,
+    file_path: &'file_path PathBuf,
     full_name_prefix: &'prefix str,
 }
 // имплементация
 #[allow(unused_qualifications)]
-impl<'filename, 'prefix> Parser<'filename, 'prefix> {
+impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     // новый
-    pub fn new(tokens: Vec<Token>, filename: &'filename PathBuf, full_name_prefix: &'prefix str) -> Self {
-        Parser { tokens, current: 0, filename, full_name_prefix }
+    pub fn new(tokens: Vec<Token>, file_path: &'file_path PathBuf, full_name_prefix: &'prefix str) -> Self {
+        Parser { tokens, current: 0, file_path, full_name_prefix }
     }
     
     // блок
@@ -1128,7 +1127,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
         })
     }
 
-    // определение трэйта
+    // определение трейта
     fn trait_stmt(&mut self) -> Result<Node, Error> {
         // trait
         self.consume(TokenType::Trait)?;
@@ -1342,7 +1341,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                     Address::new(
                         0,
                         0,
-                        self.filename.clone()
+                        self.file_path.clone()
                     ),
                     "unexpected eof",
                     "check your code."
@@ -1378,7 +1377,7 @@ impl<'filename, 'prefix> Parser<'filename, 'prefix> {
                     Address::new(
                         0,
                         0,
-                        self.filename.clone(),
+                        self.file_path.clone(),
                     ),
                     "unexpected eof",
                     "check your code."

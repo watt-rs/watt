@@ -279,7 +279,7 @@ impl<'visitor> CompileVisitor<'visitor> {
         });
     }
 
-    // бинарая операция
+    // бинарная операция
     fn visit_binary(&mut self, left: &Node, right: &Node, op: &Token) {
         // правая часть
         self.visit_node(right);
@@ -911,7 +911,7 @@ impl<'visitor> CompileVisitor<'visitor> {
         });
     }
 
-    // визит логическово выражения
+    // визит логического выражения
     fn visit_logical(
         &mut self,
         left: &Node,
