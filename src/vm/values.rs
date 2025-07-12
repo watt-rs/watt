@@ -1,5 +1,5 @@
-﻿// импорты
-use std::fmt::{Debug, Formatter};
+﻿// imports
+use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use crate::lexer::address::Address;
 use crate::vm::bytecode::Chunk;
@@ -8,21 +8,29 @@ use crate::vm::memory::memory;
 use crate::vm::table::Table;
 use crate::vm::vm::VM;
 
-// символ
+/// Symbol structure
+/// with two parts name, full_name `file:$name`
+///
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Symbol {
     pub name: String,
     pub full_name: Option<String>,
 }
+/// Symbol implementation
 impl Symbol {
+    /// New symbol from name and full_name
     #[allow(unused_qualifications)]
     #[allow(unused)]
     pub fn new(name: String, full_name: String) -> Symbol {
         Symbol {name, full_name: Option::Some(full_name)}
     }
+
+    /// New symbol from name and optional full_name
     pub fn new_option(name: String, full_name: Option<String>) -> Symbol {
         Symbol {name, full_name }
     }
+
+    /// New symbol from name only, sets full_name to None
     #[allow(unused_qualifications)]
     #[allow(unused)]
     pub fn by_name(name: String) -> Symbol {
@@ -30,7 +38,11 @@ impl Symbol {
     }
 }
 
-// тип
+/// Type structure
+///
+/// Type is a `instruction` to build
+/// an instance
+///
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Type {
     pub name: Symbol,
@@ -38,66 +50,79 @@ pub struct Type {
     pub body: *const Chunk,
     pub impls: Vec<String>
 }
-// имплементация
+/// Type implementation
 impl Type {
+    /// New type
     pub fn new(name: Symbol, constructor: Vec<String>, body: *const Chunk, impls: Vec<String>) -> Type {
         Type {name, constructor, body, impls}
     }
 }
-// имплементация дропа
+/// Type drop implementation
 impl Drop for Type {
     fn drop(&mut self) {
         memory::free_const_value(self.body);
     }
 }
 
-// экземпляр типа
+/// Instance structure
+///
+/// Object created from `Type`
+/// instructions
+///
 #[derive(Clone, Debug)]
 #[allow(unused)]
 pub struct Instance {
+    /// type, instance related to
     pub t: *mut Type,
+    /// instance fields table
     pub fields: *mut Table
 }
-// имплементация
+/// Instance implementation
 impl Instance {
     pub fn new(t: *mut Type, fields: *mut Table) -> Instance {
         Instance {t, fields}
     }
 }
-// имплементация дропа
+/// Instance drop implementation
 impl Drop for Instance {
     fn drop(&mut self) {
         memory::free_value(self.fields);
     }
 }
 
-// юнит
+/// Unit structure
+///
+/// `static`, `singleton` and `global`
+/// instance-like object
+///
 #[derive(Clone, Debug)]
 #[allow(unused)]
 pub struct Unit {
     pub name: Symbol,
     pub fields: *mut Table,
 }
+/// Unit implementation
 impl Unit {
     pub fn new(name: Symbol, fields: *mut Table) -> Unit {
         Unit {name, fields}
     }
 }
-// имплементация дропа
+/// Unit drop implementation
 impl Drop for Unit {
     fn drop(&mut self) {
         memory::free_value(self.fields);
     }
 }
 
-// дефолтная функция трейта
+/// Default trait fn realisation
 #[derive(Clone, Debug)]
 pub struct DefaultTraitFn {
     pub params: Vec<String>,
     pub chunk: Chunk
 }
-// имплементация
+/// Default trait fn implementation
 impl DefaultTraitFn {
+    /// New default trait fn
     pub fn new(params: Vec<String>, chunk: Chunk) -> DefaultTraitFn {
         DefaultTraitFn {
             params, 
@@ -106,34 +131,49 @@ impl DefaultTraitFn {
     }
 }
 
-// функция трейта
+/// Trait function
+///
+/// contains `name`, `params_amount` and
+/// `optional` *default implementation*
+///
 #[derive(Clone, Debug)]
 pub struct TraitFn {
     pub name: String,
     pub params_amount: usize,
     pub default: Option<DefaultTraitFn>
 }
-// имплементация
+/// Trait function implementation
 impl TraitFn {
+    /// New trait fn
     pub fn new(name: String, params_amount: usize, default: Option<DefaultTraitFn>) -> TraitFn {
         TraitFn {name, params_amount, default}
     }
 }
 
-// трейт
+/// Trait
+///
+/// This is an abstraction that
+/// contains functions that a type
+/// must implement.
+///
+/// Functions may contain a default implementation.
+/// In this case, types that implement a trait may
+/// not implement the function, but may override it,
+/// but only with its signature.
+///
 #[derive(Clone, Debug)]
 #[allow(unused)]
 pub struct Trait {
     pub name: Symbol,
     pub functions: Vec<TraitFn>
 }
-// имплементация
+/// Trait implementation
 impl Trait {
     pub fn new(name: Symbol, functions: Vec<TraitFn>) -> Trait {
         Trait {name, functions}
     }
 }
-// имплементация дропа
+/// Trait drop implementation
 impl Drop for Trait {
     fn drop(&mut self) {
         for function in self.functions.drain(..) {
@@ -142,14 +182,23 @@ impl Drop for Trait {
     }
 }
 
-// владелец функции
+/// Fn owner
+///
+/// Owner of a function, be it
+/// a unit or instance.
+///
 #[derive(Clone, Debug)]
 pub enum FnOwner {
     Unit(*mut Unit),
     Instance(*mut Instance),
 }
 
-// функция
+/// Function
+///
+/// Just a function that have name,
+/// params, body, `closure`, `owner`
+/// (something, that owns function, be it unit or instance)
+///
 #[derive(Clone, Debug)]
 #[allow(unused)]
 pub struct Function {
@@ -159,8 +208,9 @@ pub struct Function {
     pub owner: Option<FnOwner>,
     pub closure: *mut Table
 }
-// имплементация
+/// Function implementation
 impl Function {
+    /// New function
     pub fn new(name: Symbol, body: *const Chunk, params: Vec<String>) -> Function {
         Function {
             name,
@@ -171,7 +221,7 @@ impl Function {
         }
     }
 }
-// имплементация дропа
+/// Function drop implementation
 impl Drop for Function {
     fn drop(&mut self) {
         memory::free_value(self.closure);
@@ -179,7 +229,11 @@ impl Drop for Function {
     }
 }
 
-// нативная функция
+/// Native function
+///
+/// Function, that wrote in rust, but can
+/// be used in Watt, for example: io@println
+///
 #[derive(Clone, Debug)]
 #[allow(unused)]
 pub struct Native {
@@ -187,14 +241,14 @@ pub struct Native {
     pub params_amount: usize,
     pub function: fn(&mut VM,Address,bool,*mut Table) -> Result<(), ControlFlow>,
 }
+/// Native implementation
 impl Native {
-    // новый
+    /// New native
     pub fn new(
         name: Symbol,
         params_amount: usize,
-        function: fn(&mut VM,Address,bool,*mut Table
-        ) -> Result<(), ControlFlow>) -> Native {
-        // возвращаем
+        function: fn(&mut VM,Address,bool,*mut Table) -> Result<(), ControlFlow>
+    ) -> Native {
         Native {
             name,
             params_amount,
@@ -203,7 +257,7 @@ impl Native {
     }
 }
 
-// значение
+/// Value
 #[derive(Clone, Copy)]
 pub enum Value {
     Float(f64),
@@ -220,7 +274,7 @@ pub enum Value {
     Any(*mut dyn std::any::Any),
     Null
 }
-
+/// Debug implementation for value
 impl Debug for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         unsafe {
@@ -268,7 +322,21 @@ impl Debug for Value {
         }
     }
 }
-
+/// Display implementation for value
+impl Display for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+/// PartialEq implementation for value
+///
+/// Value types
+///  compared by value,
+/// Reference types
+///  (`instance`, `type`, `fn`, `native`, `list`
+///   `native`, `trait`, `any`, `unit`)
+///  compared by pointer address
+///
 #[allow(unused_unsafe)]
 impl PartialEq for Value {
     fn eq(&self, other: &Value) -> bool {
@@ -313,7 +381,9 @@ impl PartialEq for Value {
         }
     }
 }
+/// Eq implementation for value
 impl Eq for Value {}
+/// Hash implementation for value
 impl Hash for Value {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match *self {

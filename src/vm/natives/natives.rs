@@ -1,4 +1,4 @@
-// импорты
+// imports
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::flow::ControlFlow;
@@ -9,11 +9,12 @@ use crate::vm::table::Table;
 use crate::vm::values::{Native, Symbol, Value};
 use crate::error;
 
-// провайд билтинов
+/// Provides builtins
 pub unsafe fn provide_builtins(vm: &mut VM) -> Result<(), Error> {
-    // билт-ин адрес
+    // builtin address
     let built_in_address: Address = Address::unknown();
-    // io
+    
+    // natives provide
     natives_base::provide(&built_in_address, vm)?;
     natives_io::provide(&built_in_address, vm)?;
     natives_list::provide(&built_in_address, vm)?;
@@ -23,18 +24,18 @@ pub unsafe fn provide_builtins(vm: &mut VM) -> Result<(), Error> {
     natives_time::provide(&built_in_address, vm)?;
     natives_fs::provide(&built_in_address, vm)?;
     natives_system::provide(&built_in_address, vm)?;
-    // успех
+    
     Ok(())
 }
 
-// провайд 1 функции
+/// Provides single native
 pub unsafe fn provide(
     vm: &mut VM,
     addr: Address,
     params_amount: usize,
     name: &'static str,
     native: fn(&mut VM,Address,bool,*mut Table) -> Result<(), ControlFlow>) {
-    // нативная функция
+    // native value
     let native_fn = Value::Native(
         memory::alloc_value(
             Native::new(
@@ -44,11 +45,10 @@ pub unsafe fn provide(
             )
         )
     );
-    // защищаем в gc
+    // guard native in gc, then register
     vm.gc_guard(native_fn);
-    // регистрация в gc
     vm.gc_register(native_fn, vm.globals);
-    // дефайн
+    // define native
     if let Err(e) = (*vm.natives).define(
         &addr,
         name,
@@ -56,6 +56,6 @@ pub unsafe fn provide(
     ) {
         error!(e);
     }
-    // удаляем защиту gc
+    // unguard native in gc
     vm.gc_unguard();
 }

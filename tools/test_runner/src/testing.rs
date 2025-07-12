@@ -96,7 +96,7 @@ pub fn run_tests(
     for test_file in keys {
         let expected_content_file = &tests_table[test_file];
 
-    	// Создаём команду для запуска Watt
+        // Создаём команду для запуска Watt
         let mut command = std::process::Command::new(watt_path);
         // Добавляем аргумент пути файла для запуска
         let command = command.arg(test_file);

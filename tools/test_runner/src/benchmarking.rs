@@ -1,18 +1,18 @@
 use std::process::Stdio;
 
-/// Опции бенчмарка
+/// Benchmark options
 pub struct BenchmarkOptions {
     sample_count: usize,
 }
 
-/// Опции бенчмарка применяемые по умолчанию
+/// Default options
 impl Default for BenchmarkOptions {
     fn default() -> Self {
         Self { sample_count: 200 }
     }
 }
 
-/// Методы для настройки опций бенчмарка
+/// An implementation to change options
 impl BenchmarkOptions {
     pub fn sample_count(mut self, count: usize) -> Self {
         self.sample_count = count;
@@ -20,28 +20,31 @@ impl BenchmarkOptions {
     }
 }
 
-/// Запуск бенчмарка с необходимым компилятором, путём к программе и опциями
+/// Running benchmark with given compiler, target file and options.
 pub fn run_benchmark_on(compiler_path: &str, filepath: &str, options: &BenchmarkOptions) {
     let mut mean_time: u128 = 0;
 
     for _ in 0..options.sample_count {
-        // Создаём команду, добавляем туда аргумент пути к программе и перенаправляем stdout в никуда
+        // Create command instance and give it a file path
         let mut command = std::process::Command::new(compiler_path);
         let command = command.arg(filepath).stdout(Stdio::null());
 
-        // Засекаем время
+        // Current time
         let start_time = std::time::Instant::now();
 
-        // Запускаем
+        // Run
         command.status().unwrap();
 
-        // Вычисляем разницу во времени
+        // Time difference
         let diff = start_time.elapsed().as_nanos();
 
-        // Вычисляем среднее время: mean_time = (mean_time + diff) / 2
+        // Calculating time midpoint: mean_time = (mean_time + diff) / 2
         mean_time = mean_time.midpoint(diff);
     }
 
     // 1 ms = 1_000_000 ns.
-    println!("[BENCH] {filepath}: {:.2} ms", (mean_time as f64) / 1_000_000.0);
+    println!(
+        "[BENCH] {filepath}: {:.2} ms",
+        (mean_time as f64) / 1_000_000.0
+    );
 }

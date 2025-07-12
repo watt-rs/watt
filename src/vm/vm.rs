@@ -1,4 +1,4 @@
-﻿// импорты
+﻿// imports
 use scopeguard::defer;
 use crate::error;
 use crate::errors::errors::{Error};
@@ -11,20 +11,24 @@ use crate::vm::values::{FnOwner, Function, Instance, Symbol, Trait, TraitFn, Typ
 use crate::vm::memory::gc::GC;
 use crate::vm::memory::memory;
 
-// настройки
+/// Vm settings,
+/// contains gc_threshold, gc_debug
 #[derive(Debug)]
 pub struct VmSettings {
     gc_threshold: usize,
     gc_debug: bool,
 }
-// имплементация
+/// Vm settings implementation
 impl VmSettings {
     pub fn new(gc_threshold: usize, gc_debug: bool) -> Self {
         Self { gc_threshold, gc_debug }
     }
 }
 
-// вм
+/// Virtual machine
+///
+/// Vm that runs opcodes 🤔
+///
 #[derive(Debug)]
 pub struct VM {
     pub globals: *mut Table,
@@ -36,13 +40,13 @@ pub struct VM {
     settings: VmSettings,
     pub stack: Vec<Value>,
 }
-// имплементация вм
+/// Vm implementation
 #[allow(non_upper_case_globals)]
 #[allow(unused_qualifications)]
 impl VM {
-    // новая вм
+    /// New vm
     pub unsafe fn new(settings: VmSettings) -> VM {
-        // вм
+        // vm
         let mut vm = VM {
             globals: memory::alloc_value(Table::new()),
             types: memory::alloc_value(Table::new()),
@@ -53,20 +57,20 @@ impl VM {
             stack: Vec::new(),
             settings
         };
-        // нативы
+        // natives
         if let Err(e) = natives::provide_builtins(&mut vm) {
             error!(e)
         }
-        // возвращаем
+        // returns vm
         vm
     }
 
-    // пуш
+    /// Push value to vm stack
     pub unsafe fn push(&mut self, value: Value) {
         self.stack.push(value);
     }
 
-    // поп
+    /// Pop value from vm stack
     pub fn pop(&mut self, address: &Address) -> Result<Value, ControlFlow> {
         if self.stack.is_empty() {
             error!(Error::new(
@@ -78,17 +82,21 @@ impl VM {
         Ok(self.stack.pop().unwrap())
     }
 
-    // очистка
+    /// Cleanup vm
+    ///
+    /// Frees all values and
+    /// all tables themselves
+    ///
     pub unsafe fn cleanup(&mut self) {
-        // освобождаем все значения через gc
+        // cleanup gc values
         (*self.gc).cleanup();
-        // высвобождаем gc
+        // freeing gc
         memory::free_value(self.gc);
-        // высвобождаем типы
+        // freeing types table fields
         (*self.types).free_fields();
-        // высвобождаем трэйты
+        // freeing traits table fields
         (*self.traits).free_fields();
-        // высвобождаем таблицы
+        // freeing tables themselves
         memory::free_value(self.traits);
         memory::free_value(self.types);
         memory::free_value(self.natives);
@@ -96,84 +104,98 @@ impl VM {
         memory::free_value(self.globals);
     }
 
-    // очистка мусора
+    /// Invoke garbage collector
     pub unsafe fn gc_invoke(&mut self, table: *mut Table) {
-        // собираем мусор
         (*self.gc).collect_garbage(self, table);
     }
 
-    // добавление в учет сборщика мусора
+    /// Registers object in gc
+    ///
+    /// if gc objects amount > gc_threshold
+    /// | gc invokes
+    /// | gc_threshold multiplies by 2
     pub unsafe fn gc_register(&mut self, value: Value, table: *mut Table) {
-        // добавляем объект
+        // adding object
         (*self.gc).add_object(value);
-        // проверяем порог gc
+        // checking gc threshold
         if (*self.gc).objects_amount() > self.settings.gc_threshold {
-            // вызываем gc
+            // calling gc
             self.gc_invoke(table);
-            // увеличиваем порог
+            // doubling current max gc threshold
             self.settings.gc_threshold *= 2;
         }
     }
 
-    // защита значения от очистки
+    /// Guard values from being freed by gc,
+    /// by pushing to guard stack
     pub unsafe fn gc_guard(&mut self, value: Value) {
-        // добавляем объект
         (*self.gc).push_guard(value);
     }
 
-    // удаление защиты последнего значения от очистки
+    /// Unguarding value from being freed by gc
     pub unsafe fn gc_unguard(&mut self) {
-        // добавляем объект
         (*self.gc).pop_guard();
     }
 
-    // пуш в стек
+    /// Opcode: Push value to vm stack
+    ///
+    /// if value is a reference type except
+    /// `trait` and `type` it will be registered in gc
+    /// *safely* from *freeing* before the *self.push*
+    /// itself executes.
+    ///
+    /// safety guaranteed by pushing value to stack
+    /// before registering in gc.
+    ///
     pub unsafe fn op_push(&mut self, value: OpcodeValue, table: *mut Table) -> Result<(), ControlFlow> {
-        // проверяем значение
+        // checking value type
         match value {
+            // primitives
             OpcodeValue::Int(int) => { self.push(Value::Int(int)); }
             OpcodeValue::Float(float) => { self.push(Value::Float(float)); }
             OpcodeValue::Bool(bool) => { self.push(Value::Bool(bool)); }
+            // string
             OpcodeValue::String(string) => {
-                // строка
+                // allocating string
                 let new_string = Value::String(
                     memory::alloc_value(
                         string
                     )
                 );
-                // пушим
+                // pushing string value to stack
                 self.push(new_string);
-                // добавляем в gc
+                // registering string value in gc. .
                 self.gc_register(new_string, table);
             }
+            // raw
             OpcodeValue::Raw(raw) => {
                 match raw {
                     Value::Instance(_) | Value::Fn(_) |
                     Value::Native(_) | Value::String(_) |
                     Value::Unit(_) | Value::List(_) |
                     Value::Any(_) => {
-                        // пушим
+                        // push
                         self.push(raw);
-                        // добавляем в gc
+                        // then register
                         self.gc_register(raw, table);
                     }
                     _ => {
-                        // пушим
+                        // push
                         self.push(raw);
                     }
                 }
             }
         }
-        // успех
         Ok(())
     }
     
-    // бинарная операция
+    /// Opcode: Binary operation
     unsafe fn op_binary(&mut self, address: &Address, op: &str, table: *mut Table) -> Result<(), ControlFlow> {
-        // два операнда
+        // operands
         let operand_a = self.pop(&address)?;
         let operand_b = self.pop(&address)?;
-        // ошибки
+
+        // error generators
         let invalid_op_error = || {
             error!(Error::own_text(
                 address.clone(),
@@ -181,7 +203,6 @@ impl VM {
                 "check your code."
             ));
         };
-
         let division_error = || {
             error!(Error::new(
                 address.clone(),
@@ -190,7 +211,7 @@ impl VM {
             ));
         };
 
-        // бинарная операция
+        // binary operators
         match op {
             "+" => {
                 match operand_a {
@@ -288,15 +309,15 @@ impl VM {
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => {
-                            // проверка на деление на 0
+                            // checking division by zero
                             if b == 0f64 { division_error(); }
-                            // деление
+                            // dividing
                             self.push(Value::Float((a as f64) / b));
                         }
                         Value::Int(b) => {
-                            // проверка на деление на 0
+                            // checking division by zero
                             if b == 0 { division_error(); }
-                            // деление
+                            // dividing
                             if a % b == 0 { self.push(Value::Int(a / b)); }
                             else { self.push(Value::Float(a as f64 / b as f64)) }
                         }
@@ -352,11 +373,11 @@ impl VM {
         Ok(())
     }
 
-    // негэйт
+    /// Opcode: Negate operation
     unsafe fn op_negate(&mut self, address: &Address) -> Result<(), ControlFlow> {
-        // операнд
+        // operand
         let operand = self.pop(&address)?;
-        // негэйт
+        // negate
         match operand {
             Value::Float(a) => {
                 self.push(Value::Float(-a));
@@ -365,7 +386,6 @@ impl VM {
                 self.push(Value::Int(-a));
             }
             _ => {
-                // ошибка
                 error!(Error::own_text(
                     address.clone(),
                     format!("could not use 'negate' for {:?}", operand),
@@ -373,15 +393,14 @@ impl VM {
                 ));
             }
         }
-        // успех
         Ok(())
     }
 
-    // бэнг
+    /// Opcode: Bang operation
     unsafe fn op_bang(&mut self, address: &Address) -> Result<(), ControlFlow> {
-        // операнд
+        // operand
         let operand = self.pop(address)?;
-        // бэнг
+        // bang
         match operand {
             Value::Bool(b) => {
                 self.push(Value::Bool(!b));
@@ -394,39 +413,41 @@ impl VM {
                 ));
             }
         }
-        // успех
         Ok(())
     }
 
-    // условие
+    /// Opcode: Conditional operation
     unsafe fn op_conditional(&mut self, address: &Address, op: &str) -> Result<(), ControlFlow> {
-        // операнды
+        // operands
         let operand_a = self.pop(&address)?;
         let operand_b = self.pop(&address)?;
-        let error = Error::own_text(
-            address.clone(),
-            format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
-            "check your code."
-        );
-        // условие
+        // error
+        let invalid_op_error = || {
+            Error::own_text(
+                address.clone(),
+                format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
+                "check your code."
+            )
+        };
+        // conditional op
         match op {
             ">" => {
                 match operand_a {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool(a > b)); }
                         Value::Int(b) => { self.push(Value::Bool(a > (b as f64))); }
-                        _ => { error!(error); }
+                        _ => { error!(invalid_op_error()); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool((a as f64) > b)); }
                         Value::Int(b) => { self.push(Value::Bool(a > b)); }
-                        _ => { error!(error); }
+                        _ => { error!(invalid_op_error()); }
                     }}
                     Value::String(a) => { match operand_b {
                         Value::String(b) => { self.push(Value::Bool(*a > *b)); }
-                        _ => { error!(error); }
+                        _ => { error!(invalid_op_error()); }
                     }}
-                    _ => { error!(error); }
+                    _ => { error!(invalid_op_error()); }
                 }
             },
             "<" => {
@@ -434,18 +455,18 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool(a < b)); }
                         Value::Int(b) => { self.push(Value::Bool(a < (b as f64))); }
-                        _ => { error!(error); }
+                        _ => { error!(invalid_op_error()); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool((a as f64) < b)); }
                         Value::Int(b) => { self.push(Value::Bool(a < b)); }
-                        _ => { error!(error); }
+                        _ => { error!(invalid_op_error()); }
                     }}
                     Value::String(a) => { match operand_b {
                         Value::String(b) => { self.push(Value::Bool(*a < *b)); }
-                        _ => { error!(error); }
+                        _ => { error!(invalid_op_error()); }
                     }}
-                    _ => { error!(error); }
+                    _ => { error!(invalid_op_error()); }
                 }
             },
             ">=" => {
@@ -453,18 +474,18 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool(a >= b)); }
                         Value::Int(b) => { self.push(Value::Bool(a >= (b as f64))); }
-                        _ => { error!(error); }
+                        _ => { error!(invalid_op_error()); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool((a as f64) >= b)); }
                         Value::Int(b) => { self.push(Value::Bool(a >= b)); }
-                        _ => { error!(error); }
+                        _ => { error!(invalid_op_error()); }
                     }}
                     Value::String(a) => { match operand_b {
                         Value::String(b) => { self.push(Value::Bool(*a >= *b)); }
-                        _ => { error!(error); }
+                        _ => { error!(invalid_op_error()); }
                     }}
-                    _ => { error!(error); }
+                    _ => { error!(invalid_op_error()); }
                 }
             }
             "<=" => {
@@ -472,18 +493,18 @@ impl VM {
                     Value::Float(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool(a <= b)); }
                         Value::Int(b) => { self.push(Value::Bool(a <= (b as f64))); }
-                        _ => { error!(error); }
+                        _ => { error!(invalid_op_error()); }
                     }}
                     Value::Int(a) => { match operand_b {
                         Value::Float(b) => { self.push(Value::Bool((a as f64) <= b)); }
                         Value::Int(b) => { self.push(Value::Bool(a <= b)); }
-                        _ => { error!(error); }
+                        _ => { error!(invalid_op_error()); }
                     }}
                     Value::String(a) => { match operand_b {
                         Value::String(b) => { self.push(Value::Bool(*a <= *b)); }
-                        _ => { error!(error); }
+                        _ => { error!(invalid_op_error()); }
                     }}
-                    _ => { error!(error); }
+                    _ => { error!(invalid_op_error()); }
                 }
             }
             "==" => {
@@ -536,41 +557,43 @@ impl VM {
                 }
             }
             "!=" => {
-                // операнды
+                // temp operands
                 self.push(operand_b);
                 self.push(operand_a);
-                // выполняем ==
+                // running equals cond op
                 self.op_conditional(&address, "==")?;
-                // инверсируем
+                // running bang
                 self.op_bang(&address)?;
             }
-            _ => { panic!("operator {} is not found.", op)}
+            _ => { panic!("operator {} is not found. report this error to the developer.", op)}
         }
-        // успех
         Ok(())
     }
 
-    // логика
+    /// Opcode: Logical operator
     unsafe fn op_logical(&mut self, address: &Address, op: &str) -> Result<(), ControlFlow> {
-        // операнды
+        // operands
         let operand_a = self.pop(&address)?;
         let operand_b = self.pop(&address)?;
-        let error = Error::own_text(
-            address.clone(),
-            format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
-            "check your code."
-        );
-        // логика
+        // error
+        let invalid_op_error = || {
+            Error::own_text(
+                address.clone(),
+                format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
+                "check your code."
+            )
+        };
+        // logical op
         match op {
             "and" => {
                 match operand_a {
                     Value::Bool(a) => {
                         match operand_b {
                             Value::Bool(b) => { self.push(Value::Bool(a && b)); }
-                            _ => { error!(error); }
+                            _ => { error!(invalid_op_error()); }
                         }
                     }
-                    _ => { error!(error); }
+                    _ => { error!(invalid_op_error()); }
                 }
             }
             "or" => {
@@ -578,33 +601,31 @@ impl VM {
                     Value::Bool(a) => {
                         match operand_b {
                             Value::Bool(b) => { self.push(Value::Bool(a || b)); }
-                            _ => { error!(error); }
+                            _ => { error!(invalid_op_error()); }
                         }
                     }
-                    _ => { error!(error); }
+                    _ => { error!(invalid_op_error()); }
                 }
             }
-            _ => { panic!("operator = {} is not found.", op)}
+            _ => { panic!("operator {} is not found.", op)}
         }
-        // успех
         Ok(())
     }
 
-    // иф
+    /// Opcode: If
     unsafe fn op_if(&mut self, addr: &Address, cond: &Chunk, body: &Chunk,
                     elif: &Option<Chunk>, root: *mut Table) -> Result<(), ControlFlow> {
-        // таблица
+        // condition table
         let table = memory::alloc_value(Table::new());
         (*table).set_root(root);
-        // высвобождение
+        // defer condition table free
         defer! {
-            // высвобождение таблицы
             memory::free_value(table);
         }
-        // условие
+        // running condition
         self.run(cond, table)?;
         let bool = self.pop(&addr)?;
-        // проверка
+        // checking condition returned true
         if let Value::Bool(b) = bool {
             if b {
                 self.run(body, table)?
@@ -620,22 +641,20 @@ impl VM {
                 "condition should provide a bool."
             ))
         }
-        // успех
         Ok(())
     }
 
-    // луп
+    /// Opcode: Loop
     #[allow(unused_variables)]
     unsafe fn op_loop(&mut self, addr: &Address, body: &Chunk, root: *mut Table) -> Result<(), ControlFlow> {
-        // таблица
+        // loop table
         let table = memory::alloc_value(Table::new());
         (*table).set_root(root);
-        // высвобождение
+        // defer loop table free
         defer! {
-            // высвобождение таблицы
             memory::free_value(table);
         }
-        // проверка
+        // loop
         loop {
             if let Err(e) = self.run(&body, table) {
                 match e {
@@ -651,14 +670,21 @@ impl VM {
                 }
             }
         }
-        // успех
         Ok(())
     }
 
-    // дефайн функции
+    /// Opcode: DefineFn
+    ///
+    /// defines fn in local table
+    /// with `safely` allocating it
+    ///
+    /// safety guaranteed by using gc_guard
+    /// before registering in gc, and gc_unguard after
+    /// registering in gc
+    ///
     unsafe fn op_define_fn(&mut self, addr: &Address, symbol: Symbol, body: &Chunk,
                         params: &Vec<String>, make_closure: bool, table: *mut Table) -> Result<(), ControlFlow> {
-        // создаём функцию
+        // allocating function
         let function = memory::alloc_value(
             Function::new(
                 symbol.clone(),
@@ -666,42 +692,49 @@ impl VM {
                 params.clone()
             )
         );
-        // если надо создать замыкание
+        // if it's need to make_closure
         if make_closure {
-            // создаём замыкание
+            // creating closure
             let closure = memory::alloc_value(Table::new());
-            // копируем поля
+            // copying table
             (*closure).fields = (*table).fields.clone();
             (*closure).closure = (*table).closure.clone();
-            // устанавливаем замыкание
+            // setting closure
             (*function).closure = closure;
         }
-        // создаём значение функции
+        
+        // function value
         let function_value = Value::Fn(function);
-        // защищаем значение
+
+        // guarding value in gc and registering it
         self.gc_guard(function_value);
-        // добавляем в gc
         self.gc_register(function_value, table);
-        // дефайн функции
+
+        // defining fn by name and full name
         if let Err(e) = (*table).define(&addr, &symbol.name, function_value) {
             error!(e);
         }
-        // дефайн функции по full-name
         if symbol.full_name.is_some() {
             if let Err(e) = (*table).define(&addr, symbol.full_name.as_ref().unwrap(), function_value) {
                 error!(e);
             }
         }
-        // удаляем защиту
+        // deleting gc guard
         self.gc_unguard();
-        // успех
+
         Ok(())
     }
 
-    // создание анонимной функции и пуш её в стек
+    /// Opcode: AnonymousFn
+    ///
+    /// pushing fn to stack by safely` allocating it
+    ///
+    /// safety guaranteed by pushing value to stack
+    /// before registering in gc.
+    ///
     unsafe fn op_anonymous_fn(&mut self, body: &Chunk, params: &Vec<String>,
                               make_closure: bool, table: *mut Table) -> Result<(), ControlFlow> {
-        // создаём функцию
+        // allocating function
         let function = memory::alloc_value(
             Function::new(
                 Symbol::by_name("$lambda".to_string()),
@@ -709,29 +742,34 @@ impl VM {
                 params.clone()
             )
         );
-        // если надо создать замыкание
+        // if it's need to make_closure
         if make_closure {
-            // создаём замыкание
+            // creating closure
             let closure = memory::alloc_value(Table::new());
-            // копируем поля
+            // copying table
             (*closure).fields = (*table).fields.clone();
             (*closure).closure = (*table).closure.clone();
-            // устанавливаем замыкание
+            // setting closure
             (*function).closure = closure;
         }
-        // создаём значение функции
+
+        // function value
         let function_value = Value::Fn(function);
-        // пушим в стек
+
+        // push function value to stack
         self.push(function_value);
-        // регистрируем в gc
+        // register value in gc
         self.gc_register(function_value, table);
-        // успех
+
         Ok(())
     }
 
-    // бинды функций
+    /// Bind functions
+    ///
+    /// Goes through the table fields,
+    /// search functions and then binds owner
+    /// to them.
     unsafe fn bind_functions(&mut self, table: *mut Table, owner: FnOwner) {
-        // биндим
         for val in (*table).fields.values() {
             if let Value::Fn(function) = *val {
                 (*function).owner = Some(owner.clone());
@@ -739,10 +777,18 @@ impl VM {
         }
     }
 
-    // дефайн типа
+    /// Opcode: DefineType
+    ///
+    /// defines type in `self.types` table
+    /// with `safely` allocating it
+    ///
+    /// safety guaranteed because gc bears
+    /// no responsibility to control types,
+    /// they will be freed in `self.cleanup()`
+    ///
     unsafe fn op_define_type(&mut self, addr: &Address, symbol: &Symbol, body: &Chunk,
                              constructor: &Vec<String>, impls: &Vec<String>) -> Result<(), ControlFlow> {
-        // создаём тип
+        // allocating type
         let t = memory::alloc_value(
             Type::new(
                 symbol.clone(),
@@ -751,134 +797,141 @@ impl VM {
                 impls.clone()
             )
         );
-        // дефайн типа
+        // defining type by name && full name
         if let Err(e) = (*self.types).define(&addr, &symbol.name, Value::Type(t)) {
             error!(e);
         }
-        // дефайн по full-name
         if symbol.full_name.is_some() {
             if let Err(e) = (*self.types).define(&addr, symbol.full_name.as_ref().unwrap(), Value::Type(t)){
                 error!(e);
             }
         }
-        // успех
         Ok(())
     }
 
-    // дефайн юнита
+    /// Opcode: DefineUnit
+    ///
+    /// defines type in `self.types` table
+    /// with `safely` allocating it
+    ///
+    /// safety guaranteed by using gc_guard
+    /// before registering in gc, and gc_unguard after
+    /// registering in gc
+    ///
     unsafe fn op_define_unit(&mut self, addr: &Address, symbol: &Symbol,
                              body: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
-        // создаём юнит
+        // allocating unit
         let unit = memory::alloc_value(
             Unit::new(
                 symbol.clone(),
                 memory::alloc_value(Table::new())
             )
         );
-        // значение юнита
+        
+        // unit value
         let unit_value = Value::Unit(unit);
-        // защищаем значение
+        
+        // guarding value in gc and registering it
         self.gc_guard(unit_value);
-        // добавляем в учет gc
         self.gc_register(unit_value, table);
-        // рут
+        // setting root for fields
         (*(*unit).fields).set_root(self.globals);
-        // временный parent
+        // setting temp parent for fields // todo check
         (*(*unit).fields).parent = table;
-        // временный self
+        // inserting temp self
         (*(*unit).fields).fields.insert("self".to_string(), Value::Unit(unit));
-        // исполняем тело
+        // executing body
         self.run(body, (*unit).fields)?;
-        // удаляем временный self
+        // deleting temp self
         (*(*unit).fields).fields.remove("self");
-        // бинды
+        // binding function
         self.bind_functions((*unit).fields, FnOwner::Unit(unit));
-        // init функция
+        // calling optional init fn
         let init_fn = "init";
         if (*(*unit).fields).exists(&init_fn) {
-            // пушим юнит
             self.push(unit_value);
-            // вызываем
             self.op_call(addr, init_fn, true, false, &Chunk::new(vec![]), table)?
         }
-        // дефайн юнита
+        // defining unit by name and full name
         if let Err(e) = (*self.units).define(addr, &symbol.name, unit_value) {
             error!(e);
         }
-        // дефайн по full-name
         if symbol.full_name.is_some() {
             if let Err(e) = (*self.units).define(addr, symbol.full_name.as_ref().unwrap(), unit_value) {
                 error!(e);
             }
         }
-        // удаляем временный parent
+        // deleting temp parent
         (*(*unit).fields).parent = std::ptr::null_mut();
-        // удаляем защиту
+        // deleting gc guard
         self.gc_unguard();
-        // успех
         Ok(())
     }
 
-    // дефайн тейта
+    /// Opcode: DefineTrait
+    ///
+    /// defines trait in `self.traits` table
+    /// with `safely` allocating it
+    ///
+    /// safety guaranteed because gc bears
+    /// no responsibility to control types,
+    /// they will be freed in `self.cleanup()`
+    ///
     unsafe fn op_define_trait(&mut self, addr: &Address, symbol: &Symbol, functions: &[TraitFn])
     -> Result<(), ControlFlow> {
-        // создаём трейт
+        // allocating trait
         let _trait = memory::alloc_value(
             Trait::new(
                 symbol.clone(),
                 functions.to_owned()
             )
         );
-        // дефайн трейта
+        // define trait by name and full name
         if let Err(e) = (*self.traits).define(&addr, &symbol.name, Value::Trait(_trait)) {
             error!(e);
         }
-        // дефайн по full-name
         if symbol.full_name.is_some() {
             if let Err(e) = (*self.traits).define(&addr, symbol.full_name.as_ref().unwrap(), Value::Trait(_trait)) {
                 error!(e);
             }
         }
-        // успех
         Ok(())
     }
 
-    // дефайн
+    /// Opcode: Define
+    ///
+    /// defines value in local table
+    /// or, if `has_previous` pops
+    /// value (instance/unit, otherwise raises error)
+    /// from stack and then defines given
+    /// value in it by name
+    ///
     unsafe fn op_define(&mut self, addr: &Address, name: &str, has_previous: bool,
                         value: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
-        // если нет предыдущего
+        // non-previous
         if !has_previous {
-            // исполняем значение
             self.run(value, table)?;
-            // получаем значение
             let operand = self.pop(&addr)?;
-            // дефайним
             if let Err(e) = (*table).define(&addr, &name, operand) {
                 error!(e);
             }
         }
-        // если есть
+        // previous
         else {
-            // получаем значение
             let previous = self.pop(&addr)?;
-            // првоеряем
             match previous {
+                // define in instance
                 Value::Instance(instance) => {
-                    // исполняем значение
                     self.run(value, table)?;
-                    // получаем значение
                     let operand = self.pop(&addr)?;
-                    // дефайним
                     if let Err(e) = (*(*instance).fields).define(&addr, &name, operand) {
                         error!(e);
                     }
                 }
+                // define in unit
                 Value::Unit(unit) => {
-                    // исполняем значение
                     self.run(value, table)?;
-                    // получаем значение
                     let operand = self.pop(&addr)?;
-                    // дефайним
                     if let Err(e) = (*(*unit).fields).define(&addr, &name, operand) {
                         error!(e);
                     }
@@ -892,46 +945,43 @@ impl VM {
                 }
             }
         }
-        // успех
         Ok(())
     }
 
-    // установка значения переменной
+    /// Opcode: Set
+    ///
+    /// sets value in local table
+    /// or, if `has_previous` pops
+    /// value (instance/unit, otherwise raises error)
+    /// from stack and then sets given
+    /// value in it by name
+    ///
     unsafe fn op_set(&mut self, addr: &Address, name: &str, has_previous: bool,
                         value: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
-        // если нет предыдущего
+        // non-previous
         if !has_previous {
-            // исполняем значение
             self.run(value, table)?;
-            // получаем значение
             let operand = self.pop(&addr)?;
-            // дефайним
             if let Err(e) = (*table).set(addr.clone(), name, operand) {
                 error!(e);
             }
         }
-        // если есть
+        // previous
         else {
-            // получаем значение
             let previous = self.pop(&addr)?;
-            // проверяем
             match previous {
+                // define in instance
                 Value::Instance(instance) => {
-                    // исполняем значение
                     self.run(value, table)?;
-                    // получаем значение
                     let operand = self.pop(&addr)?;
-                    // устанавливаем значение
                     if let Err(e) = (*(*instance).fields).set_local(&addr, name, operand) {
                         error!(e);
                     }
                 }
+                // define in unit
                 Value::Unit(unit) => {
-                    // исполняем значение
                     self.run(value, table)?;
-                    // получаем значение
                     let operand = self.pop(&addr)?;
-                    // устанавливаем значение
                     if let Err(e) = (*(*unit).fields).set_local(&addr, name, operand) {
                         error!(e);
                     }
@@ -945,65 +995,63 @@ impl VM {
                 }
             }
         }
-        // успех
         Ok(())
     }
 
-    // загрузка значения переменной
+    /// Opcode: Load
+    ///
+    /// load value from local table,
+    /// types table, traits table or units table.
+    /// or, if `has_previous` pops
+    /// value (instance/unit, otherwise raises error)
+    /// from stack and then load from it.
+    ///
     unsafe fn op_load(&mut self, addr: &Address, name: &str, has_previous: bool,
                       should_push: bool, table: *mut Table) -> Result<(), ControlFlow> {
-        // если нет предыдущего
+        // non-previous
         if !has_previous {
-            // получаем значение
+            // loads from
             let lookup_result;
             if (*table).has(name) {
                 lookup_result = (*table).lookup(addr, &name);
             } else if (*self.types).has(name) {
                 lookup_result = (*self.types).find(addr, &name);
+            } else if (*self.traits).has(name) {
+                lookup_result = (*self.traits).find(addr, &name);
             } else {
                 lookup_result = (*self.units).find(addr, &name);
             }
-            // проверяем на ошибку
+            // error handling
             if let Err(e) = lookup_result {
-                // ошибка
                 error!(e)
             }
             else if let Ok(value) = lookup_result {
-                // пушим в стек
                 if !should_push { return Ok(()) }
                 self.push(value);
             }
         }
-        // если есть
+        // previous
         else {
-            // получаем значение
             let previous = self.pop(&addr)?;
-            // проверяем
             match previous {
+                // from instance
                 Value::Instance(instance) => {
-                    // получаем значение
                     let lookup_result = (*(*instance).fields).find(addr, &name);
-                    // проверяем на ошибку
                     if let Err(e) = lookup_result {
-                        // ошибка
                         error!(e)
                     }
                     else if let Ok(value) = lookup_result {
-                        // пушим в стек
                         if !should_push { return Ok(()) }
                         self.push(value);
                     }
                 }
+                // from unit
                 Value::Unit(unit) => {
-                    // получаем значение
                     let lookup_result = (*(*unit).fields).find(addr, &name);
-                    // проверяем на ошибку
                     if let Err(e) = lookup_result {
-                        // ошибка
                         error!(e)
                     }
                     else if let Ok(value) = lookup_result {
-                        // пушим в стек
                         if !should_push { return Ok(()) }
                         self.push(value);
                     }
@@ -1017,43 +1065,52 @@ impl VM {
                 }
             }
         }
-        // успех
         Ok(())
     }
 
-    // вызов функции
+    /// Call
+    ///
+    /// calls fn by name from local table,
+    /// or, if `has_previous` pops
+    /// value (instance/unit, otherwise raises error)
+    /// from stack and then calls fn
+    /// by name from it
+    ///
     #[allow(unused_parens)]
     pub unsafe fn call(&mut self, addr: &Address, name: &str,
                               callable: Value, args: &Chunk,
                               table: *mut Table, should_push: bool) -> Result<(), ControlFlow> {
 
-        // подгрузка аргументов
+        /// Pass arguments
+        ///
+        /// * `params_amount`: expected params amount
+        /// * `args`: args chunk
+        /// * `params`: params vector, used
+        ///   to set variables with params names
+        ///   to args
+        /// * `table`: table, where fn called
+        /// * `call_table`: call table
+        ///
         unsafe fn pass_arguments(vm: &mut VM, addr: &Address, name: &str, params_amount: usize,
                                  args: &Chunk, params: Vec<String>, table: *mut Table,
                                  call_table: *mut Table) -> Result<(), ControlFlow> {
-            // фиксируем размер стека
+            // passing args
             let prev_size = vm.stack.len();
-            // загрузка аргументов
             vm.run(args, table)?;
-            // фиксируем новый размер стека
             let new_size = vm.stack.len();
-            // количество переданных аргументов
             let passed_amount = new_size-prev_size;
-            // проверяем количество аргументов и параметров
-            // если совпало
+            // ensuring args && params amount are equal
             if passed_amount == params_amount {
-                // проходимся по реверсированным параметрам
+                // defining params variables with
+                // args values
                 for param in params.iter().rev() {
-                    // получаем аргумент из стека
                     let operand = vm.pop(&addr)?;
-                    // устанавливаем в таблице
                     if let Err(e) = (*call_table).define(addr, &param, operand) {
                         error!(e);
                     }
                 }
                 Ok(())
             }
-            // если не совпало
             else {
                 error!(Error::own(
                     addr.clone(),
@@ -1066,18 +1123,22 @@ impl VM {
             }
         }
 
-        // только загрузка аргументов
+
+        /// Just loads arguments to stack
+        ///
+        /// * `params_amount`: expected params amount
+        /// * `args`: args chunk
+        /// * `table`: table, where fn called
+        /// * `call_table`: call table
+        ///
         unsafe fn load_arguments(vm: &mut VM, addr: &Address, name: &str, params_amount: usize,
                                  args: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
-            // фиксируем размер стека
+            // passing args
             let prev_size = vm.stack.len();
-            // загрузка аргументов
             vm.run(args, table)?;
-            // фиксируем новый размер стека
             let new_size = vm.stack.len();
-            // количество переданных аргументов
             let passed_amount = new_size-prev_size;
-            // проверяем
+            // ensuring args && params amount are equal
             if passed_amount == params_amount {
                 Ok(())
             } else {
@@ -1092,20 +1153,19 @@ impl VM {
             }
         }
 
-        // проверка на функцию
+        // checking value is fn
         if let Value::Fn(function) = callable {
-            // создаём таблицу под вызов.
+            // call table
             let call_table = memory::alloc_value(Table::new());
-            // parent таблица
+            // parent and closure tables, to chain call_table
+            // with current
             (*call_table).parent = table;
-            // замыкание
             (*call_table).closure = (*function).closure;
-            // высвобождение
+            // freeing call table
             defer! {
-                // высвобождение таблицы
                 memory::free_value(call_table);
             }
-            // рут и self
+            // root & self
             if (*function).owner.is_some() {
                 match (*function).owner.clone().unwrap() {
                     FnOwner::Unit(unit) => {
@@ -1128,54 +1188,48 @@ impl VM {
             } else {
                 (*call_table).set_root(self.globals)
             }
-            // загрузка аргументов
+            // passing args
             pass_arguments(self, addr, name, (*function).params.len(), args,
                            (*function).params.clone(), table, call_table)?;
-            // вызов
+            // running body
             match self.run(&*(*function).body, call_table) {
-                // если поймали control flow
                 Err(e) => {
                     return match e {
-                        // если поймали return
+                        // if return
                         ControlFlow::Return(val) => {
-                            // пушим
                             if should_push {
                                 self.push(val);
                             }
-                            // успех
                             Ok(())
                         },
-                        // если другая ошибка
                         _ => {
-                            // пробрасываем
+                            // otherwise, propagate
                             Err(e)
                         }
                     }
                 }
                 _ => {}
             }
-            // успех
             Ok(())
         }
-        // проверка на нативную функцию
+        // checking value is native
         else if let Value::Native(function) = callable {
-            // создаём таблицу под вызов.
+            // call table
             let call_table = memory::alloc_value(Table::new());
-            // parent таблица
+            // parent and closure tables, to chain call_table
+            // with current
             (*call_table).parent = table;
-            // высвобождение
+            // freeing
             defer! {
-                // высвобождение таблицы
                 memory::free_value(call_table);
             }
-            // рут
+            // root to globals
             (*call_table).set_root(self.globals);
-            // загрузка аргументов
+            // loading arguments to stack
             load_arguments(self, &addr, &name, (*function).params_amount, args, table)?;
-            // вызов
+            // calling native fn
             let native = (*function).function;
             native(self, addr.clone(), should_push, call_table)?;
-            // успех
             Ok(())
         }
         else {
@@ -1187,52 +1241,43 @@ impl VM {
         }
     }
 
-    // загрузка значения переменной
+    /// Opcode: Call
+    /// calls value by name
     pub unsafe fn op_call(&mut self, addr: &Address, name: &str, has_previous: bool,
                                  should_push: bool, args: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
-        // если нет предыдущего
+        // non-previous
         if !has_previous {
-            // получаем значение
             let lookup_result = (*table).lookup(&addr, &name);
-            // проверяем на ошибку
             if let Err(e) = lookup_result {
-                // ошибка
                 error!(e)
             }
             else if let Ok(value) = lookup_result {
-                // вызываем
                 self.call(addr, &name, value, &args, table, should_push)?;
             }
         }
-        // если есть
+        // previous
         else {
-            // получаем значение
             let previous = self.pop(&addr)?;
-            // проверяем
             match previous {
+                // call from instance
                 Value::Instance(instance) => {
-                    // получаем значение
                     let lookup_result = (*(*instance).fields).find(&addr, &name);
-                    // проверяем на ошибку
+
                     if let Err(e) = lookup_result {
-                        // ошибка
                         error!(e)
                     }
                     else if let Ok(value) = lookup_result {
-                        // вызываем
                         self.call(addr, &name, value, args, table, should_push)?;
                     }
                 }
+                // call from unit
                 Value::Unit(unit) => {
-                    // получаем значение
                     let lookup_result = (*(*unit).fields).find(&addr, &name);
-                    // проверяем на ошибку
+
                     if let Err(e) = lookup_result {
-                        // ошибка
                         error!(e)
                     }
                     else if let Ok(value) = lookup_result {
-                        // вызываем
                         self.call(addr, &name, value, args, table, should_push)?;
                     }
                 }
@@ -1245,30 +1290,31 @@ impl VM {
                 }
             }
         }
-        // успех
         Ok(())
     }
 
-    // дублирование значения в стеке
+    /// Opcode: Duplicate
+    /// duplicates value in stack
+    ///
     unsafe fn op_duplicate(&mut self, addr: &Address) -> Result<(), ControlFlow> {
-        // операнд
         let operand = self.pop(&addr)?;
-        // пушим
         self.push(operand);
         self.push(operand);
-        // успех
         Ok(())
     }
 
-    // проверка трейтов
+    /// Checking instance impls all traits,
+    /// if instance doesn't impl some fn-s,
+    /// adds default implementation if exists,
+    /// otherwise raises error
+    ///
     unsafe fn check_traits(&mut self, addr: &Address, instance: *mut Instance, table: *mut Table) {
-        // тип инстанса
+        // type of instance, used to check traits
         let instance_type = (*instance).t;
-        // получение трейта
+
+        /// Gets trait by name
         unsafe fn get_trait(traits: *mut Table, addr: &Address, trait_name: &str) -> Option<*mut Trait> {
-            // трейт
             let trait_result = (*traits).find(addr, trait_name);
-            // проверяем результат
             if let Err(e) = trait_result {
                 error!(e);
             }
@@ -1287,11 +1333,12 @@ impl VM {
                 return None
             }
         }
-        // получение имплементации
+
+        /// Gets impl by name
         unsafe fn get_impl(table: *mut Table, addr: &Address, impl_name: &str) -> Option<*mut Function> {
-            // трейт
+            // looking up for impl
             let fn_result = (*table).lookup(addr, impl_name);
-            // проверяем результат
+            // checking existence
             if let Err(e) = fn_result {
                 error!(e);
             }
@@ -1310,23 +1357,21 @@ impl VM {
                 return None
             }
         }
-        // проверка
+
+        // checking all traits from a type
         for trait_name in &(*instance_type).impls {
-            // получаем трейт
             let _trait = get_trait(self.traits, &addr, trait_name).unwrap();
-            // проверяем
+            // checking all fn-s
             for function in &(*_trait).functions {
-                // проверяем наличие имплементации
+                // if impl exists, checking it
                 if (*(*instance).fields).exists(&function.name) {
-                    // имплементация
+                    // checking impl
                     let _impl = get_impl((*instance).fields, addr, &function.name);
-                    // проверяем
+
+                    // if impl exists, checking params amount
                     if _impl.is_some() {
-                        // имплементация
                         let implementation = _impl.unwrap();
-                        // проверяем имплементацию
                         if (*implementation).params.len() != function.params_amount {
-                            // ошибка
                             error!(Error::own(
                                 addr.clone(),
                                 format!(
@@ -1343,7 +1388,6 @@ impl VM {
                         }
                     }
                     else {
-                        // ошибка
                         error!(Error::own(
                             addr.clone(),
                             format!(
@@ -1357,11 +1401,10 @@ impl VM {
                     }
                 }
                 else {
-                    // проверяем есть ли дефолтная имплементация
+                    // default implementation
                     if function.default.is_some() {
-                        // реализация
+                        // creating default fn
                         let default_impl = function.default.as_ref().unwrap();
-                        // функция
                         let default_fn = Value::Fn(memory::alloc_value(
                             Function::new(
                                 Symbol::by_name(function.name.clone()),
@@ -1369,13 +1412,11 @@ impl VM {
                                 default_impl.params.clone(),
                             ),
                         ));
-                        // защита gc
+                        // guarding in gc
                         self.gc_guard(default_fn);
-                        // добавляем в gc
+                        // registering in gc
                         self.gc_register(default_fn, table);
-                        // удаляем защиту gc
-                        self.gc_unguard();
-                        // если есть
+                        // defining fn in fields of instance
                         if let Err(e) = (*(*instance).fields).define(
                             &addr,
                             &function.name,
@@ -1383,16 +1424,16 @@ impl VM {
                         ) {
                             error!(e);
                         }
+                        // deleting gc guard gc
+                        self.gc_unguard();
                     }
-                    // если нет
                     else {
-                        // ошибка
                         error!(Error::own(
                             addr.clone(),
                             format!(
                                 "type {} impls {}, but doesn't impl fn {}({})",
-                                (*instance_type).name.name, // todo check
-                                trait_name, function.name, // todo check
+                                (*instance_type).name.name,
+                                trait_name, function.name,
                                 function.params_amount
                             ),
                             format!("implement fn {}", function.name)
@@ -1403,29 +1444,42 @@ impl VM {
         }
     }
 
-    // созедание экземпляра типа
+    /// Opcode: Instance
+    /// creates instance `safely`
+    /// of a given type and then
+    /// pushes it to stack
+    ///
+    /// safety guaranteed by using gc_guard
+    /// before registering in gc, and gc_unguard after
+    /// registering in gc
+    ///
     unsafe fn op_instance(&mut self, addr: &Address, name: &str,
                           args: &Chunk, should_push: bool, table: *mut Table) -> Result<(), ControlFlow> {
 
-        // подгрузка конструктора
+        /// Pass constructor
+        ///
+        /// * `params_amount`: expected params amount
+        /// * `args`: args chunk
+        /// * `params`: params vector, used
+        ///   to set variables with params names
+        ///   to args
+        /// * `table`: table, where instance created
+        /// * `fields_table`: call table
+        ///
         unsafe fn pass_constructor(vm: &mut VM, addr: &Address, name: &str, params_amount: usize,
                                  args: &Chunk, params: Vec<String>, table: *mut Table,
                                    fields_table: *mut Table) -> Result<(), ControlFlow> {
-            // фиксируем размер стека
+            // passing args
             let prev_size = vm.stack.len();
-            // загрузка аргументов
             vm.run(args, table)?;
-            // фиксируем новый размер стека
             let new_size = vm.stack.len();
-            // количество переданных аргументов
             let passed_amount = new_size-prev_size;
-            // проверяем
+            // ensuring args && params amount are equal
             if passed_amount == params_amount {
-                // проходимся по реверсированным параметрам
+                // defining params variables with
+                // args values
                 for param in params.iter().rev() {
-                    // получаем аргумент из стека
                     let operand = vm.pop(&addr)?;
-                    // устанавливаем в таблице
                     if let Err(e) = (*fields_table).define(&addr, &param, operand) {
                         error!(e);
                     }
@@ -1439,25 +1493,22 @@ impl VM {
                 ));
             }
         }
-        // ищем тип
+        // looking up a type
         let lookup_result = (*self.types).lookup(addr, name);
-        // проверяем, найден ли
         if let Ok(value) = lookup_result {
-            // проверяем тип ли
             match value {
                 Value::Type(t) => {
-                    // создаём экземпляр
+                    // creating instance
                     let instance = memory::alloc_value(Instance::new(
                         t,
                         memory::alloc_value(Table::new()),
                     ));
-                    // значение экземпляра
                     let instance_value = Value::Instance(instance);
-                    // добавляем в защиту gc
+                    // guarding instance in gc
                     self.gc_guard(instance_value);
-                    // добавляем в учет gc
+                    // registering in gc
                     self.gc_register(Value::Instance(instance), table);
-                    // конструктор
+                    // passing constructor
                     pass_constructor(
                         self,
                         &addr,
@@ -1468,41 +1519,38 @@ impl VM {
                         table,
                         (*instance).fields
                     )?;
-                    // рут
+                    // setting root
                     (*(*instance).fields).set_root(self.globals);
-                    // временный parent
+                    // setting temp parent
                     (*(*instance).fields).parent = table;
-                    // временный self
+                    // setting temp self
                     (*(*instance).fields).fields.insert("self".to_string(), Value::Instance(instance));
-                    // исполняем тело
+                    // executing body
                     self.run(&*(*t).body, (*instance).fields)?;
-                    // удаляем временный self
+                    // deleting temp self
                     (*(*instance).fields).fields.remove("self");
-                    // проверка трейтов
+                    // checking traits implementation
                     self.check_traits(addr, instance, table);
-                    // бинды
+                    // binding functions
                     self.bind_functions((*instance).fields, FnOwner::Instance(instance));
-                    // init функция
+                    // calling optional init fn
                     let init_fn = "init";
                     if (*(*instance).fields).exists(init_fn) {
-                        // пушим инстанс
                         self.push(instance_value);
-                        // вызываем
                         self.op_call(addr, &init_fn, true, false, &Chunk::new(vec![]), table)?
                     }
-                    // пушим
+                    // pushing instance
                     if should_push {
                         self.push(instance_value);
                     }
-                    // удаляем временный parent
+                    // deleting temp parent
                     (*(*instance).fields).parent = std::ptr::null_mut();
-                    // удаляем защиту gc
+                    // unguarding from gc
                     self.gc_unguard();
-                    // успех
                     Ok(())
                 }
                 _ => {
-                    panic!("found a non-type value in types table.")
+                    panic!("found a non-type value in types table. report this error to the developer.")
                 }
             }
         }
@@ -1511,7 +1559,7 @@ impl VM {
         }
     }
 
-    // окончание цикла
+    /// Opcode: EndLoop
     #[allow(unused_variables)]
     unsafe fn op_endloop(&mut self, addr: &Address, current_iteration: bool) -> Result<(), ControlFlow> {
         if current_iteration {
@@ -1521,46 +1569,55 @@ impl VM {
         }
     }
 
-    // возврат значения из функции
+    /// Opcode: Return
     unsafe fn op_return(&mut self, addr: &Address, value: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
-        // выполняем
         self.run(value, table)?;
         let value = self.pop(addr)?;
-        // возвращаем
+
         Err(ControlFlow::Return(value))
     }
 
-    // нативная функция
+    /// Opcode: Native
+    ///
+    /// Sets native fn, provided
+    /// in `/vm/natives/natives.rs`
+    /// in local table by name
+    ///
     unsafe fn op_native(&mut self, addr: &Address, name: &str) -> Result<(), ControlFlow> {
-        // лукап
+        // finding native function, provided
+        // by `vm/natives/natives.rs`
         let result = (*self.natives).find(addr, &name);
-        // если нашлась нативная функция
+
         if let Ok(value) = result {
             self.push(value);
         }
-        // если нет
         if let Err(e) = result {
             error!(e);
         }
-        // ок
+
         Ok(())
     }
 
-    // "пробрасывание" ошибок
+    /// Opcode: ErrorPropagation
+    ///
+    /// If value implements `is_ok`, and if `is_ok` == false,
+    /// returns `propagation value` by `ControlFlow::Return(_)`
+    ///
+    /// Otherwise, if `is_ok` == true, unwraps `propagation value`
+    ///
     unsafe fn op_error_propagation(&mut self, addr: &Address, value: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
-        // выполняем
+        // running value
         self.run(value, table)?;
-        // значение
         let value = self.pop(addr)?;
-        // вызов is_ok
+
+        /// Calls is ok
+        /// from an instance
+        ///
         unsafe fn call_is_ok(vm: &mut VM, addr: &Address, instance: *mut Instance) -> Result<bool, ControlFlow> {
-            // пробуем получить is_ok
             let lookup_result = (*(*instance).fields).find(&addr, "is_ok");
-            // если успешно
+
             if let Ok(callable) = lookup_result {
-                // проверяем, функция ли
                 if let Value::Fn(function) = callable {
-                    // проверяем количество аргументов
                     if (*function).params.len() != 0 {
                         error!(Error::own_text(
                             addr.clone(),
@@ -1569,7 +1626,6 @@ impl VM {
                         ));
                     }
                 }
-                // если нет
                 else {
                     error!(Error::new(
                             addr.clone(),
@@ -1577,16 +1633,15 @@ impl VM {
                             "is_ok should be fn."
                         ));
                 }
-                // вызываем
                 vm.call(
                     &addr, "is_ok", callable,
                     &Chunk::new(vec![]),
                     memory::alloc_value(Table::new()),
                     true
                 )?;
-                // получаем значение
+
                 let is_ok = vm.pop(addr)?;
-                // проверяем, бул ли
+
                 return if let Value::Bool(boolean) = is_ok {
                     Ok(boolean)
                 } else {
@@ -1597,23 +1652,21 @@ impl VM {
                     ));
                 }
             }
-            // если ошибка
             else if let Err(e) = lookup_result {
                 error!(e);
             }
-            // dead code
             Ok(false)
         }
-        // вызов unwrap
+
+        /// Calls unwrap
+        /// from an instance
+        ///
         unsafe fn call_unwrap(vm: &mut VM, addr: &Address, instance: *mut Instance) -> Result<(), ControlFlow> {
-            // пробуем получить is_ok
             let lookup_result = (*(*instance).fields).find(addr, "unwrap");
-            // если успешно
+
             match lookup_result {
                 Ok(callable) => {
-                    // проверяем, функция ли
                     if let Value::Fn(function) = callable {
-                        // проверяем количество аргументов
                         if (*function).params.len() != 0 {
                             error!(Error::own_text(
                                 addr.clone(),
@@ -1622,7 +1675,6 @@ impl VM {
                             ));
                         }
                     }
-                    // если нет
                     else {
                         error!(Error::new(
                             addr.clone(),
@@ -1630,41 +1682,36 @@ impl VM {
                             "unwrap should be fn."
                         ));
                     }
-                    // вызываем
                     vm.call(
                         &addr, "unwrap", callable,
                         &Chunk::new(vec![]),
                         memory::alloc_value(Table::new()),
                         true
                     )?;
-                    // успех
                     Ok(())
                 },
                 Err(e) => {
-                    // ошибка
                     error!(e);
                 }
             }
         }
-        // проверяем тип значения
+
         if let Value::Instance(instance) = value {
-            // вызов is_ok
+            // calling is ok
             let is_ok = call_is_ok(
                 self,
                 &addr,
                 instance,
             )?;
-            // проверяем is_ok
-            // если есть ошибка
+            // if it's no ok
             if !is_ok {
-                // возвращаем обратно
+                // returning value back
                 return Err(
                     ControlFlow::Return(value)
                 );
             }
-            // если нет ошибки
             else {
-                // вызываем unwrap
+                // calling unwrap
                 call_unwrap(
                     self,
                     addr,
@@ -1672,7 +1719,6 @@ impl VM {
                 )?;
             }
         }
-        // если неверный тип значения - ошибка
         else {
             error!(Error::own_text(
                 addr.clone(),
@@ -1680,48 +1726,45 @@ impl VM {
                 "requires instance of type that impls .is_ok() and .unwrap() fn-s."
             ))
         }
-        // успех
         Ok(())
     }
 
-    // проверка имплементации трейта
+    /// Opcode: Impls
+    ///
+    /// Checks value is impls a
+    /// `trait`, named `trait_name`
+    ///
     unsafe fn op_impls(&mut self, addr: &Address, value: &Chunk,
                        trait_name: &str, table: *mut Table) -> Result<(), ControlFlow> {
-        // выполняем
+        // running impl
         self.run(value, table)?;
-        // значение
         let value = self.pop(&addr)?;
-        // проверка, экземпляр ли класс значение
+
+        // if value returned instance, checking trait
+        // is implemented
         if let Value::Instance(instance) = value {
-            // ищем трейт
+            // checking trait is implemented
             let lookup_result = (*self.traits).lookup(&addr, &trait_name);
-            // если нашли
+
             if let Ok(trait_value) = lookup_result {
-                // проверяем, трейт ли
                 match trait_value {
-                    // если трейт
                     Value::Trait(_trait) => {
-                        // список имплементаций
                         let impls = &(*(*instance).t).impls;
-                        // имена трейта
+
                         let name = &(*_trait).name.name;
                         let full_name_option = &(*_trait).name.full_name;
-                        // если есть полное имя
+
                         if let Some(full_name) = full_name_option {
-                            // пушим бул, есть ли трейт в имплементациях
                             self.push(Value::Bool(
                                 impls.contains(&name) || impls.contains(&full_name),
                             ));
                         }
-                        // если нет
                         else {
-                            // пушим бул, есть ли трейт в имплементациях
                             self.push(Value::Bool(
                                 impls.contains(&name),
                             ));
                         }
                     }
-                    // если нет
                     _ => {
                         panic!("not a trait in traits table. report to developer.")
                     }
@@ -1739,17 +1782,22 @@ impl VM {
                 "impls op requires instance."
             ))
         }
+
         // успех
         Ok(())
     }
 
-    // удаление локальной переменной
+    /// Opcode: DeleteLocal
+    ///
+    /// Deletes a variable from
+    /// local table by name
+    ///
     #[allow(unused_variables)]
     unsafe fn op_delete_local(&self, addr: &Address, name: &String, table: *mut Table) {
         (*table).fields.remove(name);
     }
 
-    // запуск байткода
+    /// Running chunk
     #[allow(unused_variables)]
     pub unsafe fn run(&mut self, chunk: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         for op in chunk.opcodes() {
@@ -1890,6 +1938,6 @@ impl VM {
     }
 }
 
-// имплементация для передачи между потоками
+/// Send & sync for future multi-threading.
 unsafe impl Send for VM {}
 unsafe impl Sync for VM {}
