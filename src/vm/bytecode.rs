@@ -1,26 +1,29 @@
-// импорты
+// imports
 use crate::{lexer::address::Address, vm::values::Value};
 use crate::vm::values::TraitFn;
 
-// чанк
+/// Opcodes chunk
 #[derive(Clone, Debug)]
 pub struct Chunk {
     opcodes: Vec<Opcode>,
 }
-// имплементация
+/// Chunk implementation
 impl Chunk {
+    /// New chunk
     pub fn new(chunk: Vec<Opcode>) -> Self {
         Chunk { opcodes: chunk }
     }
+    /// Creates chunk from opcode
     pub fn of(op: Opcode) -> Self {
         Chunk { opcodes: vec![op] }
     }
+    /// Get opcodes list
     pub fn opcodes(&self) -> &Vec<Opcode> {
         &self.opcodes
     }
 }
 
-// значение опкода
+/// Opcode value
 #[derive(Clone, Debug)]
 pub enum OpcodeValue {
     Bool(bool),
@@ -30,7 +33,7 @@ pub enum OpcodeValue {
     Raw(Value),
 }
 
-// опкод
+/// Opcode
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
 pub enum Opcode {
@@ -163,11 +166,14 @@ pub enum Opcode {
         name: String,
     }
 }
-// имплементация
+/// Opcode Implementation
 impl Opcode {
-    // вывод древа опкодов
+    /// Prints opcode
+    /// with nested opcodes
+    /// 
+    /// Just like tree 🌴
     pub fn print(&self, indent: usize) {
-        // вывод с отступом
+        /// Print text with indent
         fn print_indent(indent: usize, text: &str) {
             if indent == 0 {
                 println!("{}", text);
@@ -175,13 +181,13 @@ impl Opcode {
                 println!("{space}{text}", space = "  ".repeat(indent));
             }
         }
-        // вывод чанка
+        /// Print chunk with indent
         fn print_chunk(indent: usize, chunk: &Chunk) {
             for op in &chunk.opcodes {
                 op.print(indent);
             }
         }
-        // вывод опкода
+        /// Print opcode
         match self {
             Opcode::Push { value, .. } => {
                 print_indent(indent, format!("push {value:?}").as_str());

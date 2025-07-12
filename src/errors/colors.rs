@@ -2,7 +2,7 @@
 #![allow(non_upper_case_globals)]
 #![allow(unused)]
 
-// цвета
+// colors
 pub static ResetColor: &str = "\u{001B}[0m";
 pub static RedColor: &str = "\x1b[38;2;255;64;80m";
 pub static GreenColor: &str = "\x1B[32m";

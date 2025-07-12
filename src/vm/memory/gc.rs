@@ -1,11 +1,18 @@
-// импорты
+// imports
 use crate::vm::table::Table;
 use crate::vm::values::{FnOwner, Value};
 use crate::vm::vm::VM;
 use crate::vm::memory::memory;
 use std::collections::{HashSet};
 
-// структура сборщика мусора
+/// Garbage collector
+///
+/// * `objects`: contains all ever allocated values, what alive.
+/// * `marked`: contains all marked values during collect_garbage.
+/// * `marked_tables`: contains all marked tables during collect_garbage.
+/// * `guard`: contains all guarded from garbage collection objects.
+/// * `debug`: enable/disable debug messages
+///
 #[derive(Debug)]
 pub struct GC {
     objects: HashSet<Value>,
@@ -15,9 +22,9 @@ pub struct GC {
     debug: bool,
 }
 
-// mark & sweep сборщик мусора
+/// Mark & sweep garbage collector implementation
 impl GC {
-    // новый gc
+    /// New gc
     pub fn new(debug: bool) -> GC {
         GC {
             objects: HashSet::new(),
@@ -27,25 +34,32 @@ impl GC {
             debug
         }
     }
-    // лог
+
+    /// Prints message is debug is enabled
     fn log(&self, message: &str) {
         if self.debug { println!("{}", message) };
     }
-    // ресет
+
+    /// Resets `marked` and `marked_tables` after garbage collection
     fn reset(&mut self) {
         self.marked = HashSet::new();
         self.marked_tables = HashSet::new();
     }
-    // маркинг значения
+
+    /// Marks value
+    ///
+    /// Mark will be affected only on the
+    /// reference types except Type && Trait
+    ///
     #[allow(unused_parens)]
     pub fn mark_value(&mut self, value: Value) {
-        // проверяем
+        // if value is already marked, skip
         if self.marked.contains(&value) {
             return;
         }
-        // лог
+        // logging marking value
         self.log(&format!("gc :: mark :: value = {value:?}"));
-        // маркинг
+        // marking reference types
         match value {
             Value::Instance(instance) => unsafe {
                 self.mark_table((*instance).fields);
@@ -87,40 +101,48 @@ impl GC {
             _ => {}
         }
     }
-    // маркинг таблицы
+
+    /// Marks table
+    /// if it's not already marked
+    ///
+    /// Marks values inside
+    ///
     unsafe fn mark_table(&mut self, table: *mut Table) {
-        // проверка на нулл
+        // checking pointer is not null
         if table.is_null() { return; }
-        // проверяем
+        // if table is already marked, skip
         if self.marked_tables.contains(&table) {
             return;
         }
-        // добавляем
+        // adding to marked list
         self.marked_tables.insert(table);
-        // лог
+        // logging marked table
         self.log(&format!("gc :: mark :: table = {table:?}"));
-        // значения таблицы
+        // marking table values
         for val in (*table).fields.values() {
             self.mark_value(*val);
         }
-        // маркинг замыкания
+        // marking table closure
         if !(*table).closure.is_null() {
             self.mark_table((*table).closure);
         }
-        // маркинг рут таблицы
+        // marking table root
         if !(*table).root.is_null() {
             self.mark_table((*table).root);
         }
-        // маркинг parent таблицы
+        // marking table parent
         if !(*table).parent.is_null() {
             self.mark_table((*table).parent);
         }
     }
-    // очистка
+
+    /// Sweeps up trash
+    /// Freeing unmarked objects during mark phase
+    ///
     fn sweep(&mut self) {
-        // лог
+        // logging sweep is running
         self.log("gc :: sweep :: running");
-        // ищем объекты для очистки, и удаляем из списка self.objects
+        // finding unmarked objects
         let mut to_free = vec![];
         self.objects.retain(|value| {
             if self.marked.contains(&value.clone()) {
@@ -130,14 +152,17 @@ impl GC {
                 false
             }
         });
-        // перебираем, и высвобождаем память
+        // freeing this objects
         for value in to_free {
             self.free_value(value.clone());
         }
     }
-    // добавить в аллоцированные
+
+    /// Adding object to allocated list
+    /// Necessary for all reference type 
+    /// values except Type && Trait
+    ///
     pub fn add_object(&mut self, value: Value) {
-        // добавляем
         match value {
             Value::Instance(_) | Value::Fn(_) |
             Value::Native(_) | Value::String(_) |
@@ -150,9 +175,12 @@ impl GC {
             _ => {}
         }
     }
-    // высвобождение значения
+
+    /// Freeing value
     fn free_value(&self, value: Value) {
+        // logging value is freeing
         self.log(&format!("gc :: free :: value = {:?}", value));
+        // free
         match value {
             Value::Fn(f) => {
                 if !f.is_null() { memory::free_value(f); }
@@ -180,19 +208,30 @@ impl GC {
             }
         }
     }
-    // пуш значения в защиту
+
+    /// Push value to guard stack
+    /// Protects the value from being freed during
+    /// sweep phase
+    ///
     pub fn push_guard(&mut self, value: Value) {
         self.guard.push(value);
     }
-    // поп значения из защиты
+
+    /// Pop value from the guard stack
     pub fn pop_guard(&mut self) {
         self.guard.pop();
     }
-    // сборка мусора
+
+    /// Collect garbage
+    /// Collects unused values
+    ///
+    /// Has medium runtime cost
+    ///
     pub unsafe fn collect_garbage(&mut self, vm: &mut VM, table: *mut Table) {
-        // лог
+        // logging gc is triggered
         self.log("gc :: triggered");
-        // марк
+
+        // mark phase
         // > stack
         for val in vm.stack.clone() {
             self.mark_value(val)
@@ -207,23 +246,29 @@ impl GC {
         for value in self.guard.clone() {
             self.mark_value(value);
         }
-        // sweep
+
+        // sweep phase
         self.sweep();
-        // ресет
+
+        // reset gc mark vectors
         self.reset();
-        // лог
+
+        // log gc ended
         self.log("gc :: end");
     }
-    // количество объектов
+    
+    /// Allocated values amount
     pub fn objects_amount(&mut self) -> usize {
-        // возвращаем
         self.objects.len()
     }
-    // полный cleanup
+    
+    /// Full garbage collector cleanup
+    /// Freeing all allocated values
     pub fn cleanup(&mut self) {
-        // лог
+        // log gc is cleaning up
         self.log(&format!("gc :: cleanup :: {:?}", self.objects.len()));
-        // перебираем, и высвобождаем аллоцированые объекты
+        
+        // freeing objects
         for value in &self.objects {
             self.free_value(value.clone());
         }

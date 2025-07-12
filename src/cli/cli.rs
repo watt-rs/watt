@@ -1,4 +1,4 @@
-// импорты
+// imports
 use crate::executor::executor;
 use clap::{Arg, ArgAction};
 
@@ -59,12 +59,7 @@ pub unsafe fn cli() {
 
     let file = matches.get_one::<String>("file").unwrap();
 
-    /*if file.is_none() {
-       parser.print_help();
-       std::process::exit(1);
-    }*/
-
-    // запускаем
+    // run executor with parsed args
     executor::run(
         file.into(),
         matches.get_one::<usize>("gc-threshold").copied(),

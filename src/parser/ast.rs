@@ -1,9 +1,9 @@
-﻿// импорты
+﻿// imports
 use crate::lexer::lexer::*;
 use crate::parser::import::Import;
 use crate::errors::errors::Error;
 
-// нода
+/// AST node
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 #[allow(dead_code)]
 pub enum Node {
@@ -161,14 +161,16 @@ pub enum Node {
     }
 }
 
-// кейс
+/// Match statement case
+/// Represents pattern value, body
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct MatchCase {
     pub value: Box<Node>,
     pub body: Box<Node>
 }
-// имплементация
+/// Match case implementation
 impl MatchCase {
+    /// New match case
     pub fn new(value: Box<Node>, body: Box<Node>) -> MatchCase {
         MatchCase {
             value,
@@ -177,21 +179,26 @@ impl MatchCase {
     }
 }
 
-// функция трейта
+/// Trait node function
+/// 
+/// * `name`: name of fn
+/// * `params`: fn params
+/// * `default`: optional default impl
+/// 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct TraitNodeFn {
     pub name: Token,
     pub params: Vec<Token>,
     pub default: Option<Box<Node>>
 }
-// имплементация
+/// Trait node function implementation
 impl TraitNodeFn {
     pub fn new(name: Token, params: Vec<Token>, default: Option<Box<Node>>) -> Self {
         Self { name, params, default }
     }
 }
 
-// установка should_push
+/// Sets should push for access node
 pub fn set_should_push(node: Node, should_push: bool) -> Result<Node, Error> {
     match node {
         Node::Get { previous, name, .. } => {

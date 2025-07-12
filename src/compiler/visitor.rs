@@ -1,4 +1,4 @@
-// импорты
+// import
 use crate::parser::import::Import;
 use crate::lexer::lexer::*;
 use crate::parser::ast::*;
@@ -9,16 +9,15 @@ use crate::error;
 use crate::errors::errors::{Error};
 use crate::resolver::resolver::ImportsResolver;
 
-// визитор (компилятор)
+/// Visitor
 pub struct CompileVisitor<'visitor> {
     opcodes: VecDeque<Vec<Opcode>>,
     resolver: ImportsResolver<'visitor, 'visitor>,
 }
-
-// имплементация визитора
+/// Visitor implementation
 #[allow(unused_variables)]
 impl<'visitor> CompileVisitor<'visitor> {
-    // новый визитор
+    /// New visitor
     pub fn new() -> Self {
         CompileVisitor {
             opcodes: VecDeque::new(),
@@ -26,34 +25,37 @@ impl<'visitor> CompileVisitor<'visitor> {
         }
     }
 
-    // визит билт-инов
+    /// Visit built-in imports
+    ///
+    /// visits base.wt ast node.
+    ///
     fn visit_builtins(&mut self) {
-        // ноды импротов
         let imports = self.resolver.import_builtins();
-        // визит нод
         for node in &imports {
             self.visit_node(node)
         }
     }
 
-    // компиляция
+    /// Compile node
     pub unsafe fn compile(&mut self, node: &Node) -> Chunk {
-        // пуш чанка
         self.push_chunk();
-        // билт-ины
         self.visit_builtins();
-        // код
         self.visit_node(node);
-        // возвращаем
         Chunk::new(self.pop_chunk())
     }
 
-    // пушим чанк
+    /// Push chunk to opcodes chunk VecDeque
+    ///
+    /// raises error if compile-visitor stack is empty
+    ///
     pub fn push_chunk(&mut self) {
         self.opcodes.push_front(vec![]);
     }
 
-    // попаем чанк
+    /// Pop chunk from opcodes chunk VecDeque
+    ///
+    /// raises error if compile-visitor stack is empty
+    ///
     pub fn pop_chunk(&mut self) -> Vec<Opcode> {
         match self.opcodes.pop_front() {
             Some(v) => v,
@@ -61,7 +63,10 @@ impl<'visitor> CompileVisitor<'visitor> {
         }
     }
 
-    // пушим инструкцию
+    /// Push instruction to last chunk
+    ///
+    /// raises error if compile-visitor stack is empty
+    ///
     pub fn push_instr(&mut self, op: Opcode) {
         match self.opcodes.front_mut() {
             Some(v) => v.push(op),
@@ -71,7 +76,10 @@ impl<'visitor> CompileVisitor<'visitor> {
         }
     }
 
-    // попаем инструкцию
+    /// Pop instruction from last chunk
+    ///
+    /// raises error if compile-visitor stack is empty
+    ///
     pub fn pop_instr(&mut self) -> Opcode {
         match self.opcodes.front_mut() {
             Some(v) => v.pop().unwrap(),
@@ -81,7 +89,7 @@ impl<'visitor> CompileVisitor<'visitor> {
         }
     }
 
-    // визит ноды
+    /// Visit node
     pub fn visit_node(&mut self, node: &Node) {
         match node {
             Node::Number { value } => {
@@ -222,64 +230,67 @@ impl<'visitor> CompileVisitor<'visitor> {
         }
     }
 
-    // блок
+    /// Visit block
     fn visit_block(&mut self, body: &Vec<Node>) {
-        // перебор и компиляция нод
         for node in body {
             self.visit_node(node)
         }
     }
 
-    // визит числа
+    /// Visit number
     fn visit_number(&mut self, value: &Token) {
-        // пуш флоата
         if value.value.contains(".") {
             self.push_instr(Opcode::Push {
                 addr: value.address.clone(),
                 value: OpcodeValue::Float(value.value.parse::<f64>().unwrap()),
             });
         }
-        // пуш инта
         else {
+            let parsed: i64 = {
+                if value.value.starts_with("0x") {
+                    i64::from_str_radix(&value.value[2..], 16).unwrap()
+                } else if value.value.starts_with("0o") {
+                    i64::from_str_radix(&value.value[2..], 8).unwrap()
+                } else if value.value.starts_with("0b") {
+                    i64::from_str_radix(&value.value[2..], 2).unwrap()
+                } else {
+                    value.value.parse::<i64>().unwrap()
+                }
+            };
             self.push_instr(Opcode::Push {
                 addr: value.address.clone(),
-                value: OpcodeValue::Int(value.value.parse::<i64>().unwrap()),
+                value: OpcodeValue::Int(parsed),
             });
         }
     }
 
-    // визит строки
+    /// Visit string
     fn visit_string(&mut self, value: &Token) {
-        // пуш строки
         self.push_instr(Opcode::Push {
             addr: value.address.clone(),
             value: OpcodeValue::String(value.value.clone()),
         });
     }
 
-    // визит була
+    /// Visit bool
     fn visit_bool(&mut self, value: &Token) {
-        // пуш бул
         self.push_instr(Opcode::Push {
             addr: value.address.clone(),
             value: OpcodeValue::Bool(value.value.parse::<bool>().unwrap()),
         });
     }
 
-    // бинарая операция
+    /// Visit binary operation
     fn visit_binary(&mut self, left: &Node, right: &Node, op: &Token) {
-        // правая часть
         self.visit_node(right);
-        // левая часть
         self.visit_node(left);
-        // бинарная операция
         self.push_instr(Opcode::Bin {
             addr: op.address.clone(),
             op: op.value.clone(),
         });
     }
 
-    // блок if
+    /// Visit if
     fn visit_if(
         &mut self,
         location: &Token,
@@ -287,23 +298,21 @@ impl<'visitor> CompileVisitor<'visitor> {
         body: &Node,
         elif: Option<&Node>,
     ) {
-        // компиляция if
-        // чанк условия
+        // logical chunk
         self.push_chunk();
         self.visit_node(logical);
         let logical_chunk = self.pop_chunk();
-        // чанк тела
+        // body chunk
         self.push_chunk();
         self.visit_node(body);
         let body_chunk = self.pop_chunk();
-        // компиляция elif
+        // elif
         let mut elseif: Option<Chunk> = None;
-        // если есть
         if let Some(n) = elif {
             self.visit_node(n);
             elseif = Some(Chunk::of(self.pop_instr()));
         }
-        // возвращаем if
+        // push if
         self.push_instr(Opcode::If {
             addr: location.address.clone(),
             cond: Chunk::new(logical_chunk),
@@ -312,22 +321,22 @@ impl<'visitor> CompileVisitor<'visitor> {
         });
     }
 
-    // цикл while
+    /// Visit while
     fn visit_while(
         &mut self,
         location: &Token,
         logical: &Node,
         body: &Node,
     ) {
-        // чанк логики
+        // logical chunk
         self.push_chunk();
         self.visit_node(logical);
         let logical_chunk = self.pop_chunk();
-        // чанк тела
+        // body chunk
         self.push_chunk();
         self.visit_node(body);
         let body_chunk = self.pop_chunk();
-        // опкод условия
+        // nested if opcode
         let if_opcode = Opcode::If {
             addr: location.address.clone(),
             cond: Chunk::new(logical_chunk),
@@ -339,32 +348,31 @@ impl<'visitor> CompileVisitor<'visitor> {
                 elif: None
             })),
         };
-        // цикл
+        // push loop
         self.push_instr(Opcode::Loop {
             addr: location.address.clone(),
             body: Chunk::of(if_opcode),
         });
     }
 
-    // дефайн переменной
+    /// Define variable
     fn visit_define(
         &mut self,
         previous: Option<&Node>,
         name: &Token,
         value: &Node
     ) {
-        // есть ли предыдущая нода
+        // previous
         let mut has_previous = false;
-        // если есть
         if let Some(prev) = previous {
             self.visit_node(&prev);
             has_previous = true;
         }
-        // чанк для значения
+        // value chunk
         self.push_chunk();
         self.visit_node(value);
         let value_chunk = self.pop_chunk();
-        // дефайн
+        // push define
         self.push_instr(Opcode::Define {
             addr: name.address.clone(),
             name: name.value.clone(),
@@ -373,7 +381,7 @@ impl<'visitor> CompileVisitor<'visitor> {
         });
     }
 
-    // вызов функции
+    /// Visit call
     fn visit_call(
         &mut self,
         previous: Option<&Node>,
@@ -381,18 +389,17 @@ impl<'visitor> CompileVisitor<'visitor> {
         args: &Vec<Node>,
         should_push: bool,
     ) {
-        // есть ли предыдущая нода
+        // previous
         let mut has_previous = false;
-        // если есть
         if let Some(prev) = previous {
             self.visit_node(&prev);
             has_previous = true;
         }
-        // чанка аргументов
+        // args chunk
         self.push_chunk();
         self.visit_block(args);
         let args_chunk = self.pop_chunk();
-        // вызов
+        // push call
         self.push_instr(Opcode::Call {
             addr: name.address.clone(),
             name: name.value.clone(),
@@ -402,7 +409,7 @@ impl<'visitor> CompileVisitor<'visitor> {
         });
     }
 
-    // дефайн функции
+    /// Visit fn declaration
     fn visit_fn_decl(
         &mut self,
         name: &Token,
@@ -411,23 +418,22 @@ impl<'visitor> CompileVisitor<'visitor> {
         body: &Node,
         make_closure: bool
     ) {
-        // полное имя
+        // full name
         let full_name = full_name.as_ref().map(|n| n.value.clone());
-        // параметры
+        // params
         let mut params = Vec::with_capacity(parameters.len());
         for param in parameters {
             params.push(param.value.clone());
         }
-        // чанк тела
+        // body chunk
         self.push_chunk();
         self.visit_node(body);
-        // получаем последний опкод который оставил `body` функции
+        // last fn `body` opcode
         let last_opcode = self.opcodes.front().and_then(|last| last.last());
-        // е если он не заканчивается на Ret, то добавляем заглушку
         match last_opcode {
-            // если заканчивается
+            // if it's a return
             Some(&Opcode::Ret { .. }) => {}
-            // если не заканчивается
+            // if not, creating default
             _ => {
                 self.visit_node(&Node::Ret {
                     location: name.clone(),
@@ -437,9 +443,9 @@ impl<'visitor> CompileVisitor<'visitor> {
                 });
             }
         }
-        // получаем чанк тела
+        // body chunk
         let chunk = self.pop_chunk();
-        // дефайн функции
+        // push define fn
         self.push_instr(Opcode::DefineFn {
             addr: name.address.clone(),
             name: name.value.clone(),
@@ -450,61 +456,55 @@ impl<'visitor> CompileVisitor<'visitor> {
         });
     }
 
-    // визит break
+    /// Visit break
     fn visit_break(&mut self, location: &Token){
-        // завершения цикла
         self.push_instr(Opcode::EndLoop {
             addr: location.address.clone(),
             current_iteration: false,
         });
     }
 
-    // визит continue
+    /// Visit continue
     fn visit_continue(&mut self, location: &Token) {
-        // скип итерации цикла
         self.push_instr(Opcode::EndLoop {
             addr: location.address.clone(),
             current_iteration: true,
         });
     }
 
-    // визит импорта
+    /// Visit import
     fn visit_import(&mut self, imports: &Vec<Import>) {
-        // перебираем импорты
         for import in imports {
-            // option нода
             let options_node = self.resolver.import(
                 import.addr.clone(), import
             );
-            // визит ноды
             if let Some(node) = &options_node {
                 self.visit_node(node);
             }
         }
     }
 
-    // визит инициализатора списка
+    /// Visit list initializer
     fn visit_list(&mut self, location: &Token, list: &Vec<Node>) {
-        // создаём список
+        // list
         self.push_instr(Opcode::Instance {
             addr: location.address.clone(),
             name: "List".to_string(),
             args: Chunk::new(vec![]),
             should_push: true,
         });
-        // если длина больше нуля
+        // items
         if (*list).len() > 0 {
-            // заполняем
             for item in list {
-                // дублируем список
+                // duplicate list
                 self.push_instr(Opcode::Duplicate {
                     addr: location.address.clone(),
                 });
-                // чанк элемента
                 self.push_chunk();
+                // visit item
                 self.visit_node(item);
                 let chunk = self.pop_chunk();
-                // добавляем элемент
+                // calling add with element
                 self.push_instr(Opcode::Call {
                     addr: location.address.clone(),
                     name: "add".to_string(),
@@ -518,33 +518,32 @@ impl<'visitor> CompileVisitor<'visitor> {
         }
     }
 
-    // визит инициализатора мапы
+    /// Visit map
     fn visit_map(
         &mut self,
         location: &Token,
         map: &Vec<(Node, Node)>,
     ) {
-        // создаём мапу
+        // map
         self.push_instr(Opcode::Instance {
             addr: location.address.clone(),
             name: "Map".to_string(),
             args: Chunk::new(vec![]),
             should_push: true,
         });
-        // если длина больше нуля
+        // items
         if (*map).len() > 0 {
-            // заполняем
             for (k, v) in map {
-                // дублируем мапу
+                // duplicate map
                 self.push_instr(Opcode::Duplicate {
                     addr: location.address.clone(),
                 });
-                // чанк ключа и значения
+                // key and value
                 self.push_chunk();
                 self.visit_node(k);
                 self.visit_node(v);
                 let chunk = self.pop_chunk();
-                // добавляем элемент
+                // calling set with key and value
                 self.push_instr(Opcode::Call {
                     addr: location.address.clone(),
                     name: "set".to_string(),
@@ -558,27 +557,26 @@ impl<'visitor> CompileVisitor<'visitor> {
         }
     }
 
-    // цикл for
+    /// Visit for
     fn visit_for(
         &mut self,
         iterable: &Node,
         variable_name: &Token,
         body: &Node,
     ) { // todo: add iterable location
-        // чанк итератора
+        // iterator chunk
         self.push_chunk();
         self.visit_node(iterable);
         let iterator_chunk = self.pop_chunk();
-        // имя для временной переменной
+        // temp variable for iterator
         let iterator_variable_name = format!("@{}", variable_name.value);
-        // создаём временную переменную для итератора
         self.push_instr(Opcode::Define {
             addr: variable_name.address.clone(),
             name: iterator_variable_name.clone(),
             value: Chunk::new(iterator_chunk),
             has_previous: false,
         });
-        // чанк тела
+        // body chunk
         self.push_chunk();
         self.push_instr(Opcode::Define {
             addr: variable_name.address.clone(),
@@ -602,7 +600,7 @@ impl<'visitor> CompileVisitor<'visitor> {
         });
         self.visit_node(body);
         let body_chunk = self.pop_chunk();
-        // чанк иф
+        // if chunk
         self.push_chunk();
         self.push_instr(Opcode::If {
             addr: variable_name.address.clone(),
@@ -628,18 +626,19 @@ impl<'visitor> CompileVisitor<'visitor> {
             })),
         });
         let if_chunk = self.pop_chunk();
-        // цикл
+        // push loop
         self.push_instr(Opcode::Loop {
             addr: variable_name.address.clone(),
             body: Chunk::new(if_chunk),
         });
-        // удаление временной переменной
+        // delete temp variable
         self.push_instr(Opcode::DeleteLocal {
             addr: variable_name.address.clone(),
             name: iterator_variable_name
         })
     }
-    // match
+
+    /// Visit match
     fn visit_match(
         &mut self,
         location: &Token,
@@ -647,9 +646,9 @@ impl<'visitor> CompileVisitor<'visitor> {
         cases: &Vec<MatchCase>,
         default: &Node,
     ) {
-        // итоговый опкод
+        // result opcode
         let mut if_op;
-        // дефолтный кейс
+        // default case
         self.push_chunk();
         self.visit_node(default);
         let body_chunk = self.pop_chunk();
@@ -662,10 +661,9 @@ impl<'visitor> CompileVisitor<'visitor> {
             body: Chunk::new(body_chunk),
             elif: None,
         };
-        // кейсы
+        // compiling cases
         for case in cases {
-            // кейс
-            // логический чанк
+            // logic chunk
             self.push_chunk();
             self.visit_node(&*case.value);
             self.visit_node(&matchable);
@@ -674,11 +672,12 @@ impl<'visitor> CompileVisitor<'visitor> {
                 op: "==".to_string(),
             });
             let logical_chunk = self.pop_chunk();
-            // чанк тела
+
+            // body chunk
             self.push_chunk();
             self.visit_node(&*case.body);
             let body_chunk = self.pop_chunk();
-            // новый кейс
+
             if_op = Opcode::If {
                 addr: location.address.clone(),
                 cond: Chunk::new(logical_chunk),
@@ -686,11 +685,12 @@ impl<'visitor> CompileVisitor<'visitor> {
                 elif: Some(Chunk::of(if_op))
             }
         }
-        // опкод
+
+        // push if
         self.push_instr(if_op);
     }
 
-    // анонимная функция
+    /// Visit anonymous fn declaration
     fn visit_an_fn_decl(
         &mut self,
         location: &Token,
@@ -698,20 +698,30 @@ impl<'visitor> CompileVisitor<'visitor> {
         body: &Node,
         make_closure: bool
     ) {
-        // параметры
+        // params
         let mut params = Vec::new();
         for param in parameters {
             params.push(param.value.clone());
         }
-        // чанк тела
+        // body chunk
         self.push_chunk();
         self.visit_node(body);
-        self.visit_node(&Node::Ret {
-            location: location.clone(),
-            value: Box::new(Node::Null {
-                location: location.clone(),
-            })
-        });
+        // last fn `body` opcode
+        let last_opcode = self.opcodes.front().and_then(|last| last.last());
+        match last_opcode {
+            // if it's a return
+            Some(&Opcode::Ret { .. }) => {}
+            // if not, creating default
+            _ => {
+                self.visit_node(&Node::Ret {
+                    location: location.clone(),
+                    value: Box::new(Node::Null {
+                        location: location.clone(),
+                    })
+                });
+            }
+        }
+        // получаем чанк тела
         let chunk = self.pop_chunk();
         // создание анонимной функции
         self.push_instr(Opcode::AnonymousFn {
@@ -722,7 +732,7 @@ impl<'visitor> CompileVisitor<'visitor> {
         });
     }
 
-    // нативная функция
+    /// Visit native
     fn visit_native(&mut self, name: &Token, fn_name: &Token) {
         self.push_instr(Opcode::Define {
             addr: name.address.clone(),
@@ -735,21 +745,18 @@ impl<'visitor> CompileVisitor<'visitor> {
         });
     }
 
-    // унарная операция
+    /// Visit unary
     fn visit_unary(&mut self, value: &Node, op: &Token) {
-        // компиляция значения
         self.visit_node(value);
-        // перебираем оператор
         match op.value.as_str() {
-            // оператор -
+            // negate operator
             "-" => self.push_instr(Opcode::Neg {
                 addr: op.address.clone(),
             }),
-            // оператор !
+            // bang operator
             "!" => self.push_instr(Opcode::Bang {
                 addr: op.address.clone(),
             }),
-            // неизвестный оператор
             _ => {
                 error!(Error::own_text(
                     op.address.clone(),
@@ -760,7 +767,7 @@ impl<'visitor> CompileVisitor<'visitor> {
         }
     }
 
-    // визит типа
+    /// Visit type
     fn visit_type(
         &mut self,
         name: &Token,
@@ -769,23 +776,23 @@ impl<'visitor> CompileVisitor<'visitor> {
         body: &Node,
         impl_tokens: &Vec<Token>
     ) {
-        // полное имя
+        // full name
         let full_name = full_name.as_ref().map(|name| name.value.clone());
-        // конструктор
+        // constructor
         let mut constructor_params = Vec::new();
         for param in constructor {
             constructor_params.push(param.value.clone());
         }
-        // тело типа
+        // body chunk
         self.push_chunk();
         self.visit_node(body);
         let chunk = self.pop_chunk();
-        // имплементации
+        // trait impls
         let mut impls = Vec::with_capacity(impl_tokens.len());
         for i in impl_tokens {
             impls.push(i.value.clone())
         }
-        // дефайн типа
+        // push define type
         self.push_instr(Opcode::DefineType {
             addr: name.address.clone(),
             name: name.value.clone(),
@@ -796,41 +803,39 @@ impl<'visitor> CompileVisitor<'visitor> {
         });
     }
 
-    // визит трейта
+    /// Visit trait
     fn visit_trait(
         &mut self,
         name: &Token,
         full_name: &Option<Token>,
         functions: &[TraitNodeFn]
     ) {
-        // полное имя
+        // full name
         let full_name = full_name.as_ref().map(|name| name.value.clone());
-        // функции
+        // trait functions
         let mut trait_functions: Vec<TraitFn> = Vec::new();
-        // перебираем
         for node_fn in functions {
-            // дефолтная реализация
+            // checking for default impl
             let default: Option<DefaultTraitFn>;
-            // проверяем, если есть дефолтная реализация
+
             if node_fn.default.is_some() {
-                // тело
+                // body chunk and params
                 self.push_chunk();
                 self.visit_node(node_fn.default.as_ref().unwrap());
                 let chunk = Chunk::new(self.pop_chunk());
-                // параметры
                 let params: Vec<String> = node_fn.params.iter().map(|param| param.value.clone()).collect();
-                // дефолтная реализация
+
+                // setting default
                 default = Some(DefaultTraitFn::new(
                     params,
                     chunk,
                 ))
             }
-            // если нет
             else {
-                // дефолтная реализация
+                // setting default
                 default = None
             }
-            // пушим
+
             trait_functions.push(
                 TraitFn::new(
                     node_fn.name.value.clone(),
@@ -839,7 +844,7 @@ impl<'visitor> CompileVisitor<'visitor> {
                 )
             )
         }
-        // дефайн трейта
+        // push define trait
         self.push_instr(Opcode::DefineTrait {
             addr: name.address.clone(),
             name: name.value.clone(),
@@ -848,20 +853,20 @@ impl<'visitor> CompileVisitor<'visitor> {
         });
     }
 
-    // визит юнита
+    /// Visit unit
     fn visit_unit(
         &mut self,
         name: &Token,
         full_name: &Option<Token>,
         body: &Node,
     ) {
-        // полное имя
+        // full name
         let full_name = full_name.as_ref().map(|name| name.value.clone());
-        // тело юнита
+        // body chunk
         self.push_chunk();
         self.visit_node(body);
         let chunk = self.pop_chunk();
-        // дефайн юнита
+        // push define unit
         self.push_instr(Opcode::DefineUnit {
             addr: name.address.clone(),
             name: name.value.clone(),
@@ -870,76 +875,70 @@ impl<'visitor> CompileVisitor<'visitor> {
         });
     }
 
-    // визит условия
+    /// Visit condition
     fn visit_cond(
         &mut self,
         left: &Node,
         right: &Node,
         op: &Token,
     ) {
-        // правая и левая ноды
         self.visit_node(right);
         self.visit_node(left);
-        // условие
         self.push_instr(Opcode::Cond {
             addr: op.address.clone(),
             op: op.value.clone(),
         });
     }
 
-    // визит логическово выражения
+    /// Visit logical
     fn visit_logical(
         &mut self,
         left: &Node,
         right: &Node,
         op: &Token,
     ) {
-        // правая и левая ноды
         self.visit_node(right);
         self.visit_node(left);
-        // логический опкод
         self.push_instr(Opcode::Logic {
             addr: op.address.clone(),
             op: op.value.clone(),
         });
     }
 
-    // визит возврата значения
+    /// Visit return
     fn visit_return(&mut self, location: &Token, value: &Node) {
-        // чанк значения
         self.push_chunk();
         self.visit_node(value);
         let chunk = self.pop_chunk();
-        // ретурн
+
         self.push_instr(Opcode::Ret {
             addr: location.address.clone(),
             value: Chunk::new(chunk),
         });
     }
 
-    // нулл значение
+    /// Visit null
     fn visit_null(&mut self, location: &Token) {
-        // нулл значение
         self.push_instr(Opcode::Push {
             addr: location.address.clone(),
             value: OpcodeValue::Raw(Value::Null),
         });
     }
 
-    // визит инстанса
+    /// Visit instance
     fn visit_instance(
         &mut self,
         name: &Token,
         constructor: &Vec<Node>,
         should_push: bool,
     ) {
-        // конструктор
+        // constructor
         self.push_chunk();
         for arg in constructor {
             self.visit_node(arg);
         }
         let constructor_args = self.pop_chunk();
-        // инстанс
+        // instance
         self.push_instr(Opcode::Instance {
             addr: name.address.clone(),
             name: name.value.clone(),
@@ -948,24 +947,24 @@ impl<'visitor> CompileVisitor<'visitor> {
         });
     }
 
-    // установка значения переменной
+    /// Visit assign
     fn visit_assign(
         &mut self,
         previous: Option<&Node>,
         name: &Token,
         value: &Node,
     ) {
-        // есть ли предыдущая нода
+        // previous
         let mut has_previous = false;
         if let Some(prev) = &previous {
             self.visit_node(prev);
             has_previous = true;
         }
-        // чанк значения
+        // value chunk
         self.push_chunk();
         self.visit_node(value);
         let chunk = self.pop_chunk();
-        // установка значения переменной
+        // push set
         self.push_instr(Opcode::Set {
             addr: name.address.clone(),
             name: name.value.clone(),
@@ -974,20 +973,20 @@ impl<'visitor> CompileVisitor<'visitor> {
         });
     }
 
-    // получение значения переменной
+    /// Visit get
     fn visit_get(
         &mut self,
         previous: Option<&Node>,
         name: &Token,
         should_push: bool,
     ) {
-        // есть ли предыдущая нода
+        // previous
         let mut has_previous = false;
         if let Some(prev) = previous {
             self.visit_node(prev);
             has_previous = true;
         }
-        // загрузка переменной
+        // push load
         self.push_instr(Opcode::Load {
             addr: name.address.clone(),
             name: name.value.clone(),
@@ -996,35 +995,33 @@ impl<'visitor> CompileVisitor<'visitor> {
         });
     }
     
-    // прокидывание ошибок
+    /// Visit error propagation
     fn visit_error_propagation(
         &mut self,
         location: &Token,
         value: &Node,
         should_push: bool,
     ) {
-        // чанк значения
         self.push_chunk();
         self.visit_node(value);
         let chunk = self.pop_chunk();
-        // прокидывание
+
         self.push_instr(Opcode::ErrorPropagation {
             addr: location.address.clone(),
             value: Chunk::new(chunk),
         });
     }
 
-    // проверка имплементации трейта
+    /// Visit impls trait
     pub fn visit_impls(
         &mut self,
         value: &Node,
         trait_name: &Token
     ) {
-        // чанк значения
         self.push_chunk();
         self.visit_node(value);
         let chunk = self.pop_chunk();
-        // прокидывание
+
         self.push_instr(Opcode::Impls {
             addr: trait_name.address.clone(),
             value: Chunk::new(chunk),
@@ -1032,14 +1029,14 @@ impl<'visitor> CompileVisitor<'visitor> {
         })
     }
 
-    // создание итератора по range
+    /// Visit range
     fn visit_range(&mut self, location: &Token, from: &Node, to: &Node) {
-        // чанк аргументов
+        // range call args
         self.push_chunk();
         self.visit_node(from);
         self.visit_node(to);
         let chunk = self.pop_chunk();
-        // вызов range
+        // range call
         self.push_instr(Opcode::Call {
             addr: location.address.clone(),
             name: "_range".to_string(),

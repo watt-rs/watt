@@ -12,7 +12,7 @@ use std::io::{Read, Seek, Write};
 use crate::vm::flow::ControlFlow;
 
 // провайд
-pub unsafe fn provide(built_in_address: Address, vm: &mut VM) -> Result<(), Error> {
+pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Error> {
     // функции
     natives::provide(
         vm,
