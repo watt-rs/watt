@@ -1,7 +1,7 @@
 // imports
-use std::path::PathBuf;
 use crate::executor::executor;
-use clap::{Command,Arg,ArgAction};
+use clap::{Arg, ArgAction, Command};
+use std::path::PathBuf;
 
 /// Run cli
 pub unsafe fn cli() {
@@ -55,7 +55,8 @@ pub unsafe fn cli() {
                 .value_parser(clap::value_parser!(usize))
                 .default_value("200"),
         )
-        .arg(Arg::new("file").required(true));
+        .arg(Arg::new("file").required(true))
+        .arg(Arg::new("args").action(ArgAction::Append));
 
     let matches = parser.get_matches();
 
@@ -72,6 +73,6 @@ pub unsafe fn cli() {
         matches.get_flag("lexer-bench"),
         matches.get_flag("parse-bench"),
         matches.get_flag("compile-bench"),
-        matches.get_flag("runtime-bench")
+        matches.get_flag("runtime-bench"),
     )
 }
