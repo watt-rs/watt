@@ -28,14 +28,17 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
 
             // получаем значение
             let env_key = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
-            match std::env::vars().find(|x| &x.0 == env_key) {
+            let value = match std::env::vars().find(|x| &x.0 == env_key) {
                 Some((key, value)) => {
-                    vm.push(Value::String(memory::alloc_value(value.clone())));
+                    value
                 }
                 None => {
                     vm.push(Value::Null);
+                    return Ok(());
                 }
             };
+
+            vm.op_push(OpcodeValue::String(value), table)?;
 
             // успех
             Ok(())
@@ -70,22 +73,26 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             }
 
             // получаем current dir
-            match std::env::current_dir() {
+            let cwd = match std::env::current_dir() {
                 Ok(cwd) => {
                     let path = cwd.to_str().map(|x| x.to_string());
                     match path {
                         Some(p) => {
-                            vm.push(Value::String(memory::alloc_value(p)));
+                            p
                         }
                         None => {
                             vm.push(Value::Null);
+                            return Ok(());
                         }
                     }
                 }
                 Err(e) => {
                     vm.push(Value::Null);
+                    return Ok(());
                 }
-            }
+            };
+
+            vm.op_push(OpcodeValue::String(cwd), table)?;
 
             // успех
             Ok(())
@@ -105,12 +112,22 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             // аргументы
             let args: Vec<Value> = std::env::args()
                 .skip(1)
-                .map(|x| Value::String(memory::alloc_value(x)))
+                .map(|x| {
+                    let string = Value::String(memory::alloc_value(x));
+
+                    // I don't know how to register those values properly.
+                    
+                    vm.gc_guard(string);
+                    vm.gc_register(string, table);
+
+                    string
+                })
                 .collect();
+
             let raw_list = Value::List(memory::alloc_value(args));
 
             // пушим
-            vm.push(raw_list);
+            vm.op_push(OpcodeValue::Raw(raw_list), table)?;
 
             // успех
             Ok(())
@@ -153,6 +170,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 sysinfo::RefreshKind::nothing()
                     .with_memory(sysinfo::MemoryRefreshKind::everything()),
             );
+
             vm.push(Value::Int(system_info.used_memory() as _));
 
             // успех
