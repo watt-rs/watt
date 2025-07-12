@@ -63,12 +63,12 @@ impl Table {
         }
     }
 
-    pub unsafe fn set(&mut self, address: Address, name: &str, value: Value) -> Result<(), Error> {
+    pub unsafe fn set(&mut self, address: &Address, name: &str, value: Value) -> Result<(), Error> {
         let mut current = self as *mut Table;
         while !(*current).fields.contains_key(name) {
             if (*current).root.is_null() {
                 return Err(Error::own_text(
-                    address,
+                    address.clone(),
                     format!("{name} is not defined."),
                     "you can define it, using := op."
                 ))

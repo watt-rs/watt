@@ -169,7 +169,7 @@ impl VM {
     }
     
     // бинарная операция
-    unsafe fn op_binary(&mut self, address: &Address, op: &str, table: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_binary(&mut self, address: Address, op: &str, table: *mut Table) -> Result<(), ControlFlow> {
         // два операнда
         let operand_a = self.pop(&address)?;
         let operand_b = self.pop(&address)?;
@@ -591,8 +591,8 @@ impl VM {
     }
 
     // иф
-    unsafe fn op_if(&mut self, addr: &Address, cond: &Chunk, body: &Chunk,
-                    elif: &Option<Chunk>, root: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_if(&mut self, addr: &Address, cond: Chunk, body: Chunk,
+                    elif: Option<Chunk>, root: *mut Table) -> Result<(), ControlFlow> {
         // таблица
         let table = memory::alloc_value(Table::new());
         (*table).set_root(root);
@@ -602,15 +602,15 @@ impl VM {
             memory::free_value(table);
         }
         // условие
-        self.run(cond, table)?;
+        self.run_owned(cond, table)?;
         let bool = self.pop(&addr)?;
         // проверка
         if let Value::Bool(b) = bool {
             if b {
-                self.run(body, table)?
+                self.run_owned(body, table)?
             } else {
                 if let Option::Some(else_if) = elif {
-                    self.run(else_if, table)?
+                    self.run_owned(else_if, table)?
                 }
             }
         } else {
@@ -626,7 +626,7 @@ impl VM {
 
     // луп
     #[allow(unused_variables)]
-    unsafe fn op_loop(&mut self, addr: &Address, body: &Chunk, root: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_loop(&mut self, addr: &Address, body: Chunk, root: *mut Table) -> Result<(), ControlFlow> {
         // таблица
         let table = memory::alloc_value(Table::new());
         (*table).set_root(root);
@@ -656,14 +656,14 @@ impl VM {
     }
 
     // дефайн функции
-    unsafe fn op_define_fn(&mut self, addr: &Address, symbol: Symbol, body: &Chunk,
-                        params: &Vec<String>, make_closure: bool, table: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_define_fn(&mut self, addr: &Address, symbol: Symbol, body: Chunk,
+                        params: Vec<String>, make_closure: bool, table: *mut Table) -> Result<(), ControlFlow> {
         // создаём функцию
         let function = memory::alloc_value(
             Function::new(
                 symbol.clone(),
-                memory::alloc_value(body.clone()),
-                params.clone()
+                memory::alloc_value(body),
+                params
             )
         );
         // если надо создать замыкание
@@ -740,15 +740,15 @@ impl VM {
     }
 
     // дефайн типа
-    unsafe fn op_define_type(&mut self, addr: &Address, symbol: &Symbol, body: &Chunk,
-                             constructor: &Vec<String>, impls: &Vec<String>) -> Result<(), ControlFlow> {
+    unsafe fn op_define_type(&mut self, addr: &Address, symbol: Symbol, body: Chunk,
+                             constructor: Vec<String>, impls: Vec<String>) -> Result<(), ControlFlow> {
         // создаём тип
         let t = memory::alloc_value(
             Type::new(
                 symbol.clone(),
-                constructor.clone(),
-                memory::alloc_value(body.clone()),
-                impls.clone()
+                constructor,
+                memory::alloc_value(body),
+                impls
             )
         );
         // дефайн типа
@@ -766,8 +766,8 @@ impl VM {
     }
 
     // дефайн юнита
-    unsafe fn op_define_unit(&mut self, addr: &Address, symbol: &Symbol,
-                             body: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_define_unit(&mut self, addr: &Address, symbol: Symbol,
+                             body: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         // создаём юнит
         let unit = memory::alloc_value(
             Unit::new(
@@ -788,7 +788,7 @@ impl VM {
         // временный self
         (*(*unit).fields).fields.insert("self".to_string(), Value::Unit(unit));
         // исполняем тело
-        self.run(body, (*unit).fields)?;
+        self.run_owned(body, (*unit).fields)?;
         // удаляем временный self
         (*(*unit).fields).fields.remove("self");
         // бинды
@@ -799,7 +799,7 @@ impl VM {
             // пушим юнит
             self.push(unit_value);
             // вызываем
-            self.op_call(addr, init_fn, true, false, &Chunk::new(vec![]), table)?
+            self.op_call(addr, init_fn, true, false, Chunk::new(vec![]), table)?
         }
         // дефайн юнита
         if let Err(e) = (*self.units).define(addr, &symbol.name, unit_value) {
@@ -820,13 +820,13 @@ impl VM {
     }
 
     // дефайн тейта
-    unsafe fn op_define_trait(&mut self, addr: &Address, symbol: &Symbol, functions: &[TraitFn])
+    unsafe fn op_define_trait(&mut self, addr: &Address, symbol: Symbol, functions: Vec<TraitFn>)
     -> Result<(), ControlFlow> {
         // создаём трейт
         let _trait = memory::alloc_value(
             Trait::new(
                 symbol.clone(),
-                functions.to_owned()
+                functions
             )
         );
         // дефайн трейта
@@ -845,11 +845,11 @@ impl VM {
 
     // дефайн
     unsafe fn op_define(&mut self, addr: &Address, name: &str, has_previous: bool,
-                        value: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
+                        value: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         // если нет предыдущего
         if !has_previous {
             // исполняем значение
-            self.run(value, table)?;
+            self.run_owned(value, table)?;
             // получаем значение
             let operand = self.pop(&addr)?;
             // дефайним
@@ -865,7 +865,7 @@ impl VM {
             match previous {
                 Value::Instance(instance) => {
                     // исполняем значение
-                    self.run(value, table)?;
+                    self.run_owned(value, table)?;
                     // получаем значение
                     let operand = self.pop(&addr)?;
                     // дефайним
@@ -875,7 +875,7 @@ impl VM {
                 }
                 Value::Unit(unit) => {
                     // исполняем значение
-                    self.run(value, table)?;
+                    self.run_owned(value, table)?;
                     // получаем значение
                     let operand = self.pop(&addr)?;
                     // дефайним
@@ -898,15 +898,15 @@ impl VM {
 
     // установка значения переменной
     unsafe fn op_set(&mut self, addr: &Address, name: &str, has_previous: bool,
-                        value: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
+                        value: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         // если нет предыдущего
         if !has_previous {
             // исполняем значение
-            self.run(value, table)?;
+            self.run_owned(value, table)?;
             // получаем значение
             let operand = self.pop(&addr)?;
             // дефайним
-            if let Err(e) = (*table).set(addr.clone(), name, operand) {
+            if let Err(e) = (*table).set(addr, name, operand) {
                 error!(e);
             }
         }
@@ -918,7 +918,7 @@ impl VM {
             match previous {
                 Value::Instance(instance) => {
                     // исполняем значение
-                    self.run(value, table)?;
+                    self.run_owned(value, table)?;
                     // получаем значение
                     let operand = self.pop(&addr)?;
                     // устанавливаем значение
@@ -928,7 +928,7 @@ impl VM {
                 }
                 Value::Unit(unit) => {
                     // исполняем значение
-                    self.run(value, table)?;
+                    self.run_owned(value, table)?;
                     // получаем значение
                     let operand = self.pop(&addr)?;
                     // устанавливаем значение
@@ -1024,17 +1024,17 @@ impl VM {
     // вызов функции
     #[allow(unused_parens)]
     pub unsafe fn call(&mut self, addr: &Address, name: &str,
-                              callable: Value, args: &Chunk,
+                              callable: Value, args: Chunk,
                               table: *mut Table, should_push: bool) -> Result<(), ControlFlow> {
 
         // подгрузка аргументов
         unsafe fn pass_arguments(vm: &mut VM, addr: &Address, name: &str, params_amount: usize,
-                                 args: &Chunk, params: Vec<String>, table: *mut Table,
+                                 args: Chunk, params: Vec<String>, table: *mut Table,
                                  call_table: *mut Table) -> Result<(), ControlFlow> {
             // фиксируем размер стека
             let prev_size = vm.stack.len();
             // загрузка аргументов
-            vm.run(args, table)?;
+            vm.run_owned(args, table)?;
             // фиксируем новый размер стека
             let new_size = vm.stack.len();
             // количество переданных аргументов
@@ -1068,11 +1068,11 @@ impl VM {
 
         // только загрузка аргументов
         unsafe fn load_arguments(vm: &mut VM, addr: &Address, name: &str, params_amount: usize,
-                                 args: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
+                                 args: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
             // фиксируем размер стека
             let prev_size = vm.stack.len();
             // загрузка аргументов
-            vm.run(args, table)?;
+            vm.run_owned(args, table)?;
             // фиксируем новый размер стека
             let new_size = vm.stack.len();
             // количество переданных аргументов
@@ -1131,8 +1131,11 @@ impl VM {
             // загрузка аргументов
             pass_arguments(self, addr, name, (*function).params.len(), args,
                            (*function).params.clone(), table, call_table)?;
+            
+            let body = &*(*function).body;
+
             // вызов
-            match self.run(&*(*function).body, call_table) {
+            match self.run(body, call_table) {
                 // если поймали control flow
                 Err(e) => {
                     return match e {
@@ -1189,7 +1192,7 @@ impl VM {
 
     // загрузка значения переменной
     pub unsafe fn op_call(&mut self, addr: &Address, name: &str, has_previous: bool,
-                                 should_push: bool, args: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
+                                 should_push: bool, args: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         // если нет предыдущего
         if !has_previous {
             // получаем значение
@@ -1201,7 +1204,7 @@ impl VM {
             }
             else if let Ok(value) = lookup_result {
                 // вызываем
-                self.call(addr, &name, value, &args, table, should_push)?;
+                self.call(addr, &name, value, args, table, should_push)?;
             }
         }
         // если есть
@@ -1405,16 +1408,16 @@ impl VM {
 
     // созедание экземпляра типа
     unsafe fn op_instance(&mut self, addr: &Address, name: &str,
-                          args: &Chunk, should_push: bool, table: *mut Table) -> Result<(), ControlFlow> {
+                          args: Chunk, should_push: bool, table: *mut Table) -> Result<(), ControlFlow> {
 
         // подгрузка конструктора
         unsafe fn pass_constructor(vm: &mut VM, addr: &Address, name: &str, params_amount: usize,
-                                 args: &Chunk, params: Vec<String>, table: *mut Table,
+                                 args: Chunk, params: Vec<String>, table: *mut Table,
                                    fields_table: *mut Table) -> Result<(), ControlFlow> {
             // фиксируем размер стека
             let prev_size = vm.stack.len();
             // загрузка аргументов
-            vm.run(args, table)?;
+            vm.run_owned(args, table)?;
             // фиксируем новый размер стека
             let new_size = vm.stack.len();
             // количество переданных аргументов
@@ -1488,7 +1491,7 @@ impl VM {
                         // пушим инстанс
                         self.push(instance_value);
                         // вызываем
-                        self.op_call(addr, &init_fn, true, false, &Chunk::new(vec![]), table)?
+                        self.op_call(addr, &init_fn, true, false, Chunk::new(vec![]), table)?
                     }
                     // пушим
                     if should_push {
@@ -1522,9 +1525,9 @@ impl VM {
     }
 
     // возврат значения из функции
-    unsafe fn op_return(&mut self, addr: &Address, value: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_return(&mut self, addr: &Address, value: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         // выполняем
-        self.run(value, table)?;
+        self.run_owned(value, table)?;
         let value = self.pop(addr)?;
         // возвращаем
         Err(ControlFlow::Return(value))
@@ -1547,9 +1550,9 @@ impl VM {
     }
 
     // "пробрасывание" ошибок
-    unsafe fn op_error_propagation(&mut self, addr: &Address, value: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_error_propagation(&mut self, addr: &Address, value: Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         // выполняем
-        self.run(value, table)?;
+        self.run_owned(value, table)?;
         // значение
         let value = self.pop(addr)?;
         // вызов is_ok
@@ -1580,7 +1583,7 @@ impl VM {
                 // вызываем
                 vm.call(
                     &addr, "is_ok", callable,
-                    &Chunk::new(vec![]),
+                    Chunk::new(vec![]),
                     memory::alloc_value(Table::new()),
                     true
                 )?;
@@ -1633,7 +1636,7 @@ impl VM {
                     // вызываем
                     vm.call(
                         &addr, "unwrap", callable,
-                        &Chunk::new(vec![]),
+                        Chunk::new(vec![]),
                         memory::alloc_value(Table::new()),
                         true
                     )?;
@@ -1685,10 +1688,10 @@ impl VM {
     }
 
     // проверка имплементации трейта
-    unsafe fn op_impls(&mut self, addr: &Address, value: &Chunk,
+    unsafe fn op_impls(&mut self, addr: &Address, value: Chunk,
                        trait_name: &str, table: *mut Table) -> Result<(), ControlFlow> {
         // выполняем
-        self.run(value, table)?;
+        self.run_owned(value, table)?;
         // значение
         let value = self.pop(&addr)?;
         // проверка, экземпляр ли класс значение
@@ -1752,33 +1755,43 @@ impl VM {
     pub unsafe fn run_owned(&mut self, chunk: Chunk, table: *mut Table) -> Result<(), ControlFlow> { 
         for op in chunk.into_opcodes() {
             match op {
+                // chkd
                 Opcode::Push { value, .. } => {
                     self.op_push(value, table)?;
                 }
+                // chkd
                 Opcode::Pop { addr } => {
                     self.pop(&addr)?;
                 }
+                // chkd
                 Opcode::Bin { addr, op } => {
-                    self.op_binary(&addr, &op, table)?;
+                    self.op_binary(addr, &op, table)?;
                 }
+                // chkd
                 Opcode::Neg { addr } => {
                     self.op_negate(&addr)?;
                 }
+                // chkd
                 Opcode::Bang { addr } => {
                     self.op_bang(&addr)?;
                 }
+                // chkd
                 Opcode::Cond { addr, op } => {
                     self.op_conditional(&addr, &op)?;
                 }
+                // chkd
                 Opcode::Logic { addr, op } => {
                     self.op_logical(&addr, &op)?
                 }
+                // chkd
                 Opcode::If { addr, cond, body, elif } => {
-                    self.op_if(&addr, &cond, &body, &elif, table)?;
+                    self.op_if(&addr, cond, body, elif, table)?;
                 }
+                // later chk
                 Opcode::Loop { addr, body } => {
-                    self.op_loop(&addr, &body, table)?;
+                    self.op_loop(&addr, body, table)?;
                 }
+                // chkd
                 Opcode::DefineFn {
                     addr,
                     name,
@@ -1790,8 +1803,8 @@ impl VM {
                     self.op_define_fn(
                         &addr,
                         Symbol::new_option(name, full_name),
-                        &body,
-                        &params,
+                        body,
+                        params,
                         make_closure,
                         table
                     )?;
@@ -1809,6 +1822,7 @@ impl VM {
                         table
                     )?;
                 }
+                // chkd
                 Opcode::DefineType {
                     addr,
                     name,
@@ -1819,15 +1833,22 @@ impl VM {
                 } => {
                     self.op_define_type(
                         &addr,
-                        &Symbol::new_option(name, full_name),
-                        &body,
-                        &constructor,
-                        &impls
+                        Symbol::new_option(name, full_name),
+                        body,
+                        constructor,
+                        impls
                     )?;
                 }
+                // chkd
                 Opcode::DefineUnit { addr, name, full_name, body } => {
-                    self.op_define_unit(&addr, &Symbol::new_option(name, full_name), &body, table)?
+                    self.op_define_unit(
+                        &addr, 
+                        Symbol::new_option(name, full_name),
+                        body,
+                        table
+                    )?
                 }
+                // chkd
                 Opcode::DefineTrait {
                     addr,
                     name,
@@ -1836,16 +1857,19 @@ impl VM {
                 } => {
                     self.op_define_trait(
                         &addr,
-                        &Symbol::new_option(name, full_name),
-                        &functions
+                        Symbol::new_option(name, full_name),
+                        functions
                     )?
                 }
+                // chkd
                 Opcode::Define { addr, name, value, has_previous} => {
-                    self.op_define(&addr, &name, has_previous, &value, table)?;
+                    self.op_define(&addr, &name, has_previous, value, table)?;
                 }
+                // chkd
                 Opcode::Set { addr, name, value, has_previous } => {
-                    self.op_set(&addr, &name, has_previous, &value, table)?;
+                    self.op_set(&addr, &name, has_previous, value, table)?;
                 }
+                // chkd
                 Opcode::Load { addr, name, has_previous, should_push } => {
                     self.op_load(&addr, &name, has_previous, should_push, table)?;
                 }
@@ -1856,28 +1880,28 @@ impl VM {
                     should_push,
                     args
                 } => {
-                    self.op_call(&addr, &name, has_previous, should_push, &args, table)?
+                    self.op_call(&addr, &name, has_previous, should_push, args, table)?
                 }
                 Opcode::Duplicate { addr } => {
                     self.op_duplicate(&addr)?;
                 }
                 Opcode::Instance { addr, name, args, should_push } => {
-                    self.op_instance(&addr, &name, &args, should_push, table)?;
+                    self.op_instance(&addr, &name, args, should_push, table)?;
                 }
                 Opcode::EndLoop { addr, current_iteration } => {
                     self.op_endloop(&addr, current_iteration)?;
                 }
                 Opcode::Ret { addr, value } => {
-                    self.op_return(&addr, &value, table)?;
+                    self.op_return(&addr, value, table)?;
                 }
                 Opcode::Native { addr, fn_name } => {
                     self.op_native(&addr, &fn_name)?;
                 }
                 Opcode::ErrorPropagation { addr, value } => {
-                    self.op_error_propagation(&addr, &value, table)?;
+                    self.op_error_propagation(&addr, value, table)?;
                 }
                 Opcode::Impls { addr, value, trait_name } => {
-                    self.op_impls(&addr, &value, &trait_name, table)?;
+                    self.op_impls(&addr, value, &trait_name, table)?;
                 }
                 Opcode::DeleteLocal { addr, name } => {
                     self.op_delete_local(&addr, &name, table)
@@ -1901,7 +1925,7 @@ impl VM {
                     self.pop(addr)?;
                 }
                 Opcode::Bin { addr, op } => {
-                    self.op_binary(addr, &op, table)?;
+                    self.op_binary(addr.clone(), &op, table)?;
                 }
                 Opcode::Neg { addr } => {
                     self.op_negate(addr)?;
@@ -1916,10 +1940,10 @@ impl VM {
                     self.op_logical(addr, &op)?
                 }
                 Opcode::If { addr, cond, body, elif } => {
-                    self.op_if(addr, cond, body, elif, table)?;
+                    self.op_if(addr, cond.clone(), body.clone(), elif.clone(), table)?;
                 }
                 Opcode::Loop { addr, body } => {
-                    self.op_loop(addr, body, table)?;
+                    self.op_loop(addr, body.clone(), table)?;
                 }
                 Opcode::DefineFn {
                     addr,
@@ -1932,8 +1956,8 @@ impl VM {
                     self.op_define_fn(
                         addr,
                         Symbol::new_option(name.clone(), full_name.clone()),
-                        body,
-                        params,
+                        body.clone(),
+                        params.clone(),
                         *make_closure,
                         table
                     )?;
@@ -1961,14 +1985,14 @@ impl VM {
                 } => {
                     self.op_define_type(
                         addr,
-                        &Symbol::new_option(name.clone(), full_name.clone()),
-                        body,
-                        constructor,
-                        impls
+                        Symbol::new_option(name.clone(), full_name.clone()),
+                        body.clone(),
+                        constructor.clone(),
+                        impls.clone()
                     )?
                 }
                 Opcode::DefineUnit { addr, name, full_name, body } => {
-                    self.op_define_unit(addr, &Symbol::new_option(name.clone(), full_name.clone()), body, table)?
+                    self.op_define_unit(addr, Symbol::new_option(name.clone(), full_name.clone()), body.clone(), table)?
                 }
                 Opcode::DefineTrait {
                     addr,
@@ -1978,15 +2002,15 @@ impl VM {
                 } => {
                     self.op_define_trait(
                         addr,
-                        &Symbol::new_option(name.clone(), full_name.clone()),
-                        functions
+                        Symbol::new_option(name.clone(), full_name.clone()),
+                        functions.clone()
                     )?
                 }
                 Opcode::Define { addr, name, value, has_previous} => {
-                    self.op_define(addr, name, *has_previous, value, table)?;
+                    self.op_define(addr, name, *has_previous, value.clone(), table)?;
                 }
                 Opcode::Set { addr, name, value, has_previous } => {
-                    self.op_set(addr, name, *has_previous, value, table)?;
+                    self.op_set(addr, name, *has_previous, value.clone(), table)?;
                 }
                 Opcode::Load { addr, name, has_previous, should_push } => {
                     self.op_load(addr, name, *has_previous, *should_push, table)?;
@@ -1998,28 +2022,28 @@ impl VM {
                     should_push,
                     args
                 } => {
-                    self.op_call(addr, name, *has_previous, *should_push, args, table)?
+                    self.op_call(addr, name, *has_previous, *should_push, args.clone(), table)?
                 }
                 Opcode::Duplicate { addr } => {
                     self.op_duplicate(addr)?;
                 }
                 Opcode::Instance { addr, name, args, should_push } => {
-                    self.op_instance(addr, name, args, *should_push, table)?;
+                    self.op_instance(addr, name, args.clone(), *should_push, table)?;
                 }
                 Opcode::EndLoop { addr, current_iteration } => {
                     self.op_endloop(addr, *current_iteration)?;
                 }
                 Opcode::Ret { addr, value } => {
-                    self.op_return(addr, value, table)?;
+                    self.op_return(addr, value.clone(), table)?;
                 }
                 Opcode::Native { addr, fn_name } => {
                     self.op_native(addr, fn_name)?;
                 }
                 Opcode::ErrorPropagation { addr, value } => {
-                    self.op_error_propagation(addr, value, table)?;
+                    self.op_error_propagation(addr, value.clone(), table)?;
                 }
                 Opcode::Impls { addr, value, trait_name } => {
-                    self.op_impls(addr, value, trait_name, table)?;
+                    self.op_impls(addr, value.clone(), trait_name, table)?;
                 }
                 Opcode::DeleteLocal { addr, name } => {
                     self.op_delete_local(addr, name, table)
