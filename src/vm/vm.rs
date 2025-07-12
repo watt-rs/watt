@@ -1749,6 +1749,146 @@ impl VM {
         (*table).fields.remove(name);
     }
 
+    pub unsafe fn run_owned(&mut self, chunk: Chunk, table: *mut Table) -> Result<(), ControlFlow> { 
+        for op in chunk.into_opcodes() {
+            match op {
+                Opcode::Push { value, .. } => {
+                    self.op_push(value, table)?;
+                }
+                Opcode::Pop { addr } => {
+                    self.pop(&addr)?;
+                }
+                Opcode::Bin { addr, op } => {
+                    self.op_binary(&addr, &op, table)?;
+                }
+                Opcode::Neg { addr } => {
+                    self.op_negate(&addr)?;
+                }
+                Opcode::Bang { addr } => {
+                    self.op_bang(&addr)?;
+                }
+                Opcode::Cond { addr, op } => {
+                    self.op_conditional(&addr, &op)?;
+                }
+                Opcode::Logic { addr, op } => {
+                    self.op_logical(&addr, &op)?
+                }
+                Opcode::If { addr, cond, body, elif } => {
+                    self.op_if(&addr, &cond, &body, &elif, table)?;
+                }
+                Opcode::Loop { addr, body } => {
+                    self.op_loop(&addr, &body, table)?;
+                }
+                Opcode::DefineFn {
+                    addr,
+                    name,
+                    full_name,
+                    body,
+                    params,
+                    make_closure
+                } => {
+                    self.op_define_fn(
+                        &addr,
+                        Symbol::new_option(name, full_name),
+                        &body,
+                        &params,
+                        make_closure,
+                        table
+                    )?;
+                }
+                Opcode::AnonymousFn {
+                    addr,
+                    body,
+                    params,
+                    make_closure
+                } => {
+                    self.op_anonymous_fn(
+                        &body,
+                        &params,
+                        make_closure,
+                        table
+                    )?;
+                }
+                Opcode::DefineType {
+                    addr,
+                    name,
+                    full_name,
+                    body,
+                    constructor,
+                    impls
+                } => {
+                    self.op_define_type(
+                        &addr,
+                        &Symbol::new_option(name, full_name),
+                        &body,
+                        &constructor,
+                        &impls
+                    )?;
+                }
+                Opcode::DefineUnit { addr, name, full_name, body } => {
+                    self.op_define_unit(&addr, &Symbol::new_option(name, full_name), &body, table)?
+                }
+                Opcode::DefineTrait {
+                    addr,
+                    name,
+                    full_name,
+                    functions
+                } => {
+                    self.op_define_trait(
+                        &addr,
+                        &Symbol::new_option(name, full_name),
+                        &functions
+                    )?
+                }
+                Opcode::Define { addr, name, value, has_previous} => {
+                    self.op_define(&addr, &name, has_previous, &value, table)?;
+                }
+                Opcode::Set { addr, name, value, has_previous } => {
+                    self.op_set(&addr, &name, has_previous, &value, table)?;
+                }
+                Opcode::Load { addr, name, has_previous, should_push } => {
+                    self.op_load(&addr, &name, has_previous, should_push, table)?;
+                }
+                Opcode::Call {
+                    addr,
+                    name,
+                    has_previous,
+                    should_push,
+                    args
+                } => {
+                    self.op_call(&addr, &name, has_previous, should_push, &args, table)?
+                }
+                Opcode::Duplicate { addr } => {
+                    self.op_duplicate(&addr)?;
+                }
+                Opcode::Instance { addr, name, args, should_push } => {
+                    self.op_instance(&addr, &name, &args, should_push, table)?;
+                }
+                Opcode::EndLoop { addr, current_iteration } => {
+                    self.op_endloop(&addr, current_iteration)?;
+                }
+                Opcode::Ret { addr, value } => {
+                    self.op_return(&addr, &value, table)?;
+                }
+                Opcode::Native { addr, fn_name } => {
+                    self.op_native(&addr, &fn_name)?;
+                }
+                Opcode::ErrorPropagation { addr, value } => {
+                    self.op_error_propagation(&addr, &value, table)?;
+                }
+                Opcode::Impls { addr, value, trait_name } => {
+                    self.op_impls(&addr, &value, &trait_name, table)?;
+                }
+                Opcode::DeleteLocal { addr, name } => {
+                    self.op_delete_local(&addr, &name, table)
+                }
+                _ => todo!("{:?}", op)
+            }
+        }
+
+        Ok(())
+    }
+
     // запуск байткода
     #[allow(unused_variables)]
     pub unsafe fn run(&mut self, chunk: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
@@ -1758,7 +1898,7 @@ impl VM {
                     self.op_push(value.clone(), table)?;
                 }
                 Opcode::Pop { addr } => {
-                    self.pop(&addr)?;
+                    self.pop(addr)?;
                 }
                 Opcode::Bin { addr, op } => {
                     self.op_binary(addr, &op, table)?;

@@ -12,11 +12,17 @@ impl Chunk {
     pub fn new(chunk: Vec<Opcode>) -> Self {
         Chunk { opcodes: chunk }
     }
+    
     pub fn of(op: Opcode) -> Self {
         Chunk { opcodes: vec![op] }
     }
+
     pub fn opcodes(&self) -> &Vec<Opcode> {
         &self.opcodes
+    }
+
+    pub fn into_opcodes(self) -> Vec<Opcode> {
+        self.opcodes
     }
 }
 

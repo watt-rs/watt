@@ -255,7 +255,7 @@ unsafe fn run_chunk(chunk: Chunk, gc_threshold: usize, gc_debug: bool, bench: bo
     ));
     
     // handling errors
-    if let Err(e) = vm.run(&chunk, vm.globals) {
+    if let Err(e) = vm.run_owned(chunk, vm.globals) {
         error!(Error::own_text(
             Address::unknown(),
             format!("control flow leak: {e:?}"),
