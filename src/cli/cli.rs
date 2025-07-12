@@ -1,58 +1,75 @@
-﻿// imports
-use clap::{Parser};
-use std::path::PathBuf;
+// imports
 use crate::executor::executor;
+use clap::{Arg, ArgAction};
 
-/// Cli clap parser
-#[derive(Parser)]
-struct CLI {
-    #[arg(value_name = "file")]
-    file: PathBuf,
-
-    #[arg(long = "gc-threshold", value_name = "gc_threshold")]
-    gc_threshold: Option<usize>,
-
-    #[arg(long = "gc-debug", default_value_t=false)]
-    gc_debug: bool,
-
-    #[arg(long = "ast-debug", default_value_t=false)]
-    ast_debug: bool,
-
-    #[arg(long = "opcodes-debug", default_value_t=false)]
-    opcodes_debug: bool,
-
-    #[arg(long = "lexer-debug", default_value_t=false)]
-    lexer_debug: bool,
-
-    #[arg(long = "parse-bench", default_value_t=false)]
-    parse_bench: bool,
-
-    #[arg(long = "compile-bench", default_value_t=false)]
-    compile_bench: bool,
-
-    #[arg(long = "lexer-bench", default_value_t=false)]
-    lexer_bench: bool,
-
-    #[arg(long = "runtime-bench", default_value_t=false)]
-    runtime_bench: bool,
-}
-
-/// Run cli
 pub unsafe fn cli() {
-    // parsing args
-    let args = CLI::parse();
+    // аргументы
+    let parser = clap::Command::new("watt")
+        .author("Watt developers")
+        .about("The Watt interpreter.")
+        .arg(
+            Arg::new("gc-debug")
+                .long("gc-debug")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("ast-debug")
+                .long("ast-debug")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("opcodes-debug")
+                .long("opcodes-debug")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("lexer-debug")
+                .long("lexer-debug")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("parse-bench")
+                .long("parser-bench")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("compile-bench")
+                .long("compile-bench")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("lexer-bench")
+                .long("lexer-bench")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("runtime-bench")
+                .long("runtime-bench")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("gc-threshold")
+                .long("gc-threshold")
+                .value_parser(clap::value_parser!(usize))
+                .default_value("200"),
+        )
+        .arg(Arg::new("file").required(true));
+
+    let matches = parser.get_matches();
+
+    let file = matches.get_one::<String>("file").unwrap();
 
     // run executor with parsed args
     executor::run(
-        args.file,
-        args.gc_threshold,
-        args.gc_debug,
-        args.lexer_debug,
-        args.ast_debug,
-        args.opcodes_debug,
-        args.lexer_bench,
-        args.parse_bench,
-        args.compile_bench,
-        args.runtime_bench
+        file.into(),
+        matches.get_one::<usize>("gc-threshold").copied(),
+        matches.get_flag("gc-debug"),
+        matches.get_flag("lexer-debug"),
+        matches.get_flag("ast-debug"),
+        matches.get_flag("opcodes-debug"),
+        matches.get_flag("lexer-bench"),
+        matches.get_flag("parse-bench"),
+        matches.get_flag("compile-bench"),
+        matches.get_flag("runtime-bench")
     )
 }
