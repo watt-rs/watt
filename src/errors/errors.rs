@@ -1,9 +1,9 @@
-// импорты
+// imports
 use crate::errors::colors;
 use crate::lexer::address::Address;
 use std::borrow::Cow;
 
-// ошибка
+/// Error
 #[derive(Debug, Clone)]
 pub struct Error {
     addr: Address,
@@ -11,17 +11,17 @@ pub struct Error {
     hint: Cow<'static, str>,
 }
 
-// паника
+/// Error macro that panics error
 #[macro_export]
 macro_rules! error {
     ($err:expr) => {
         $err.panic()
-    }
+    };
 }
 
-// имплементация
+/// Error implementation
 impl Error {
-    // новая ошибка
+    /// New error 
     pub fn new(addr: Address, text: &'static str, hint: &'static str) -> Self {
         Error {
             addr,
@@ -30,7 +30,7 @@ impl Error {
         }
     }
 
-    // новая ошибка
+    /// New error with owned text and own hint
     pub fn own(addr: Address, text: String, hint: String) -> Self {
         Error {
             addr,
@@ -39,7 +39,7 @@ impl Error {
         }
     }
 
-    // новая ошибка
+    /// New error with owned text and &'static str hint
     pub fn own_text(addr: Address, text: String, hint: &'static str) -> Self {
         Error {
             addr,
@@ -47,8 +47,8 @@ impl Error {
             hint: Cow::Borrowed(hint),
         }
     }
-    
-    // новая ошибка
+
+    /// New error with &'static str text and owned hint
     #[allow(unused)]
     pub fn own_hint(addr: Address, text: &'static str, hint: String) -> Self {
         Error {
@@ -57,13 +57,25 @@ impl Error {
             hint: Cow::Owned(hint),
         }
     }
-    
-    // вывод
-    pub fn panic(&self) -> ! {
-        let filename = self.addr.file.as_ref().map_or("-", |v| v);
-        let text_line = self.addr.line_text.as_ref().map_or("-", |v| v);
 
-        // выводим
+    /// Panic error
+    /// 
+    /// Prints error information,
+    /// address, and then
+    /// ends process
+    /// 
+    pub fn panic(&self) -> ! {
+        // file_name and line_text
+        let file_name = self
+            .addr
+            .file
+            .as_ref()
+            .and_then(|x| x.file_name())
+            .and_then(|x| x.to_str().map(|y| y.to_string()))
+            .unwrap_or(String::from("-"));
+        let line_text = self.addr.get_line().unwrap_or(String::from("-"));
+
+        // print
         println!(
             "┌─ {color}panic:{reset} {text}",
             color = colors::RedColor,
@@ -71,22 +83,24 @@ impl Error {
             text = self.text,
         );
         println!("│");
-        println!("│ {}:", filename);
-        println!("│ {gray}{line}{reset} {text}",
-                 line = self.addr.line,
-                 text = text_line,
-                 gray = colors::WhiteColor,
-                 reset = colors::ResetColor,
+        println!("│ {}:", file_name);
+        println!(
+            "│ {gray}{line}{reset} {text}",
+            line = self.addr.line,
+            text = line_text,
+            gray = colors::WhiteColor,
+            reset = colors::ResetColor,
         );
-        println!("│ {space:count$}^",
-                 space = " ",
-                 count = self.addr.column as usize
-                     + self.addr.line.to_string().len()
+        println!(
+            "│ {space:count$}^",
+            space = " ",
+            count = self.addr.column as usize + self.addr.line.to_string().len()
         );
         println!("│");
         println!("│ hint: {hint}", hint = self.hint);
         println!("{}", colors::ResetColor);
-        // завершаем процесс
+        
+        // exit process
         std::process::exit(1);
     }
 }

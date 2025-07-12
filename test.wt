@@ -134,8 +134,4 @@ a := result.err('111')
 io.println(a?)
 */
 import 'std.io'
-
-iterator := new NumbersIterator(1, 10)
-numbers := iterator.to_list() 
-
-io.println(numbers.to_string())
+panic('panic','here')

@@ -1,20 +1,39 @@
-﻿// импорты
+﻿// imports
 use crate::errors::errors::{Error};
 use crate::lexer::address::Address;
 use crate::vm::values::Value;
 use std::collections::{HashMap, HashSet};
 use crate::vm::memory::memory;
 
-// таблица
+/// Table
+/// 
+/// used by vm to set variables,
+/// find variables, define variables,
+/// delete variables, ...
+/// 
 #[derive(Clone)]
 pub struct Table {
-    pub fields: HashMap<String,Value>,
-    pub root: *mut Table, // root таблица, например глобальных переменных
-    pub parent: *mut Table, // parent таблица, таблица вызова до этой.
+    /// this table fields list
+    pub fields: HashMap<String, Value>,
+    ///
+    /// root table, previous lexical table
+    /// for example:
+    /// ```
+    /// if a { // table one         
+    ///   if b { // table two, root: table one
+    ///   }
+    /// }
+    /// ```
+    ///
+    pub root: *mut Table,
+    /// parent table, previous chunk run table
+    pub parent: *mut Table,
+    /// closure table
     pub closure: *mut Table
 }
-// имплементация
+/// Table implementation
 impl Table {
+    /// New table
     pub fn new() -> Table {
         Table {
             fields: HashMap::new(),
@@ -23,7 +42,10 @@ impl Table {
             closure: std::ptr::null_mut(),
         }
     }
-
+    
+    /// Checks variable exists in fields
+    /// or closure
+    /// 
     pub unsafe fn exists(&self, name: &str) -> bool {
         if self.fields.contains_key(name) {
             true
@@ -34,6 +56,11 @@ impl Table {
         }
     }
 
+    /// Finds variable in fields
+    /// and closure
+    /// 
+    /// raises error if not exists
+    /// 
     pub unsafe fn find(&self, address: &Address, name: &str) -> Result<Value, Error> {
         if self.exists(name) {
             if self.fields.contains_key(name) {
@@ -50,6 +77,10 @@ impl Table {
         }
     }
 
+    /// Defines variable in fields
+    /// 
+    /// raises error if already defined
+    /// 
     pub fn define(&mut self, address: &Address, name: &str, value: Value) -> Result<(), Error> {
         if !self.fields.contains_key(name) {
             self.fields.insert(name.to_string(), value);
@@ -63,6 +94,10 @@ impl Table {
         }
     }
 
+    /// Sets variable in fields or roots
+    ///
+    /// raises error if not defined
+    ///
     pub unsafe fn set(&mut self, address: Address, name: &str, value: Value) -> Result<(), Error> {
         let mut current = self as *mut Table;
         while !(*current).fields.contains_key(name) {
@@ -79,6 +114,10 @@ impl Table {
         Ok(())
     }
 
+    /// Sets variable in fields
+    ///
+    /// raises error if not defined
+    ///
     pub unsafe fn set_local(&mut self, address: &Address, name: &str, value: Value) -> Result<(), Error> {
         if !self.fields.contains_key(name) {
             return Err(Error::own_text(
@@ -91,6 +130,7 @@ impl Table {
         Ok(())
     }
 
+    /// Checks variable exists in fields, closures or roots
     pub unsafe fn has(&mut self, name: &str) -> bool {
         let mut current = self as *mut Table;
         while !(*current).exists(name) {
@@ -102,6 +142,11 @@ impl Table {
         true
     }
 
+    /// Finds variable in fields
+    /// closures, and roots
+    ///
+    /// raises error if not exists
+    ///
     pub unsafe fn lookup(&mut self, address: &Address, name: &str) -> Result<Value, Error> {
         let mut current = self as *mut Table;
         while !(*current).exists(&name) {
@@ -117,6 +162,11 @@ impl Table {
         Ok((*current).find(address, &name)?)
     }
 
+    /// Sets root
+    /// 
+    /// if root already exists, set root to root, and if root's root is already
+    /// exists, set root to root's root, ...
+    /// 
     pub unsafe fn set_root(&mut self, root: *mut Table) {
         let mut current = self as *mut Table;
         while !(*current).root.is_null() {
@@ -125,6 +175,7 @@ impl Table {
         (*current).root = root;
     }
 
+    /// Deletes last root from roots chain
     #[allow(unused)]
     pub unsafe fn del_root(&mut self) {
         let mut current = self as *mut Table;
@@ -137,10 +188,12 @@ impl Table {
         }
     }
 
-    // глубокая очистка
+    /// Frees all field values
     pub unsafe fn free_fields(&self) {
+        // to free list
         let to_free: HashSet<&Value> = self.fields.values().collect();
 
+        // freeing
         for val in to_free {
             match *val {
                 Value::Fn(f) => {
@@ -172,7 +225,7 @@ impl Table {
         }
     }
     
-    // вывод таблицы
+    /// Prints table tree
     #[allow(unused)]
     pub unsafe fn print(&self, indent: usize) {
         println!("{space:spaces$}Table:", space=" ", spaces=indent*2);
@@ -192,6 +245,6 @@ impl Table {
     }
 }
 
-// имплементация Send и Sync для трансфера между потоками
+/// Send & sync for future multi-threading.
 unsafe impl Send for Table {}
 unsafe impl Sync for Table {}

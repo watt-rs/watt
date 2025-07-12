@@ -1,9 +1,11 @@
-// импорты
+// imports
+use std::path::PathBuf;
 use crate::executor::executor;
-use clap::{Arg, ArgAction};
+use clap::{Command,Arg,ArgAction};
 
+/// Run cli
 pub unsafe fn cli() {
-    // аргументы
+    // Command-line parser
     let parser = clap::Command::new("watt")
         .author("Watt developers")
         .about("The Watt interpreter.")
@@ -59,12 +61,7 @@ pub unsafe fn cli() {
 
     let file = matches.get_one::<String>("file").unwrap();
 
-    /*if file.is_none() {
-       parser.print_help();
-       std::process::exit(1);
-    }*/
-
-    // запускаем
+    // run executor with parsed args
     executor::run(
         file.into(),
         matches.get_one::<usize>("gc-threshold").copied(),

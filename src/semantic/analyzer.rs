@@ -5,7 +5,11 @@ use std::collections::VecDeque;
 use crate::error;
 use crate::lexer::address::Address;
 
-// нода анализа
+/// Analyzer node type
+/// 
+/// Used in `analyzer_stack` to push
+/// and pop lexical scopes from analyze_stack
+/// 
 #[allow(dead_code)]
 #[derive(Clone)]
 pub enum AnalyzerNode {
@@ -15,20 +19,21 @@ pub enum AnalyzerNode {
     For,
     Fn
 }
-// семантический анализатор
+
+/// Semantic analyzer
 pub struct Analyzer {
     analyze_stack: VecDeque<AnalyzerNode>,
 }
-// имплементация
+/// Semantic analyzer implementation
 impl Analyzer {
-    // новый анализатор
+    /// New analyzer
     pub fn new() -> Self {
         Analyzer {
             analyze_stack: VecDeque::new(),
         }
     }
 
-    // анализ ноды
+    /// Analyzes node
     pub fn analyze<'node>(&mut self, node: &'node Node) -> &'node Node {
         match node {
             Node::Block { body } => {
@@ -126,11 +131,11 @@ impl Analyzer {
             }
             _ => {}
         }
-        // возвращаем ноду обратно
         node
     }
 
-    // проверка, есть ли в иерархии цикл
+    /// Checks if analyze_stack has loop in hierarchy
+    /// * hierarchy is analyze_stack
     fn hierarchy_has_loop(&mut self) -> bool {
         for node in self.analyze_stack.iter().rev() {
             if let AnalyzerNode::Loop = node {
@@ -140,7 +145,8 @@ impl Analyzer {
         false
     }
 
-    // проверка, есть ли в иерархии функция
+    /// Checks if analyze_stack has fn in hierarchy
+    /// * hierarchy is analyze_stack
     fn hierarchy_has_fn(&self) -> bool {
         for node in self.analyze_stack.clone() {
             if let AnalyzerNode::Fn = node {
@@ -150,52 +156,50 @@ impl Analyzer {
         false
     }
 
-    // иф
+    /// Analyzes if
     pub fn analyze_if(&mut self, body: &Node, logical: &Node, elseif: &Option<Box<Node>>) {
-        // пушим
+        // push if node to analyzer stack and analyze if
         self.analyze_stack.push_back(AnalyzerNode::If);
         self.analyze(logical);
         self.analyze(body);
-        // попаем
         self.analyze_stack.pop_back();
-        // else if
+        // analyze else if
         if let Some(else_node) = elseif {
             self.analyze(else_node);
         }
     }
 
-    // match
+    /// Analyzes match
     pub fn analyze_match(&mut self, cases: &Vec<MatchCase>, default: &Node) {
-        // анализ
+        // qnalyzing cases
         self.analyze(default);
         for case in cases {
             self.analyze(&*case.body);
         }
     }
     
-    // цикл
+    /// Analyzing loop while
     fn analyze_while(&mut self, body: &Node, logical: &Node) {
-        // пушим
         self.analyze_stack.push_back(AnalyzerNode::Loop);
         self.analyze(logical);
         self.analyze(body);
-        // попаем
         self.analyze_stack.pop_back();
     }
 
-    // анализ цикла for
+    /// Analyzing loop for
     pub fn analyze_for(&mut self, body: &Node, iterable: &Node) {
-        // пушим
         self.analyze_stack.push_back(AnalyzerNode::Loop);
         self.analyze(iterable);
         self.analyze(body);
-        // попаем
         self.analyze_stack.pop_back();
     }
 
-    // continue
+    /// Analyzing continue
+    /// 
+    /// Checking has_loop_in_hierarchy
+    /// raises error, if it's no loop is analyze_stack
+    /// 
     fn analyze_continue(&mut self, addr: &Address) {
-        // проверяем
         if self.analyze_stack.len() == 0 {
             error!(Error::new(
                 addr.clone(),
@@ -203,7 +207,6 @@ impl Analyzer {
                 "remove this keyword"
             ));
         }
-        // проверяем loop
         if !self.hierarchy_has_loop() {
             error!(Error::new(
                 addr.clone(),
@@ -213,9 +216,12 @@ impl Analyzer {
         }
     }
 
-    // break
+    /// Analyzing break
+    ///
+    /// Checking has_loop_in_hierarchy
+    /// raises error, if it's no loop is analyze_stack
+    ///
     fn analyze_break(&mut self, addr: &Address) {
-        // проверяем
         if self.analyze_stack.is_empty() {
             error!(Error::new(
                 addr.clone(),
@@ -223,7 +229,6 @@ impl Analyzer {
                 "remove this keyword"
             ));
         }
-        // проверяем loop
         if !self.hierarchy_has_loop() {
             error!(Error::new(
                 addr.clone(),
@@ -233,17 +238,19 @@ impl Analyzer {
         }
     }
 
-    // анализ декларации функции
+    /// Analyzing fn declaration
     fn analyze_fn(&mut self, body: &Node) {
-        // пуш в стек
         self.analyze_stack.push_back(AnalyzerNode::Fn);
         self.analyze(body);
         self.analyze_stack.pop_back();
     }
 
-    // анализ ретурн
+    /// Analyzing return
+    ///
+    /// Checking has_fn_in_hierarchy
+    /// raises error, if it's no fn is analyze_stack
+    ///
     fn analyze_return(&mut self, addr: &Address) {
-        // проверяем
         if self.analyze_stack.is_empty() {
             error!(Error::new(
                 addr.clone(),
@@ -251,7 +258,6 @@ impl Analyzer {
                 "remove this keyword"
             ));
         }
-        // проверяем fn
         if !self.hierarchy_has_fn() {
             error!(Error::new(
                 addr.clone(),
@@ -261,9 +267,14 @@ impl Analyzer {
         }
     }
     
-    // анализ импорта
+    /// Analyzing import
+    /// 
+    /// Checks if analyze stack is empty, because
+    /// imports are only allowed in global table
+    ///
+    /// If stack isn't empty, raises error
+    /// 
     fn analyze_import(&self, addr: &Address) {
-        // проверка размера стека вложенности
         if self.analyze_stack.len() > 0 {
             error!(Error::new(
                 addr.clone(),
@@ -273,7 +284,11 @@ impl Analyzer {
         }
     }
 
-    // анализ error propagation
+    /// Error propagation analyze
+    ///
+    /// Checking has_fn_in_hierarchy
+    /// raises error, if it's no fn is analyze_stack
+    ///
     fn analyze_error_propagation(&self, addr: &Address) {
         // проверка размера стека вложенности
         if !self.hierarchy_has_fn() {

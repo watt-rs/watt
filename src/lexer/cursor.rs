@@ -1,12 +1,11 @@
-// курсор
+/// Lexer cursor
 pub struct Cursor<'cursor> {
     code: &'cursor [char],
     pub(crate) current: usize,
 }
-
-// имплементация
+/// Cursor implementation
 impl<'cursor> Cursor<'cursor> {
-    // новый курсор
+    /// New cursor
     pub fn new(code: &'cursor [char]) -> Self {
         Cursor {
             code,
@@ -14,7 +13,7 @@ impl<'cursor> Cursor<'cursor> {
         }
     }
     
-    // текущий символ
+    /// Peeks current char
     pub fn peek(&self) -> char {
         if self.is_at_end() {
             '\0'
@@ -22,8 +21,8 @@ impl<'cursor> Cursor<'cursor> {
             self.char_at(0)
         }
     }
-
-    // следующий символ
+    
+    /// Peeks next char
     pub fn next(&self) -> char {
         if self.current + 1 >= self.code.len() {
             '\0'
@@ -31,18 +30,13 @@ impl<'cursor> Cursor<'cursor> {
             self.char_at(1)
         }
     }
-
-    // в конце ли относительно текущей позиции
+    
+    /// Checking `current >= self.code.len()`
     pub fn is_at_end(&self) -> bool {
         self.current >= self.code.len()
     }
-
-    // в конце ли относительно текущей позиции + оффсет
-    pub fn is_at_end_offset(&self, offset: usize) -> bool {
-        self.current + offset >= self.code.len()
-    }
-
-    // символ с оффсетом
+    
+    /// Gets char at `current + offset`
     pub fn char_at(&self, offset: usize) -> char {
         let index = self.current + offset;
         if self.code.len() > index {
