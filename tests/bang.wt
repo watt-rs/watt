@@ -1,6 +1,6 @@
 import 'std.io'
 
-fun do_something {
+fn do_something {
     return false
 }
 

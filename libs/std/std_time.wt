@@ -12,31 +12,31 @@ type Timestamp(raw) {
     native __second -> 'timestamp@second'
 
     // в строку
-    fun to_string {
+    fn to_string {
         return __day(raw) + '.' + __month(raw) + '.' + __year(raw) + ' ' +
                __hour(raw) + ':' + __minute(raw) + ':' + __second(raw)
     }
 
     // конвертеры
-    fun mills {
+    fn mills {
         return __mills(raw)
     }
-    fun month {
+    fn month {
         return __month(raw)
     }
-    fun year {
+    fn year {
         return __year(raw)
     }
-    fun day {
+    fn day {
         return __day(raw)
     }
-    fun hour {
+    fn hour {
         return __hour(raw)
     }
-    fun second {
+    fn second {
         return __seconds(raw)
     }
-    fun minute {
+    fn minute {
         return __minute(raw)
     }
 }
@@ -56,7 +56,7 @@ unit time {
     /*
      Получение текущего времени
     */
-    fun now {
+    fn now {
         raw := self.__now()
         return new Timestamp(raw)
     }

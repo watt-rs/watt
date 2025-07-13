@@ -4,15 +4,15 @@
 import 'std.errors'
 import 'std.io'
 
-fun a {
+fn a {
     return result.ok(10)
 }
 
-fun b {
+fn b {
     return result.err('error found')
 }
 
-fun c {
+fn c {
     a_val := a()?
     io.println('a: ' + a_val)
     b_val := b()?
@@ -23,7 +23,7 @@ io.println(c().unwrap_err())
 */
 /*
 import 'std.io'
-fun factorial(n) {
+fn factorial(n) {
     f := 1
     r := 1
     while f <= n {
@@ -49,11 +49,11 @@ io.println(a < b)
 import 'std.io'
 
 trait Animal {
-    fun pet
+    fn pet
 }
 
 type Cat impl Animal {
-    fun pet {
+    fn pet {
         io.println('Hello, world!')
     }
 }
@@ -66,9 +66,9 @@ if cat impls test:Animal {
 /*
 import 'std.io'
 import 'std.gc'
-fun a {
+fn a {
     c := 3
-    fun b {
+    fn b {
         io.println(c)
     }
     return b
@@ -86,15 +86,15 @@ list.add(9)
 import 'std.errors'
 import 'std.io'
 
-fun a {
+fn a {
     return result.ok(10)
 }
 
-fun b {
+fn b {
     return result.err('error found')
 }
 
-fun c {
+fn c {
     a_val := a()?
     io.println('a: ' + a_val)
     b_val := b()?

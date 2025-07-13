@@ -261,7 +261,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
     /// Anonymous fn parsing
     fn anonymous_fn_expr(&mut self) -> Result<Node, Error> {
-        let location = self.consume(TokenKind::Fun)?.clone();
+        let location = self.consume(TokenKind::Fn)?.clone();
         // params
         let mut params: Vec<Token> = Vec::new();
         if self.check(TokenKind::Lparen) {
@@ -339,7 +339,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                     location: self.consume(TokenKind::Null)?.clone()
                 })
             }
-            TokenKind::Fun => {
+            TokenKind::Fn => {
                 Ok(self.anonymous_fn_expr()?)
             }
             TokenKind::Lambda => {
@@ -945,7 +945,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
     /// Fn declaration parsing
     fn function_stmt(&mut self) -> Result<Node, Error> {
-        self.consume(TokenKind::Fun)?;
+        self.consume(TokenKind::Fn)?;
 
         // fn name
         let name = self.consume(TokenKind::Id)?.clone();
@@ -1051,8 +1051,8 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         while !self.is_at_end() && !self.check(TokenKind::Rbrace) {
             let location = self.peek()?.address.clone();
 
-            if self.check(TokenKind::Fun) {
-                self.consume(TokenKind::Fun)?;
+            if self.check(TokenKind::Fn) {
+                self.consume(TokenKind::Fn)?;
                 // function name
                 let name = self.consume(TokenKind::Id)?.clone();
 
@@ -1192,7 +1192,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             TokenKind::Ret => {
                 self.return_stmt()
             },
-            TokenKind::Fun => {
+            TokenKind::Fn => {
                 self.function_stmt()
             },
             TokenKind::Native => {

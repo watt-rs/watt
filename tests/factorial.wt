@@ -1,5 +1,5 @@
 import 'std.io'
-fun factorial(n) {
+fn factorial(n) {
     f := 1
     r := 1
     while f <= n {

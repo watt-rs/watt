@@ -4,17 +4,17 @@ import 'std.errors'
 // Объект данных о системе
 type System {
     // Количество ОЗУ, установленной на устройстве
-    fun memory_total() {
+    fn memory_total() {
         return system.__internal_memory_total()
     }
 
     // Количество использованной ОЗУ
-    fun memory_used() {
+    fn memory_used() {
         return system.__internal_memory_used()
     }
 
     // Количество вычислительных ядер
-    fun cpu_count() {
+    fn cpu_count() {
         return system.__internal_cpu_count()
     }
 }
@@ -22,12 +22,12 @@ type System {
 // Объект, содержащий информацию о текущем процессе
 type ThisProcess {
     // PID
-    fun id() {
+    fn id() {
         return system.__internal_this_process_id()
     }
 
     // Выход с кодом
-    fun exit(code) {
+    fn exit(code) {
         system.__internal_process_exit(code)
     }
 }
@@ -35,24 +35,24 @@ type ThisProcess {
 // Объект, содержащий информацию о запущенном процессе
 type Process(raw_handle) {
     // Завершить процесс
-    fun terminate {
+    fn terminate {
         process.__internal_process_terminate(self.raw_handle)
     }
 
     // Ждать окончания выполнения процесса
-    fun wait {
+    fn wait {
         return process.__internal_process_wait(self.raw_handle)
     }
 
     // Получает PID запущенного процесса
-    fun id {
+    fn id {
         return process.__internal_process_id(self.raw_handle)
     }
 }
 
 // Тип-помощник. Позволяет собирать будущий процесс.
 type ProcessBuilder {
-    fun spawn_with_shell(command) {
+    fn spawn_with_shell(command) {
         internal := process.__internal_process_spawn_shell(command)
 
         return new Process(internal)
@@ -72,7 +72,7 @@ unit process {
     native __internal_process_terminate -> 'system@process_terminate'
 
     // Запуск нового процесса по команде для командной оболочки (`sh` для Unix, `cmd` для Windows)
-    fun spawn_with_shell(command) {
+    fn spawn_with_shell(command) {
         proc := new ProcessBuilder()
 
         return proc.spawn_with_shell(command)
@@ -100,7 +100,7 @@ unit system {
     native __internal_this_process_terminate -> 'system@this_process_terminate'
 
     // Получает переменную среды по имени
-    fun env(name) {
+    fn env(name) {
         internal := __internal_getenv(name)
 
         if internal == null {
@@ -111,12 +111,12 @@ unit system {
     }
 
     // Устанавливает переменную среды
-    fun set_env(name, value) {
+    fn set_env(name, value) {
         __internal_setenv(name, value)
     }
 
     // Получает текущую рабочую директорию
-    fun cwd() {
+    fn cwd() {
         internal := __internal_getcwd()
 
         if internal == null {
@@ -127,7 +127,7 @@ unit system {
     }
 
     // Получает список аргументов, переданные программе
-    fun get_args() {
+    fn get_args() {
         internal_list := __internal_getargs()
 
         real_list := new List()
@@ -137,17 +137,17 @@ unit system {
     }
 
     // Создает объект системы для получения данных о системе
-    fun summary() {
+    fn summary() {
         return new System()
     }
 
     // Получает текущий процесс
-    fun this() {
+    fn this() {
         return new ThisProcess()
     }
 
     // Имя ос
-    fun os_name() {
+    fn os_name() {
         return __internal_get_osname()
     }
 }

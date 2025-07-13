@@ -14,23 +14,23 @@ unit random {
     seed := time.now().mills()
 
     // следующий сид
-    fun next {
+    fn next {
         self.seed = (self.a * self.seed + self.c) % self.m
         return self.seed
     }
 
     // флоат от 0 до 1
-    fun _float {
+    fn _float {
         return next() / 4294967296
     }
 
     // рандомный инт
-    fun int(min, max) {
+    fn int(min, max) {
         return min + self.next() % (max - min + 1)
     }
 
     // рандомный флоат
-    fun float(min, max) {
+    fn float(min, max) {
         return min + (_float() * (max-min))
     }
 }

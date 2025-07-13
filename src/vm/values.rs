@@ -276,47 +276,47 @@ pub enum Value {
 }
 /// Debug implementation for value
 impl Debug for Value {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         unsafe {
             match self {
                 Value::String(s) => {
-                    write!(f, "{}", **s)
+                    write!(fmt, "{}", **s)
                 },
                 Value::Instance(i) => {
-                    write!(f, "Instance{:?}", *i)
+                    write!(fmt, "Instance{:?}", *i)
                 },
                 Value::Trait(t) => {
-                    write!(f, "Trait{:?}", *t)
+                    write!(fmt, "Trait{:?}", *t)
                 }
-                Value::Fn(fun) => {
-                    write!(f, "Fn{:?}", *fun)
+                Value::Fn(f) => {
+                    write!(fmt, "Fn{:?}", *f)
                 },
                 Value::Native(n) => {
-                    write!(f, "Native{:?}", *n)
+                    write!(fmt, "Native{:?}", *n)
                 },
                 Value::Unit(n) => {
-                    write!(f, "Unit{:?}", *n)
+                    write!(fmt, "Unit{:?}", *n)
                 },
                 Value::Null => {
-                    write!(f, "Null")
+                    write!(fmt, "Null")
                 },
                 Value::Bool(b) => {
-                    write!(f, "{}", *b)
+                    write!(fmt, "{}", *b)
                 }
                 Value::Type(t) => {
-                    write!(f, "Type{:?}", *t)
+                    write!(fmt, "Type{:?}", *t)
                 }
                 Value::Int(i) => {
-                    write!(f, "{}", *i)
+                    write!(fmt, "{}", *i)
                 }
                 Value::Float(fl) => {
-                    write!(f, "{}", *fl)
+                    write!(fmt, "{}", *fl)
                 }
                 Value::List(l) => {
-                    write!(f, "List{:?}", *l)
+                    write!(fmt, "List{:?}", *l)
                 }
                 Value::Any(a) => {
-                    write!(f, "Any{:?}", *a)
+                    write!(fmt, "Any{:?}", *a)
                 }
             }
         }
@@ -324,8 +324,8 @@ impl Debug for Value {
 }
 /// Display implementation for value
 impl Display for Value {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(fmt, "{:?}", self)
     }
 }
 /// PartialEq implementation for value

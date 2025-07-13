@@ -11,7 +11,7 @@ type Result(ok, err) {
      проверяет, не переданы ли 'ok' значение
      и ошибка одновременно.
     */
-    fun init {
+    fn init {
         if self.ok != null and self.err != null {
             panic(
                 'could not create result with (ok:'
@@ -26,7 +26,7 @@ type Result(ok, err) {
      если нет ошибки,
      false в противоположном случае.
     */
-    fun is_ok {
+    fn is_ok {
         return ok != null
     }
 
@@ -35,7 +35,7 @@ type Result(ok, err) {
      если нет ошибки,
      true в противоположном случае.
     */
-    fun is_err {
+    fn is_err {
         return err != null
     }
 
@@ -44,7 +44,7 @@ type Result(ok, err) {
      'ok' значение, в ином случае
      паникует
     */
-    fun unwrap {
+    fn unwrap {
         if self.is_err() {
             panic(
                 'unwrapping error result.',
@@ -60,7 +60,7 @@ type Result(ok, err) {
      Если есть ошибка - возвращает
      её, в ином случае паникует
     */
-    fun unwrap_err {
+    fn unwrap_err {
         if self.is_ok() {
             panic(
                 'unwrapping error, while result is ok.',
@@ -77,7 +77,7 @@ type Result(ok, err) {
      'ok' значение, в ином случае
      возвращает 'value'
     */
-    fun unwrap_or(value) {
+    fn unwrap_or(value) {
         if self.is_err() {
             return value
         }
@@ -91,7 +91,7 @@ type Result(ok, err) {
      'value' значение, в ином случае
      возвращает 'err'
     */
-    fun unwrap_err_or(value) {
+    fn unwrap_err_or(value) {
         if self.is_ok() {
             return value
         }
@@ -110,9 +110,9 @@ unit result {
     /*
      с ok значением
     */
-    fun ok(value) { return new Result(value, null) }
+    fn ok(value) { return new Result(value, null) }
     /*
      с err значением
     */
-    fun err(err) { return new Result(null, err) }
+    fn err(err) { return new Result(null, err) }
 }

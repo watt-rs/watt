@@ -19,7 +19,7 @@ unit math {
     /*
      Функция модуля числа
     */
-    fun abs(x) {
+    fn abs(x) {
         if x < 0 {
             return -x
         }
@@ -31,7 +31,7 @@ unit math {
     /*
      Функция округления в меньшую сторону.
     */
-    fun floor(x) {
+    fn floor(x) {
         i := convert.to_int(x)
         if x >= 0 or x == i {
             return i
@@ -43,7 +43,7 @@ unit math {
     /*
      Функция округления в большую сторону.
     */
-    fun ceil(x) {
+    fn ceil(x) {
         i := convert.to_int(x)
         if x >= 0 or x == i {
             return i
@@ -55,7 +55,7 @@ unit math {
     /*
      Функция округления по математическим правилам.
     */
-    fun round(x) {
+    fn round(x) {
         i := convert.to_int(x)
         difference := self.abs(x - i)
         if difference > 0.5 {
@@ -69,7 +69,7 @@ unit math {
     /*
      Функция экспонента на основе ряда Тейлора
     */
-    fun exp(x) {
+    fn exp(x) {
         result := 1
         term := 1
         terms := 10
@@ -83,7 +83,7 @@ unit math {
     /*
      Функция степени x по основанию y
     */
-    fun pow(x, y) {
+    fn pow(x, y) {
         if x == 0 {
             if y == 0 { return 1 }
             elif y < 0 { panic('could not raise 0 to negative power.', 'check your code.') }
@@ -110,7 +110,7 @@ unit math {
     /*
      Квадратный корень от x, основанный на алгоритме Ньютона.
     */
-    fun sqrt(x) {
+    fn sqrt(x) {
         if x < 0 {
             panic(
                 'sqrt with negative number: ' + x,
@@ -138,7 +138,7 @@ unit math {
     /*
      Кубический корень от x, основанный на алгоритме Ньютона.
     */
-    fun cbrt(x) {
+    fn cbrt(x) {
         if x < 0 {
             panic(
                 'cbrt with negative number: ' + x,
@@ -166,7 +166,7 @@ unit math {
     /*
       Корень от x из n, основанный на алгоритме Ньютона.
     */
-    fun root(x, n) {
+    fn root(x, n) {
         if n == 2 { return sqrt(x) }
         elif n == 3 { return cbrt(x) }
         else {
@@ -200,7 +200,7 @@ unit math {
     /*
      Логарифм x
     */
-    fun log(x) {
+    fn log(x) {
         terms := 10
         if x <= 0 {
             panic(
@@ -230,7 +230,7 @@ unit math {
     /*
      Логарифм x по основанию 10
     */
-    fun log10(x) {
+    fn log10(x) {
         ln10 := 2.302585092994046
         return log(x) / ln10
     }
@@ -250,14 +250,14 @@ unit math {
     /*
      Перевод радианов в градусы
     */
-    fun to_degrees(radians) {
+    fn to_degrees(radians) {
         return radians * (180/self.pi)
     }
 
     /*
      Перевод градусов в радианы
     */
-    fun to_radians(degrees) {
+    fn to_radians(degrees) {
         return degrees * (self.pi/180)
     }
 }

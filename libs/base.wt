@@ -25,31 +25,31 @@ unit __list_utils {
  | > list_utils
 */
 type List {
-    fun init {
+    fn init {
         self.internal := __list_utils.make()
     }
-    fun add(value) {
+    fn add(value) {
         __list_utils.add(self.internal, value)
     }
-    fun set(index, value) {
+    fn set(index, value) {
         __list_utils.set(self.internal, index, value)
     }
-    fun delete(value) {
+    fn delete(value) {
         __list_utils.delete(self.internal, value)
     }
-    fun delete_at(index) {
+    fn delete_at(index) {
         __list_utils.delete_at(self.internal, index)
     }
-    fun length {
+    fn length {
         return __list_utils.length(self.internal)
     }
-    fun to_string {
+    fn to_string {
         return __list_utils.to_string(self.internal)
     }
-    fun get(index) {
+    fn get(index) {
         return __list_utils.get(self.internal, index)
     }
-    fun iter {
+    fn iter {
         return new ListIterator(self)
     }
 }
@@ -59,9 +59,9 @@ type List {
  | Трейт вокруг итераторов
 */
 trait Iterator {
-    fun has_next
-    fun next
-    fun to_list {
+    fn has_next
+    fn next
+    fn to_list {
     	list := new List()
 
     	while self.has_next() {
@@ -77,13 +77,13 @@ trait Iterator {
  | итератор вокруг списка
 */
 type ListIterator(list) impl Iterator {
-    fun init {
+    fn init {
         self.current := 0
     }
-    fun has_next {
+    fn has_next {
         return self.current < self.list.length()
     }
-    fun next {
+    fn next {
         if self.current >= self.list.length() {
             panic(
                 'could not use next.',
@@ -101,7 +101,7 @@ type ListIterator(list) impl Iterator {
  | итератор вокруг диапазона чисел
 */
 type NumbersIterator(start, end) impl Iterator {
-    fun init {
+    fn init {
         self._current := start
         self._end := end
 
@@ -114,7 +114,7 @@ type NumbersIterator(start, end) impl Iterator {
         }
     }
 
-    fun has_next {
+    fn has_next {
         if self.direction == 0 {
             return self._current < self._end
         } else {
@@ -122,7 +122,7 @@ type NumbersIterator(start, end) impl Iterator {
         }
     }
     
-    fun next {
+    fn next {
         if self.has_next() {
         } else {
             panic(
@@ -147,7 +147,7 @@ type NumbersIterator(start, end) impl Iterator {
  Пара key/value для мапы.
 */
 type Entry(key, value) {
-    fun to_string {
+    fn to_string {
         return '(' + key + ',' + value + ')'
     }
 }
@@ -160,7 +160,7 @@ type Map {
     // пары key/value
     entries := []
     // есть ли ключ
-    fun has_key(key) {
+    fn has_key(key) {
         for entry in entries.iter() {
             if entry.key == key {
                 return true
@@ -169,7 +169,7 @@ type Map {
         return false
     }
     // есть ли значение
-    fun has_value(value) {
+    fn has_value(value) {
         for entry in entries.iter() {
             if entry.value == value {
                 return true
@@ -178,7 +178,7 @@ type Map {
         return false
     }
     // установка значения по ключу
-    fun set(key, value) {
+    fn set(key, value) {
         // ищем уже существующую пару
         for entry in entries.iter() {
             if entry.key == key {
@@ -193,7 +193,7 @@ type Map {
         ))
     }
     // удаление пары по ключу
-    fun delete(key) {
+    fn delete(key) {
         // ищем уже существующую пару
         to_delete := null
         for entry in entries.iter() {
@@ -212,7 +212,7 @@ type Map {
         }
     }
     // получение значения по ключу
-    fun get(key) {
+    fn get(key) {
         for entry in entries.iter() {
             if entry.key == key {
                 return entry.value
@@ -220,7 +220,7 @@ type Map {
         }
     }
     // ключи
-    fun keys {
+    fn keys {
         keys := []
         for entry in entries.iter() {
             keys.add(entry.key)
@@ -228,7 +228,7 @@ type Map {
         return keys
     }
     // значения
-    fun values {
+    fn values {
         values := []
         for entry in entries.iter() {
             keys.add(entry.value)
@@ -236,11 +236,11 @@ type Map {
         return values
     }
     // длина
-    fun length {
+    fn length {
         return self.entries.length()
     }
     // в строку
-    fun to_string {
+    fn to_string {
         // формируем строку
         string := '['
         for entry in entries.iter() {
@@ -263,6 +263,6 @@ native panic -> 'base@panic'
  Функция _range
  | создаёт NumbersIterator от a до b
 */
-fun _range(a, b) {
+fn _range(a, b) {
     return new NumbersIterator(a, b)
 }

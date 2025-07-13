@@ -10,7 +10,7 @@ use crate::lexer::cursor::Cursor;
 #[derive(Debug, Clone, Eq, PartialEq, Copy, Hash)]
 #[allow(dead_code)]
 pub enum TokenKind {
-    Fun,
+    Fn,
     Op,        // +, -, *, /
     Lparen,    // (
     Rparen,    // )
@@ -109,7 +109,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
     pub fn new(code: &'cursor [char], file_path: &'file_path PathBuf) -> Self {
         // Keywords list
         let keywords_map = HashMap::from([
-            ("fun", TokenKind::Fun),
+            ("fn", TokenKind::Fn),
             ("break", TokenKind::Break),
             ("if", TokenKind::If),
             ("elif", TokenKind::Elif),
