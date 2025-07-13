@@ -46,7 +46,5 @@ tractor.print()
 
 
 ### ToDo ⌛
-- std libraries: math, graphics, http, etc...
-- match expr/stmt.
-- map expr.
-- anonymous fn-s.
+- std libraries: statistics, ffi, graphics, http, etc...
+- optimizations.
