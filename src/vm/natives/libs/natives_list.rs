@@ -121,7 +121,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             if let Value::List(list) = list_value {
                 if let Value::Int(index) = index_value {
                     // проверка на боунды
-                    if index < 0 || index as usize > (*list).len() {
+                    if index < 0 || index as usize >= (*list).len() {
                         error!(Error::own_text(
                             addr.clone(),
                             format!("index {} out of bounds [0, {}]", index, (*list).len()),
