@@ -14,7 +14,7 @@ Don't be shy, if you can help! We're glad to see your contributions.
 ### Examples
 Simple example is here. 🍹
 
-```rust
+```gleam
 // importing io
 import 'std.io'
 
