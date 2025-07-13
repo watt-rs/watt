@@ -41,8 +41,8 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                         Err(_) => {
                             error!(Error::own_text(
                                 addr,
-                                format!("could not cast string: {} to int", *s),
-                                "you can convert only number string to int."
+                                format!("could not cast string: {} to i64", *s),
+                                "you can convert only number string to i63."
                             ));
                         }
                     }
@@ -67,7 +67,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 _ => {
                     error!(Error::own_text(
                         addr, 
-                        format!("could not cast value: {:?} to int", value), 
+                        format!("could not cast value: {:?} to i63", value), 
                         "check your value"
                     ));
                 }
@@ -104,8 +104,8 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                         Err(_) => {
                             error!(Error::own_text(
                                 addr,
-                                format!("could not cast string: {} to float", *s),
-                                "you can convert only number string to float."
+                                format!("could not cast string: {} to f64", *s),
+                                "you can convert only number string to f64."
                             ));
                         }
                     }
@@ -130,7 +130,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 _ => {
                     error!(Error::own_text(
                         addr, 
-                        format!("could not cast value: {:?} to float", value), 
+                        format!("could not cast value: {:?} to f64", value), 
                         "check your value"
                     ));
                 }
@@ -195,8 +195,8 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                         Err(_) => {
                             error!(Error::own_text(
                                 addr,
-                                format!("could not cast string: {} to int", *s),
-                                "you can convert only number string to int."
+                                format!("could not cast string: {} to i64", *s),
+                                "you can convert only number string to i64."
                             ));
                         }
                     }

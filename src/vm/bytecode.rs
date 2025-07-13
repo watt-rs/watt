@@ -187,7 +187,7 @@ impl Opcode {
                 op.print(indent);
             }
         }
-        /// Print opcode
+        // print opcode
         match self {
             Opcode::Push { value, .. } => {
                 print_indent(indent, format!("push {value:?}").as_str());

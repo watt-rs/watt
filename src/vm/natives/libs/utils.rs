@@ -13,7 +13,7 @@ pub fn expect_int(addr: Address, value: Value, error: Option<Error>) ->i64 {
     } else {
         error!(error.unwrap_or(Error::own_text(
             addr.clone(),
-            format!("expected int, got {:?}", value),
+            format!("expected i64, got {:?}", value),
             "check for types"
         )));
     }
@@ -27,7 +27,7 @@ pub fn expect_float(addr: Address, value: Value, error: Option<Error>) ->f64 {
     } else {
         error!(error.unwrap_or(Error::own_text(
             addr.clone(),
-            format!("expected float, got {:?}", value),
+            format!("expected f64, got {:?}", value),
             "check for types"
         )));
     }

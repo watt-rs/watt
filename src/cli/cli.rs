@@ -1,7 +1,6 @@
 // imports
 use crate::executor::executor;
-use clap::{Arg, ArgAction, Command};
-use std::path::PathBuf;
+use clap::{Arg, ArgAction};
 
 /// Run cli
 pub unsafe fn cli() {

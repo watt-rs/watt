@@ -234,4 +234,16 @@ unit math {
         ln10 := 2.302585092994046
         return log(x) / ln10
     }
+
+    /*
+     Тригонометрические функции
+    */
+    native sin -> 'math@sin'
+    native cos -> 'math@cos'
+    native tan -> 'math@tan'
+    native cat -> 'math@cat'
+    native atan -> 'math@atan'
+    native asin -> 'math@asin'
+    native acos -> 'math@acos'
+    native tanh -> 'math@tanh'
 }

@@ -84,7 +84,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     error!(Error::own_text(
                         addr.clone(),
                         format!(
-                            "could not set element to {:?}, index is {:?}, not an int",
+                            "could not set element to {:?}, index is {:?}, not an i64",
                             list_value, index_value
                         ),
                         "check your code"
@@ -138,7 +138,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     error!(Error::own_text(
                         addr.clone(),
                         format!(
-                            "could not set element to {:?}, index is {:?}, not an int",
+                            "could not set element to {:?}, index is {:?}, not an i64",
                             list_value, index_value
                         ),
                         "check your code"
@@ -188,7 +188,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     error!(Error::own_text(
                         addr.clone(),
                         format!(
-                            "could not set element to {:?}, index is {:?}, not an int",
+                            "could not set element to {:?}, index is {:?}, not a i64",
                             list_value, index_value
                         ),
                         "check your code"

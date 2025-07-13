@@ -21,10 +21,10 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             if !should_push { return Ok(()) }
             match value {
                 Value::Float(_) => {
-                    vm.op_push(OpcodeValue::String("float".to_string()), table)?;
+                    vm.op_push(OpcodeValue::String("f64".to_string()), table)?;
                 }
                 Value::Int(_) => {
-                    vm.op_push(OpcodeValue::String("int".to_string()), table)?;
+                    vm.op_push(OpcodeValue::String("i64".to_string()), table)?;
                 }
                 Value::String(_) => {
                     vm.op_push(OpcodeValue::String("string".to_string()), table)?;
@@ -74,10 +74,10 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             if !should_push { return Ok(()) }
             match value {
                 Value::Float(_) => {
-                    vm.op_push(OpcodeValue::String("watt:float".to_string()), table)?;
+                    vm.op_push(OpcodeValue::String("watt:f64".to_string()), table)?;
                 }
                 Value::Int(_) => {
-                    vm.op_push(OpcodeValue::String("watt:int".to_string()), table)?;
+                    vm.op_push(OpcodeValue::String("watt:i64".to_string()), table)?;
                 }
                 Value::String(_) => {
                     vm.op_push(OpcodeValue::String("watt:string".to_string()), table)?;

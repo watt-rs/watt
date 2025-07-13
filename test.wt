@@ -134,4 +134,12 @@ a := result.err('111')
 io.println(a?)
 */
 import 'std.io'
-panic('panic','here')
+import 'std.math'
+io.println(math.sin(1))
+io.println(math.cos(1))
+io.println(math.tan(1))
+io.println(math.asin(1))
+io.println(math.acos(1))
+io.println(math.atan(1))
+io.println(math.cat(1))
+io.println(math.tanh(1))
