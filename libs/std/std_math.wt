@@ -246,4 +246,18 @@ unit math {
     native asin -> 'math@asin'
     native acos -> 'math@acos'
     native tanh -> 'math@tanh'
+
+    /*
+     Перевод радианов в градусы
+    */
+    fun to_degrees(radians) {
+        return radians * (180/self.pi)
+    }
+
+    /*
+     Перевод градусов в радианы
+    */
+    fun to_radians(degrees) {
+        return degrees * (self.pi/180)
+    }
 }
