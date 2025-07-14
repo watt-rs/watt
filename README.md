@@ -14,7 +14,7 @@ Don't be shy, if you can help! We're glad to see your contributions.
 ### Examples
 Simple example is here. 🍹
 
-```geko
+```gleam 
 // importing io
 import 'std.io'
 
@@ -46,7 +46,5 @@ tractor.print()
 
 
 ### ToDo ⌛
-- std libraries: math, graphics, http, etc...
-- match expr/stmt.
-- map expr.
-- anonymous fn-s.
+- std libraries: statistics, ffi, graphics, http, etc...
+- optimizations.
