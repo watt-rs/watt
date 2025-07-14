@@ -107,13 +107,19 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     
                     vm.gc_guard(string);
                     vm.gc_register(string, table);
-                    vm.gc_unguard();
 
                     string
                 })
                 .collect();
-
+            
+            // unguarding strings
+            for _ in  0..args.len() {
+                vm.gc_unguard();
+            }
+            
+            // raw list
             let raw_list = Value::List(memory::alloc_value(args));
+            
             vm.op_push(OpcodeValue::Raw(raw_list), table)?;
 
             Ok(())
