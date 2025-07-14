@@ -117,9 +117,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 vm.gc_unguard();
             }
             
-            // raw list
+            // safety of strings will not be erased
+            // guaranteed by list marking if gc will invoke.
             let raw_list = Value::List(memory::alloc_value(args));
-            
             vm.op_push(OpcodeValue::Raw(raw_list), table)?;
 
             Ok(())
