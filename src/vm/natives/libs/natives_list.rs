@@ -1,4 +1,4 @@
-﻿// импорты
+﻿// imports
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::natives::natives;
@@ -9,29 +9,24 @@ use crate::error;
 use crate::vm::bytecode::OpcodeValue;
 use crate::vm::memory::memory;
 
-// провайд
+/// Provides
 #[allow(unused_variables)]
 #[allow(dangerous_implicit_autorefs)]
 pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Error> {
-    // функции
     natives::provide(
         vm,
         built_in_address.clone(),
         0,
         "list@make",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // если надо пушить
             if should_push {
-                // список
                 let list = memory::alloc_value(Vec::<Value>::new());
-                // добавляем
                 vm.op_push(OpcodeValue::Raw(
                     Value::List(
                         list
                     )
                 ), table)?;
             }
-            // успех
             Ok(())
         }
     );
@@ -41,11 +36,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         2,
         "list@add",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // значение
             let value = vm.pop(&addr).unwrap();
-            // список
             let list_value = vm.pop(&addr).unwrap();
-            // проверяем
+            
             if let Value::List(list) = list_value {
                 (*list).push(value);
             }
@@ -56,11 +49,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     "check your code"
                 ));
             }
-            // если надо пушить
             if should_push {
                 vm.push(Value::Null)
             }
-            // успех
             Ok(())
         }
     );
@@ -70,13 +61,10 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         3,
         "list@set",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // значение
             let value = vm.pop(&addr).unwrap();
-            // индекс
             let index_value = vm.pop(&addr).unwrap();
-            // список
             let list_value = vm.pop(&addr).unwrap();
-            // проверяем
+
             if let Value::List(list) = list_value {
                 if let Value::Int(index) = index_value {
                     (*list)[index as usize] = value;
@@ -99,7 +87,6 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     "check your code"
                 ));
             }
-            // если надо пушить
             if should_push {
                 vm.push(Value::Null)
             }
@@ -113,24 +100,20 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         2,
         "list@get",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // индекс
             let index_value = vm.pop(&addr).unwrap();
-            // список
             let list_value = vm.pop(&addr).unwrap();
-            // проверяем
+
             if let Value::List(list) = list_value {
                 if let Value::Int(index) = index_value {
-                    // проверка на боунды
-                    if index < 0 || index as usize > (*list).len() {
+                    // bounds checking
+                    if index < 0 || index as usize >= (*list).len() {
                         error!(Error::own_text(
                             addr.clone(),
                             format!("index {} out of bounds [0, {}]", index, (*list).len()),
                             "check your code"
                         ))
                     }
-                    // если надо пушить
                     if should_push {
-                        // получение значения
                         let value = *((*list).get(index as usize).unwrap());
                         vm.push(value);
                     }
@@ -153,7 +136,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     "check your code"
                 ));
             }
-            // успех
+
             Ok(())
         }
     );
@@ -163,14 +146,12 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         2,
         "list@delete_at",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // индекс
             let index_value = vm.pop(&addr).unwrap();
-            // список
             let list_value = vm.pop(&addr).unwrap();
-            // проверяем
+
             if let Value::List(list) = list_value {
                 if let Value::Int(index) = index_value {
-                    // проверка на боунды
+                    // bounds checking
                     if index < 0 || index as usize > (*list).len() {
                         error!(Error::own_text(
                             addr.clone(),
@@ -178,9 +159,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                             "check your code"
                         ))
                     }
-                    // удаляем
+                    
                     (*list).remove(index as usize);
-                    // если надо пушить
+                    
                     if should_push {
                         vm.push(Value::Null)
                     }
@@ -213,11 +194,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         2,
         "list@delete",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // индекс
             let value = vm.pop(&addr).unwrap();
-            // список
             let list_value = vm.pop(&addr).unwrap();
-            // проверяем
+
             if let Value::List(list) = list_value {
                 for (index, element) in (*list).iter().enumerate() {
                     if *element == value {
@@ -233,7 +212,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     "check your code"
                 ));
             }
-            // успех
+
             Ok(())
         }
     );    
@@ -243,13 +222,10 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         2,
         "list@index_of",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // индекс
             let value = vm.pop(&addr).unwrap();
-            // список
             let list_value = vm.pop(&addr).unwrap();
-            // проверяем
+            
             if let Value::List(list) = list_value {
-                // если надо пушить
                 if should_push {
                     let position = (*list).iter().position(|v| *v == value);
                     vm.push(Value::Int(
@@ -264,7 +240,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     "check your code"
                 ));
             }
-            // успех
+
             Ok(())
         }
     );
@@ -274,11 +250,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "list@length",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // список
             let list_value = vm.pop(&addr).unwrap();
-            // проверяем
+
             if let Value::List(list) = list_value {
-                // если надо пушить
                 if should_push {
                     vm.push(
                         Value::Int(
@@ -294,7 +268,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     "check your code"
                 ));
             }
-            // успех
+
             Ok(())
         }
     );
@@ -304,11 +278,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "list@to_string",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // список
             let list_value = vm.pop(&addr).unwrap();
-            // проверяем
+
             if let Value::List(list) = list_value {
-                // если надо пушить
                 if should_push {
                     vm.op_push(OpcodeValue::String(
                         format!("{:?}", *list)
@@ -322,10 +294,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     "check your code"
                 ));
             }
-            // успех
+
             Ok(())
         }
     );
-    // успех
     Ok(())
 }

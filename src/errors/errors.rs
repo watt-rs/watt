@@ -49,7 +49,6 @@ impl Error {
     }
 
     /// New error with &'static str text and owned hint
-    #[allow(unused)]
     pub fn own_hint(addr: Address, text: &'static str, hint: String) -> Self {
         Error {
             addr,

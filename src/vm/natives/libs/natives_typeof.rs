@@ -1,4 +1,4 @@
-// импорты
+// imports
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::bytecode::OpcodeValue;
@@ -7,10 +7,9 @@ use crate::vm::table::Table;
 use crate::vm::values::{Value};
 use crate::vm::vm::VM;
 
-// провайд
+/// Provides
 #[allow(unused_variables)]
 pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Error> {
-    // функции
     natives::provide(
         vm,
         built_in_address.clone(),
@@ -60,7 +59,6 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     vm.op_push(OpcodeValue::String("any".to_string()), table)?;
                 }
             }
-            // успех
             Ok(())
         }
     );
@@ -125,10 +123,8 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     vm.op_push(OpcodeValue::String("watt:any".to_string()), table)?;
                 }
             }
-            // успех
             Ok(())
         }
     );    
-    // успех
     Ok(())
 }

@@ -1,4 +1,4 @@
-// импорты
+// imports
 use crate::error;
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
@@ -12,7 +12,7 @@ use crate::vm::vm::VM;
 use std::process::Command;
 use sysinfo::System;
 
-// провайд
+/// Provides
 #[allow(unused_variables)]
 pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Error> {
     natives::provide(
@@ -21,12 +21,10 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "system@getenv",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // если не надо пушить
             if !should_push {
                 return Ok(());
             }
 
-            // получаем значение
             let env_key = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
             let value = match std::env::vars().find(|x| &x.0 == env_key) {
                 Some((key, value)) => {
@@ -40,7 +38,6 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
 
             vm.op_push(OpcodeValue::String(value), table)?;
 
-            // успех
             Ok(())
         },
     );
@@ -50,14 +47,11 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         2,
         "system@setenv",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // значение и ключ
             let env_value = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
             let env_key = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
 
-            // установка значения
             std::env::set_var(env_key, env_value);
 
-            // успех
             Ok(())
         },
     );
@@ -67,12 +61,11 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         0,
         "system@getcwd",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // если не надо пушить
             if !should_push {
                 return Ok(());
             }
-
-            // получаем current dir
+            
+            // getting cwd with error handling
             let cwd = match std::env::current_dir() {
                 Ok(cwd) => {
                     let path = cwd.to_str().map(|x| x.to_string());
@@ -93,8 +86,6 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             };
 
             vm.op_push(OpcodeValue::String(cwd), table)?;
-
-            // успех
             Ok(())
         },
     );
@@ -104,32 +95,27 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         0,
         "system@getargs",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // если не надо пушить
             if !should_push {
                 return Ok(());
             }
 
-            // аргументы
+            // parsing args
             let args: Vec<Value> = std::env::args()
                 .skip(1)
                 .map(|x| {
                     let string = Value::String(memory::alloc_value(x));
-
-                    // I don't know how to register those values properly.
                     
                     vm.gc_guard(string);
                     vm.gc_register(string, table);
+                    vm.gc_unguard();
 
                     string
                 })
                 .collect();
 
             let raw_list = Value::List(memory::alloc_value(args));
-
-            // пушим
             vm.op_push(OpcodeValue::Raw(raw_list), table)?;
 
-            // успех
             Ok(())
         },
     );
@@ -139,18 +125,16 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         0,
         "system@memory_total",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // если не надо пушить
             if !should_push {
                 return Ok(());
             }
-            // информация о памяти
+
             let system_info = System::new_with_specifics(
                 sysinfo::RefreshKind::nothing()
                     .with_memory(sysinfo::MemoryRefreshKind::everything()),
             );
             vm.push(Value::Int(system_info.total_memory() as _));
 
-            // успех
             Ok(())
         },
     );
@@ -160,20 +144,16 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         0,
         "system@memory_used",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // если не надо пушить
             if !should_push {
                 return Ok(());
             }
 
-            // информация о памяти
             let system_info = System::new_with_specifics(
                 sysinfo::RefreshKind::nothing()
                     .with_memory(sysinfo::MemoryRefreshKind::everything()),
             );
-
             vm.push(Value::Int(system_info.used_memory() as _));
 
-            // успех
             Ok(())
         },
     );
@@ -184,19 +164,16 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         0,
         "system@cpu_count",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // если не надо пушить
             if !should_push {
                 return Ok(());
             }
 
-            // информация
             vm.push(Value::Int(
                 std::thread::available_parallelism()
                     .map(|x| x.get())
                     .unwrap_or(1) as _,
             ));
 
-            // успех
             Ok(())
         },
     );
@@ -227,7 +204,6 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "system@process_spawn_shell",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // если не надо пушить
             if !should_push {
                 error!(Error::new(
                     addr.clone(),
@@ -236,7 +212,6 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 ));
             }
 
-            // формирование команды
             let command = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
             let mut descriptor = if cfg!(target_os = "windows") {
                 let mut shell = Command::new("cmd");
@@ -248,7 +223,6 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 shell
             };
 
-            // исполнение
             match descriptor.spawn() {
                 Ok(child) => {
                     vm.op_push(OpcodeValue::Raw(Value::Any(memory::alloc_value(child))), table)?;
@@ -258,7 +232,6 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 }
             };
 
-            // успех
             Ok(())
         },
     );
@@ -268,11 +241,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "system@process_wait",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // процесс
             let child = &mut *utils::expect_any(addr.clone(), vm.pop(&addr)?, None);
             let child: Option<&mut std::process::Child> = child.downcast_mut();
 
-            // ожидание
             match child {
                 Some(ch) => {
                     let value = ch.wait();
@@ -296,7 +267,6 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 }
             }
 
-            // успех
             Ok(())
         },
     );
@@ -307,11 +277,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "system@process_terminate",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // процесс
             let child = &mut *utils::expect_any(addr.clone(), vm.pop(&addr)?, None);
             let child: Option<&mut std::process::Child> = child.downcast_mut();
 
-            // убиваем процесс
             match child {
                 Some(ch) => {
                     let _ = ch.kill();
@@ -325,12 +293,10 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 }
             }
 
-            // если нужно пушить
             if should_push {
                 vm.push(Value::Null);
             }
 
-            // успех
             Ok(())
         },
     );
@@ -340,11 +306,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "system@process_id",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // процесс
             let child = &mut *utils::expect_any(addr.clone(), vm.pop(&addr)?, None);
             let child: Option<&mut std::process::Child> = child.downcast_mut();
 
-            // получаем айди
             match child {
                 Some(ch) => {
                     if should_push {
@@ -360,7 +324,6 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 }
             }
 
-            // успех
             Ok(())
         },
     );
@@ -370,12 +333,10 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         0,
         "system@get_osname",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // если надо пушить
             if should_push {
-                vm.push(Value::String(memory::alloc_value(std::env::consts::OS.to_string())));
+                vm.op_push(OpcodeValue::String(std::env::consts::OS.to_string()), table)?;
             }
 
-            // успех
             Ok(())
         },
     );

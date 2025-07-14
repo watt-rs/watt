@@ -1,4 +1,4 @@
-// импорты
+// imports
 import 'std.errors'
 
 // Объект данных о системе

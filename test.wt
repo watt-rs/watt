@@ -135,11 +135,10 @@ io.println(a?)
 */
 import 'std.io'
 import 'std.math'
-io.println(math.sin(1))
-io.println(math.cos(1))
-io.println(math.tan(1))
-io.println(math.asin(1))
-io.println(math.acos(1))
-io.println(math.atan(1))
-io.println(math.cat(1))
-io.println(math.tanh(1))
+import 'std.crypto'
+io.println(b64.encode('Hello, world!'))
+io.println(sha512.hash('Hello, world!'))
+io.println(sha256.hash('Hello, world!'))
+io.println(sha224.hash('Hello, world!'))
+io.println(sha384.hash('Hello, world!'))
+io.println(md5.hash('Hello, world!'))

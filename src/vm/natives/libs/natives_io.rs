@@ -1,4 +1,4 @@
-// импорты
+// imports
 use std::io::{self, Write};
 use crate::error;
 use crate::errors::errors::Error;
@@ -9,10 +9,9 @@ use crate::vm::table::Table;
 use crate::vm::values::{Value};
 use crate::vm::vm::VM;
 
-// провайд
+/// Provides
 #[allow(unused_variables)]
 pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Error> {
-    // функции
     natives::provide(
         vm,
         built_in_address.clone(),
@@ -64,7 +63,6 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         0,
         "io@input",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // инпут
             let mut input: String = String::new();
             if let Err(e) = io::stdin()
                 .read_line(&mut input) {
@@ -74,7 +72,6 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     "check your code"
                 ))
             }
-            // если нужен пуш
             if should_push {
                 vm.op_push(
                     OpcodeValue::String(
@@ -83,10 +80,8 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     table
                 )?;
             }
-            // успех
             Ok(())
         }
     );
-    // успех
     Ok(())
 }

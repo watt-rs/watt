@@ -1,4 +1,4 @@
-// импорты
+// imports
 use chrono::{DateTime, Datelike, Local, Timelike};
 use crate::error;
 use crate::errors::errors::Error;
@@ -11,10 +11,9 @@ use crate::vm::table::Table;
 use crate::vm::values::{Value};
 use crate::vm::vm::VM;
 
-// провайд
+/// Provides
 #[allow(unused_variables)]
 pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Error> {
-    // функции
     natives::provide(
         vm,
         built_in_address.clone(),

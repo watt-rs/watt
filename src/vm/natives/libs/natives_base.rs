@@ -1,4 +1,4 @@
-// импорты
+// imports
 use crate::error;
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
@@ -7,24 +7,23 @@ use crate::vm::table::Table;
 use crate::vm::values::{Value};
 use crate::vm::vm::VM;
 
-// провайд
+/// Provides
 #[allow(unused_variables)]
 pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Error> {
-    // функция panic
+    // panic
     natives::provide(
         vm,
         built_in_address.clone(),
         2,
         "base@panic",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // текст hint
+            // hint and error texts
             let hint = vm.pop(&addr)?;
-            // ошибка
             let error = vm.pop(&addr)?;
-            // проверяем типы
+
             if let Value::String(hint_string) = hint {
                 if let Value::String(error_string) = error {
-                    // ошибка
+                    // raising error, if everything ok
                     error!(Error::own(
                         addr.clone(),
                         (*error_string).clone(),
@@ -48,6 +47,5 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             }
         }
     );
-    // успех
     Ok(())
 }

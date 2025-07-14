@@ -1,0 +1,77 @@
+/*
+ Библиотека crypto. Юнит b64.
+ | имплементация b64_encode, b64_decode
+ | находится в
+ | > crate::vm::natives::libs::natives_crypto
+ */
+unit b64 {
+    /*
+     В base64
+    */
+    native encode -> 'crypto@b64_encode'
+
+    /*
+     Из base64
+    */
+    native decode -> 'crypto@b64_decode'
+}
+
+/*
+ Библиотека crypto. Юнит sha256.
+ | имплементация sha256
+ | > crate::vm::natives::libs::natives_crypto
+ */
+unit sha256 {
+    /*
+     В sha256
+    */
+    native hash -> 'crypto@sha256'
+}
+
+/*
+ Библиотека crypto. Юнит sha512.
+ | имплементация sha512
+ | > crate::vm::natives::libs::natives_crypto
+ */
+unit sha512 {
+    /*
+     В sha512
+    */
+    native hash -> 'crypto@sha512'
+}
+
+/*
+ Библиотека crypto. Юнит sha224.
+ | имплементация sha224
+ | > crate::vm::natives::libs::natives_crypto
+ */
+unit sha224 {
+    /*
+     В sha224
+    */
+    native hash -> 'crypto@sha224'
+}
+
+/*
+ Библиотека crypto. Юнит sha384.
+ | имплементация sha384
+ | > crate::vm::natives::libs::natives_crypto
+ */
+unit sha384 {
+    /*
+     В sha384
+    */
+    native hash -> 'crypto@sha384'
+}
+
+/*
+ Библиотека crypto. Юнит md5.
+ | имплементация md5
+ | > crate::vm::natives::libs::natives_crypto
+ */
+unit md5 {
+    /*
+     В md5
+    */
+    native hash -> 'crypto@md5'
+}
