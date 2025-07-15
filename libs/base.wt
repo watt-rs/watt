@@ -314,3 +314,19 @@ fn _range(a, b) {
 trait Display {
     fn to_string
 }
+
+/*
+ Returns name of value type
+*/
+native typeof -> 'base@typeof'
+
+/*
+ Returns full name of value type
+*/
+native full_typeof -> 'base@full_typeof'
+
+/*
+ Returns true, if given value is instance,
+ otherwise returns false
+*/
+native is_instance -> 'base@is_instance'

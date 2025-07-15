@@ -134,8 +134,9 @@ a := result.err('111')
 io.println(a?)
 */
 import 'std.io'
-import 'std.strings'
-
-string := new StringEx('Hello, world!')
-io.println(string.replace(',', ';').sub(0, 6))
-// todo: write string tests
+type A {
+}
+io.println(typeof(new A()))
+io.println(full_typeof(new A()))
+io.println(is_instance(new A()))
+io.println(is_instance(127))

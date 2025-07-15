@@ -30,7 +30,6 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
                 ("std.gc", "./libs/std/std_gc.wt"),
                 ("std.errors", "./libs/std/std_errors.wt"),
                 ("std.convert", "./libs/std/std_convert.wt"),
-                ("std.typeof", "./libs/std/std_typeof.wt"),
                 ("std.time", "./libs/std/std_time.wt"),
                 ("std.math", "./libs/std/std_math.wt"),
                 ("std.random", "./libs/std/std_random.wt"),

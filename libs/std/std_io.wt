@@ -1,6 +1,3 @@
-// imports
-import 'std.typeof'
-
 /*
  Library: io.
  | implementation of: println, print и input
@@ -11,30 +8,8 @@ unit io {
     /*
      Print natives
     */
-    native __println -> 'io@println'
-    native __print -> 'io@print'
-
-    /*
-     Prints text and '\n' to terminal
-    */
-    fn println(a) {
-        if a impls Display {
-            __println(a.to_string())
-        } else {
-            __println(a)
-        }
-    }
-
-    /*
-     Prints text to terminal
-    */
-    fn print(a) {
-        if a impls Display {
-            __print(a.to_string())
-        } else {
-            __print(a)
-        }
-    }
+    native println -> 'io@println'
+    native print -> 'io@print'
 
     /*
      Flushes buffered data to terminal
