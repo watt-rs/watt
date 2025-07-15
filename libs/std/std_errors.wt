@@ -1,15 +1,13 @@
 /*
- Тип Result.
- | принимает ok/err значение, используется
- | для прокидывания ошибок и 'ok' значений.
- | может принимать только ok или err в одно
- | и то же время.
+ Result type.
+ | contains ok/err values, used
+ | to work with errors and error propagation.
+ | can contains ok or err at the same time.
  */
 type Result(ok, err) {
     /*
-     Инициализация результата,
-     проверяет, не переданы ли 'ok' значение
-     и ошибка одновременно.
+     Result init,
+     checks only one value is passed.
     */
     fn init {
         if self.ok != null and self.err != null {
@@ -22,27 +20,24 @@ type Result(ok, err) {
     }
 
     /*
-     Возвращает true,
-     если нет ошибки,
-     false в противоположном случае.
+     Returns true if Result is ok, else
+     returns false
     */
     fn is_ok {
         return ok != null
     }
 
     /*
-     Возвращает false,
-     если нет ошибки,
-     true в противоположном случае.
+     Returns true if Result is err, else
+     returns false
     */
     fn is_err {
         return err != null
     }
 
     /*
-     Если нет ошибки - возвращает
-     'ok' значение, в ином случае
-     паникует
+     Unwraps Result, if result is err,
+     raises error, otherwise returns ok value
     */
     fn unwrap {
         if self.is_err() {
@@ -57,8 +52,8 @@ type Result(ok, err) {
     }
 
     /*
-     Если есть ошибка - возвращает
-     её, в ином случае паникует
+     Unwraps Result, if result is ok,
+     raises error, otherwise returns err value
     */
     fn unwrap_err {
         if self.is_ok() {
@@ -73,9 +68,9 @@ type Result(ok, err) {
     }
 
     /*
-     Если нет ошибки - возвращает
-     'ok' значение, в ином случае
-     возвращает 'value'
+     Unwraps Result, if result is err,
+     returns given value, otherwise
+     returns ok value
     */
     fn unwrap_or(value) {
         if self.is_err() {
@@ -87,9 +82,9 @@ type Result(ok, err) {
     }
 
     /*
-     Если нет ошибки - возвращает
-     'value' значение, в ином случае
-     возвращает 'err'
+     Unwraps Result, if result is ok,
+     returns given value, otherwise
+     returns err value
     */
     fn unwrap_err_or(value) {
         if self.is_ok() {
@@ -102,17 +97,18 @@ type Result(ok, err) {
 }
 
 /*
- юнит result
- | предоставляет быстрые инициализаторы
- | для типа Result
+ Result unit.
+ | contains fast initializer
+ | for Result type
 */
 unit result {
     /*
-     с ok значением
+     Result with ok value
     */
     fn ok(value) { return new Result(value, null) }
+
     /*
-     с err значением
+     Result with err value
     */
     fn err(err) { return new Result(null, err) }
 }

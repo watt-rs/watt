@@ -1,7 +1,7 @@
 /*
- Библиотека gc.
- | имплементация invoke
- | находится в
+ Library: gc.
+ | implementation of: invoke
+ | can be found in
  | > crate::vm::natives::libs::natives_gc
  */
 unit gc {

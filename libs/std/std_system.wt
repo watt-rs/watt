@@ -1,56 +1,43 @@
 // imports
 import 'std.errors'
 
-// Объект данных о системе
-type System {
-    // Количество ОЗУ, установленной на устройстве
+// System summary type
+type SystemSummary {
     fn memory_total() {
         return system.__internal_memory_total()
     }
-
-    // Количество использованной ОЗУ
     fn memory_used() {
         return system.__internal_memory_used()
     }
-
-    // Количество вычислительных ядер
     fn cpu_count() {
         return system.__internal_cpu_count()
     }
 }
 
-// Объект, содержащий информацию о текущем процессе
+// This process type
 type ThisProcess {
-    // PID
     fn id() {
         return system.__internal_this_process_id()
     }
-
-    // Выход с кодом
-    fn exit(code) {
-        system.__internal_process_exit(code)
+    fn terminate(code) {
+        system.__internal_this_process_terminate(code)
     }
 }
 
-// Объект, содержащий информацию о запущенном процессе
+// Process type
 type Process(raw_handle) {
-    // Завершить процесс
     fn terminate {
         process.__internal_process_terminate(self.raw_handle)
     }
-
-    // Ждать окончания выполнения процесса
     fn wait {
         return process.__internal_process_wait(self.raw_handle)
     }
-
-    // Получает PID запущенного процесса
     fn id {
         return process.__internal_process_id(self.raw_handle)
     }
 }
 
-// Тип-помощник. Позволяет собирать будущий процесс.
+// Process builder type
 type ProcessBuilder {
     fn spawn_with_shell(command) {
         internal := process.__internal_process_spawn_shell(command)
@@ -60,8 +47,8 @@ type ProcessBuilder {
 }
 
 /*
- Библиотека system. Юнит process.
- | имплементация находится в
+ Library: system. Unit process.
+ | implementation of natives can be found in:
  | > crate::vm::natives::libs::natives_system
  */
 unit process {
@@ -80,26 +67,25 @@ unit process {
 }
 
 /*
- Библиотека system. Юнит system.
- | имплементация находится в
+ Library: system. Unit system.
+ | implementation of natives can be found in:
  | > crate::vm::natives::libs::natives_system
  */
 unit system {
-    // базовые нативные функции
     native __internal_getenv -> 'system@getenv'
     native __internal_setenv -> 'system@setenv'
     native __internal_getcwd -> 'system@getcwd'
     native __internal_getargs -> 'system@getargs'
     native __internal_get_osname -> 'system@get_osname'
-    // нативные функции информации о системе
+
     native __internal_memory_total -> 'system@memory_total'
     native __internal_memory_used -> 'system@memory_used'
     native __internal_cpu_count -> 'system@cpu_count'
-    // нативные функции для текущих процессоров
+
     native __internal_this_process_id -> 'system@this_process_id'
     native __internal_this_process_terminate -> 'system@this_process_terminate'
 
-    // Получает переменную среды по имени
+    // Gets env by name
     fn env(name) {
         internal := __internal_getenv(name)
 
@@ -110,12 +96,12 @@ unit system {
         return result.ok(internal)
     }
 
-    // Устанавливает переменную среды
+    // Sets env by name : value
     fn set_env(name, value) {
         __internal_setenv(name, value)
     }
 
-    // Получает текущую рабочую директорию
+    // Gets cwd
     fn cwd() {
         internal := __internal_getcwd()
 
@@ -126,7 +112,7 @@ unit system {
         return result.ok(internal)
     }
 
-    // Получает список аргументов, переданные программе
+    // Gets args of cli
     fn get_args() {
         internal_list := __internal_getargs()
 
@@ -136,17 +122,17 @@ unit system {
         return real_list
     }
 
-    // Создает объект системы для получения данных о системе
+    // Gets system summary
     fn summary() {
-        return new System()
+        return new SystemSummary()
     }
 
-    // Получает текущий процесс
+    // Gets process
     fn this() {
         return new ThisProcess()
     }
 
-    // Имя ос
+    // Gets os name
     fn os_name() {
         return __internal_get_osname()
     }

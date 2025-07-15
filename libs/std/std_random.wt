@@ -3,33 +3,33 @@ import 'std.math'
 import 'std.time'
 
 /*
- Библиотека random.
- | имплементация int, float, choose
+ Random library.
+ | implementation of: int, float, choose
  */
 unit random {
-    // параметры
+    // params (from c)
     a := 1664525
     c := 1013904223
     m := math.pow(2, 32)
     seed := time.now().mills()
 
-    // следующий сид
+    // next
     fn next {
         self.seed = (self.a * self.seed + self.c) % self.m
         return self.seed
     }
 
-    // флоат от 0 до 1
+    // random float from 0 to 1
     fn _float {
         return next() / 4294967296
     }
 
-    // рандомный инт
+    // random int from 0 to 1
     fn int(min, max) {
         return min + self.next() % (max - min + 1)
     }
 
-    // рандомный флоат
+    // random float
     fn float(min, max) {
         return min + (_float() * (max-min))
     }

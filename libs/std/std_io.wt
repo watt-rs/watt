@@ -1,28 +1,27 @@
 /*
- Библиотека io.
- | имплементация println, print и input
- | находится в
+ Library: io.
+ | implementation of: println, print и input
+ | can be found in
  | > crate::vm::natives::libs::natives_io
  */
 unit io {
     /*
-     Выводит строку в консоль.
-     После, выводит \n.
+     Prints text and \n to terminal
     */
     native println -> 'io@println'
 
     /*
-     Выводит строку в консоль
+     Prints text to terminal
     */
     native print -> 'io@print'
 
     /*
-     Выводит буферизованные данные на экран.
+     Flushes buffered data to terminal
     */
     native flush -> 'io@flush'
 
     /*
-     Запрашивает ввод у пользователя.
+     Gets input from terminal
     */
     native input -> 'io@input'
 }

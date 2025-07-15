@@ -1,8 +1,10 @@
 /*
- Timestamp
+ Timestamp type
+ | implementation of natives
+ | can be found in:
+ | > crate::vm::natives::libs::natives_time
 */
 type Timestamp(raw) {
-    // нативные функции
     native __mills -> 'timestamp@mills'
     native __month -> 'timestamp@month'
     native __year -> 'timestamp@year'
@@ -11,28 +13,31 @@ type Timestamp(raw) {
     native __minute -> 'timestamp@minute'
     native __second -> 'timestamp@second'
 
-    // в строку
     fn to_string {
         return __day(raw) + '.' + __month(raw) + '.' + __year(raw) + ' ' +
                __hour(raw) + ':' + __minute(raw) + ':' + __second(raw)
     }
 
-    // конвертеры
     fn mills {
         return __mills(raw)
     }
+
     fn month {
         return __month(raw)
     }
+
     fn year {
         return __year(raw)
     }
+
     fn day {
         return __day(raw)
     }
+
     fn hour {
         return __hour(raw)
     }
+
     fn second {
         return __seconds(raw)
     }
@@ -42,22 +47,19 @@ type Timestamp(raw) {
 }
 
 /*
- Библиотека time.
- | имплементация now, from, format, at
- | находится в
+ Library: time.
+ | implementation of: now, from, format, at
+ | can be found in:
  | > crate::vm::natives::libs::natives_time
  */
 unit time {
-    /*
-     Текущее время
-    */
     native __now -> 'time@now'
 
-    /*
-     Получение текущего времени
-    */
+    // Gets current time
     fn now {
         raw := self.__now()
         return new Timestamp(raw)
     }
+
+    // TODO: add from, at.
 }

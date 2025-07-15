@@ -1,16 +1,16 @@
 /*
- Библиотека typeof.
- | имплементация of, f_of,
- | находится в
+ Library: typeof.
+ | implementation of: of, fof,
+ | can be found in:
  | > crate::vm::natives::libs::natives_typeof
  */
 
 /*
- Возвращает строку с названием типа значения.
+ Returns name of value type
 */
 native typeof -> 'typeof@of'
 
 /*
- Возвращает строку с полным названием типа значения.
+ Returns full name of value type
 */
 native full_typeof -> 'typeof@fof'

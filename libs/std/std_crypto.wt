@@ -1,77 +1,81 @@
 /*
- Библиотека crypto. Юнит b64.
- | имплементация b64_encode, b64_decode
- | находится в
+ Library: crypto. Unit: b64.
+ | implementation of b64_encode, b64_decode
+ | can be found in:
  | > crate::vm::natives::libs::natives_crypto
  */
 unit b64 {
     /*
-     В base64
+     To base64
     */
     native encode -> 'crypto@b64_encode'
 
     /*
-     Из base64
+     From base64
     */
     native decode -> 'crypto@b64_decode'
 }
 
 /*
- Библиотека crypto. Юнит sha256.
- | имплементация sha256
+ Library: crypto. Unit: sha256.
+ | implementation of sha256_encode, sha256_decode
+ | can be found in:
  | > crate::vm::natives::libs::natives_crypto
  */
 unit sha256 {
     /*
-     В sha256
+     To sha256
     */
     native hash -> 'crypto@sha256'
 }
 
 /*
- Библиотека crypto. Юнит sha512.
- | имплементация sha512
+ Library: crypto. Unit: sha512.
+ | implementation of sha512_encode, sha512_decode
+ | can be found in:
  | > crate::vm::natives::libs::natives_crypto
  */
 unit sha512 {
     /*
-     В sha512
+     To sha512
     */
     native hash -> 'crypto@sha512'
 }
 
 /*
- Библиотека crypto. Юнит sha224.
- | имплементация sha224
+ Library: crypto. Unit: sha224.
+ | implementation of sha224_encode, sha224_decode
+ | can be found in:
  | > crate::vm::natives::libs::natives_crypto
  */
 unit sha224 {
     /*
-     В sha224
+     To sha224
     */
     native hash -> 'crypto@sha224'
 }
 
 /*
- Библиотека crypto. Юнит sha384.
- | имплементация sha384
+ Library: crypto. Unit: sha384.
+ | implementation of sha384_encode, sha384_decode
+ | can be found in:
  | > crate::vm::natives::libs::natives_crypto
  */
 unit sha384 {
     /*
-     В sha384
+     To sha384
     */
     native hash -> 'crypto@sha384'
 }
 
 /*
- Библиотека crypto. Юнит md5.
- | имплементация md5
+ Library: crypto. Unit: md5.
+ | implementation of md5
  | > crate::vm::natives::libs::natives_crypto
  */
 unit md5 {
     /*
-     В md5
+     To md5
     */
     native hash -> 'crypto@md5'
 }

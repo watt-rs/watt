@@ -2,14 +2,18 @@
 import 'std.convert'
 
 /*
- Библиотека math.
- | имплементация sin, cos, asin, acos
+ Library: math.
+ |
+ | implementation of: sin, cos, asin, acos
  | tan, atan, cat, sqrt, cbrt, root, log
- | pow, exp, log10, abs
+ | pow, exp, log10, abs.
+ |
+ | natives implementation can be found in:
+ | > crate::vm::natives::libs::natives_io
  */
 unit math {
     /*
-     Константы
+     Constants
     */
     pi := 3.141592
     e := 2.718281
@@ -17,7 +21,7 @@ unit math {
     epsilon := 0.0000000001
 
     /*
-     Функция модуля числа
+     Abs (x)
     */
     fn abs(x) {
         if x < 0 {
@@ -29,7 +33,7 @@ unit math {
     }
 
     /*
-     Функция округления в меньшую сторону.
+     Floor (x)
     */
     fn floor(x) {
         i := convert.to_int(x)
@@ -41,7 +45,7 @@ unit math {
     }
 
     /*
-     Функция округления в большую сторону.
+     Ceil (x)
     */
     fn ceil(x) {
         i := convert.to_int(x)
@@ -53,7 +57,7 @@ unit math {
     }
 
     /*
-     Функция округления по математическим правилам.
+     Round (x) in math way.
     */
     fn round(x) {
         i := convert.to_int(x)
@@ -67,7 +71,7 @@ unit math {
     }
 
     /*
-     Функция экспонента на основе ряда Тейлора
+     Exp (x)
     */
     fn exp(x) {
         result := 1
@@ -81,7 +85,7 @@ unit math {
     }
 
     /*
-     Функция степени x по основанию y
+     Raise x to y power
     */
     fn pow(x, y) {
         if x == 0 {
@@ -108,7 +112,7 @@ unit math {
     }
 
     /*
-     Квадратный корень от x, основанный на алгоритме Ньютона.
+     Sqrt of x by Newton algo.
     */
     fn sqrt(x) {
         if x < 0 {
@@ -136,7 +140,7 @@ unit math {
     }
 
     /*
-     Кубический корень от x, основанный на алгоритме Ньютона.
+     Cbrt of x by Newton algo.
     */
     fn cbrt(x) {
         if x < 0 {
@@ -164,7 +168,7 @@ unit math {
     }
 
     /*
-      Корень от x из n, основанный на алгоритме Ньютона.
+     x√n by Newton algo.
     */
     fn root(x, n) {
         if n == 2 { return sqrt(x) }
@@ -198,7 +202,7 @@ unit math {
     }
 
     /*
-     Логарифм x
+     Log (x)
     */
     fn log(x) {
         terms := 10
@@ -228,7 +232,7 @@ unit math {
     }
 
     /*
-     Логарифм x по основанию 10
+     Log10 (x)
     */
     fn log10(x) {
         ln10 := 2.302585092994046
@@ -236,7 +240,7 @@ unit math {
     }
 
     /*
-     Тригонометрические функции
+     Native trigonometrical fn-s
     */
     native sin -> 'math@sin'
     native cos -> 'math@cos'
@@ -248,14 +252,14 @@ unit math {
     native tanh -> 'math@tanh'
 
     /*
-     Перевод радианов в градусы
+     Radians to degrees
     */
     fn to_degrees(radians) {
         return radians * (180/self.pi)
     }
 
     /*
-     Перевод градусов в радианы
+     Degrees to radians
     */
     fn to_radians(degrees) {
         return degrees * (self.pi/180)

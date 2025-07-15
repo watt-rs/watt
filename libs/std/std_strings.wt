@@ -1,0 +1,28 @@
+/*
+ Library: Strings. Unit:
+ | имплементация println, print и input
+ | находится в
+ | > crate::vm::natives::libs::natives_io
+ */
+unit string {
+    /*
+     Выводит строку в консоль.
+     После, выводит \n.
+    */
+    native println -> 'io@println'
+
+    /*
+     Выводит строку в консоль
+    */
+    native print -> 'io@print'
+
+    /*
+     Выводит буферизованные данные на экран.
+    */
+    native flush -> 'io@flush'
+
+    /*
+     Запрашивает ввод у пользователя.
+    */
+    native input -> 'io@input'
+}
