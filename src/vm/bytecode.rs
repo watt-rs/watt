@@ -60,6 +60,8 @@ pub enum Opcode {
     },
     Logic {
         addr: Address,
+        a: Chunk,
+        b: Chunk,
         op: String,
     },
     If {
@@ -207,8 +209,12 @@ impl Opcode {
             Opcode::Cond { op, .. } => {
                 print_indent(indent, format!("cond {op}").as_str());
             }
-            Opcode::Logic { op, .. } => {
+            Opcode::Logic { op, a, b, .. } => {
                 print_indent(indent, format!("logic {op}").as_str());
+                print_indent(indent + 1, "a:");
+                print_chunk(indent + 2, a);
+                print_indent(indent + 1, "b:");
+                print_chunk(indent + 2, b);
             }
             Opcode::If { cond, body, .. } => {
                 print_indent(indent, "if");

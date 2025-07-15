@@ -570,41 +570,69 @@ impl VM {
         Ok(())
     }
 
-    /// Opcode: Logical operator
-    unsafe fn op_logical(&mut self, address: &Address, op: &str) -> Result<(), ControlFlow> {
-        // operands
+    /// Opcode: Logical operator with short circuit
+    unsafe fn op_logical(&mut self, address: &Address, a: &Chunk,
+                         b: &Chunk, op: &str, table: *mut Table) -> Result<(), ControlFlow> {
+        // expect bool
+        fn expect_bool(value: Value, error: Error) -> bool {
+            match value {
+                Value::Bool(b) => {
+                    b
+                }
+                _ => {
+                    error!(error)
+                }
+            }
+        }
+        // running first chunk
+        self.run(a, table)?;
         let operand_a = self.pop(&address)?;
-        let operand_b = self.pop(&address)?;
-        // error
-        let invalid_op_error = || {
-            Error::own_text(
-                address.clone(),
-                format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
-                "check your code."
-            )
-        };
+        // operand a
+        let a = expect_bool(operand_a, Error::own_text(
+            address.clone(),
+            format!("could not use '{}' with {:?}", op, operand_a),
+            "check your code."
+        ));
         // logical op
         match op {
             "and" => {
-                match operand_a {
-                    Value::Bool(a) => {
-                        match operand_b {
-                            Value::Bool(b) => { self.push(Value::Bool(a && b)); }
-                            _ => { error!(invalid_op_error()); }
-                        }
-                    }
-                    _ => { error!(invalid_op_error()); }
+                // if operand_a already pushed false, we shouldn't eval right chunk
+                if a == false {
+                    self.push(Value::Bool(false));
+                }
+                // if operand_a pushed true
+                else {
+                    // evaluating second chunk
+                    self.run(b, table)?;
+                    let operand_b = self.pop(&address)?;
+                    // operand b
+                    let b = expect_bool(operand_b, Error::own_text(
+                        address.clone(),
+                        format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
+                        "check your code."              
+                    ));
+                    // pushing result
+                    self.push(Value::Bool(b));
                 }
             }
             "or" => {
-                match operand_a {
-                    Value::Bool(a) => {
-                        match operand_b {
-                            Value::Bool(b) => { self.push(Value::Bool(a || b)); }
-                            _ => { error!(invalid_op_error()); }
-                        }
-                    }
-                    _ => { error!(invalid_op_error()); }
+                // if operand_a already pushed false, we shouldn't eval right chunk
+                if a == true {
+                    self.push(Value::Bool(true));
+                }
+                // if operand_a pushed true
+                else {
+                    // evaluating second chunk
+                    self.run(b, table)?;
+                    let operand_b = self.pop(&address)?;
+                    // operand b
+                    let b = expect_bool(operand_b, Error::own_text(
+                        address.clone(),
+                        format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
+                        "check your code."
+                    ));
+                    // pushing result
+                    self.push(Value::Bool(b));
                 }
             }
             _ => { panic!("operator {} is not found.", op)}
@@ -836,7 +864,7 @@ impl VM {
         self.gc_register(unit_value, table);
         // setting root for fields
         (*(*unit).fields).set_root(self.globals);
-        // setting temp parent for fields // todo check
+        // setting temp parent for fields
         (*(*unit).fields).parent = table;
         // inserting temp self
         (*(*unit).fields).fields.insert("self".to_string(), Value::Unit(unit));
@@ -1820,8 +1848,8 @@ impl VM {
                 Opcode::Cond { addr, op } => {
                     self.op_conditional(&addr, &op)?;
                 }
-                Opcode::Logic { addr, op } => {
-                    self.op_logical(addr, &op)?
+                Opcode::Logic { addr, a, b, op } => {
+                    self.op_logical(addr, a, b, &op, table)?
                 }
                 Opcode::If { addr, cond, body, elif } => {
                     self.op_if(addr, cond, body, elif, table)?;

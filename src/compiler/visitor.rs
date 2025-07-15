@@ -897,10 +897,18 @@ impl<'visitor> CompileVisitor<'visitor> {
         right: &Node,
         op: &Token,
     ) {
-        self.visit_node(right);
+        self.push_chunk();
         self.visit_node(left);
+        let a = Chunk::new(self.pop_chunk());
+
+        self.push_chunk();
+        self.visit_node(right);
+        let b = Chunk::new(self.pop_chunk());
+
         self.push_instr(Opcode::Logic {
             addr: op.address.clone(),
+            a,
+            b,
             op: op.value.clone(),
         });
     }
