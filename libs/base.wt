@@ -49,6 +49,32 @@ type List {
     fn get(index) {
         return __list_utils.get(self.internal, index)
     }
+    // Returns element if it exists at given `index`.
+    // Returns null otherwise.
+    fn get_optional(index) {
+        if index >= self.length() {
+            return null
+        } else {
+            return self.get(index)
+        }
+    }
+    // Selects elements from index_start to the end of the list.
+    // If index is invalid, an empty list is returned
+    fn select_from(index_start) {
+        new_list := new List()
+
+        if index_start < 0 {
+            return new_list
+        }
+
+        current_index := index_start
+        while current_index < self.length() {
+            new_list.add(self.get(current_index))
+            current_index += 1
+        }
+
+        return new_list
+    }
     fn iter {
         return new ListIterator(self)
     }
