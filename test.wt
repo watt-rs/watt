@@ -137,5 +137,5 @@ import 'std.io'
 import 'std.strings'
 
 string := new StringEx('Hello, world!')
-io.println(string.replace(',', ';').sub(0, 6).string)
+io.println(string.replace(',', ';').sub(0, 6))
 // todo: write string tests

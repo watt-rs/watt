@@ -1,8 +1,8 @@
 /*
- Утилиты списка.
- | имплементация add, set, get, index_of,
- | length, delete, to_string
- | находится в
+ List utils
+ | implementation of: add, set, get,
+ | index_of, length, delete, to_string
+ | can be found in:
  | > crate::vm::natives::libs::natives_list
 */
 unit __list_utils {
@@ -18,39 +18,47 @@ unit __list_utils {
 }
 
 /*
- Список.
- | имплементация add, set, get, index_of,
+ List type.
+ | implementation of: add, set, get, index_of,
  | length, delete, to_string
- | находится в
- | > list_utils
+ | can be found in:
+ | > list_utils unit
 */
 type List {
+
     fn init {
         self.internal := __list_utils.make()
     }
+    // adds value to list
     fn add(value) {
         __list_utils.add(self.internal, value)
     }
+    // sets value by index in list
     fn set(index, value) {
         __list_utils.set(self.internal, index, value)
     }
+    // deletes element from list
     fn delete(value) {
         __list_utils.delete(self.internal, value)
     }
+    // deletes element from list at index
     fn delete_at(index) {
         __list_utils.delete_at(self.internal, index)
     }
+    // gets length of list
     fn length {
         return __list_utils.length(self.internal)
     }
+    // to_string
     fn to_string {
         return __list_utils.to_string(self.internal)
     }
+    // gets value by index
     fn get(index) {
         return __list_utils.get(self.internal, index)
     }
-    // Returns element if it exists at given `index`.
-    // Returns null otherwise.
+    // returns element if it exists at given `index`.
+    // returns null otherwise.
     fn get_optional(index) {
         if index >= self.length() {
             return null
@@ -58,8 +66,8 @@ type List {
             return self.get(index)
         }
     }
-    // Selects elements from index_start to the end of the list.
-    // If index is invalid, an empty list is returned
+    // selects elements from index_start to the end of the list.
+    // if index is invalid, an empty list is returned
     fn select_from(index_start) {
         new_list := new List()
 
@@ -81,8 +89,9 @@ type List {
 }
 
 /*
- Трейт Итератора.
- | Трейт вокруг итераторов
+ Iterator trait
+ | provides to_list impl and
+ | has_next, next fn-s.
 */
 trait Iterator {
     fn has_next
@@ -99,18 +108,23 @@ trait Iterator {
 }
 
 /*
- Итератор.
- | итератор вокруг списка
+ List iterator
+ | iterates around list
 */
 type ListIterator(list) impl Iterator {
     fn init {
         self.current := 0
     }
+    // checks iterator has next value
     fn has_next {
         return self.current < self.list.length()
     }
+    /*
+     gets next iterator value
+     if has_next returns false, raises error
+    */
     fn next {
-        if self.current >= self.list.length() {
+        if self.has_next() {
             panic(
                 'could not use next.',
                 'iterator has no elements left.'
@@ -123,16 +137,16 @@ type ListIterator(list) impl Iterator {
 }
 
 /*
- Итератор.
- | итератор вокруг диапазона чисел
+ Numbers iterator
+ | iterates around numbers
 */
 type NumbersIterator(start, end) impl Iterator {
     fn init {
         self._current := start
         self._end := end
 
-        // 0 - назад
-        // 1 - вперёд
+        // 0 - backward
+        // 1 - forward
         if self._current > self._end {
             self.direction := 1
         } else {
@@ -140,6 +154,7 @@ type NumbersIterator(start, end) impl Iterator {
         }
     }
 
+    // checks iterator has next value
     fn has_next {
         if self.direction == 0 {
             return self._current < self._end
@@ -147,7 +162,11 @@ type NumbersIterator(start, end) impl Iterator {
             return self._current > self._end
         }
     }
-    
+
+    /*
+     gets next iterator value
+     if has_next returns false, raises error
+    */
     fn next {
         if self.has_next() {
         } else {
@@ -170,22 +189,23 @@ type NumbersIterator(start, end) impl Iterator {
 }
 
 /*
- Пара key/value для мапы.
+ Key/value pair for map.
 */
-type Entry(key, value) {
+type Entry(key, value) impl Display {
     fn to_string {
         return '(' + key + ',' + value + ')'
     }
 }
 
 /*
- Мапа.
- | словарь ключ/значение.
+ Map.
+ | key/value dictionary.
 */
-type Map {
-    // пары key/value
+type Map impl Display {
+    // entries
     entries := []
-    // есть ли ключ
+
+    // cheks has key
     fn has_key(key) {
         for entry in entries.iter() {
             if entry.key == key {
@@ -194,7 +214,7 @@ type Map {
         }
         return false
     }
-    // есть ли значение
+    // cheks has value
     fn has_value(value) {
         for entry in entries.iter() {
             if entry.value == value {
@@ -203,41 +223,37 @@ type Map {
         }
         return false
     }
-    // установка значения по ключу
+    // sets value by key
     fn set(key, value) {
-        // ищем уже существующую пару
         for entry in entries.iter() {
             if entry.key == key {
                 entry.value = value
                 return null
             }
         }
-        // добавляем пару
         entries.add(new Entry(
             key,
             value
         ))
     }
-    // удаление пары по ключу
+    // deletes entry by key
     fn delete(key) {
-        // ищем уже существующую пару
         to_delete := null
         for entry in entries.iter() {
             if entry.key == key {
                 to_delete = entry
             }
         }
-        // удаляем, если нашли entry
+
         if to_delete != null {
             entries.delete(to_delete)
             return true
         }
-        // если не нашли entry
         else {
             return false
         }
     }
-    // получение значения по ключу
+    // gets value by key
     fn get(key) {
         for entry in entries.iter() {
             if entry.key == key {
@@ -245,7 +261,7 @@ type Map {
             }
         }
     }
-    // ключи
+    // gets keys list
     fn keys {
         keys := []
         for entry in entries.iter() {
@@ -253,7 +269,7 @@ type Map {
         }
         return keys
     }
-    // значения
+    // gets values list
     fn values {
         values := []
         for entry in entries.iter() {
@@ -261,34 +277,40 @@ type Map {
         }
         return values
     }
-    // длина
+    // gets entries length
     fn length {
         return self.entries.length()
     }
-    // в строку
+    // to_string
     fn to_string {
-        // формируем строку
         string := '['
         for entry in entries.iter() {
             string += entry.to_string()
         }
         string += ']'
-        // возвращаем
         return string
     }
 }
 
 /*
- Функция паники
- | реализация находится в
+ Panic fn
+ | implementation can be found in:
  | > crate::vm::natives::libs::natives_base
 */
 native panic -> 'base@panic'
 
 /*
- Функция _range
- | создаёт NumbersIterator от a до b
+ Range fn
+ | creates NumbersIterator from a to b
 */
 fn _range(a, b) {
     return new NumbersIterator(a, b)
+}
+
+/*
+ Display trait
+ | guarantees the type has to_string
+*/
+trait Display {
+    fn to_string
 }

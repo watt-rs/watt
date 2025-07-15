@@ -7,7 +7,7 @@
  | can be found in
  | > crate::vm::natives::libs::natives_io
  */
-type StringEx(string) {
+type StringEx(string) impl Display {
 
     /*
      Subs string from x to n
@@ -87,5 +87,8 @@ type StringEx(string) {
         list := new List()
         list.internal = self.__internal_chars(self.string)
         return list
+    }
+    fn to_string {
+        return string
     }
 }
