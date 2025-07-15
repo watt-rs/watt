@@ -1,28 +1,91 @@
 /*
- Library: Strings. Unit:
- | имплементация println, print и input
- | находится в
+ Library: Strings. StringEx.
+ | implementation of replace, strip, split,
+ | trim, substring, char_at, replace_first,
+ | replace_last, contains, index_of, last_index_of,
+ | first_index_of
+ | can be found in
  | > crate::vm::natives::libs::natives_io
  */
-unit string {
-    /*
-     Выводит строку в консоль.
-     После, выводит \n.
-    */
-    native println -> 'io@println'
+type StringEx(string) {
 
     /*
-     Выводит строку в консоль
+     Subs string from x to n
     */
-    native print -> 'io@print'
+    native __internal_substring -> 'strings@substring'
 
     /*
-     Выводит буферизованные данные на экран.
+     Gives char at i. Has high runtime cost.
+     Recommendation: store chars() if you want to use
+     char_at a lot of times.
     */
-    native flush -> 'io@flush'
+    native __internal_char_at -> 'strings@char_at'
 
     /*
-     Запрашивает ввод у пользователя.
+     Gets char list
     */
-    native input -> 'io@input'
+    native __internal_chars -> 'strings@chars'
+
+    /*
+     Splits string by delimiter
+    */
+    native __internal_split -> 'strings@split'
+
+    /*
+     Trims string
+    */
+    native __internal_trim -> 'strings@trim'
+
+    /*
+     Replace
+    */
+    native __internal_replace -> 'strings@replace'
+
+    /*
+     Replace n
+    */
+    native __internal_replace_n -> 'strings@replace_n'
+
+    /*
+     Replace range
+    */
+    native __internal_replace_range -> 'strings@replace_range'
+
+    /*
+     Contains
+    */
+    native __internal_contains -> 'strings@contains'
+
+    /*
+     Index of
+    */
+    native __internal_find -> 'strings@find'
+
+    /*
+     Last index of
+    */
+    native __internal_rfind -> 'strings@rfind'
+
+    /*
+     Native functions wrappers
+    */
+    fn replace(a, b) { return new StringEx(self.__internal_replace(self.string, a, b)) }
+    fn replace_n(a, b) { return new StringEx(self.__internal_replace_n(self.string, a, b)) }
+    fn replace_range(a, b) { return new StringEx(self.__internal_replace_range(self.string, a, b)) }
+    fn find(x) { return self.__internal_find(self.string, x) }
+    fn rfind(x) { return self.__internal_rfind(self.string, x) }
+    fn contains(x) { return self.__internal_contains(self.string, x) }
+    fn trim { return new StringEx(self.__internal_trim(self.string)) }
+    fn split(x) {
+        list := new List()
+        list.internal = self.__internal_split(self.string, x)
+        return list
+    }
+    fn sub(x, n) { return new StringEx(self.__internal_substring(self.string, x, n)) }
+    fn char_at(i) { return new StringEx(self.__internal_char_at(self.string, i)) }
+    fn chars {
+        list := new List()
+        list.internal = self.__internal_chars(self.string)
+        return list
+    }
 }

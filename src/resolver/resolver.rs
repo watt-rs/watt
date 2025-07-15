@@ -37,6 +37,7 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
                 ("std.fs", "./libs/std/std_fs.wt"),
                 ("std.system", "./libs/std/std_system.wt"),
                 ("std.crypto", "./libs/std/std_crypto.wt"),
+                ("std.strings", "./libs/std/std_strings.wt"),
             ]),
             builtins: vec!["./libs/base.wt".to_string()],
         }

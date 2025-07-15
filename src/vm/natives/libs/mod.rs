@@ -9,4 +9,5 @@ pub mod natives_fs;
 pub mod natives_system;
 pub mod natives_math;
 pub mod natives_crypto;
+pub mod natives_strings;
 mod utils;

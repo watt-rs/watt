@@ -134,11 +134,8 @@ a := result.err('111')
 io.println(a?)
 */
 import 'std.io'
-import 'std.math'
-import 'std.crypto'
-io.println(b64.encode('Hello, world!'))
-io.println(sha512.hash('Hello, world!'))
-io.println(sha256.hash('Hello, world!'))
-io.println(sha224.hash('Hello, world!'))
-io.println(sha384.hash('Hello, world!'))
-io.println(md5.hash('Hello, world!'))
+import 'std.strings'
+
+string := new StringEx('Hello, world!')
+io.println(string.replace(',', ';').sub(0, 6).string)
+// todo: write string tests
