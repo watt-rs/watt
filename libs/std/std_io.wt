@@ -8,8 +8,30 @@ unit io {
     /*
      Print natives
     */
-    native println -> 'io@println'
-    native print -> 'io@print'
+    native __println -> 'io@println'
+    native __print -> 'io@print'
+
+    /*
+     Formatted println text and '\n' to terminal
+    */
+    fn println(a) {
+        if is_instance(a) and a impls Display {
+            __println(a.to_string())
+        } else {
+            __println(a)
+        }
+    }
+
+    /*
+     Prints text to terminal
+    */
+    fn print(a) {
+        if is_instance(a) and a impls Display {
+            __print(a.to_string())
+        } else {
+            __print(a)
+        }
+    }
 
     /*
      Flushes buffered data to terminal
