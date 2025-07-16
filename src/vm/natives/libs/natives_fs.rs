@@ -57,7 +57,8 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     .read(true)
                     .write(true)
                     .create(true)
-                    .open(&filename)
+                    .truncate(false)
+                    .open(filename)
                 {
                     Ok(file) => file,
                     Err(_e) => {
@@ -79,7 +80,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         addr: &Address,
     ) -> Result<&'vm mut std::fs::File, ControlFlow> {
         // getting a raw file
-        let raw_file = utils::expect_any(addr.clone(), vm.pop(&addr)?, None);
+        let raw_file = utils::expect_any(addr.clone(), vm.pop(addr)?, None);
 
         if !(*raw_file).is::<std::fs::File>() {
             error!(Error::new(
@@ -191,7 +192,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             let name = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
 
             // creating directory
-            let result = std::fs::create_dir(&name);
+            let result = std::fs::create_dir(name);
             if should_push {
                 if let Err(e) = result {
                     vm.op_push(OpcodeValue::Int(e.raw_os_error().unwrap_or(0) as _), table)?;

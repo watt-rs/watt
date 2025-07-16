@@ -82,7 +82,7 @@ impl Error {
             text = self.text,
         );
         println!("│");
-        println!("│ {}:", file_name);
+        println!("│ {file_name}:");
         println!(
             "│ {gray}{line}{reset} {text}",
             line = self.addr.line,

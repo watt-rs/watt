@@ -48,8 +48,8 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                         Err(e) => {
                             error!(Error::own(
                                 addr.clone(),
-                                format!("failed to decode b64 string, bytes: {:?}", decoded),
-                                format!("error: {:?}", e)
+                                format!("failed to decode b64 string, bytes: {decoded:?}"),
+                                format!("error: {e:?}")
                             ))
                         }
                     },
@@ -57,7 +57,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                         error!(Error::own_hint(
                             addr.clone(),
                             "failed to decode b64 string",
-                            format!("error: {:?}", e)
+                            format!("error: {e:?}")
                         ))
                     }
                 }

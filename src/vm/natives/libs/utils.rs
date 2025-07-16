@@ -13,7 +13,7 @@ pub fn expect_int(addr: Address, value: Value, error: Option<Error>) -> i64 {
     } else {
         error!(error.unwrap_or(Error::own_text(
             addr.clone(),
-            format!("expected i64, got {:?}", value),
+            format!("expected i64, got {value:?}"),
             "check for types"
         )));
     }
@@ -27,7 +27,7 @@ pub fn expect_float(addr: Address, value: Value, error: Option<Error>) -> f64 {
     } else {
         error!(error.unwrap_or(Error::own_text(
             addr.clone(),
-            format!("expected f64, got {:?}", value),
+            format!("expected f64, got {value:?}"),
             "check for types"
         )));
     }
@@ -41,7 +41,7 @@ pub fn expect_bool(addr: Address, value: Value, error: Option<Error>) -> bool {
     } else {
         error!(error.unwrap_or(Error::own_text(
             addr.clone(),
-            format!("expected bool, got {:?}", value),
+            format!("expected bool, got {value:?}"),
             "check for types"
         )));
     }
@@ -55,7 +55,7 @@ pub fn expect_instance(addr: Address, value: Value, error: Option<Error>) -> *mu
     } else {
         error!(error.unwrap_or(Error::own_text(
             addr.clone(),
-            format!("expected instance, got {:?}", value),
+            format!("expected instance, got {value:?}"),
             "check for types"
         )));
     }
@@ -69,7 +69,7 @@ pub fn expect_unit(addr: Address, value: Value, error: Option<Error>) -> *mut Un
     } else {
         error!(error.unwrap_or(Error::own_text(
             addr.clone(),
-            format!("expected unit, got {:?}", value),
+            format!("expected unit, got {value:?}"),
             "check for types"
         )));
     }
@@ -83,7 +83,7 @@ pub fn expect_trait(addr: Address, value: Value, error: Option<Error>) -> *mut T
     } else {
         error!(error.unwrap_or(Error::own_text(
             addr.clone(),
-            format!("expected trait, got {:?}", value),
+            format!("expected trait, got {value:?}"),
             "check for types"
         )));
     }
@@ -97,7 +97,7 @@ pub fn expect_type(addr: Address, value: Value, error: Option<Error>) -> *mut Ty
     } else {
         error!(error.unwrap_or(Error::own_text(
             addr.clone(),
-            format!("expected type, got {:?}", value),
+            format!("expected type, got {value:?}"),
             "check for types"
         )));
     }
@@ -111,7 +111,7 @@ pub fn expect_fn(addr: Address, value: Value, error: Option<Error>) -> *mut Func
     } else {
         error!(error.unwrap_or(Error::own_text(
             addr.clone(),
-            format!("expected fn, got {:?}", value),
+            format!("expected fn, got {value:?}"),
             "check for types"
         )));
     }
@@ -125,7 +125,7 @@ pub fn expect_native(addr: Address, value: Value, error: Option<Error>) -> *mut 
     } else {
         error!(error.unwrap_or(Error::own_text(
             addr.clone(),
-            format!("expected native, got {:?}", value),
+            format!("expected native, got {value:?}"),
             "check for types"
         )));
     }
@@ -139,7 +139,7 @@ pub fn expect_any(addr: Address, value: Value, error: Option<Error>) -> *mut dyn
     } else {
         error!(error.unwrap_or(Error::own_text(
             addr.clone(),
-            format!("expected any, got {:?}", value),
+            format!("expected any, got {value:?}"),
             "check for types"
         )));
     }
@@ -153,7 +153,7 @@ pub fn expect_string(addr: Address, value: Value, error: Option<Error>) -> *cons
     } else {
         error!(error.unwrap_or(Error::own_text(
             addr.clone(),
-            format!("expected string, got {:?}", value),
+            format!("expected string, got {value:?}"),
             "check for types"
         )));
     }
@@ -167,7 +167,7 @@ pub unsafe fn expect_cloned_string(addr: Address, value: Value, error: Option<Er
     } else {
         error!(error.unwrap_or(Error::own_text(
             addr.clone(),
-            format!("expected string, got {:?}", value),
+            format!("expected string, got {value:?}"),
             "check for types"
         )));
     }
@@ -181,7 +181,7 @@ pub fn expect_list(addr: Address, value: Value, error: Option<Error>) -> *mut Ve
     } else {
         error!(error.unwrap_or(Error::own_text(
             addr.clone(),
-            format!("expected list, got {:?}", value),
+            format!("expected list, got {value:?}"),
             "check for types"
         )));
     }

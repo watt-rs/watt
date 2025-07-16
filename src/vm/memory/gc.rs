@@ -38,7 +38,7 @@ impl GC {
     /// Prints message is debug is enabled
     fn log(&self, message: &str) {
         if self.debug {
-            println!("{}", message)
+            println!("{message}")
         };
     }
 
@@ -158,7 +158,7 @@ impl GC {
         });
         // freeing this objects
         for value in to_free {
-            self.free_value(value.clone());
+            self.free_value(value);
         }
     }
 
@@ -186,7 +186,7 @@ impl GC {
     /// Freeing value
     fn free_value(&self, value: Value) {
         // logging value is freeing
-        self.log(&format!("gc :: free :: value = {:?}", value));
+        self.log(&format!("gc :: free :: value = {value:?}"));
         // free
         match value {
             Value::Fn(f) => {
@@ -225,7 +225,7 @@ impl GC {
                 }
             }
             _ => {
-                println!("unexpected gc value = {:?}.", value);
+                println!("unexpected gc value = {value:?}.");
             }
         }
     }
@@ -291,7 +291,7 @@ impl GC {
 
         // freeing objects
         for value in &self.objects {
-            self.free_value(value.clone());
+            self.free_value(*value);
         }
     }
 }

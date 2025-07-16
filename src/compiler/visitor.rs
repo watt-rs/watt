@@ -384,7 +384,7 @@ impl<'visitor> CompileVisitor<'visitor> {
         // previous
         let mut has_previous = false;
         if let Some(prev) = previous {
-            self.visit_node(&prev);
+            self.visit_node(prev);
             has_previous = true;
         }
         // value chunk
@@ -411,7 +411,7 @@ impl<'visitor> CompileVisitor<'visitor> {
         // previous
         let mut has_previous = false;
         if let Some(prev) = previous {
-            self.visit_node(&prev);
+            self.visit_node(prev);
             has_previous = true;
         }
         // args chunk
@@ -511,7 +511,7 @@ impl<'visitor> CompileVisitor<'visitor> {
             should_push: true,
         });
         // items
-        if (*list).len() > 0 {
+        if !(*list).is_empty() {
             for item in list {
                 // duplicate list
                 self.push_instr(Opcode::Duplicate {
@@ -543,7 +543,7 @@ impl<'visitor> CompileVisitor<'visitor> {
             should_push: true,
         });
         // items
-        if (*map).len() > 0 {
+        if !(*map).is_empty() {
             for (k, v) in map {
                 // duplicate map
                 self.push_instr(Opcode::Duplicate {
@@ -670,8 +670,8 @@ impl<'visitor> CompileVisitor<'visitor> {
         for case in cases {
             // logic chunk
             self.push_chunk();
-            self.visit_node(&*case.value);
-            self.visit_node(&matchable);
+            self.visit_node(&case.value);
+            self.visit_node(matchable);
             self.push_instr(Opcode::Cond {
                 addr: location.address.clone(),
                 op: "==".to_string(),
@@ -680,7 +680,7 @@ impl<'visitor> CompileVisitor<'visitor> {
 
             // body chunk
             self.push_chunk();
-            self.visit_node(&*case.body);
+            self.visit_node(&case.body);
             let body_chunk = self.pop_chunk();
 
             if_op = Opcode::If {
@@ -815,10 +815,8 @@ impl<'visitor> CompileVisitor<'visitor> {
         // trait functions
         let mut trait_functions: Vec<TraitFn> = Vec::new();
         for node_fn in functions {
-            // checking for default impl
-            let default: Option<DefaultTraitFn>;
-
-            if node_fn.default.is_some() {
+            // default
+            let default: Option<DefaultTraitFn> = if node_fn.default.is_some() {
                 // body chunk and params
                 self.push_chunk();
                 self.visit_node(node_fn.default.as_ref().unwrap());
@@ -830,11 +828,11 @@ impl<'visitor> CompileVisitor<'visitor> {
                     .collect();
 
                 // setting default
-                default = Some(DefaultTraitFn::new(params, chunk))
+                Some(DefaultTraitFn::new(params, chunk))
             } else {
                 // setting default
-                default = None
-            }
+                None
+            };
 
             trait_functions.push(TraitFn::new(
                 node_fn.name.value.clone(),

@@ -150,8 +150,9 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
 
     /// Converts source code represented as `&'cursor [char]`
     /// To a Vec<Token> - tokens list.
+    #[allow(clippy::nonminimal_bool)] 
     pub fn lex(mut self) -> Vec<Token> {
-        if self.tokens.len() > 0 {
+        if !self.tokens.is_empty() {
             panic!("tokens len already > 0. report this error to the developer.")
         }
         while !self.cursor.is_at_end() {
@@ -337,8 +338,8 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
                     else {
                         error!(Error::own(
                             Address::new(self.line, self.column, self.file_path.clone(),),
-                            format!("unexpected char: {}", ch),
-                            format!("delete char: {}", ch),
+                            format!("unexpected char: {ch}"),
+                            format!("delete char: {ch}"),
                         ));
                     }
                 }
@@ -417,7 +418,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         // Number text
         let mut text: String = String::from("0x");
         fn is_16(ch: &char) -> bool {
-            ('0'..='9').contains(&ch) || ('a'..='f').contains(&ch) || ('A'..='F').contains(&ch)
+            ch.is_ascii_digit() || ('a'..='f').contains(ch) || ('A'..='F').contains(ch)
         }
         while is_16(&self.cursor.peek()) {
             text.push(self.advance());
@@ -525,12 +526,11 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
     /// If current character is equal to `ch` advances it
     #[allow(clippy::wrong_self_convention)]
     fn is_match(&mut self, ch: char) -> bool {
-        if !self.cursor.is_at_end() {
-            if self.cursor.char_at(0) == ch {
+        if !self.cursor.is_at_end()
+            && self.cursor.char_at(0) == ch {
                 self.advance();
                 return true;
             }
-        }
         false
     }
 
@@ -545,12 +545,12 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
 
     /// Checks character is '0..9'
     fn is_digit(&self, ch: char) -> bool {
-        ch >= '0' && ch <= '9'
+        ch.is_ascii_digit()
     }
 
     /// Checks character is 'a..z', 'A..Z', '_'
     fn is_letter(&self, ch: char) -> bool {
-        (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch == '_')
+        ch.is_ascii_lowercase() || ch.is_ascii_uppercase() || (ch == '_')
     }
 
     /// Returns true if character is id.

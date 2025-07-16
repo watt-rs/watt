@@ -41,7 +41,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 timestamp_value,
                 Some(Error::own_text(
                     addr.clone(),
-                    format!("not a timestamp: {:?}", timestamp_value),
+                    format!("not a timestamp: {timestamp_value:?}"),
                     "check your code.",
                 )),
             );
@@ -54,7 +54,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 None => {
                     error!(Error::own_text(
                         addr,
-                        format!("invalid timestamp: {:?}", timestamp),
+                        format!("invalid timestamp: {timestamp:?}"),
                         "check your code.",
                     ))
                 }
@@ -74,7 +74,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 timestamp_value,
                 Some(Error::own_text(
                     addr.clone(),
-                    format!("not a timestamp: {:?}", timestamp_value),
+                    format!("not a timestamp: {timestamp_value:?}"),
                     "check your code.",
                 )),
             );
@@ -87,7 +87,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 None => {
                     error!(Error::own_text(
                         addr,
-                        format!("invalid timestamp: {:?}", timestamp),
+                        format!("invalid timestamp: {timestamp:?}"),
                         "check your code.",
                     ))
                 }
@@ -107,7 +107,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 timestamp_value,
                 Some(Error::own_text(
                     addr.clone(),
-                    format!("not a timestamp: {:?}", timestamp_value),
+                    format!("not a timestamp: {timestamp_value:?}"),
                     "check your code.",
                 )),
             );
@@ -120,7 +120,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 None => {
                     error!(Error::own_text(
                         addr,
-                        format!("invalid timestamp: {:?}", timestamp),
+                        format!("invalid timestamp: {timestamp:?}"),
                         "check your code.",
                     ))
                 }
@@ -140,7 +140,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 timestamp_value,
                 Some(Error::own_text(
                     addr.clone(),
-                    format!("not a timestamp: {:?}", timestamp_value),
+                    format!("not a timestamp: {timestamp_value:?}"),
                     "check your code.",
                 )),
             );
@@ -153,7 +153,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 None => {
                     error!(Error::own_text(
                         addr,
-                        format!("invalid timestamp: {:?}", timestamp),
+                        format!("invalid timestamp: {timestamp:?}"),
                         "check your code.",
                     ))
                 }
@@ -173,7 +173,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 timestamp_value,
                 Some(Error::own_text(
                     addr.clone(),
-                    format!("not a timestamp: {:?}", timestamp_value),
+                    format!("not a timestamp: {timestamp_value:?}"),
                     "check your code.",
                 )),
             );
@@ -186,7 +186,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 None => {
                     error!(Error::own_text(
                         addr,
-                        format!("invalid timestamp: {:?}", timestamp),
+                        format!("invalid timestamp: {timestamp:?}"),
                         "check your code.",
                     ))
                 }
@@ -206,7 +206,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 timestamp_value,
                 Some(Error::own_text(
                     addr.clone(),
-                    format!("not a timestamp: {:?}", timestamp_value),
+                    format!("not a timestamp: {timestamp_value:?}"),
                     "check your code.",
                 )),
             );
@@ -219,7 +219,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 None => {
                     error!(Error::own_text(
                         addr,
-                        format!("invalid timestamp: {:?}", timestamp),
+                        format!("invalid timestamp: {timestamp:?}"),
                         "check your code.",
                     ))
                 }
@@ -239,7 +239,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 timestamp_value,
                 Some(Error::own_text(
                     addr.clone(),
-                    format!("not a timestamp: {:?}", timestamp_value),
+                    format!("not a timestamp: {timestamp_value:?}"),
                     "check your code.",
                 )),
             );
@@ -252,7 +252,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 None => {
                     error!(Error::own_text(
                         addr,
-                        format!("invalid timestamp: {:?}", timestamp),
+                        format!("invalid timestamp: {timestamp:?}"),
                         "check your code.",
                     ))
                 }

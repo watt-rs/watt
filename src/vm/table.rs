@@ -49,11 +49,7 @@ impl Table {
     pub unsafe fn exists(&self, name: &str) -> bool {
         if self.fields.contains_key(name) {
             true
-        } else if !self.closure.is_null() && (*self.closure).exists(name) {
-            true
-        } else {
-            false
-        }
+        } else { !self.closure.is_null() && (*self.closure).exists(name) }
     }
 
     /// Finds variable in fields
@@ -64,7 +60,7 @@ impl Table {
     pub unsafe fn find(&self, address: &Address, name: &str) -> Result<Value, Error> {
         if self.exists(name) {
             if self.fields.contains_key(name) {
-                Ok(self.fields[name].clone())
+                Ok(self.fields[name])
             } else {
                 Ok((*self.closure).find(address, name)?)
             }
@@ -154,7 +150,7 @@ impl Table {
     ///
     pub unsafe fn lookup(&mut self, address: &Address, name: &str) -> Result<Value, Error> {
         let mut current = self as *mut Table;
-        while !(*current).exists(&name) {
+        while !(*current).exists(name) {
             if (*current).root.is_null() {
                 return Err(Error::own_text(
                     address.clone(),
@@ -164,7 +160,7 @@ impl Table {
             }
             current = (*current).root;
         }
-        Ok((*current).find(address, &name)?)
+        (*current).find(address, name)
     }
 
     /// Sets root

@@ -25,7 +25,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     _ => {
                         error!(Error::own_text(
                             addr,
-                            format!("could not use sin with {}", value),
+                            format!("could not use sin with {value}"),
                             "you can use i64 or f64."
                         ));
                     }
@@ -50,7 +50,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     _ => {
                         error!(Error::own_text(
                             addr,
-                            format!("could not use cos with {}", value),
+                            format!("could not use cos with {value}"),
                             "you can use i64 or f64."
                         ));
                     }
@@ -75,7 +75,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     _ => {
                         error!(Error::own_text(
                             addr,
-                            format!("could not use asin with {}", value),
+                            format!("could not use asin with {value}"),
                             "you can use i64 or f64."
                         ));
                     }
@@ -100,7 +100,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     _ => {
                         error!(Error::own_text(
                             addr,
-                            format!("could not use acos with {}", value),
+                            format!("could not use acos with {value}"),
                             "you can use i64 or f64."
                         ));
                     }
@@ -125,7 +125,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     _ => {
                         error!(Error::own_text(
                             addr,
-                            format!("could not use atan with {}", value),
+                            format!("could not use atan with {value}"),
                             "you can use i64 or f64."
                         ));
                     }
@@ -150,7 +150,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     _ => {
                         error!(Error::own_text(
                             addr,
-                            format!("could not use tan with {}", value),
+                            format!("could not use tan with {value}"),
                             "you can use i64 or f64."
                         ));
                     }
@@ -175,7 +175,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     _ => {
                         error!(Error::own_text(
                             addr,
-                            format!("could not use cat with {}", value),
+                            format!("could not use cat with {value}"),
                             "you can use i64 or f64."
                         ));
                     }
@@ -200,7 +200,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     _ => {
                         error!(Error::own_text(
                             addr,
-                            format!("could not use tanh with {}", value),
+                            format!("could not use tanh with {value}"),
                             "you can use i64 or f64."
                         ));
                     }

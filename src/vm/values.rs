@@ -342,7 +342,7 @@ impl Debug for Value {
 /// Display implementation for value
 impl Display for Value {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "{:?}", self)
+        write!(fmt, "{self:?}")
     }
 }
 /// PartialEq implementation for value

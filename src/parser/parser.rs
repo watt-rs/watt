@@ -189,10 +189,8 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     }
 
     /// Access parsing
-    /// if is_expr
-    /// - should_push will be true
-    /// else
-    /// - should_push will be false
+    /// if is_expr should_push will be true
+    /// else should_push will be false
     ///
     fn access(&mut self, is_expr: bool) -> Result<Node, Error> {
         // left
@@ -1182,11 +1180,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     fn check(&self, tk_type: TokenKind) -> bool {
         match self.tokens.get(self.current as usize) {
             Some(tk) => {
-                if tk.tk_type == tk_type {
-                    true
-                } else {
-                    false
-                }
+                tk.tk_type == tk_type
             }
             None => false,
         }

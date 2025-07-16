@@ -67,7 +67,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             if let Err(e) = io::stdin().read_line(&mut input) {
                 error!(Error::own_text(
                     addr,
-                    format!("io error in input: {}", e),
+                    format!("io error in input: {e}"),
                     "check your code"
                 ))
             }

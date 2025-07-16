@@ -38,7 +38,7 @@ impl Analyzer {
         match node {
             Node::Block { body } => {
                 for node in body {
-                    self.analyze(&node);
+                    self.analyze(node);
                 }
             }
             Node::If {
@@ -177,7 +177,7 @@ impl Analyzer {
         // qnalyzing cases
         self.analyze(default);
         for case in cases {
-            self.analyze(&*case.body);
+            self.analyze(&case.body);
         }
     }
 
@@ -203,7 +203,7 @@ impl Analyzer {
     /// raises error, if it's no loop is analyze_stack
     ///
     fn analyze_continue(&mut self, addr: &Address) {
-        if self.analyze_stack.len() == 0 {
+        if self.analyze_stack.is_empty() {
             error!(Error::new(
                 addr.clone(),
                 "couldn't use continue without loop.",
@@ -278,7 +278,7 @@ impl Analyzer {
     /// If stack isn't empty, raises error
     ///
     fn analyze_import(&self, addr: &Address) {
-        if self.analyze_stack.len() > 0 {
+        if !self.analyze_stack.is_empty() {
             error!(Error::new(
                 addr.clone(),
                 "couldn't use import in any block.",

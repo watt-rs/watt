@@ -190,17 +190,18 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         2,
         "strings@find",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let ch = utils::expect_cloned_string(addr.clone(), vm.pop(&addr)?, None);
+            let raw_ch = utils::expect_cloned_string(addr.clone(), vm.pop(&addr)?, None);
             let string = utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
-            if ch.len() != 1 {
+            if raw_ch.len() != 1 {
                 error!(Error::own_hint(
                     addr.clone(),
                     "could not represent string as char.",
-                    format!("string: {ch}")
+                    format!("string: {raw_ch}")
                 ))
             }
+            let ch = raw_ch.chars().next().unwrap();
             if should_push {
-                match (*string).chars().position(|ch| ch == ch) {
+                match (*string).chars().position(|char| char == ch) {
                     None => {
                         vm.op_push(OpcodeValue::Int(-1), table)?;
                     }
@@ -218,17 +219,18 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         2,
         "strings@rfind",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let ch = utils::expect_cloned_string(addr.clone(), vm.pop(&addr)?, None);
+            let raw_ch = utils::expect_cloned_string(addr.clone(), vm.pop(&addr)?, None);
             let string = utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
-            if ch.len() != 1 {
+            if raw_ch.len() != 1 {
                 error!(Error::own_hint(
                     addr.clone(),
                     "could not represent string as char.",
-                    format!("string: {ch}")
+                    format!("string: {raw_ch:?}")
                 ))
             }
+            let ch = raw_ch.chars().next().unwrap();
             if should_push {
-                match (*string).chars().rev().position(|ch| ch == ch) {
+                match (*string).chars().rev().position(|char| char == ch) {
                     None => {
                         vm.op_push(OpcodeValue::Int(-1), table)?;
                     }

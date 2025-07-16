@@ -70,7 +70,7 @@ pub unsafe fn run(
 
 /// Crashes program with text
 pub fn crash(reason: String) -> ! {
-    println!("{}", reason);
+    println!("{reason}");
     std::process::exit(1);
 }
 
@@ -110,16 +110,14 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
     if path.exists() {
         if let Ok(result) = fs::read_to_string(&path) {
             result
+        } else if let Some(address) = addr {
+            error!(Error::own_text(
+                address,
+                format!("io error with file: {path:?}"),
+                "check file existence"
+            ));
         } else {
-            if let Some(address) = addr {
-                error!(Error::own_text(
-                    address,
-                    format!("io error with file: {:?}", path),
-                    "check file existence"
-                ));
-            } else {
-                crash(format!("file not found: {:?}", path));
-            }
+            crash(format!("file not found: {path:?}"));
         }
     } else {
         panic!(
@@ -150,7 +148,7 @@ pub fn lex(file_path: &PathBuf, code: &[char], debug: bool, bench: bool) -> Opti
     // debug
     if debug {
         println!("tokens debug: ");
-        println!("{:?}", tokens);
+        println!("{tokens:?}");
     }
 
     Some(tokens)
@@ -204,7 +202,7 @@ pub fn parse(
         // debug
         if debug {
             println!("ast debug: ");
-            println!("{:?}", ast);
+            println!("{ast:?}");
         }
         return Some(ast);
     } else if let Err(error) = raw_ast {

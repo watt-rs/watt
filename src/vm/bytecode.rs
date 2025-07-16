@@ -178,7 +178,7 @@ impl Opcode {
         /// Print text with indent
         fn print_indent(indent: usize, text: &str) {
             if indent == 0 {
-                println!("{}", text);
+                println!("{text}");
             } else {
                 println!("{space}{text}", space = "  ".repeat(indent));
             }
@@ -238,7 +238,7 @@ impl Opcode {
                 print_indent(indent, format!("fn '{name}' '{full_name:?}'").as_str());
                 print_indent(indent + 1, "params:");
                 for param in params {
-                    print_indent(indent + 2, format!("{param}").as_str());
+                    print_indent(indent + 2, param.to_string().as_str());
                 }
                 print_indent(indent + 1, "body:");
                 print_chunk(indent + 2, body);
@@ -247,7 +247,7 @@ impl Opcode {
                 print_indent(indent, "anonymous_fn");
                 print_indent(indent + 1, "params:");
                 for param in params {
-                    print_indent(indent + 2, format!("{param}").as_str());
+                    print_indent(indent + 2, param.to_string().as_str());
                 }
                 print_indent(indent + 1, "body:");
                 print_chunk(indent + 2, body);
@@ -265,7 +265,7 @@ impl Opcode {
                 );
                 print_indent(indent + 1, "constructor:");
                 for param in constructor {
-                    print_indent(indent + 2, format!("{param}").as_str());
+                    print_indent(indent + 2, param.to_string().as_str());
                 }
                 print_indent(indent + 1, "body:");
                 print_chunk(indent + 2, body);
@@ -377,7 +377,7 @@ impl Opcode {
                 print_chunk(indent + 2, value);
             }
             Opcode::Native { fn_name, .. } => {
-                print_indent(indent, format!("native {}", fn_name).as_str());
+                print_indent(indent, format!("native {fn_name}").as_str());
             }
             Opcode::ErrorPropagation { value, .. } => {
                 print_indent(indent, "error_propagation");
@@ -387,12 +387,12 @@ impl Opcode {
             Opcode::Impls {
                 value, trait_name, ..
             } => {
-                print_indent(indent, format!("impls {:?}", trait_name).as_str());
+                print_indent(indent, format!("impls {trait_name:?}").as_str());
                 print_indent(indent + 1, "value:");
                 print_chunk(indent + 2, value);
             }
             Opcode::DeleteLocal { name, .. } => {
-                print_indent(indent, format!("delete_local {}", name).as_str());
+                print_indent(indent, format!("delete_local {name}").as_str());
             }
         }
     }

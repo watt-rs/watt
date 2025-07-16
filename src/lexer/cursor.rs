@@ -37,8 +37,8 @@ impl<'cursor> Cursor<'cursor> {
     pub fn char_at(&self, offset: usize) -> char {
         let index = self.current + offset;
         if self.code.len() > index {
-            let c = self.code[index];
-            c
+            
+            self.code[index]
         } else {
             '\0'
         }

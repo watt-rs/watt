@@ -51,7 +51,7 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
         let mut nodes = vec![];
 
         for builtin in &self.builtins {
-            if !self.imported.borrow().contains(&builtin) {
+            if !self.imported.borrow().contains(builtin) {
                 let node_option = self.import(None, &Import::new(None, builtin.to_string(), None));
                 if let Some(node) = node_option {
                     nodes.push(node);
@@ -66,14 +66,14 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
     ///
     /// 1. Checking `import.file`
     /// - is it a library, if library, gets path from `libraries`,
-    /// else represents `import.file` as `file path`
+    ///   else represents `import.file` as `file path`
     ///
     /// 2. Reading the file
     /// - from a resolved path
     ///
     /// 3. Lexing, parsing, analyzing, source files
     /// - leaves only `Import`, `Trait`, `Unit`,
-    /// `Type`, `FnDeclaration`, `Native` node types.  
+    ///   `Type`, `FnDeclaration`, `Native` node types.  
     ///
     /// returns: analyzed AST node
     ///
