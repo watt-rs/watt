@@ -67,7 +67,7 @@ impl Table {
         } else {
             Err(Error::own_text(
                 address.clone(),
-                format!("{name} is not found."),
+                format!("{name} is not defined."),
                 "check variable existence.",
             ))
         }
@@ -154,7 +154,7 @@ impl Table {
             if (*current).root.is_null() {
                 return Err(Error::own_text(
                     address.clone(),
-                    format!("{name} is not found."),
+                    format!("{name} is not defined."),
                     "check variable existence.",
                 ));
             }
