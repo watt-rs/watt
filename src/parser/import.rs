@@ -1,4 +1,4 @@
-﻿// imports
+// imports
 use crate::lexer::address::Address;
 
 /// Import structure

@@ -2,6 +2,7 @@
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::bytecode::OpcodeValue;
+use crate::vm::flow::ControlFlow;
 use crate::vm::memory::memory;
 use crate::vm::natives::natives;
 use crate::vm::table::Table;
@@ -9,7 +10,6 @@ use crate::vm::values::Value;
 use crate::vm::vm::VM;
 use crate::{error, vm::natives::libs::utils};
 use std::io::{Read, Seek, Write};
-use crate::vm::flow::ControlFlow;
 
 /// Provides
 pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Error> {
@@ -24,7 +24,11 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
 
             if should_push {
                 // opening file for reading
-                let file = match std::fs::OpenOptions::new().read(true).write(true).open(filename) {
+                let file = match std::fs::OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .open(filename)
+                {
                     Ok(file) => file,
                     Err(_) => {
                         vm.op_push(OpcodeValue::Raw(Value::Null), table)?;
@@ -70,7 +74,10 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         },
     );
     /// Get file from stack
-    pub unsafe fn pop_file<'vm>(vm: &'vm mut VM, addr: &Address) -> Result<&'vm mut std::fs::File, ControlFlow> {
+    pub unsafe fn pop_file<'vm>(
+        vm: &'vm mut VM,
+        addr: &Address,
+    ) -> Result<&'vm mut std::fs::File, ControlFlow> {
         // getting a raw file
         let raw_file = utils::expect_any(addr.clone(), vm.pop(&addr)?, None);
 
@@ -98,10 +105,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             if should_push {
                 let mut string = String::new();
                 file.read_to_string(&mut string).unwrap();
-                vm.op_push(
-                    OpcodeValue::String(string),
-                    table,
-                )?;
+                vm.op_push(OpcodeValue::String(string), table)?;
             }
 
             Ok(())
@@ -122,11 +126,12 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             if should_push {
                 let value = file.write(data.as_bytes());
                 match value {
-                    Ok(_) => { vm.op_push(OpcodeValue::Raw(Value::Null), table)?; }
-                    Err(e) => { vm.op_push(
-                        OpcodeValue::Int(e.raw_os_error().unwrap_or(0) as _),
-                        table,
-                    )?; }
+                    Ok(_) => {
+                        vm.op_push(OpcodeValue::Raw(Value::Null), table)?;
+                    }
+                    Err(e) => {
+                        vm.op_push(OpcodeValue::Int(e.raw_os_error().unwrap_or(0) as _), table)?;
+                    }
                 }
             }
 
@@ -163,13 +168,12 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             let file: &mut std::fs::File = pop_file(vm, &addr)?;
 
             // performing seek
-            file
-                .seek(match whence {
-                    1 => std::io::SeekFrom::Current(position as _),
-                    2 => std::io::SeekFrom::End(position as _),
-                    _ => std::io::SeekFrom::Start(position as _),
-                })
-                .unwrap();
+            file.seek(match whence {
+                1 => std::io::SeekFrom::Current(position as _),
+                2 => std::io::SeekFrom::End(position as _),
+                _ => std::io::SeekFrom::Start(position as _),
+            })
+            .unwrap();
             if should_push {
                 vm.op_push(OpcodeValue::Raw(Value::Null), table)?;
             }
@@ -190,10 +194,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             let result = std::fs::create_dir(&name);
             if should_push {
                 if let Err(e) = result {
-                    vm.op_push(
-                        OpcodeValue::Int(e.raw_os_error().unwrap_or(0) as _),
-                        table,
-                    )?;
+                    vm.op_push(OpcodeValue::Int(e.raw_os_error().unwrap_or(0) as _), table)?;
                 } else {
                     vm.op_push(OpcodeValue::Raw(Value::Null), table)?;
                 }
@@ -215,10 +216,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             let result = std::fs::remove_dir(name);
             if should_push {
                 if let Err(e) = result {
-                    vm.op_push(
-                        OpcodeValue::Int(e.raw_os_error().unwrap_or(0) as _),
-                        table,
-                    )?;
+                    vm.op_push(OpcodeValue::Int(e.raw_os_error().unwrap_or(0) as _), table)?;
                 } else {
                     vm.op_push(OpcodeValue::Raw(Value::Null), table)?;
                 }
@@ -240,10 +238,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             let result = std::fs::remove_dir_all(name);
             if should_push {
                 if let Err(e) = result {
-                    vm.op_push(
-                        OpcodeValue::Int(e.raw_os_error().unwrap_or(0) as _),
-                        table,
-                    )?;
+                    vm.op_push(OpcodeValue::Int(e.raw_os_error().unwrap_or(0) as _), table)?;
                 } else {
                     vm.op_push(OpcodeValue::Raw(Value::Null), table)?;
                 }
@@ -327,7 +322,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             }
 
             Ok(())
-        }
+        },
     );
     Ok(())
 }

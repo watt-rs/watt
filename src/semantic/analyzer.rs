@@ -1,15 +1,15 @@
-﻿// imports
-use crate::parser::ast::{MatchCase, Node};
-use crate::errors::errors::{Error};
-use std::collections::VecDeque;
+// imports
 use crate::error;
+use crate::errors::errors::Error;
 use crate::lexer::address::Address;
+use crate::parser::ast::{MatchCase, Node};
+use std::collections::VecDeque;
 
 /// Analyzer node type
-/// 
+///
 /// Used in `analyzer_stack` to push
 /// and pop lexical scopes from analyze_stack
-/// 
+///
 #[allow(dead_code)]
 #[derive(Clone)]
 pub enum AnalyzerNode {
@@ -17,7 +17,7 @@ pub enum AnalyzerNode {
     If,
     Loop,
     For,
-    Fn
+    Fn,
 }
 
 /// Semantic analyzer
@@ -41,7 +41,12 @@ impl Analyzer {
                     self.analyze(&node);
                 }
             }
-            Node::If { logical, body, elseif, .. } => {
+            Node::If {
+                logical,
+                body,
+                elseif,
+                ..
+            } => {
                 self.analyze_if(body, logical, elseif);
             }
             Node::While { logical, body, .. } => {
@@ -70,7 +75,7 @@ impl Analyzer {
                     self.analyze(v);
                 }
             }
-            Node::Match { cases, default, .. } => { 
+            Node::Match { cases, default, .. } => {
                 self.analyze_match(cases, default);
             }
             Node::Ret { location, .. } => {
@@ -82,9 +87,7 @@ impl Analyzer {
             Node::Unit { body, .. } => {
                 self.analyze(body);
             }
-            Node::Import { location, .. } => {
-                self.analyze_import(&location.address)
-            }
+            Node::Import { location, .. } => self.analyze_import(&location.address),
             Node::ErrorPropagation { location, .. } => {
                 self.analyze_error_propagation(&location.address);
             }
@@ -139,7 +142,7 @@ impl Analyzer {
     fn hierarchy_has_loop(&mut self) -> bool {
         for node in self.analyze_stack.iter().rev() {
             if let AnalyzerNode::Loop = node {
-                return true
+                return true;
             }
         }
         false
@@ -150,7 +153,7 @@ impl Analyzer {
     fn hierarchy_has_fn(&self) -> bool {
         for node in self.analyze_stack.clone() {
             if let AnalyzerNode::Fn = node {
-                return true
+                return true;
             }
         }
         false
@@ -177,7 +180,7 @@ impl Analyzer {
             self.analyze(&*case.body);
         }
     }
-    
+
     /// Analyzing loop while
     fn analyze_while(&mut self, body: &Node, logical: &Node) {
         self.analyze_stack.push_back(AnalyzerNode::Loop);
@@ -195,10 +198,10 @@ impl Analyzer {
     }
 
     /// Analyzing continue
-    /// 
+    ///
     /// Checking has_loop_in_hierarchy
     /// raises error, if it's no loop is analyze_stack
-    /// 
+    ///
     fn analyze_continue(&mut self, addr: &Address) {
         if self.analyze_stack.len() == 0 {
             error!(Error::new(
@@ -266,14 +269,14 @@ impl Analyzer {
             ));
         }
     }
-    
+
     /// Analyzing import
-    /// 
+    ///
     /// Checks if analyze stack is empty, because
     /// imports are only allowed in global table
     ///
     /// If stack isn't empty, raises error
-    /// 
+    ///
     fn analyze_import(&self, addr: &Address) {
         if self.analyze_stack.len() > 0 {
             error!(Error::new(

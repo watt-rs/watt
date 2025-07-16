@@ -1,15 +1,15 @@
-﻿// imports
-use scopeguard::defer;
+// imports
 use crate::error;
-use crate::errors::errors::{Error};
+use crate::errors::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::bytecode::{Chunk, Opcode, OpcodeValue};
 use crate::vm::flow::ControlFlow;
+use crate::vm::memory::gc::GC;
+use crate::vm::memory::memory;
 use crate::vm::natives::natives;
 use crate::vm::table::Table;
 use crate::vm::values::{FnOwner, Function, Instance, Symbol, Trait, TraitFn, Type, Unit, Value};
-use crate::vm::memory::gc::GC;
-use crate::vm::memory::memory;
+use scopeguard::defer;
 
 /// Vm settings,
 /// contains gc_threshold, gc_debug
@@ -21,7 +21,10 @@ pub struct VmSettings {
 /// Vm settings implementation
 impl VmSettings {
     pub fn new(gc_threshold: usize, gc_debug: bool) -> Self {
-        Self { gc_threshold, gc_debug }
+        Self {
+            gc_threshold,
+            gc_debug,
+        }
     }
 }
 
@@ -55,7 +58,7 @@ impl VM {
             natives: memory::alloc_value(Table::new()),
             gc: memory::alloc_value(GC::new(settings.gc_debug)),
             stack: Vec::new(),
-            settings
+            settings,
         };
         // natives
         if let Err(e) = natives::provide_builtins(&mut vm) {
@@ -147,21 +150,27 @@ impl VM {
     /// safety guaranteed by pushing value to stack
     /// before registering in gc.
     ///
-    pub unsafe fn op_push(&mut self, value: OpcodeValue, table: *mut Table) -> Result<(), ControlFlow> {
+    pub unsafe fn op_push(
+        &mut self,
+        value: OpcodeValue,
+        table: *mut Table,
+    ) -> Result<(), ControlFlow> {
         // checking value type
         match value {
             // primitives
-            OpcodeValue::Int(int) => { self.push(Value::Int(int)); }
-            OpcodeValue::Float(float) => { self.push(Value::Float(float)); }
-            OpcodeValue::Bool(bool) => { self.push(Value::Bool(bool)); }
+            OpcodeValue::Int(int) => {
+                self.push(Value::Int(int));
+            }
+            OpcodeValue::Float(float) => {
+                self.push(Value::Float(float));
+            }
+            OpcodeValue::Bool(bool) => {
+                self.push(Value::Bool(bool));
+            }
             // string
             OpcodeValue::String(string) => {
                 // allocating string
-                let new_string = Value::String(
-                    memory::alloc_value(
-                        string
-                    )
-                );
+                let new_string = Value::String(memory::alloc_value(string));
                 // pushing string value to stack
                 self.push(new_string);
                 // registering string value in gc. .
@@ -170,10 +179,13 @@ impl VM {
             // raw
             OpcodeValue::Raw(raw) => {
                 match raw {
-                    Value::Instance(_) | Value::Fn(_) |
-                    Value::Native(_) | Value::String(_) |
-                    Value::Unit(_) | Value::List(_) |
-                    Value::Any(_) => {
+                    Value::Instance(_)
+                    | Value::Fn(_)
+                    | Value::Native(_)
+                    | Value::String(_)
+                    | Value::Unit(_)
+                    | Value::List(_)
+                    | Value::Any(_) => {
                         // push
                         self.push(raw);
                         // then register
@@ -188,9 +200,14 @@ impl VM {
         }
         Ok(())
     }
-    
+
     /// Opcode: Binary operation
-    unsafe fn op_binary(&mut self, address: &Address, op: &str, table: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_binary(
+        &mut self,
+        address: &Address,
+        op: &str,
+        table: *mut Table,
+    ) -> Result<(), ControlFlow> {
         // operands
         let operand_a = self.pop(&address)?;
         let operand_b = self.pop(&address)?;
@@ -199,7 +216,10 @@ impl VM {
         let invalid_op_error = || {
             error!(Error::own_text(
                 address.clone(),
-                format!("could not use '{}' with {:?} and {:?}", op, operand_a, operand_b),
+                format!(
+                    "could not use '{}' with {:?} and {:?}",
+                    op, operand_a, operand_b
+                ),
                 "check your code."
             ));
         };
@@ -213,162 +233,238 @@ impl VM {
 
         // binary operators
         match op {
-            "+" => {
-                match operand_a {
-                    Value::Float(a) => { match operand_b {
-                        Value::Float(b) => { self.push(Value::Float(a + b)); }
-                        Value::Int(b) => { self.push(Value::Float(a + (b as f64))); }
-                        Value::String(b) => {
-                            let string = Value::String(
-                                memory::alloc_value(format!("{}{}", a, *b))
-                            );
-                            self.push(string);
-                            self.gc_register(string, table);
-                        }
-                        _ => { invalid_op_error(); }
-                    }}
-                    Value::Int(a) => { match operand_b {
-                        Value::Float(b) => { self.push(Value::Float((a as f64) + b)); }
-                        Value::Int(b) => { self.push(Value::Int(a + b)); }
-                        Value::String(b) => {
-                            let string = Value::String(
-                                memory::alloc_value(format!("{}{}", a, *b))
-                            );
-                            self.push(string);
-                            self.gc_register(string, table);
-                        }
-                        _ => { invalid_op_error(); }
-                    }}
-                    Value::String(a) => {
-                        let string = Value::String(
-                            memory::alloc_value(format!("{}{:?}", *a, operand_b))
-                        );
+            "+" => match operand_a {
+                Value::Float(a) => match operand_b {
+                    Value::Float(b) => {
+                        self.push(Value::Float(a + b));
+                    }
+                    Value::Int(b) => {
+                        self.push(Value::Float(a + (b as f64)));
+                    }
+                    Value::String(b) => {
+                        let string = Value::String(memory::alloc_value(format!("{}{}", a, *b)));
                         self.push(string);
                         self.gc_register(string, table);
                     }
                     _ => {
-                        if let Value::String(_) = operand_b {
-                            let string = Value::String(
-                                memory::alloc_value(format!("{:?}{:?}", operand_a, operand_b))
-                            );
-                            self.push(string);
-                            self.gc_register(string, table);
+                        invalid_op_error();
+                    }
+                },
+                Value::Int(a) => match operand_b {
+                    Value::Float(b) => {
+                        self.push(Value::Float((a as f64) + b));
+                    }
+                    Value::Int(b) => {
+                        self.push(Value::Int(a + b));
+                    }
+                    Value::String(b) => {
+                        let string = Value::String(memory::alloc_value(format!("{}{}", a, *b)));
+                        self.push(string);
+                        self.gc_register(string, table);
+                    }
+                    _ => {
+                        invalid_op_error();
+                    }
+                },
+                Value::String(a) => {
+                    let string =
+                        Value::String(memory::alloc_value(format!("{}{:?}", *a, operand_b)));
+                    self.push(string);
+                    self.gc_register(string, table);
+                }
+                _ => {
+                    if let Value::String(_) = operand_b {
+                        let string = Value::String(memory::alloc_value(format!(
+                            "{:?}{:?}",
+                            operand_a, operand_b
+                        )));
+                        self.push(string);
+                        self.gc_register(string, table);
+                    } else {
+                        invalid_op_error();
+                    }
+                }
+            },
+            "-" => match operand_a {
+                Value::Float(a) => match operand_b {
+                    Value::Float(b) => {
+                        self.push(Value::Float(a - b));
+                    }
+                    Value::Int(b) => {
+                        self.push(Value::Float(a - (b as f64)));
+                    }
+                    _ => {
+                        invalid_op_error();
+                    }
+                },
+                Value::Int(a) => match operand_b {
+                    Value::Float(b) => {
+                        self.push(Value::Float((a as f64) - b));
+                    }
+                    Value::Int(b) => {
+                        self.push(Value::Int(a - b));
+                    }
+                    _ => {
+                        invalid_op_error();
+                    }
+                },
+                _ => {
+                    invalid_op_error();
+                }
+            },
+            "*" => match operand_a {
+                Value::Float(a) => match operand_b {
+                    Value::Float(b) => {
+                        self.push(Value::Float(a * b));
+                    }
+                    Value::Int(b) => {
+                        self.push(Value::Float(a * (b as f64)));
+                    }
+                    _ => {
+                        invalid_op_error();
+                    }
+                },
+                Value::Int(a) => match operand_b {
+                    Value::Float(b) => {
+                        self.push(Value::Float((a as f64) * b));
+                    }
+                    Value::Int(b) => {
+                        self.push(Value::Int(a * b));
+                    }
+                    _ => {
+                        invalid_op_error();
+                    }
+                },
+                _ => {
+                    invalid_op_error();
+                }
+            },
+            "/" => {
+                match operand_a {
+                    Value::Float(a) => {
+                        match operand_b {
+                            Value::Float(b) => {
+                                // проверка на деление на 0
+                                if b == 0f64 {
+                                    division_error();
+                                }
+                                // деление
+                                self.push(Value::Float(a / b));
+                            }
+                            Value::Int(b) => {
+                                // проверка на деление на 0
+                                if b == 0 {
+                                    division_error();
+                                }
+                                // деление
+                                self.push(Value::Float(a / (b as f64)));
+                            }
+                            _ => {
+                                invalid_op_error();
+                            }
                         }
-                        else {
-                            invalid_op_error();
+                    }
+                    Value::Int(a) => {
+                        match operand_b {
+                            Value::Float(b) => {
+                                // checking division by zero
+                                if b == 0f64 {
+                                    division_error();
+                                }
+                                // dividing
+                                self.push(Value::Float((a as f64) / b));
+                            }
+                            Value::Int(b) => {
+                                // checking division by zero
+                                if b == 0 {
+                                    division_error();
+                                }
+                                // dividing
+                                if a % b == 0 {
+                                    self.push(Value::Int(a / b));
+                                } else {
+                                    self.push(Value::Float(a as f64 / b as f64))
+                                }
+                            }
+                            _ => {
+                                invalid_op_error();
+                            }
                         }
+                    }
+                    _ => {
+                        invalid_op_error();
                     }
                 }
             }
-            "-" => {
-                match operand_a {
-                    Value::Float(a) => { match operand_b {
-                        Value::Float(b) => { self.push(Value::Float(a - b)); }
-                        Value::Int(b) => { self.push(Value::Float(a - (b as f64))); }
-                        _ => { invalid_op_error(); }
-                    }}
-                    Value::Int(a) => { match operand_b {
-                        Value::Float(b) => { self.push(Value::Float((a as f64) - b)); }
-                        Value::Int(b) => { self.push(Value::Int(a - b)); }
-                        _ => { invalid_op_error(); }
-                    }}
-                    _ => { invalid_op_error(); }
+            "%" => match operand_a {
+                Value::Float(a) => match operand_b {
+                    Value::Float(b) => {
+                        self.push(Value::Float(a % b));
+                    }
+                    Value::Int(b) => {
+                        self.push(Value::Float(a % (b as f64)));
+                    }
+                    _ => {
+                        invalid_op_error();
+                    }
+                },
+                Value::Int(a) => match operand_b {
+                    Value::Float(b) => {
+                        self.push(Value::Float((a as f64) % b));
+                    }
+                    Value::Int(b) => {
+                        self.push(Value::Int(a % b));
+                    }
+                    _ => {
+                        invalid_op_error();
+                    }
+                },
+                _ => {
+                    invalid_op_error();
                 }
-            }
-            "*" => {
-                match operand_a {
-                    Value::Float(a) => { match operand_b {
-                        Value::Float(b) => { self.push(Value::Float(a * b)); }
-                        Value::Int(b) => { self.push(Value::Float(a * (b as f64))); }
-                        _ => { invalid_op_error(); }
-                    }}
-                    Value::Int(a) => { match operand_b {
-                        Value::Float(b) => { self.push(Value::Float((a as f64) * b)); }
-                        Value::Int(b) => { self.push(Value::Int(a * b)); }
-                        _ => { invalid_op_error(); }
-                    }}
-                    _ => { invalid_op_error(); }
+            },
+            "&" => match operand_a {
+                Value::Int(a) => match operand_b {
+                    Value::Int(b) => {
+                        self.push(Value::Int(a & b));
+                    }
+                    _ => {
+                        invalid_op_error();
+                    }
+                },
+                _ => {
+                    invalid_op_error();
                 }
-            }
-            "/" => {
-                match operand_a {
-                    Value::Float(a) => { match operand_b {
-                        Value::Float(b) => {
-                            // проверка на деление на 0
-                            if b == 0f64 { division_error(); }
-                            // деление
-                            self.push(Value::Float(a / b));
-                        }
-                        Value::Int(b) => {
-                            // проверка на деление на 0
-                            if b == 0 { division_error(); }
-                            // деление
-                            self.push(Value::Float(a / (b as f64)));
-                        }
-                        _ => { invalid_op_error(); }
-                    }}
-                    Value::Int(a) => { match operand_b {
-                        Value::Float(b) => {
-                            // checking division by zero
-                            if b == 0f64 { division_error(); }
-                            // dividing
-                            self.push(Value::Float((a as f64) / b));
-                        }
-                        Value::Int(b) => {
-                            // checking division by zero
-                            if b == 0 { division_error(); }
-                            // dividing
-                            if a % b == 0 { self.push(Value::Int(a / b)); }
-                            else { self.push(Value::Float(a as f64 / b as f64)) }
-                        }
-                        _ => { invalid_op_error(); }
-                    }}
-                    _ => { invalid_op_error(); }
+            },
+            "|" => match operand_a {
+                Value::Int(a) => match operand_b {
+                    Value::Int(b) => {
+                        self.push(Value::Int(a | b));
+                    }
+                    _ => {
+                        invalid_op_error();
+                    }
+                },
+                _ => {
+                    invalid_op_error();
                 }
-            }
-            "%" => {
-                match operand_a {
-                    Value::Float(a) => { match operand_b {
-                        Value::Float(b) => { self.push(Value::Float(a % b)); }
-                        Value::Int(b) => { self.push(Value::Float(a % (b as f64))); }
-                        _ => { invalid_op_error(); }
-                    }}
-                    Value::Int(a) => { match operand_b {
-                        Value::Float(b) => { self.push(Value::Float((a as f64) % b)); }
-                        Value::Int(b) => { self.push(Value::Int(a % b)); }
-                        _ => { invalid_op_error(); }
-                    }}
-                    _ => { invalid_op_error(); }
+            },
+            "^" => match operand_a {
+                Value::Int(a) => match operand_b {
+                    Value::Int(b) => {
+                        self.push(Value::Int(a ^ b));
+                    }
+                    _ => {
+                        invalid_op_error();
+                    }
+                },
+                _ => {
+                    invalid_op_error();
                 }
+            },
+            _ => {
+                panic!("operator = {} is not found.", op)
             }
-            "&" => {
-                match operand_a {
-                    Value::Int(a) => { match operand_b {
-                        Value::Int(b) => { self.push(Value::Int(a & b)); }
-                        _ => { invalid_op_error(); }
-                    }}
-                    _ => { invalid_op_error(); }
-                }
-            }
-            "|" => {
-                match operand_a {
-                    Value::Int(a) => { match operand_b {
-                        Value::Int(b) => { self.push(Value::Int(a | b)); }
-                        _ => { invalid_op_error(); }
-                    }}
-                    _ => { invalid_op_error(); }
-                }
-            }
-            "^" => {
-                match operand_a {
-                    Value::Int(a) => { match operand_b {
-                        Value::Int(b) => { self.push(Value::Int(a ^ b)); }
-                        _ => { invalid_op_error(); }
-                    }}
-                    _ => { invalid_op_error(); }
-                }
-            }
-            _ => { panic!("operator = {} is not found.", op)}
         }
         Ok(())
     }
@@ -405,7 +501,7 @@ impl VM {
             Value::Bool(b) => {
                 self.push(Value::Bool(!b));
             }
-            _ => { 
+            _ => {
                 error!(Error::own_text(
                     address.clone(),
                     format!("could not use 'bang' for {:?}", operand),
@@ -425,137 +521,238 @@ impl VM {
         let invalid_op_error = || {
             Error::own_text(
                 address.clone(),
-                format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
-                "check your code."
+                format!(
+                    "could not use '{}' for {:?} and {:?}",
+                    op, operand_a, operand_b
+                ),
+                "check your code.",
             )
         };
         // conditional op
         match op {
-            ">" => {
-                match operand_a {
-                    Value::Float(a) => { match operand_b {
-                        Value::Float(b) => { self.push(Value::Bool(a > b)); }
-                        Value::Int(b) => { self.push(Value::Bool(a > (b as f64))); }
-                        _ => { error!(invalid_op_error()); }
-                    }}
-                    Value::Int(a) => { match operand_b {
-                        Value::Float(b) => { self.push(Value::Bool((a as f64) > b)); }
-                        Value::Int(b) => { self.push(Value::Bool(a > b)); }
-                        _ => { error!(invalid_op_error()); }
-                    }}
-                    Value::String(a) => { match operand_b {
-                        Value::String(b) => { self.push(Value::Bool(*a > *b)); }
-                        _ => { error!(invalid_op_error()); }
-                    }}
-                    _ => { error!(invalid_op_error()); }
+            ">" => match operand_a {
+                Value::Float(a) => match operand_b {
+                    Value::Float(b) => {
+                        self.push(Value::Bool(a > b));
+                    }
+                    Value::Int(b) => {
+                        self.push(Value::Bool(a > (b as f64)));
+                    }
+                    _ => {
+                        error!(invalid_op_error());
+                    }
+                },
+                Value::Int(a) => match operand_b {
+                    Value::Float(b) => {
+                        self.push(Value::Bool((a as f64) > b));
+                    }
+                    Value::Int(b) => {
+                        self.push(Value::Bool(a > b));
+                    }
+                    _ => {
+                        error!(invalid_op_error());
+                    }
+                },
+                Value::String(a) => match operand_b {
+                    Value::String(b) => {
+                        self.push(Value::Bool(*a > *b));
+                    }
+                    _ => {
+                        error!(invalid_op_error());
+                    }
+                },
+                _ => {
+                    error!(invalid_op_error());
                 }
             },
-            "<" => {
-                match operand_a {
-                    Value::Float(a) => { match operand_b {
-                        Value::Float(b) => { self.push(Value::Bool(a < b)); }
-                        Value::Int(b) => { self.push(Value::Bool(a < (b as f64))); }
-                        _ => { error!(invalid_op_error()); }
-                    }}
-                    Value::Int(a) => { match operand_b {
-                        Value::Float(b) => { self.push(Value::Bool((a as f64) < b)); }
-                        Value::Int(b) => { self.push(Value::Bool(a < b)); }
-                        _ => { error!(invalid_op_error()); }
-                    }}
-                    Value::String(a) => { match operand_b {
-                        Value::String(b) => { self.push(Value::Bool(*a < *b)); }
-                        _ => { error!(invalid_op_error()); }
-                    }}
-                    _ => { error!(invalid_op_error()); }
+            "<" => match operand_a {
+                Value::Float(a) => match operand_b {
+                    Value::Float(b) => {
+                        self.push(Value::Bool(a < b));
+                    }
+                    Value::Int(b) => {
+                        self.push(Value::Bool(a < (b as f64)));
+                    }
+                    _ => {
+                        error!(invalid_op_error());
+                    }
+                },
+                Value::Int(a) => match operand_b {
+                    Value::Float(b) => {
+                        self.push(Value::Bool((a as f64) < b));
+                    }
+                    Value::Int(b) => {
+                        self.push(Value::Bool(a < b));
+                    }
+                    _ => {
+                        error!(invalid_op_error());
+                    }
+                },
+                Value::String(a) => match operand_b {
+                    Value::String(b) => {
+                        self.push(Value::Bool(*a < *b));
+                    }
+                    _ => {
+                        error!(invalid_op_error());
+                    }
+                },
+                _ => {
+                    error!(invalid_op_error());
                 }
             },
-            ">=" => {
-                match operand_a {
-                    Value::Float(a) => { match operand_b {
-                        Value::Float(b) => { self.push(Value::Bool(a >= b)); }
-                        Value::Int(b) => { self.push(Value::Bool(a >= (b as f64))); }
-                        _ => { error!(invalid_op_error()); }
-                    }}
-                    Value::Int(a) => { match operand_b {
-                        Value::Float(b) => { self.push(Value::Bool((a as f64) >= b)); }
-                        Value::Int(b) => { self.push(Value::Bool(a >= b)); }
-                        _ => { error!(invalid_op_error()); }
-                    }}
-                    Value::String(a) => { match operand_b {
-                        Value::String(b) => { self.push(Value::Bool(*a >= *b)); }
-                        _ => { error!(invalid_op_error()); }
-                    }}
-                    _ => { error!(invalid_op_error()); }
+            ">=" => match operand_a {
+                Value::Float(a) => match operand_b {
+                    Value::Float(b) => {
+                        self.push(Value::Bool(a >= b));
+                    }
+                    Value::Int(b) => {
+                        self.push(Value::Bool(a >= (b as f64)));
+                    }
+                    _ => {
+                        error!(invalid_op_error());
+                    }
+                },
+                Value::Int(a) => match operand_b {
+                    Value::Float(b) => {
+                        self.push(Value::Bool((a as f64) >= b));
+                    }
+                    Value::Int(b) => {
+                        self.push(Value::Bool(a >= b));
+                    }
+                    _ => {
+                        error!(invalid_op_error());
+                    }
+                },
+                Value::String(a) => match operand_b {
+                    Value::String(b) => {
+                        self.push(Value::Bool(*a >= *b));
+                    }
+                    _ => {
+                        error!(invalid_op_error());
+                    }
+                },
+                _ => {
+                    error!(invalid_op_error());
                 }
-            }
-            "<=" => {
-                match operand_a {
-                    Value::Float(a) => { match operand_b {
-                        Value::Float(b) => { self.push(Value::Bool(a <= b)); }
-                        Value::Int(b) => { self.push(Value::Bool(a <= (b as f64))); }
-                        _ => { error!(invalid_op_error()); }
-                    }}
-                    Value::Int(a) => { match operand_b {
-                        Value::Float(b) => { self.push(Value::Bool((a as f64) <= b)); }
-                        Value::Int(b) => { self.push(Value::Bool(a <= b)); }
-                        _ => { error!(invalid_op_error()); }
-                    }}
-                    Value::String(a) => { match operand_b {
-                        Value::String(b) => { self.push(Value::Bool(*a <= *b)); }
-                        _ => { error!(invalid_op_error()); }
-                    }}
-                    _ => { error!(invalid_op_error()); }
+            },
+            "<=" => match operand_a {
+                Value::Float(a) => match operand_b {
+                    Value::Float(b) => {
+                        self.push(Value::Bool(a <= b));
+                    }
+                    Value::Int(b) => {
+                        self.push(Value::Bool(a <= (b as f64)));
+                    }
+                    _ => {
+                        error!(invalid_op_error());
+                    }
+                },
+                Value::Int(a) => match operand_b {
+                    Value::Float(b) => {
+                        self.push(Value::Bool((a as f64) <= b));
+                    }
+                    Value::Int(b) => {
+                        self.push(Value::Bool(a <= b));
+                    }
+                    _ => {
+                        error!(invalid_op_error());
+                    }
+                },
+                Value::String(a) => match operand_b {
+                    Value::String(b) => {
+                        self.push(Value::Bool(*a <= *b));
+                    }
+                    _ => {
+                        error!(invalid_op_error());
+                    }
+                },
+                _ => {
+                    error!(invalid_op_error());
                 }
-            }
-            "==" => {
-                match operand_a {
-                    Value::Float(a) => { match operand_b {
-                        Value::Float(b) => { self.push(Value::Bool(a == b)); }
-                        Value::Int(b) => { self.push(Value::Bool(a == (b as f64))); }
-                        _ => { self.push(Value::Bool(false)); }
-                    }}
-                    Value::Int(a) => { match operand_b {
-                        Value::Float(b) => { self.push(Value::Bool((a as f64) == b)); }
-                        Value::Int(b) => { self.push(Value::Bool(a == b)); }
-                        _ => { self.push(Value::Bool(false)); }
-                    }}
-                    Value::Null => { match operand_b {
-                        Value::Null => { self.push(Value::Bool(true)); }
-                        _ => { self.push(Value::Bool(false));  }
-                    }}
-                    Value::Fn(f1) => { match operand_b {
-                        Value::Fn(f2) => { self.push(Value::Bool(f1 == f2)); }
-                        _ => { self.push(Value::Bool(false)); }
-                    }}
-                    Value::Bool(a) => { match operand_b {
-                        Value::Bool(b) => { self.push(Value::Bool(a == b)); }
-                        _ => { self.push(Value::Bool(false)); }
-                    }}
-                    Value::Instance(a) => { match operand_b {
-                        Value::Instance(b) => { self.push(Value::Bool(a == b)); }
-                        _ => { self.push(Value::Bool(false)); }
-                    }}
-                    Value::Type(a) => { match operand_b {
-                        Value::Type(b) => { self.push(Value::Bool(a == b))}
-                        _ => { self.push(Value::Bool(false)); }
-                    }}
-                    Value::String(a) => { match operand_b {
-                        Value::String(b) => { self.push(Value::Bool(*a == *b)) }
-                        _ => { self.push(Value::Bool(false)); }
-                    }}
-                    Value::Native(a) => { match operand_b {
-                        Value::Native(b) => { self.push(Value::Bool(a == b))}
-                        _ => { self.push(Value::Bool(false)); }
-                    }}
-                    Value::Trait(a) => { match operand_b {
-                        Value::Trait(b) => { self.push(Value::Bool(a == b))}
-                        _ => { self.push(Value::Bool(false)); }
-                    }}
+            },
+            "==" => match operand_a {
+                Value::Float(a) => match operand_b {
+                    Value::Float(b) => {
+                        self.push(Value::Bool(a == b));
+                    }
+                    Value::Int(b) => {
+                        self.push(Value::Bool(a == (b as f64)));
+                    }
                     _ => {
                         self.push(Value::Bool(false));
                     }
+                },
+                Value::Int(a) => match operand_b {
+                    Value::Float(b) => {
+                        self.push(Value::Bool((a as f64) == b));
+                    }
+                    Value::Int(b) => {
+                        self.push(Value::Bool(a == b));
+                    }
+                    _ => {
+                        self.push(Value::Bool(false));
+                    }
+                },
+                Value::Null => match operand_b {
+                    Value::Null => {
+                        self.push(Value::Bool(true));
+                    }
+                    _ => {
+                        self.push(Value::Bool(false));
+                    }
+                },
+                Value::Fn(f1) => match operand_b {
+                    Value::Fn(f2) => {
+                        self.push(Value::Bool(f1 == f2));
+                    }
+                    _ => {
+                        self.push(Value::Bool(false));
+                    }
+                },
+                Value::Bool(a) => match operand_b {
+                    Value::Bool(b) => {
+                        self.push(Value::Bool(a == b));
+                    }
+                    _ => {
+                        self.push(Value::Bool(false));
+                    }
+                },
+                Value::Instance(a) => match operand_b {
+                    Value::Instance(b) => {
+                        self.push(Value::Bool(a == b));
+                    }
+                    _ => {
+                        self.push(Value::Bool(false));
+                    }
+                },
+                Value::Type(a) => match operand_b {
+                    Value::Type(b) => self.push(Value::Bool(a == b)),
+                    _ => {
+                        self.push(Value::Bool(false));
+                    }
+                },
+                Value::String(a) => match operand_b {
+                    Value::String(b) => self.push(Value::Bool(*a == *b)),
+                    _ => {
+                        self.push(Value::Bool(false));
+                    }
+                },
+                Value::Native(a) => match operand_b {
+                    Value::Native(b) => self.push(Value::Bool(a == b)),
+                    _ => {
+                        self.push(Value::Bool(false));
+                    }
+                },
+                Value::Trait(a) => match operand_b {
+                    Value::Trait(b) => self.push(Value::Bool(a == b)),
+                    _ => {
+                        self.push(Value::Bool(false));
+                    }
+                },
+                _ => {
+                    self.push(Value::Bool(false));
                 }
-            }
+            },
             "!=" => {
                 // temp operands
                 self.push(operand_b);
@@ -565,20 +762,29 @@ impl VM {
                 // running bang
                 self.op_bang(&address)?;
             }
-            _ => { panic!("operator {} is not found. report this error to the developer.", op)}
+            _ => {
+                panic!(
+                    "operator {} is not found. report this error to the developer.",
+                    op
+                )
+            }
         }
         Ok(())
     }
 
     /// Opcode: Logical operator with short circuit
-    unsafe fn op_logical(&mut self, address: &Address, a: &Chunk,
-                         b: &Chunk, op: &str, table: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_logical(
+        &mut self,
+        address: &Address,
+        a: &Chunk,
+        b: &Chunk,
+        op: &str,
+        table: *mut Table,
+    ) -> Result<(), ControlFlow> {
         // expect bool
         fn expect_bool(value: Value, error: Error) -> bool {
             match value {
-                Value::Bool(b) => {
-                    b
-                }
+                Value::Bool(b) => b,
                 _ => {
                     error!(error)
                 }
@@ -588,11 +794,14 @@ impl VM {
         self.run(a, table)?;
         let operand_a = self.pop(&address)?;
         // operand a
-        let a = expect_bool(operand_a, Error::own_text(
-            address.clone(),
-            format!("could not use '{}' with {:?}", op, operand_a),
-            "check your code."
-        ));
+        let a = expect_bool(
+            operand_a,
+            Error::own_text(
+                address.clone(),
+                format!("could not use '{}' with {:?}", op, operand_a),
+                "check your code.",
+            ),
+        );
         // logical op
         match op {
             "and" => {
@@ -606,11 +815,17 @@ impl VM {
                     self.run(b, table)?;
                     let operand_b = self.pop(&address)?;
                     // operand b
-                    let b = expect_bool(operand_b, Error::own_text(
-                        address.clone(),
-                        format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
-                        "check your code."              
-                    ));
+                    let b = expect_bool(
+                        operand_b,
+                        Error::own_text(
+                            address.clone(),
+                            format!(
+                                "could not use '{}' for {:?} and {:?}",
+                                op, operand_a, operand_b
+                            ),
+                            "check your code.",
+                        ),
+                    );
                     // pushing result
                     self.push(Value::Bool(b));
                 }
@@ -626,23 +841,37 @@ impl VM {
                     self.run(b, table)?;
                     let operand_b = self.pop(&address)?;
                     // operand b
-                    let b = expect_bool(operand_b, Error::own_text(
-                        address.clone(),
-                        format!("could not use '{}' for {:?} and {:?}", op, operand_a, operand_b),
-                        "check your code."
-                    ));
+                    let b = expect_bool(
+                        operand_b,
+                        Error::own_text(
+                            address.clone(),
+                            format!(
+                                "could not use '{}' for {:?} and {:?}",
+                                op, operand_a, operand_b
+                            ),
+                            "check your code.",
+                        ),
+                    );
                     // pushing result
                     self.push(Value::Bool(b));
                 }
             }
-            _ => { panic!("operator {} is not found.", op)}
+            _ => {
+                panic!("operator {} is not found.", op)
+            }
         }
         Ok(())
     }
 
     /// Opcode: If
-    unsafe fn op_if(&mut self, addr: &Address, cond: &Chunk, body: &Chunk,
-                    elif: &Option<Chunk>, root: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_if(
+        &mut self,
+        addr: &Address,
+        cond: &Chunk,
+        body: &Chunk,
+        elif: &Option<Chunk>,
+        root: *mut Table,
+    ) -> Result<(), ControlFlow> {
         // condition table
         let table = memory::alloc_value(Table::new());
         (*table).set_root(root);
@@ -674,7 +903,12 @@ impl VM {
 
     /// Opcode: Loop
     #[allow(unused_variables)]
-    unsafe fn op_loop(&mut self, addr: &Address, body: &Chunk, root: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_loop(
+        &mut self,
+        addr: &Address,
+        body: &Chunk,
+        root: *mut Table,
+    ) -> Result<(), ControlFlow> {
         // loop table
         let table = memory::alloc_value(Table::new());
         (*table).set_root(root);
@@ -688,7 +922,7 @@ impl VM {
                 match e {
                     ControlFlow::Continue => {
                         continue;
-                    },
+                    }
                     ControlFlow::Break => {
                         break;
                     }
@@ -710,16 +944,21 @@ impl VM {
     /// before registering in gc, and gc_unguard after
     /// registering in gc
     ///
-    unsafe fn op_define_fn(&mut self, addr: &Address, symbol: Symbol, body: &Chunk,
-                        params: &Vec<String>, make_closure: bool, table: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_define_fn(
+        &mut self,
+        addr: &Address,
+        symbol: Symbol,
+        body: &Chunk,
+        params: &Vec<String>,
+        make_closure: bool,
+        table: *mut Table,
+    ) -> Result<(), ControlFlow> {
         // allocating function
-        let function = memory::alloc_value(
-            Function::new(
-                symbol.clone(),
-                memory::alloc_value(body.clone()),
-                params.clone()
-            )
-        );
+        let function = memory::alloc_value(Function::new(
+            symbol.clone(),
+            memory::alloc_value(body.clone()),
+            params.clone(),
+        ));
         // if it's need to make_closure
         if make_closure {
             // creating closure
@@ -730,7 +969,7 @@ impl VM {
             // setting closure
             (*function).closure = closure;
         }
-        
+
         // function value
         let function_value = Value::Fn(function);
 
@@ -743,7 +982,9 @@ impl VM {
             error!(e);
         }
         if symbol.full_name.is_some() {
-            if let Err(e) = (*table).define(&addr, symbol.full_name.as_ref().unwrap(), function_value) {
+            if let Err(e) =
+                (*table).define(&addr, symbol.full_name.as_ref().unwrap(), function_value)
+            {
                 error!(e);
             }
         }
@@ -760,16 +1001,19 @@ impl VM {
     /// safety guaranteed by pushing value to stack
     /// before registering in gc.
     ///
-    unsafe fn op_anonymous_fn(&mut self, body: &Chunk, params: &Vec<String>,
-                              make_closure: bool, table: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_anonymous_fn(
+        &mut self,
+        body: &Chunk,
+        params: &Vec<String>,
+        make_closure: bool,
+        table: *mut Table,
+    ) -> Result<(), ControlFlow> {
         // allocating function
-        let function = memory::alloc_value(
-            Function::new(
-                Symbol::by_name("$lambda".to_string()),
-                memory::alloc_value(body.clone()),
-                params.clone()
-            )
-        );
+        let function = memory::alloc_value(Function::new(
+            Symbol::by_name("$lambda".to_string()),
+            memory::alloc_value(body.clone()),
+            params.clone(),
+        ));
         // if it's need to make_closure
         if make_closure {
             // creating closure
@@ -814,23 +1058,29 @@ impl VM {
     /// no responsibility to control types,
     /// they will be freed in `self.cleanup()`
     ///
-    unsafe fn op_define_type(&mut self, addr: &Address, symbol: &Symbol, body: &Chunk,
-                             constructor: &Vec<String>, impls: &Vec<String>) -> Result<(), ControlFlow> {
+    unsafe fn op_define_type(
+        &mut self,
+        addr: &Address,
+        symbol: &Symbol,
+        body: &Chunk,
+        constructor: &Vec<String>,
+        impls: &Vec<String>,
+    ) -> Result<(), ControlFlow> {
         // allocating type
-        let t = memory::alloc_value(
-            Type::new(
-                symbol.clone(),
-                constructor.clone(),
-                memory::alloc_value(body.clone()),
-                impls.clone()
-            )
-        );
+        let t = memory::alloc_value(Type::new(
+            symbol.clone(),
+            constructor.clone(),
+            memory::alloc_value(body.clone()),
+            impls.clone(),
+        ));
         // defining type by name && full name
         if let Err(e) = (*self.types).define(&addr, &symbol.name, Value::Type(t)) {
             error!(e);
         }
         if symbol.full_name.is_some() {
-            if let Err(e) = (*self.types).define(&addr, symbol.full_name.as_ref().unwrap(), Value::Type(t)){
+            if let Err(e) =
+                (*self.types).define(&addr, symbol.full_name.as_ref().unwrap(), Value::Type(t))
+            {
                 error!(e);
             }
         }
@@ -846,19 +1096,20 @@ impl VM {
     /// before registering in gc, and gc_unguard after
     /// registering in gc
     ///
-    unsafe fn op_define_unit(&mut self, addr: &Address, symbol: &Symbol,
-                             body: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_define_unit(
+        &mut self,
+        addr: &Address,
+        symbol: &Symbol,
+        body: &Chunk,
+        table: *mut Table,
+    ) -> Result<(), ControlFlow> {
         // allocating unit
-        let unit = memory::alloc_value(
-            Unit::new(
-                symbol.clone(),
-                memory::alloc_value(Table::new())
-            )
-        );
-        
+        let unit =
+            memory::alloc_value(Unit::new(symbol.clone(), memory::alloc_value(Table::new())));
+
         // unit value
         let unit_value = Value::Unit(unit);
-        
+
         // guarding value in gc and registering it
         self.gc_guard(unit_value);
         self.gc_register(unit_value, table);
@@ -867,7 +1118,9 @@ impl VM {
         // setting temp parent for fields
         (*(*unit).fields).parent = table;
         // inserting temp self
-        (*(*unit).fields).fields.insert("self".to_string(), Value::Unit(unit));
+        (*(*unit).fields)
+            .fields
+            .insert("self".to_string(), Value::Unit(unit));
         // executing body
         self.run(body, (*unit).fields)?;
         // deleting temp self
@@ -885,7 +1138,9 @@ impl VM {
             error!(e);
         }
         if symbol.full_name.is_some() {
-            if let Err(e) = (*self.units).define(addr, symbol.full_name.as_ref().unwrap(), unit_value) {
+            if let Err(e) =
+                (*self.units).define(addr, symbol.full_name.as_ref().unwrap(), unit_value)
+            {
                 error!(e);
             }
         }
@@ -905,21 +1160,24 @@ impl VM {
     /// no responsibility to control types,
     /// they will be freed in `self.cleanup()`
     ///
-    unsafe fn op_define_trait(&mut self, addr: &Address, symbol: &Symbol, functions: &[TraitFn])
-    -> Result<(), ControlFlow> {
+    unsafe fn op_define_trait(
+        &mut self,
+        addr: &Address,
+        symbol: &Symbol,
+        functions: &[TraitFn],
+    ) -> Result<(), ControlFlow> {
         // allocating trait
-        let _trait = memory::alloc_value(
-            Trait::new(
-                symbol.clone(),
-                functions.to_owned()
-            )
-        );
+        let _trait = memory::alloc_value(Trait::new(symbol.clone(), functions.to_owned()));
         // define trait by name and full name
         if let Err(e) = (*self.traits).define(&addr, &symbol.name, Value::Trait(_trait)) {
             error!(e);
         }
         if symbol.full_name.is_some() {
-            if let Err(e) = (*self.traits).define(&addr, symbol.full_name.as_ref().unwrap(), Value::Trait(_trait)) {
+            if let Err(e) = (*self.traits).define(
+                &addr,
+                symbol.full_name.as_ref().unwrap(),
+                Value::Trait(_trait),
+            ) {
                 error!(e);
             }
         }
@@ -934,8 +1192,14 @@ impl VM {
     /// from stack and then defines given
     /// value in it by name
     ///
-    unsafe fn op_define(&mut self, addr: &Address, name: &str, has_previous: bool,
-                        value: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_define(
+        &mut self,
+        addr: &Address,
+        name: &str,
+        has_previous: bool,
+        value: &Chunk,
+        table: *mut Table,
+    ) -> Result<(), ControlFlow> {
         // non-previous
         if !has_previous {
             self.run(value, table)?;
@@ -984,8 +1248,14 @@ impl VM {
     /// from stack and then sets given
     /// value in it by name
     ///
-    unsafe fn op_set(&mut self, addr: &Address, name: &str, has_previous: bool,
-                        value: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_set(
+        &mut self,
+        addr: &Address,
+        name: &str,
+        has_previous: bool,
+        value: &Chunk,
+        table: *mut Table,
+    ) -> Result<(), ControlFlow> {
         // non-previous
         if !has_previous {
             self.run(value, table)?;
@@ -1034,8 +1304,14 @@ impl VM {
     /// value (instance/unit, otherwise raises error)
     /// from stack and then load from it.
     ///
-    unsafe fn op_load(&mut self, addr: &Address, name: &str, has_previous: bool,
-                      should_push: bool, table: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_load(
+        &mut self,
+        addr: &Address,
+        name: &str,
+        has_previous: bool,
+        should_push: bool,
+        table: *mut Table,
+    ) -> Result<(), ControlFlow> {
         // non-previous
         if !has_previous {
             // loads from
@@ -1052,9 +1328,10 @@ impl VM {
             // error handling
             if let Err(e) = lookup_result {
                 error!(e)
-            }
-            else if let Ok(value) = lookup_result {
-                if !should_push { return Ok(()) }
+            } else if let Ok(value) = lookup_result {
+                if !should_push {
+                    return Ok(());
+                }
                 self.push(value);
             }
         }
@@ -1067,9 +1344,10 @@ impl VM {
                     let lookup_result = (*(*instance).fields).find(addr, &name);
                     if let Err(e) = lookup_result {
                         error!(e)
-                    }
-                    else if let Ok(value) = lookup_result {
-                        if !should_push { return Ok(()) }
+                    } else if let Ok(value) = lookup_result {
+                        if !should_push {
+                            return Ok(());
+                        }
                         self.push(value);
                     }
                 }
@@ -1078,9 +1356,10 @@ impl VM {
                     let lookup_result = (*(*unit).fields).find(addr, &name);
                     if let Err(e) = lookup_result {
                         error!(e)
-                    }
-                    else if let Ok(value) = lookup_result {
-                        if !should_push { return Ok(()) }
+                    } else if let Ok(value) = lookup_result {
+                        if !should_push {
+                            return Ok(());
+                        }
                         self.push(value);
                     }
                 }
@@ -1105,10 +1384,15 @@ impl VM {
     /// by name from it
     ///
     #[allow(unused_parens)]
-    pub unsafe fn call(&mut self, addr: &Address, name: &str,
-                              callable: Value, args: &Chunk,
-                              table: *mut Table, should_push: bool) -> Result<(), ControlFlow> {
-
+    pub unsafe fn call(
+        &mut self,
+        addr: &Address,
+        name: &str,
+        callable: Value,
+        args: &Chunk,
+        table: *mut Table,
+        should_push: bool,
+    ) -> Result<(), ControlFlow> {
         /// Pass arguments
         ///
         /// * `params_amount`: expected params amount
@@ -1119,14 +1403,21 @@ impl VM {
         /// * `table`: table, where fn called
         /// * `call_table`: call table
         ///
-        unsafe fn pass_arguments(vm: &mut VM, addr: &Address, name: &str, params_amount: usize,
-                                 args: &Chunk, params: Vec<String>, table: *mut Table,
-                                 call_table: *mut Table) -> Result<(), ControlFlow> {
+        unsafe fn pass_arguments(
+            vm: &mut VM,
+            addr: &Address,
+            name: &str,
+            params_amount: usize,
+            args: &Chunk,
+            params: Vec<String>,
+            table: *mut Table,
+            call_table: *mut Table,
+        ) -> Result<(), ControlFlow> {
             // passing args
             let prev_size = vm.stack.len();
             vm.run(args, table)?;
             let new_size = vm.stack.len();
-            let passed_amount = new_size-prev_size;
+            let passed_amount = new_size - prev_size;
             // ensuring args && params amount are equal
             if passed_amount == params_amount {
                 // defining params variables with
@@ -1138,8 +1429,7 @@ impl VM {
                     }
                 }
                 Ok(())
-            }
-            else {
+            } else {
                 error!(Error::own(
                     addr.clone(),
                     format!(
@@ -1151,7 +1441,6 @@ impl VM {
             }
         }
 
-
         /// Just loads arguments to stack
         ///
         /// * `params_amount`: expected params amount
@@ -1159,13 +1448,19 @@ impl VM {
         /// * `table`: table, where fn called
         /// * `call_table`: call table
         ///
-        unsafe fn load_arguments(vm: &mut VM, addr: &Address, name: &str, params_amount: usize,
-                                 args: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
+        unsafe fn load_arguments(
+            vm: &mut VM,
+            addr: &Address,
+            name: &str,
+            params_amount: usize,
+            args: &Chunk,
+            table: *mut Table,
+        ) -> Result<(), ControlFlow> {
             // passing args
             let prev_size = vm.stack.len();
             vm.run(args, table)?;
             let new_size = vm.stack.len();
-            let passed_amount = new_size-prev_size;
+            let passed_amount = new_size - prev_size;
             // ensuring args && params amount are equal
             if passed_amount == params_amount {
                 Ok(())
@@ -1198,17 +1493,15 @@ impl VM {
                 match (*function).owner.clone().unwrap() {
                     FnOwner::Unit(unit) => {
                         (*call_table).set_root((*unit).fields);
-                        if let Err(e) = (*call_table).define(
-                            &addr, "self", Value::Unit(unit)
-                        ) {
+                        if let Err(e) = (*call_table).define(&addr, "self", Value::Unit(unit)) {
                             error!(e);
                         }
-                    },
+                    }
                     FnOwner::Instance(instance) => {
                         (*call_table).set_root((*instance).fields);
-                        if let Err(e) = (*call_table).define(
-                            &addr, "self", Value::Instance(instance)
-                        ) {
+                        if let Err(e) =
+                            (*call_table).define(&addr, "self", Value::Instance(instance))
+                        {
                             error!(e);
                         }
                     }
@@ -1217,8 +1510,16 @@ impl VM {
                 (*call_table).set_root(self.globals)
             }
             // passing args
-            pass_arguments(self, addr, name, (*function).params.len(), args,
-                           (*function).params.clone(), table, call_table)?;
+            pass_arguments(
+                self,
+                addr,
+                name,
+                (*function).params.len(),
+                args,
+                (*function).params.clone(),
+                table,
+                call_table,
+            )?;
             // running body
             match self.run(&*(*function).body, call_table) {
                 Err(e) => {
@@ -1229,12 +1530,12 @@ impl VM {
                                 self.push(val);
                             }
                             Ok(())
-                        },
+                        }
                         _ => {
                             // otherwise, propagate
                             Err(e)
                         }
-                    }
+                    };
                 }
                 _ => {}
             }
@@ -1259,8 +1560,7 @@ impl VM {
             let native = (*function).function;
             native(self, addr.clone(), should_push, call_table)?;
             Ok(())
-        }
-        else {
+        } else {
             error!(Error::own_text(
                 addr.clone(),
                 format!("{name} is not a fn."),
@@ -1271,15 +1571,21 @@ impl VM {
 
     /// Opcode: Call
     /// calls value by name
-    pub unsafe fn op_call(&mut self, addr: &Address, name: &str, has_previous: bool,
-                                 should_push: bool, args: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
+    pub unsafe fn op_call(
+        &mut self,
+        addr: &Address,
+        name: &str,
+        has_previous: bool,
+        should_push: bool,
+        args: &Chunk,
+        table: *mut Table,
+    ) -> Result<(), ControlFlow> {
         // non-previous
         if !has_previous {
             let lookup_result = (*table).lookup(&addr, &name);
             if let Err(e) = lookup_result {
                 error!(e)
-            }
-            else if let Ok(value) = lookup_result {
+            } else if let Ok(value) = lookup_result {
                 self.call(addr, &name, value, &args, table, should_push)?;
             }
         }
@@ -1293,8 +1599,7 @@ impl VM {
 
                     if let Err(e) = lookup_result {
                         error!(e)
-                    }
-                    else if let Ok(value) = lookup_result {
+                    } else if let Ok(value) = lookup_result {
                         self.call(addr, &name, value, args, table, should_push)?;
                     }
                 }
@@ -1304,8 +1609,7 @@ impl VM {
 
                     if let Err(e) = lookup_result {
                         error!(e)
-                    }
-                    else if let Ok(value) = lookup_result {
+                    } else if let Ok(value) = lookup_result {
                         self.call(addr, &name, value, args, table, should_push)?;
                     }
                 }
@@ -1341,48 +1645,50 @@ impl VM {
         let instance_type = (*instance).t;
 
         /// Gets trait by name
-        unsafe fn get_trait(traits: *mut Table, addr: &Address, trait_name: &str) -> Option<*mut Trait> {
+        unsafe fn get_trait(
+            traits: *mut Table,
+            addr: &Address,
+            trait_name: &str,
+        ) -> Option<*mut Trait> {
             let trait_result = (*traits).find(addr, trait_name);
             if let Err(e) = trait_result {
                 error!(e);
-            }
-            else if let Ok(trait_value) = trait_result {
+            } else if let Ok(trait_value) = trait_result {
                 match trait_value {
                     Value::Trait(_trait) => {
                         // перебираем функции
-                        return Some(_trait)
+                        return Some(_trait);
                     }
                     _ => {
                         panic!("not a trait in traits table. report to developer.")
                     }
                 }
-            }
-            else {
-                return None
+            } else {
+                return None;
             }
         }
 
         /// Gets impl by name
-        unsafe fn get_impl(table: *mut Table, addr: &Address, impl_name: &str) -> Option<*mut Function> {
+        unsafe fn get_impl(
+            table: *mut Table,
+            addr: &Address,
+            impl_name: &str,
+        ) -> Option<*mut Function> {
             // looking up for impl
             let fn_result = (*table).lookup(addr, impl_name);
             // checking existence
             if let Err(e) = fn_result {
                 error!(e);
-            }
-            else if let Ok(trait_value) = fn_result {
+            } else if let Ok(trait_value) = fn_result {
                 return match trait_value {
                     Value::Fn(_fn) => {
                         // перебираем функции
                         Some(_fn)
                     }
-                    _ => {
-                        None
-                    }
-                }
-            }
-            else {
-                return None
+                    _ => None,
+                };
+            } else {
+                return None;
             }
         }
 
@@ -1405,7 +1711,8 @@ impl VM {
                                 format!(
                                     "type {} impls {}, but fn {} has wrong impl.",
                                     (*instance_type).name.name,
-                                    trait_name, function.name
+                                    trait_name,
+                                    function.name
                                 ),
                                 format!(
                                     "expected args {}, got {}",
@@ -1414,54 +1721,49 @@ impl VM {
                                 )
                             ));
                         }
-                    }
-                    else {
+                    } else {
                         error!(Error::own(
                             addr.clone(),
                             format!(
                                 "type {} impls {}, but doesn't impl fn {}({})",
                                 (*instance_type).name.name.clone(),
-                                trait_name, function.name.clone(),
+                                trait_name,
+                                function.name.clone(),
                                 function.params_amount
                             ),
                             format!("implement fn {}", function.name.clone())
                         ));
                     }
-                }
-                else {
+                } else {
                     // default implementation
                     if function.default.is_some() {
                         // creating default fn
                         let default_impl = function.default.as_ref().unwrap();
-                        let default_fn = Value::Fn(memory::alloc_value(
-                            Function::new(
-                                Symbol::by_name(function.name.clone()),
-                                memory::alloc_value(default_impl.chunk.clone()),
-                                default_impl.params.clone(),
-                            ),
-                        ));
+                        let default_fn = Value::Fn(memory::alloc_value(Function::new(
+                            Symbol::by_name(function.name.clone()),
+                            memory::alloc_value(default_impl.chunk.clone()),
+                            default_impl.params.clone(),
+                        )));
                         // guarding in gc
                         self.gc_guard(default_fn);
                         // registering in gc
                         self.gc_register(default_fn, table);
                         // defining fn in fields of instance
-                        if let Err(e) = (*(*instance).fields).define(
-                            &addr,
-                            &function.name,
-                            default_fn
-                        ) {
+                        if let Err(e) =
+                            (*(*instance).fields).define(&addr, &function.name, default_fn)
+                        {
                             error!(e);
                         }
                         // deleting gc guard gc
                         self.gc_unguard();
-                    }
-                    else {
+                    } else {
                         error!(Error::own(
                             addr.clone(),
                             format!(
                                 "type {} impls {}, but doesn't impl fn {}({})",
                                 (*instance_type).name.name,
-                                trait_name, function.name,
+                                trait_name,
+                                function.name,
                                 function.params_amount
                             ),
                             format!("implement fn {}", function.name)
@@ -1481,9 +1783,14 @@ impl VM {
     /// before registering in gc, and gc_unguard after
     /// registering in gc
     ///
-    unsafe fn op_instance(&mut self, addr: &Address, name: &str,
-                          args: &Chunk, should_push: bool, table: *mut Table) -> Result<(), ControlFlow> {
-
+    unsafe fn op_instance(
+        &mut self,
+        addr: &Address,
+        name: &str,
+        args: &Chunk,
+        should_push: bool,
+        table: *mut Table,
+    ) -> Result<(), ControlFlow> {
         /// Pass constructor
         ///
         /// * `params_amount`: expected params amount
@@ -1494,14 +1801,21 @@ impl VM {
         /// * `table`: table, where instance created
         /// * `fields_table`: call table
         ///
-        unsafe fn pass_constructor(vm: &mut VM, addr: &Address, name: &str, params_amount: usize,
-                                 args: &Chunk, params: Vec<String>, table: *mut Table,
-                                   fields_table: *mut Table) -> Result<(), ControlFlow> {
+        unsafe fn pass_constructor(
+            vm: &mut VM,
+            addr: &Address,
+            name: &str,
+            params_amount: usize,
+            args: &Chunk,
+            params: Vec<String>,
+            table: *mut Table,
+            fields_table: *mut Table,
+        ) -> Result<(), ControlFlow> {
             // passing args
             let prev_size = vm.stack.len();
             vm.run(args, table)?;
             let new_size = vm.stack.len();
-            let passed_amount = new_size-prev_size;
+            let passed_amount = new_size - prev_size;
             // ensuring args && params amount are equal
             if passed_amount == params_amount {
                 // defining params variables with
@@ -1516,7 +1830,10 @@ impl VM {
             } else {
                 error!(Error::own(
                     addr.clone(),
-                    format!("invalid args amount: {} to create instance of {}.", passed_amount, name),
+                    format!(
+                        "invalid args amount: {} to create instance of {}.",
+                        passed_amount, name
+                    ),
                     format!("expected {} arguments.", params_amount)
                 ));
             }
@@ -1527,10 +1844,8 @@ impl VM {
             match value {
                 Value::Type(t) => {
                     // creating instance
-                    let instance = memory::alloc_value(Instance::new(
-                        t,
-                        memory::alloc_value(Table::new()),
-                    ));
+                    let instance =
+                        memory::alloc_value(Instance::new(t, memory::alloc_value(Table::new())));
                     let instance_value = Value::Instance(instance);
                     // guarding instance in gc
                     self.gc_guard(instance_value);
@@ -1545,14 +1860,16 @@ impl VM {
                         args,
                         (*t).constructor.clone(),
                         table,
-                        (*instance).fields
+                        (*instance).fields,
                     )?;
                     // setting root
                     (*(*instance).fields).set_root(self.globals);
                     // setting temp parent
                     (*(*instance).fields).parent = table;
                     // setting temp self
-                    (*(*instance).fields).fields.insert("self".to_string(), Value::Instance(instance));
+                    (*(*instance).fields)
+                        .fields
+                        .insert("self".to_string(), Value::Instance(instance));
                     // executing body
                     self.run(&*(*t).body, (*instance).fields)?;
                     // deleting temp self
@@ -1578,18 +1895,23 @@ impl VM {
                     Ok(())
                 }
                 _ => {
-                    panic!("found a non-type value in types table. report this error to the developer.")
+                    panic!(
+                        "found a non-type value in types table. report this error to the developer."
+                    )
                 }
             }
-        }
-        else {
+        } else {
             error!(lookup_result.unwrap_err());
         }
     }
 
     /// Opcode: EndLoop
     #[allow(unused_variables)]
-    unsafe fn op_endloop(&mut self, addr: &Address, current_iteration: bool) -> Result<(), ControlFlow> {
+    unsafe fn op_endloop(
+        &mut self,
+        addr: &Address,
+        current_iteration: bool,
+    ) -> Result<(), ControlFlow> {
         if current_iteration {
             Err(ControlFlow::Continue)
         } else {
@@ -1598,7 +1920,12 @@ impl VM {
     }
 
     /// Opcode: Return
-    unsafe fn op_return(&mut self, addr: &Address, value: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_return(
+        &mut self,
+        addr: &Address,
+        value: &Chunk,
+        table: *mut Table,
+    ) -> Result<(), ControlFlow> {
         self.run(value, table)?;
         let value = self.pop(addr)?;
 
@@ -1633,7 +1960,12 @@ impl VM {
     ///
     /// Otherwise, if `is_ok` == true, unwraps `propagation value`
     ///
-    unsafe fn op_error_propagation(&mut self, addr: &Address, value: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_error_propagation(
+        &mut self,
+        addr: &Address,
+        value: &Chunk,
+        table: *mut Table,
+    ) -> Result<(), ControlFlow> {
         // running value
         self.run(value, table)?;
         let value = self.pop(addr)?;
@@ -1641,7 +1973,11 @@ impl VM {
         /// Calls is ok
         /// from an instance
         ///
-        unsafe fn call_is_ok(vm: &mut VM, addr: &Address, instance: *mut Instance) -> Result<bool, ControlFlow> {
+        unsafe fn call_is_ok(
+            vm: &mut VM,
+            addr: &Address,
+            instance: *mut Instance,
+        ) -> Result<bool, ControlFlow> {
             let lookup_result = (*(*instance).fields).find(&addr, "is_ok");
 
             if let Ok(callable) = lookup_result {
@@ -1653,19 +1989,20 @@ impl VM {
                             "is_ok should take 0 params."
                         ));
                     }
-                }
-                else {
+                } else {
                     error!(Error::new(
-                            addr.clone(),
-                            "is_ok is not a fn.",
-                            "is_ok should be fn."
-                        ));
+                        addr.clone(),
+                        "is_ok is not a fn.",
+                        "is_ok should be fn."
+                    ));
                 }
                 vm.call(
-                    &addr, "is_ok", callable,
+                    &addr,
+                    "is_ok",
+                    callable,
                     &Chunk::new(vec![]),
                     memory::alloc_value(Table::new()),
-                    true
+                    true,
                 )?;
 
                 let is_ok = vm.pop(addr)?;
@@ -1678,9 +2015,8 @@ impl VM {
                         "is_ok should return a bool.".to_string(),
                         format!("it returned: {is_ok:?}")
                     ));
-                }
-            }
-            else if let Err(e) = lookup_result {
+                };
+            } else if let Err(e) = lookup_result {
                 error!(e);
             }
             Ok(false)
@@ -1689,7 +2025,11 @@ impl VM {
         /// Calls unwrap
         /// from an instance
         ///
-        unsafe fn call_unwrap(vm: &mut VM, addr: &Address, instance: *mut Instance) -> Result<(), ControlFlow> {
+        unsafe fn call_unwrap(
+            vm: &mut VM,
+            addr: &Address,
+            instance: *mut Instance,
+        ) -> Result<(), ControlFlow> {
             let lookup_result = (*(*instance).fields).find(addr, "unwrap");
 
             match lookup_result {
@@ -1702,8 +2042,7 @@ impl VM {
                                 "unwrap should take 0 params."
                             ));
                         }
-                    }
-                    else {
+                    } else {
                         error!(Error::new(
                             addr.clone(),
                             "unwrap is not a fn.",
@@ -1711,13 +2050,15 @@ impl VM {
                         ));
                     }
                     vm.call(
-                        &addr, "unwrap", callable,
+                        &addr,
+                        "unwrap",
+                        callable,
                         &Chunk::new(vec![]),
                         memory::alloc_value(Table::new()),
-                        true
+                        true,
                     )?;
                     Ok(())
-                },
+                }
                 Err(e) => {
                     error!(e);
                 }
@@ -1726,28 +2067,16 @@ impl VM {
 
         if let Value::Instance(instance) = value {
             // calling is ok
-            let is_ok = call_is_ok(
-                self,
-                &addr,
-                instance,
-            )?;
+            let is_ok = call_is_ok(self, &addr, instance)?;
             // if it's no ok
             if !is_ok {
                 // returning value back
-                return Err(
-                    ControlFlow::Return(value)
-                );
-            }
-            else {
+                return Err(ControlFlow::Return(value));
+            } else {
                 // calling unwrap
-                call_unwrap(
-                    self,
-                    addr,
-                    instance
-                )?;
+                call_unwrap(self, addr, instance)?;
             }
-        }
-        else {
+        } else {
             error!(Error::own_text(
                 addr.clone(),
                 format!("could not use error propagation with {:?}.", value),
@@ -1762,8 +2091,13 @@ impl VM {
     /// Checks value is impls a
     /// `trait`, named `trait_name`
     ///
-    unsafe fn op_impls(&mut self, addr: &Address, value: &Chunk,
-                       trait_name: &str, table: *mut Table) -> Result<(), ControlFlow> {
+    unsafe fn op_impls(
+        &mut self,
+        addr: &Address,
+        value: &Chunk,
+        trait_name: &str,
+        table: *mut Table,
+    ) -> Result<(), ControlFlow> {
         // running impl
         self.run(value, table)?;
         let value = self.pop(&addr)?;
@@ -1786,11 +2120,8 @@ impl VM {
                             self.push(Value::Bool(
                                 impls.contains(&name) || impls.contains(&full_name),
                             ));
-                        }
-                        else {
-                            self.push(Value::Bool(
-                                impls.contains(&name),
-                            ));
+                        } else {
+                            self.push(Value::Bool(impls.contains(&name)));
                         }
                     }
                     _ => {
@@ -1802,8 +2133,7 @@ impl VM {
             else if let Err(e) = lookup_result {
                 error!(e);
             }
-        }
-        else {
+        } else {
             error!(Error::own_text(
                 addr.clone(),
                 format!("could not use impls with {:?}.", value),
@@ -1848,10 +2178,13 @@ impl VM {
                 Opcode::Cond { addr, op } => {
                     self.op_conditional(&addr, &op)?;
                 }
-                Opcode::Logic { addr, a, b, op } => {
-                    self.op_logical(addr, a, b, &op, table)?
-                }
-                Opcode::If { addr, cond, body, elif } => {
+                Opcode::Logic { addr, a, b, op } => self.op_logical(addr, a, b, &op, table)?,
+                Opcode::If {
+                    addr,
+                    cond,
+                    body,
+                    elif,
+                } => {
                     self.op_if(addr, cond, body, elif, table)?;
                 }
                 Opcode::Loop { addr, body } => {
@@ -1863,7 +2196,7 @@ impl VM {
                     full_name,
                     body,
                     params,
-                    make_closure
+                    make_closure,
                 } => {
                     self.op_define_fn(
                         addr,
@@ -1871,21 +2204,16 @@ impl VM {
                         body,
                         params,
                         *make_closure,
-                        table
+                        table,
                     )?;
                 }
                 Opcode::AnonymousFn {
                     addr,
                     body,
                     params,
-                    make_closure
+                    make_closure,
                 } => {
-                    self.op_anonymous_fn(
-                        body,
-                        params,
-                        *make_closure,
-                        table
-                    )?;
+                    self.op_anonymous_fn(body, params, *make_closure, table)?;
                 }
                 Opcode::DefineType {
                     addr,
@@ -1893,38 +2221,57 @@ impl VM {
                     full_name,
                     body,
                     constructor,
-                    impls
-                } => {
-                    self.op_define_type(
-                        addr,
-                        &Symbol::new_option(name.clone(), full_name.clone()),
-                        body,
-                        constructor,
-                        impls
-                    )?
-                }
-                Opcode::DefineUnit { addr, name, full_name, body } => {
-                    self.op_define_unit(addr, &Symbol::new_option(name.clone(), full_name.clone()), body, table)?
-                }
+                    impls,
+                } => self.op_define_type(
+                    addr,
+                    &Symbol::new_option(name.clone(), full_name.clone()),
+                    body,
+                    constructor,
+                    impls,
+                )?,
+                Opcode::DefineUnit {
+                    addr,
+                    name,
+                    full_name,
+                    body,
+                } => self.op_define_unit(
+                    addr,
+                    &Symbol::new_option(name.clone(), full_name.clone()),
+                    body,
+                    table,
+                )?,
                 Opcode::DefineTrait {
                     addr,
                     name,
                     full_name,
-                    functions
+                    functions,
+                } => self.op_define_trait(
+                    addr,
+                    &Symbol::new_option(name.clone(), full_name.clone()),
+                    functions,
+                )?,
+                Opcode::Define {
+                    addr,
+                    name,
+                    value,
+                    has_previous,
                 } => {
-                    self.op_define_trait(
-                        addr,
-                        &Symbol::new_option(name.clone(), full_name.clone()),
-                        functions
-                    )?
-                }
-                Opcode::Define { addr, name, value, has_previous} => {
                     self.op_define(addr, name, *has_previous, value, table)?;
                 }
-                Opcode::Set { addr, name, value, has_previous } => {
+                Opcode::Set {
+                    addr,
+                    name,
+                    value,
+                    has_previous,
+                } => {
                     self.op_set(addr, name, *has_previous, value, table)?;
                 }
-                Opcode::Load { addr, name, has_previous, should_push } => {
+                Opcode::Load {
+                    addr,
+                    name,
+                    has_previous,
+                    should_push,
+                } => {
                     self.op_load(addr, name, *has_previous, *should_push, table)?;
                 }
                 Opcode::Call {
@@ -1932,17 +2279,23 @@ impl VM {
                     name,
                     has_previous,
                     should_push,
-                    args
-                } => {
-                    self.op_call(addr, name, *has_previous, *should_push, args, table)?
-                }
+                    args,
+                } => self.op_call(addr, name, *has_previous, *should_push, args, table)?,
                 Opcode::Duplicate { addr } => {
                     self.op_duplicate(addr)?;
                 }
-                Opcode::Instance { addr, name, args, should_push } => {
+                Opcode::Instance {
+                    addr,
+                    name,
+                    args,
+                    should_push,
+                } => {
                     self.op_instance(addr, name, args, *should_push, table)?;
                 }
-                Opcode::EndLoop { addr, current_iteration } => {
+                Opcode::EndLoop {
+                    addr,
+                    current_iteration,
+                } => {
                     self.op_endloop(addr, *current_iteration)?;
                 }
                 Opcode::Ret { addr, value } => {
@@ -1954,12 +2307,14 @@ impl VM {
                 Opcode::ErrorPropagation { addr, value } => {
                     self.op_error_propagation(addr, value, table)?;
                 }
-                Opcode::Impls { addr, value, trait_name } => {
+                Opcode::Impls {
+                    addr,
+                    value,
+                    trait_name,
+                } => {
                     self.op_impls(addr, value, trait_name, table)?;
                 }
-                Opcode::DeleteLocal { addr, name } => {
-                    self.op_delete_local(addr, name, table)
-                }
+                Opcode::DeleteLocal { addr, name } => self.op_delete_local(addr, name, table),
             }
         }
         Ok(())

@@ -1,12 +1,12 @@
-﻿// imports
-use std::fmt::{Debug, Display, Formatter};
-use std::hash::{Hash, Hasher};
+// imports
 use crate::lexer::address::Address;
 use crate::vm::bytecode::Chunk;
 use crate::vm::flow::ControlFlow;
 use crate::vm::memory::memory;
 use crate::vm::table::Table;
 use crate::vm::vm::VM;
+use std::fmt::{Debug, Display, Formatter};
+use std::hash::{Hash, Hasher};
 
 /// Symbol structure
 /// with two parts name, full_name `file:$name`
@@ -22,19 +22,25 @@ impl Symbol {
     #[allow(unused_qualifications)]
     #[allow(unused)]
     pub fn new(name: String, full_name: String) -> Symbol {
-        Symbol {name, full_name: Option::Some(full_name)}
+        Symbol {
+            name,
+            full_name: Option::Some(full_name),
+        }
     }
 
     /// New symbol from name and optional full_name
     pub fn new_option(name: String, full_name: Option<String>) -> Symbol {
-        Symbol {name, full_name }
+        Symbol { name, full_name }
     }
 
     /// New symbol from name only, sets full_name to None
     #[allow(unused_qualifications)]
     #[allow(unused)]
     pub fn by_name(name: String) -> Symbol {
-        Symbol {name, full_name: Option::None}
+        Symbol {
+            name,
+            full_name: Option::None,
+        }
     }
 }
 
@@ -48,13 +54,23 @@ pub struct Type {
     pub name: Symbol,
     pub constructor: Vec<String>,
     pub body: *const Chunk,
-    pub impls: Vec<String>
+    pub impls: Vec<String>,
 }
 /// Type implementation
 impl Type {
     /// New type
-    pub fn new(name: Symbol, constructor: Vec<String>, body: *const Chunk, impls: Vec<String>) -> Type {
-        Type {name, constructor, body, impls}
+    pub fn new(
+        name: Symbol,
+        constructor: Vec<String>,
+        body: *const Chunk,
+        impls: Vec<String>,
+    ) -> Type {
+        Type {
+            name,
+            constructor,
+            body,
+            impls,
+        }
     }
 }
 /// Type drop implementation
@@ -75,12 +91,12 @@ pub struct Instance {
     /// type, instance related to
     pub t: *mut Type,
     /// instance fields table
-    pub fields: *mut Table
+    pub fields: *mut Table,
 }
 /// Instance implementation
 impl Instance {
     pub fn new(t: *mut Type, fields: *mut Table) -> Instance {
-        Instance {t, fields}
+        Instance { t, fields }
     }
 }
 /// Instance drop implementation
@@ -104,7 +120,7 @@ pub struct Unit {
 /// Unit implementation
 impl Unit {
     pub fn new(name: Symbol, fields: *mut Table) -> Unit {
-        Unit {name, fields}
+        Unit { name, fields }
     }
 }
 /// Unit drop implementation
@@ -118,16 +134,13 @@ impl Drop for Unit {
 #[derive(Clone, Debug)]
 pub struct DefaultTraitFn {
     pub params: Vec<String>,
-    pub chunk: Chunk
+    pub chunk: Chunk,
 }
 /// Default trait fn implementation
 impl DefaultTraitFn {
     /// New default trait fn
     pub fn new(params: Vec<String>, chunk: Chunk) -> DefaultTraitFn {
-        DefaultTraitFn {
-            params, 
-            chunk
-        }
+        DefaultTraitFn { params, chunk }
     }
 }
 
@@ -140,13 +153,17 @@ impl DefaultTraitFn {
 pub struct TraitFn {
     pub name: String,
     pub params_amount: usize,
-    pub default: Option<DefaultTraitFn>
+    pub default: Option<DefaultTraitFn>,
 }
 /// Trait function implementation
 impl TraitFn {
     /// New trait fn
     pub fn new(name: String, params_amount: usize, default: Option<DefaultTraitFn>) -> TraitFn {
-        TraitFn {name, params_amount, default}
+        TraitFn {
+            name,
+            params_amount,
+            default,
+        }
     }
 }
 
@@ -165,12 +182,12 @@ impl TraitFn {
 #[allow(unused)]
 pub struct Trait {
     pub name: Symbol,
-    pub functions: Vec<TraitFn>
+    pub functions: Vec<TraitFn>,
 }
 /// Trait implementation
 impl Trait {
     pub fn new(name: Symbol, functions: Vec<TraitFn>) -> Trait {
-        Trait {name, functions}
+        Trait { name, functions }
     }
 }
 /// Trait drop implementation
@@ -206,7 +223,7 @@ pub struct Function {
     pub body: *const Chunk,
     pub params: Vec<String>,
     pub owner: Option<FnOwner>,
-    pub closure: *mut Table
+    pub closure: *mut Table,
 }
 /// Function implementation
 impl Function {
@@ -217,7 +234,7 @@ impl Function {
             body,
             params,
             owner: None,
-            closure: std::ptr::null_mut()
+            closure: std::ptr::null_mut(),
         }
     }
 }
@@ -239,7 +256,7 @@ impl Drop for Function {
 pub struct Native {
     pub name: Symbol,
     pub params_amount: usize,
-    pub function: fn(&mut VM,Address,bool,*mut Table) -> Result<(), ControlFlow>,
+    pub function: fn(&mut VM, Address, bool, *mut Table) -> Result<(), ControlFlow>,
 }
 /// Native implementation
 impl Native {
@@ -247,7 +264,7 @@ impl Native {
     pub fn new(
         name: Symbol,
         params_amount: usize,
-        function: fn(&mut VM,Address,bool,*mut Table) -> Result<(), ControlFlow>
+        function: fn(&mut VM, Address, bool, *mut Table) -> Result<(), ControlFlow>,
     ) -> Native {
         Native {
             name,
@@ -272,7 +289,7 @@ pub enum Value {
     Trait(*mut Trait),
     List(*mut Vec<Value>),
     Any(*mut dyn std::any::Any),
-    Null
+    Null,
 }
 /// Debug implementation for value
 impl Debug for Value {
@@ -281,25 +298,25 @@ impl Debug for Value {
             match self {
                 Value::String(s) => {
                     write!(fmt, "{}", **s)
-                },
+                }
                 Value::Instance(i) => {
                     write!(fmt, "Instance{:?}", *i)
-                },
+                }
                 Value::Trait(t) => {
                     write!(fmt, "Trait{:?}", *t)
                 }
                 Value::Fn(f) => {
                     write!(fmt, "Fn{:?}", *f)
-                },
+                }
                 Value::Native(n) => {
                     write!(fmt, "Native{:?}", *n)
-                },
+                }
                 Value::Unit(n) => {
                     write!(fmt, "Unit{:?}", *n)
-                },
+                }
                 Value::Null => {
                     write!(fmt, "Null")
-                },
+                }
                 Value::Bool(b) => {
                     write!(fmt, "{}", *b)
                 }
@@ -341,43 +358,19 @@ impl Display for Value {
 impl PartialEq for Value {
     fn eq(&self, other: &Value) -> bool {
         match (*self, *other) {
-            (Value::Instance(a), Value::Instance(b)) => unsafe {
-                a == b
-            }
-            (Value::Fn(a), Value::Fn(b)) => unsafe {
-                a == b
-            }
-            (Value::Native(a), Value::Native(b)) => unsafe {
-                a == b
-            }
-            (Value::Bool(a), Value::Bool(b)) => unsafe {
-                a == b
-            }
-            (Value::Type(a), Value::Type(b)) => unsafe {
-                a == b
-            }
-            (Value::String(a), Value::String(b)) => unsafe {
-                a == b
-            }
-            (Value::Int(a), Value::Int(b)) => {
-                a == b
-            }
-            (Value::Float(a), Value::Float(b)) => {
-                a == b
-            }
-            (Value::Unit(a), Value::Unit(b)) => unsafe {
-                a == b
-            }
-            (Value::Trait(a), Value::Trait(b)) => unsafe {
-                a == b
-            }
-            (Value::List(a), Value::List(b)) => unsafe {
-                a == b
-            }
-            (Value::Any(a), Value::Any(b)) => unsafe {
-                std::ptr::addr_eq(a, b)
-            }
-            _ => false
+            (Value::Instance(a), Value::Instance(b)) => unsafe { a == b },
+            (Value::Fn(a), Value::Fn(b)) => unsafe { a == b },
+            (Value::Native(a), Value::Native(b)) => unsafe { a == b },
+            (Value::Bool(a), Value::Bool(b)) => unsafe { a == b },
+            (Value::Type(a), Value::Type(b)) => unsafe { a == b },
+            (Value::String(a), Value::String(b)) => unsafe { a == b },
+            (Value::Int(a), Value::Int(b)) => a == b,
+            (Value::Float(a), Value::Float(b)) => a == b,
+            (Value::Unit(a), Value::Unit(b)) => unsafe { a == b },
+            (Value::Trait(a), Value::Trait(b)) => unsafe { a == b },
+            (Value::List(a), Value::List(b)) => unsafe { a == b },
+            (Value::Any(a), Value::Any(b)) => unsafe { std::ptr::addr_eq(a, b) },
+            _ => false,
         }
     }
 }

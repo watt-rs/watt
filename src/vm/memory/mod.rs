@@ -1,2 +1,2 @@
-﻿pub mod gc;
+pub mod gc;
 pub mod memory;

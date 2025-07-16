@@ -1,13 +1,13 @@
-﻿// импорты
+// импорты
+use crate::error;
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
-use crate::vm::natives::natives;
-use crate::vm::table::Table;
-use crate::vm::values::{Value};
-use crate::vm::vm::VM;
-use crate::error;
 use crate::vm::bytecode::OpcodeValue;
 use crate::vm::memory::memory;
+use crate::vm::natives::natives;
+use crate::vm::table::Table;
+use crate::vm::values::Value;
+use crate::vm::vm::VM;
 
 // провайд
 #[allow(unused_variables)]
@@ -25,15 +25,11 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 // список
                 let list = memory::alloc_value(Vec::<Value>::new());
                 // добавляем
-                vm.op_push(OpcodeValue::Raw(
-                    Value::List(
-                        list
-                    )
-                ), table)?;
+                vm.op_push(OpcodeValue::Raw(Value::List(list)), table)?;
             }
             // успех
             Ok(())
-        }
+        },
     );
     natives::provide(
         vm,
@@ -48,8 +44,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             // проверяем
             if let Value::List(list) = list_value {
                 (*list).push(value);
-            }
-            else {
+            } else {
                 error!(Error::own_text(
                     addr.clone(),
                     format!("could not add element to {:?}, not a list", list_value),
@@ -62,7 +57,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             }
             // успех
             Ok(())
-        }
+        },
     );
     natives::provide(
         vm,
@@ -80,8 +75,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             if let Value::List(list) = list_value {
                 if let Value::Int(index) = index_value {
                     (*list)[index as usize] = value;
-                }
-                else {
+                } else {
                     error!(Error::own_text(
                         addr.clone(),
                         format!(
@@ -91,8 +85,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                         "check your code"
                     ))
                 }
-            }
-            else {
+            } else {
                 error!(Error::own_text(
                     addr.clone(),
                     format!("could not set element in {:?}, not a list", list_value),
@@ -105,7 +98,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             }
             // успех
             Ok(())
-        }
+        },
     );
     natives::provide(
         vm,
@@ -134,8 +127,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                         let value = *((*list).get(index as usize).unwrap());
                         vm.push(value);
                     }
-                }
-                else {
+                } else {
                     error!(Error::own_text(
                         addr.clone(),
                         format!(
@@ -145,8 +137,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                         "check your code"
                     ))
                 }
-            }
-            else {
+            } else {
                 error!(Error::own_text(
                     addr.clone(),
                     format!("could not get element from {:?}, not a list", list_value),
@@ -155,7 +146,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             }
             // успех
             Ok(())
-        }
+        },
     );
     natives::provide(
         vm,
@@ -184,8 +175,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     if should_push {
                         vm.push(Value::Null)
                     }
-                }
-                else {
+                } else {
                     error!(Error::own_text(
                         addr.clone(),
                         format!(
@@ -195,8 +185,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                         "check your code"
                     ))
                 }
-            }
-            else {
+            } else {
                 error!(Error::own_text(
                     addr.clone(),
                     format!("could not get element from {:?}, not a list", list_value),
@@ -205,7 +194,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             }
             // успех
             Ok(())
-        }
+        },
     );
     natives::provide(
         vm,
@@ -225,8 +214,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                         return Ok(());
                     }
                 }
-            }
-            else {
+            } else {
                 error!(Error::own_text(
                     addr.clone(),
                     format!("could not get element from {:?}, not a list", list_value),
@@ -235,8 +223,8 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             }
             // успех
             Ok(())
-        }
-    );    
+        },
+    );
     natives::provide(
         vm,
         built_in_address.clone(),
@@ -252,21 +240,21 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 // если надо пушить
                 if should_push {
                     let position = (*list).iter().position(|v| *v == value);
-                    vm.push(Value::Int(
-                        position.unwrap_or(0) as i64
-                    ))
+                    vm.push(Value::Int(position.unwrap_or(0) as i64))
                 }
-            }
-            else {
+            } else {
                 error!(Error::own_text(
                     addr.clone(),
-                    format!("could not get element index from {:?}, not a list", list_value),
+                    format!(
+                        "could not get element index from {:?}, not a list",
+                        list_value
+                    ),
                     "check your code"
                 ));
             }
             // успех
             Ok(())
-        }
+        },
     );
     natives::provide(
         vm,
@@ -280,14 +268,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             if let Value::List(list) = list_value {
                 // если надо пушить
                 if should_push {
-                    vm.push(
-                        Value::Int(
-                            (*list).len() as i64
-                        )
-                    );
+                    vm.push(Value::Int((*list).len() as i64));
                 }
-            }
-            else {
+            } else {
                 error!(Error::own_text(
                     addr.clone(),
                     format!("could not get len of {:?}, not a list", list_value),
@@ -296,7 +279,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             }
             // успех
             Ok(())
-        }
+        },
     );
     natives::provide(
         vm,
@@ -310,12 +293,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             if let Value::List(list) = list_value {
                 // если надо пушить
                 if should_push {
-                    vm.op_push(OpcodeValue::String(
-                        format!("{:?}", *list)
-                    ), table)?;
+                    vm.op_push(OpcodeValue::String(format!("{:?}", *list)), table)?;
                 }
-            }
-            else {
+            } else {
                 error!(Error::own_text(
                     addr.clone(),
                     format!("could not use to_string for {:?}, not a list", list_value),
@@ -324,7 +304,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             }
             // успех
             Ok(())
-        }
+        },
     );
     // успех
     Ok(())

@@ -1,10 +1,10 @@
 // imports
+use crate::error;
+use crate::errors::errors::Error;
 use crate::lexer::address::*;
-use crate::errors::errors::{Error};
-use crate::parser::import::Import;
 use crate::lexer::lexer::*;
 use crate::parser::ast::*;
-use crate::error;
+use crate::parser::import::Import;
 use std::path::PathBuf;
 
 /// Parser structure
@@ -18,8 +18,17 @@ pub struct Parser<'file_path, 'prefix> {
 #[allow(unused_qualifications)]
 impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     /// New parser
-    pub fn new(tokens: Vec<Token>, file_path: &'file_path PathBuf, full_name_prefix: &'prefix str) -> Self {
-        Parser { tokens, current: 0, file_path, full_name_prefix }
+    pub fn new(
+        tokens: Vec<Token>,
+        file_path: &'file_path PathBuf,
+        full_name_prefix: &'prefix str,
+    ) -> Self {
+        Parser {
+            tokens,
+            current: 0,
+            file_path,
+            full_name_prefix,
+        }
     }
 
     /// Block statement parsing
@@ -28,9 +37,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         while !self.is_at_end() && !self.check(TokenKind::Rbrace) {
             nodes.push(self.statement()?);
         }
-        Ok(Node::Block {
-            body: nodes
-        })
+        Ok(Node::Block { body: nodes })
     }
 
     /// Arguments parsing `( Node, Node, n )`
@@ -69,7 +76,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
     /// Converts name to full name, using pattern:
     /// `test_fn` from file test.wt is converted to `test:test_fn`
-    fn to_full_name(&self, tk: Token) -> Token{
+    fn to_full_name(&self, tk: Token) -> Token {
         Token::new(
             TokenKind::Text,
             format!("{}:{}", self.full_name_prefix, tk.value),
@@ -87,7 +94,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         Ok(Node::Instance {
             name,
             constructor: args,
-            should_push: true
+            should_push: true,
         })
     }
 
@@ -114,10 +121,11 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                 })
             }
             // +=, -=, *=, /=
-            else if self.check(TokenKind::AssignAdd) ||
-                self.check(TokenKind::AssignSub) ||
-                self.check(TokenKind::AssignMul) ||
-                self.check(TokenKind::AssignDiv) {
+            else if self.check(TokenKind::AssignAdd)
+                || self.check(TokenKind::AssignSub)
+                || self.check(TokenKind::AssignMul)
+                || self.check(TokenKind::AssignDiv)
+            {
                 let op;
                 let location;
                 match self.peek()?.tk_type {
@@ -144,7 +152,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                 let var = Node::Get {
                     previous: previous.clone(),
                     name: identifier.clone(),
-                    should_push: true
+                    should_push: true,
                 };
                 return Ok(Node::Assign {
                     previous,
@@ -152,11 +160,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                     value: Box::new(Node::Bin {
                         left: Box::new(var),
                         right: Box::new(self.expr()?),
-                        op: Token::new(
-                            TokenKind::Op,
-                            op.to_string(),
-                            location.address,
-                        )
+                        op: Token::new(TokenKind::Op, op.to_string(), location.address),
                     }),
                 });
             }
@@ -166,7 +170,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                     previous,
                     name: identifier,
                     args: self.args()?,
-                    should_push: true
+                    should_push: true,
                 });
             }
             // get
@@ -174,8 +178,8 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                 return Ok(Node::Get {
                     previous,
                     name: identifier,
-                    should_push: true
-                })
+                    should_push: true,
+                });
             }
         }
         // object creation
@@ -199,21 +203,23 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             self.consume(TokenKind::Dot)?;
             let location = self.peek()?.address.clone();
             left = self.access_part(Option::Some(Box::new(left)))?;
-            if !is_expr { continue; }
+            if !is_expr {
+                continue;
+            }
             match left {
                 Node::Define { .. } => {
                     return Err(Error::new(
                         location,
                         "couldn't use define in expr.",
                         "check your code.",
-                    ))
+                    ));
                 }
                 Node::Assign { .. } => {
                     return Err(Error::new(
                         location,
                         "couldn't use assign in expr.",
                         "check your code.",
-                    ))
+                    ));
                 }
                 _ => {}
             }
@@ -238,17 +244,23 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
         Ok(node)
     }
-    
+
     /// Access expr parsing
     fn access_expr(&mut self) -> Result<Node, Error> {
-        if self.check(TokenKind::New) { self.access(true) }
-        else { self.error_propagation(true) }
+        if self.check(TokenKind::New) {
+            self.access(true)
+        } else {
+            self.error_propagation(true)
+        }
     }
 
     /// Access statement parsing
     fn access_stmt(&mut self) -> Result<Node, Error> {
-        if self.check(TokenKind::New) { self.access(false) }
-        else { self.error_propagation(false) }
+        if self.check(TokenKind::New) {
+            self.access(false)
+        } else {
+            self.error_propagation(false)
+        }
     }
 
     /// Grouping expr `( expr )`
@@ -276,7 +288,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             location,
             params,
             body: Box::new(body),
-            make_closure: true
+            make_closure: true,
         })
     }
 
@@ -298,63 +310,43 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             params,
             body: Box::new(Node::Ret {
                 location,
-                value: Box::new(body)
+                value: Box::new(body),
             }),
-            make_closure: true
+            make_closure: true,
         })
     }
 
     /// Primary expr parsing
     fn primary_expr(&mut self) -> Result<Node, Error> {
         match self.peek()?.tk_type {
-            TokenKind::Id | TokenKind::New => {
-                Ok(self.access_expr()?)
-            }
-            TokenKind::Number => {
-                Ok(Node::Number {
-                    value: self.consume(TokenKind::Number)?.clone()
-                })
-            }
-            TokenKind::Text => {
-                Ok(Node::String {
-                    value: self.consume(TokenKind::Text)?.clone()
-                })
-            }
-            TokenKind::Bool => {
-                Ok(Node::Bool {
-                    value: self.consume(TokenKind::Bool)?.clone()
-                })
-            }
-            TokenKind::Lparen => {
-                Ok(self.grouping_expr()?)
-            }
-            TokenKind::Lbrace => {
-                Ok(self.map_expr()?)
-            }
-            TokenKind::Lbracket => {
-                Ok(self.list_expr()?)
-            }
-            TokenKind::Null => {
-                Ok(Node::Null {
-                    location: self.consume(TokenKind::Null)?.clone()
-                })
-            }
-            TokenKind::Fn => {
-                Ok(self.anonymous_fn_expr()?)
-            }
-            TokenKind::Lambda => {
-                Ok(self.lambda_fn_expr()?)
-            }
-            TokenKind::Match => {
-                Ok(self.match_expr()?)
-            }
+            TokenKind::Id | TokenKind::New => Ok(self.access_expr()?),
+            TokenKind::Number => Ok(Node::Number {
+                value: self.consume(TokenKind::Number)?.clone(),
+            }),
+            TokenKind::Text => Ok(Node::String {
+                value: self.consume(TokenKind::Text)?.clone(),
+            }),
+            TokenKind::Bool => Ok(Node::Bool {
+                value: self.consume(TokenKind::Bool)?.clone(),
+            }),
+            TokenKind::Lparen => Ok(self.grouping_expr()?),
+            TokenKind::Lbrace => Ok(self.map_expr()?),
+            TokenKind::Lbracket => Ok(self.list_expr()?),
+            TokenKind::Null => Ok(Node::Null {
+                location: self.consume(TokenKind::Null)?.clone(),
+            }),
+            TokenKind::Fn => Ok(self.anonymous_fn_expr()?),
+            TokenKind::Lambda => Ok(self.lambda_fn_expr()?),
+            TokenKind::Match => Ok(self.match_expr()?),
             _ => Err(Error::own_text(
                 self.peek()?.address.clone(),
-                format!("invalid token. {:?}:{:?}",
-                    self.peek()?.tk_type, self.peek()?.value
+                format!(
+                    "invalid token. {:?}:{:?}",
+                    self.peek()?.tk_type,
+                    self.peek()?.value
                 ),
-                "check your code."
-            ))
+                "check your code.",
+            )),
         }
     }
 
@@ -375,26 +367,26 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                         name: Token::new(
                             TokenKind::Id,
                             "@match_lambda".to_string(),
-                            location.address.clone()
+                            location.address.clone(),
                         ),
                         value: Box::new(Node::AnFnDeclaration {
                             location: location.clone(),
                             params: vec![],
                             body: Box::new(body),
                             make_closure: false,
-                        })
+                        }),
                     },
                     Node::Call {
                         previous: None,
                         name: Token::new(
                             TokenKind::Id,
                             "@match_lambda".to_string(),
-                            location.address.clone()
+                            location.address.clone(),
                         ),
                         args: vec![],
-                        should_push: true
-                    }
-                ]
+                        should_push: true,
+                    },
+                ],
             }
         }
         // cases body
@@ -405,10 +397,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             // one line
             if self.check(TokenKind::Arrow) {
                 self.consume(TokenKind::Arrow)?;
-                cases.push(MatchCase::new(
-                    Box::new(value),
-                    Box::new(self.expr()?),
-                ));
+                cases.push(MatchCase::new(Box::new(value), Box::new(self.expr()?)));
             }
             // multi line
             else if self.check(TokenKind::Lbrace) {
@@ -417,15 +406,14 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                 self.consume(TokenKind::Rbrace)?;
                 cases.push(MatchCase::new(
                     Box::new(value),
-                    Box::new(make_lambda(location.clone(), body))
+                    Box::new(make_lambda(location.clone(), body)),
                 ));
-            }
-            else {
+            } else {
                 return Err(Error::new(
                     location.address.clone(),
                     "expected arrow or brace after case value",
-                    "check your code"
-                ))
+                    "check your code",
+                ));
             }
         }
         // default case
@@ -441,13 +429,12 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             let body = self.block()?;
             self.consume(TokenKind::Rbrace)?;
             default = Box::new(make_lambda(location.clone(), body))
-        }
-        else {
+        } else {
             return Err(Error::new(
                 location.address.clone(),
                 "expected arrow or brace after case value",
-                "check your code"
-            ))
+                "check your code",
+            ));
         }
         self.consume(TokenKind::Rbrace)?;
 
@@ -455,7 +442,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             location,
             matchable: Box::new(matchable),
             cases,
-            default
+            default,
         })
     }
 
@@ -465,26 +452,23 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
         if self.check(TokenKind::Rbracket) {
             self.consume(TokenKind::Rbracket)?;
-            Ok(
-                Node::List {
-                    location,
-                    values: Vec::new()
-                }
-            )
-        }
-        else {
+            Ok(Node::List {
+                location,
+                values: Vec::new(),
+            })
+        } else {
             let mut nodes: Vec<Node> = vec![self.expr()?];
 
             while self.check(TokenKind::Comma) {
                 self.consume(TokenKind::Comma)?;
                 nodes.push(self.expr()?);
             }
-            
+
             self.consume(TokenKind::Rbracket)?;
-            
+
             Ok(Node::List {
                 location,
-                values: nodes
+                values: nodes,
             })
         }
     }
@@ -507,14 +491,11 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
         if self.check(TokenKind::Rbrace) {
             self.consume(TokenKind::Rbrace)?;
-            Ok(
-                Node::Map {
-                    location,
-                    values: Vec::new()
-                }
-            )
-        }
-        else {
+            Ok(Node::Map {
+                location,
+                values: Vec::new(),
+            })
+        } else {
             let mut nodes: Vec<(Node, Node)> = Vec::new();
             let key = self.key_value_expr()?;
             nodes.push((key.0, key.1));
@@ -526,7 +507,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             self.consume(TokenKind::Rbrace)?;
             Ok(Node::Map {
                 location,
-                values: nodes
+                values: nodes,
             })
         }
     }
@@ -537,17 +518,16 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
         match tk {
             Token { tk_type, value, .. }
-            if (tk_type == &TokenKind::Op && value == "-") || (tk_type == &TokenKind::Bang) => {
+                if (tk_type == &TokenKind::Op && value == "-") || (tk_type == &TokenKind::Bang) =>
+            {
                 let op = self.consume(*tk_type)?.clone();
-                
+
                 Ok(Node::Unary {
                     op,
-                    value: Box::new(self.primary_expr()?)
+                    value: Box::new(self.primary_expr()?),
                 })
             }
-            _ => {
-                Ok(self.primary_expr()?)
-            }
+            _ => Ok(self.primary_expr()?),
         }
     }
 
@@ -555,20 +535,20 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     fn multiplicative_expr(&mut self) -> Result<Node, Error> {
         let mut left = self.unary_expr()?;
 
-        while self.check(TokenKind::Op) && (
-            self.peek()?.value == "*" || 
-            self.peek()?.value == "&" || 
-            self.peek()?.value == "|" || 
-            self.peek()?.value == "^" || 
-            self.peek()?.value == "/" || 
-            self.peek()?.value == "%") 
+        while self.check(TokenKind::Op)
+            && (self.peek()?.value == "*"
+                || self.peek()?.value == "&"
+                || self.peek()?.value == "|"
+                || self.peek()?.value == "^"
+                || self.peek()?.value == "/"
+                || self.peek()?.value == "%")
         {
             let op = self.consume(TokenKind::Op)?.clone();
             let right = self.unary_expr()?;
             left = Node::Bin {
                 left: Box::new(left),
                 right: Box::new(right),
-                op
+                op,
             }
         }
 
@@ -579,14 +559,14 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     fn additive_expr(&mut self) -> Result<Node, Error> {
         let mut left = self.multiplicative_expr()?;
 
-        while self.check(TokenKind::Op) &&
-            (self.peek()?.value == "+" || self.peek()?.value == "-") {
+        while self.check(TokenKind::Op) && (self.peek()?.value == "+" || self.peek()?.value == "-")
+        {
             let op = self.consume(TokenKind::Op)?.clone();
             let right = self.multiplicative_expr()?;
             left = Node::Bin {
                 left: Box::new(left),
                 right: Box::new(right),
-                op
+                op,
             }
         }
 
@@ -596,20 +576,20 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     /// Range expr parsing `n..k`
     fn range_expr(&mut self) -> Result<Node, Error> {
         let mut left = self.additive_expr()?;
-        
+
         if self.check(TokenKind::Range) {
             let location = self.consume(TokenKind::Range)?.clone();
             let right = self.additive_expr()?;
             left = Node::Range {
                 location,
                 from: Box::new(left),
-                to: Box::new(right)
+                to: Box::new(right),
             }
         }
-        
+
         Ok(left)
     }
-    
+
     /// Impls expr `a impls b` parsing
     fn impls_expr(&mut self) -> Result<Node, Error> {
         let mut left = self.range_expr()?;
@@ -625,20 +605,23 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
         Ok(left)
     }
-    
+
     /// Compare operations `<`, `>`, `<=`, `>=` parsing
     fn compare_expr(&mut self) -> Result<Node, Error> {
         let mut left = self.impls_expr()?;
 
-        if self.check(TokenKind::Greater) || self.check(TokenKind::Less)
-            || self.check(TokenKind::LessEq) || self.check(TokenKind::GreaterEq) {
+        if self.check(TokenKind::Greater)
+            || self.check(TokenKind::Less)
+            || self.check(TokenKind::LessEq)
+            || self.check(TokenKind::GreaterEq)
+        {
             let op = self.peek()?.clone();
             self.current += 1;
             let right = self.impls_expr()?;
             left = Node::Cond {
                 left: Box::new(left),
                 right: Box::new(right),
-                op
+                op,
             };
         }
 
@@ -656,7 +639,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             left = Node::Cond {
                 left: Box::new(left),
                 right: Box::new(right),
-                op
+                op,
             };
         }
 
@@ -667,15 +650,14 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     fn logical_expr(&mut self) -> Result<Node, Error> {
         let mut left = self.equality_expr()?;
 
-        while self.check(TokenKind::And) ||
-            self.check(TokenKind::Or) {
+        while self.check(TokenKind::And) || self.check(TokenKind::Or) {
             let op = self.peek()?.clone();
             self.current += 1;
             let right = self.equality_expr()?;
             left = Node::Logical {
                 left: Box::new(left),
                 right: Box::new(right),
-                op
+                op,
             };
         }
 
@@ -690,27 +672,20 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     /// Continue statement parsing
     fn continue_stmt(&mut self) -> Result<Node, Error> {
         let location = self.consume(TokenKind::Continue)?.clone();
-        Ok(Node::Continue {
-            location
-        })
+        Ok(Node::Continue { location })
     }
 
     /// Break statement parsing
     fn break_stmt(&mut self) -> Result<Node, Error> {
         let location = self.consume(TokenKind::Break)?.clone();
-        Ok(Node::Break {
-            location
-        })
+        Ok(Node::Break { location })
     }
 
     /// Return statement parsing
     fn return_stmt(&mut self) -> Result<Node, Error> {
         let location = self.consume(TokenKind::Ret)?.clone();
         let value = Box::new(self.expr()?);
-        Ok(Node::Ret {
-            location,
-            value
-        })
+        Ok(Node::Ret { location, value })
     }
 
     /// Single import parsing
@@ -724,15 +699,13 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             Ok(Import::new(
                 Option::Some(name.address),
                 name.value,
-                Option::Some(
-                    self.consume(TokenKind::Text)?.value.clone()
-                )
+                Option::Some(self.consume(TokenKind::Text)?.value.clone()),
             ))
         } else {
             Ok(Import::new(
                 Option::Some(name.address),
                 name.value,
-                Option::None
+                Option::None,
             ))
         }
     }
@@ -755,10 +728,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             imports.push(self.single_import()?);
         }
 
-        Ok(Node::Import {
-            location,
-            imports
-        })
+        Ok(Node::Import { location, imports })
     }
 
     /// While statement parsing
@@ -771,7 +741,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         Ok(Node::While {
             location,
             logical: Box::new(logical),
-            body: Box::new(body)
+            body: Box::new(body),
         })
     }
 
@@ -783,13 +753,11 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         self.consume(TokenKind::Rbrace)?;
         Ok(Node::If {
             location: location.clone(),
-            logical: Box::new(Node::Bool { value: Token::new(
-                TokenKind::Bool,
-                "true".to_string(),
-                location.address
-            )}),
+            logical: Box::new(Node::Bool {
+                value: Token::new(TokenKind::Bool, "true".to_string(), location.address),
+            }),
             body: Box::new(body),
-            elseif: None
+            elseif: None,
         })
     }
 
@@ -805,21 +773,21 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                 location,
                 logical: Box::new(logical),
                 body: Box::new(body),
-                elseif: Some(Box::new(self.elif_stmt()?))
+                elseif: Some(Box::new(self.elif_stmt()?)),
             })
         } else if self.check(TokenKind::Else) {
             Ok(Node::If {
                 location,
                 logical: Box::new(logical),
                 body: Box::new(body),
-                elseif: Some(Box::new(self.else_stmt()?))
+                elseif: Some(Box::new(self.else_stmt()?)),
             })
         } else {
             Ok(Node::If {
                 location,
                 logical: Box::new(logical),
                 body: Box::new(body),
-                elseif: None
+                elseif: None,
             })
         }
     }
@@ -836,21 +804,21 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                 location,
                 logical: Box::new(logical),
                 body: Box::new(body),
-                elseif: Some(Box::new(self.elif_stmt()?))
+                elseif: Some(Box::new(self.elif_stmt()?)),
             })
         } else if self.check(TokenKind::Else) {
             Ok(Node::If {
                 location,
                 logical: Box::new(logical),
                 body: Box::new(body),
-                elseif: Some(Box::new(self.else_stmt()?))
+                elseif: Some(Box::new(self.else_stmt()?)),
             })
         } else {
             Ok(Node::If {
                 location,
                 logical: Box::new(logical),
                 body: Box::new(body),
-                elseif: None
+                elseif: None,
             })
         }
     }
@@ -872,28 +840,22 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             // one line
             if self.check(TokenKind::Arrow) {
                 self.consume(TokenKind::Arrow)?;
-                cases.push(MatchCase::new(
-                    Box::new(value),
-                    Box::new(self.statement()?),
-                ))
+                cases.push(MatchCase::new(Box::new(value), Box::new(self.statement()?)))
             }
             // multi line
             else if self.check(TokenKind::Lbrace) {
                 self.consume(TokenKind::Lbrace)?;
                 let body = self.block()?;
                 self.consume(TokenKind::Rbrace)?;
-                cases.push(MatchCase::new(
-                    Box::new(value),
-                    Box::new(body),
-                ))
+                cases.push(MatchCase::new(Box::new(value), Box::new(body)))
             }
             // в ином случае
             else {
                 return Err(Error::new(
                     location.address.clone(),
                     "expected arrow or brace after case value",
-                    "check your code"
-                ))
+                    "check your code",
+                ));
             }
         }
         // default
@@ -909,13 +871,12 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             let body = self.block()?;
             self.consume(TokenKind::Rbrace)?;
             default = Box::new(body);
-        }
-        else {
+        } else {
             return Err(Error::new(
                 location.address.clone(),
                 "expected arrow or brace after case value",
-                "check your code"
-            ))
+                "check your code",
+            ));
         }
         self.consume(TokenKind::Rbrace)?;
 
@@ -923,7 +884,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             location,
             matchable: Box::new(matchable),
             cases,
-            default
+            default,
         })
     }
 
@@ -963,12 +924,10 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
         Ok(Node::FnDeclaration {
             name: name.clone(),
-            full_name: Option::Some(
-                self.to_full_name(name),
-            ),
+            full_name: Option::Some(self.to_full_name(name)),
             params,
             body: Box::new(body),
-            make_closure: true
+            make_closure: true,
         })
     }
 
@@ -1003,23 +962,28 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             let location = self.peek()?.clone();
             let mut node = self.statement()?;
             match node {
-                Node::FnDeclaration { name, params, body, .. } => {
+                Node::FnDeclaration {
+                    name, params, body, ..
+                } => {
                     node = Node::FnDeclaration {
                         name,
                         full_name: None,
                         params,
                         body,
-                        make_closure: false
+                        make_closure: false,
                     }
                 }
-                Node::Native { .. } |
-                Node::Get { .. } |
-                Node::Define { .. } |
-                Node::Assign { .. } => {}
+                Node::Native { .. }
+                | Node::Get { .. }
+                | Node::Define { .. }
+                | Node::Assign { .. } => {}
                 _ => {
                     return Err(Error::own_text(
                         location.address,
-                        format!("invalid node for type: {:?}:{:?}", location.tk_type, location.value),
+                        format!(
+                            "invalid node for type: {:?}:{:?}",
+                            location.tk_type, location.value
+                        ),
                         "check your code.",
                     ));
                 }
@@ -1032,10 +996,8 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             name: name.clone(),
             full_name: Some(self.to_full_name(name)),
             constructor,
-            body: Box::new(Node::Block {
-                body
-            }),
-            impls
+            body: Box::new(Node::Block { body }),
+            impls,
         })
     }
 
@@ -1068,21 +1030,11 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                     let body = self.block()?;
                     self.consume(TokenKind::Rbrace)?;
 
-                    functions.push(TraitNodeFn::new(
-                        name,
-                        params,
-                        Option::Some(Box::new(body))
-                    ))
+                    functions.push(TraitNodeFn::new(name, params, Option::Some(Box::new(body))))
+                } else {
+                    functions.push(TraitNodeFn::new(name, params, Option::None))
                 }
-                else {
-                    functions.push(TraitNodeFn::new(
-                        name,
-                        params,
-                        Option::None
-                    ))
-                }
-            }
-            else {
+            } else {
                 error!(Error::new(
                     location,
                     "only fn-s can be declared in trait.",
@@ -1113,23 +1065,28 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             let location = self.peek()?.clone();
             let mut node = self.statement()?;
             match node {
-                Node::FnDeclaration { name, params, body, .. } => {
+                Node::FnDeclaration {
+                    name, params, body, ..
+                } => {
                     node = Node::FnDeclaration {
                         name,
                         full_name: None,
                         params,
                         body,
-                        make_closure: false
+                        make_closure: false,
                     }
                 }
-                Node::Native { .. } |
-                Node::Get { .. } |
-                Node::Define { .. } |
-                Node::Assign { .. } => {}
+                Node::Native { .. }
+                | Node::Get { .. }
+                | Node::Define { .. }
+                | Node::Assign { .. } => {}
                 _ => {
                     return Err(Error::own_text(
                         location.address,
-                        format!("invalid node for unit: {:?}:{:?}", location.tk_type, location.value),
+                        format!(
+                            "invalid node for unit: {:?}:{:?}",
+                            location.tk_type, location.value
+                        ),
                         "check your code.",
                     ));
                 }
@@ -1141,9 +1098,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         Ok(Node::Unit {
             name: name.clone(),
             full_name: Some(self.to_full_name(name)),
-            body: Box::new(Node::Block {
-                body
-            })
+            body: Box::new(Node::Block { body }),
         })
     }
 
@@ -1158,65 +1113,32 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         // native fn internal name
         let fn_name = self.consume(TokenKind::Text)?.clone();
 
-        Ok(Node::Native {
-            name,
-            fn_name
-        })
+        Ok(Node::Native { name, fn_name })
     }
 
     /// Statement parsing
     fn statement(&mut self) -> Result<Node, Error> {
         let tk = self.peek()?;
         match tk.tk_type {
-            TokenKind::Type => {
-                self.type_stmt()
-            },
-            TokenKind::Unit => {
-                self.unit_stmt()
-            },
-            TokenKind::If => {
-                self.if_stmt()
-            },
-            TokenKind::New | TokenKind::Id => {
-                self.access_stmt()
-            },
-            TokenKind::Match => {
-                self.match_stmt()
-            },
-            TokenKind::Continue => {
-                self.continue_stmt()
-            },
-            TokenKind::Break => {
-                self.break_stmt()
-            },
-            TokenKind::Ret => {
-                self.return_stmt()
-            },
-            TokenKind::Fn => {
-                self.function_stmt()
-            },
-            TokenKind::Native => {
-                self.native_stmt()
-            },
-            TokenKind::Import => {
-                self.import_stmt()
-            }
-            TokenKind::For => {
-                self.for_stmt()
-            }
-            TokenKind::While => {
-                self.while_stmt()
-            }
-            TokenKind::Trait => {
-                self.trait_stmt()
-            }
-            _ => {
-                Err(Error::own_text(
-                    tk.address.clone(),
-                    format!("unexpected stmt token: {:?}:{}", tk.tk_type, tk.value),
-                    "check your code.",
-                ))
-            }
+            TokenKind::Type => self.type_stmt(),
+            TokenKind::Unit => self.unit_stmt(),
+            TokenKind::If => self.if_stmt(),
+            TokenKind::New | TokenKind::Id => self.access_stmt(),
+            TokenKind::Match => self.match_stmt(),
+            TokenKind::Continue => self.continue_stmt(),
+            TokenKind::Break => self.break_stmt(),
+            TokenKind::Ret => self.return_stmt(),
+            TokenKind::Fn => self.function_stmt(),
+            TokenKind::Native => self.native_stmt(),
+            TokenKind::Import => self.import_stmt(),
+            TokenKind::For => self.for_stmt(),
+            TokenKind::While => self.while_stmt(),
+            TokenKind::Trait => self.trait_stmt(),
+            _ => Err(Error::own_text(
+                tk.address.clone(),
+                format!("unexpected stmt token: {:?}:{}", tk.tk_type, tk.value),
+                "check your code.",
+            )),
         }
     }
 
@@ -1240,22 +1162,19 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                 } else {
                     Err(Error::own_text(
                         tk.address.clone(),
-                        format!("unexpected token: '{:?}:{}', expected: '{tk_type:?}'", tk.tk_type, tk.value),
-                        "check your code."
+                        format!(
+                            "unexpected token: '{:?}:{}', expected: '{tk_type:?}'",
+                            tk.tk_type, tk.value
+                        ),
+                        "check your code.",
                     ))
                 }
-            },
-            None => {
-                Err(Error::new(
-                    Address::new(
-                        0,
-                        0,
-                        self.file_path.clone()
-                    ),
-                    "unexpected eof",
-                    "check your code."
-                ))
             }
+            None => Err(Error::new(
+                Address::new(0, 0, self.file_path.clone()),
+                "unexpected eof",
+                "check your code.",
+            )),
         }
     }
 
@@ -1268,30 +1187,20 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                 } else {
                     false
                 }
-            },
-            None => {
-                false
             }
+            None => false,
         }
     }
 
     /// Peeks current token, if eof raises error
     fn peek(&self) -> Result<&Token, Error> {
         match self.tokens.get(self.current as usize) {
-            Some(tk) => {
-                Ok(tk)
-            },
-            None => {
-                Err(Error::new(
-                    Address::new(
-                        0,
-                        0,
-                        self.file_path.clone(),
-                    ),
-                    "unexpected eof",
-                    "check your code."
-                ))
-            }
+            Some(tk) => Ok(tk),
+            None => Err(Error::new(
+                Address::new(0, 0, self.file_path.clone()),
+                "unexpected eof",
+                "check your code.",
+            )),
         }
     }
 

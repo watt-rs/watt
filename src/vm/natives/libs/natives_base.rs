@@ -5,7 +5,7 @@ use crate::lexer::address::Address;
 use crate::vm::bytecode::OpcodeValue;
 use crate::vm::natives::natives;
 use crate::vm::table::Table;
-use crate::vm::values::{Value};
+use crate::vm::values::Value;
 use crate::vm::vm::VM;
 
 /// Provides
@@ -30,23 +30,21 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                         (*error_string).clone(),
                         (*hint_string).clone()
                     ));
-                }
-                else {
+                } else {
                     error!(Error::own_text(
                         addr.clone(),
                         "error text should be a string.".to_string(),
                         "check your code."
                     ))
                 }
-            }
-            else {
+            } else {
                 error!(Error::own_text(
                     addr.clone(),
                     "hint text should be a string.".to_string(),
                     "check your code."
                 ))
             }
-        }
+        },
     );
     natives::provide(
         vm,
@@ -55,7 +53,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "base@typeof",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let value = vm.pop(&addr)?;
-            if !should_push { return Ok(()) }
+            if !should_push {
+                return Ok(());
+            }
             match value {
                 Value::Float(_) => {
                     vm.op_push(OpcodeValue::String("f64".to_string()), table)?;
@@ -92,13 +92,13 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 }
                 Value::Null => {
                     vm.op_push(OpcodeValue::String("null".to_string()), table)?;
-                },
+                }
                 Value::Any(_) => {
                     vm.op_push(OpcodeValue::String("any".to_string()), table)?;
                 }
             }
             Ok(())
-        }
+        },
     );
     natives::provide(
         vm,
@@ -107,7 +107,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "base@full_typeof",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let value = vm.pop(&addr)?;
-            if !should_push { return Ok(()) }
+            if !should_push {
+                return Ok(());
+            }
             match value {
                 Value::Float(_) => {
                     vm.op_push(OpcodeValue::String("watt:f64".to_string()), table)?;
@@ -133,22 +135,34 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 Value::Instance(i) => {
                     let symbol = (*(*i).t).name.clone();
                     match symbol.full_name {
-                        Some(full_name) => { vm.op_push(OpcodeValue::String(full_name), table)?; }
-                        None => { vm.op_push(OpcodeValue::String(symbol.name), table)?; }
+                        Some(full_name) => {
+                            vm.op_push(OpcodeValue::String(full_name), table)?;
+                        }
+                        None => {
+                            vm.op_push(OpcodeValue::String(symbol.name), table)?;
+                        }
                     }
                 }
                 Value::Unit(u) => {
                     let symbol = (*u).name.clone();
                     match symbol.full_name {
-                        Some(full_name) => { vm.op_push(OpcodeValue::String(full_name), table)?; }
-                        None => { vm.op_push(OpcodeValue::String(symbol.name), table)?; }
+                        Some(full_name) => {
+                            vm.op_push(OpcodeValue::String(full_name), table)?;
+                        }
+                        None => {
+                            vm.op_push(OpcodeValue::String(symbol.name), table)?;
+                        }
                     }
                 }
                 Value::Trait(t) => {
                     let symbol = (*t).name.clone();
                     match symbol.full_name {
-                        Some(full_name) => { vm.op_push(OpcodeValue::String(full_name), table)?; }
-                        None => { vm.op_push(OpcodeValue::String(symbol.name), table)?; }
+                        Some(full_name) => {
+                            vm.op_push(OpcodeValue::String(full_name), table)?;
+                        }
+                        None => {
+                            vm.op_push(OpcodeValue::String(symbol.name), table)?;
+                        }
                     }
                 }
                 Value::List(l) => {
@@ -162,7 +176,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 }
             }
             Ok(())
-        }
+        },
     );
     natives::provide(
         vm,
@@ -171,7 +185,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "base@is_instance",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let value = vm.pop(&addr)?;
-            if !should_push { return Ok(()) }
+            if !should_push {
+                return Ok(());
+            }
             match value {
                 Value::Instance(_) => {
                     vm.op_push(OpcodeValue::Bool(true), table)?;
@@ -181,7 +197,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 }
             }
             Ok(())
-        }
-    );    
+        },
+    );
     Ok(())
 }

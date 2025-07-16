@@ -1,13 +1,13 @@
 // import
-use crate::parser::import::Import;
+use crate::error;
+use crate::errors::errors::Error;
 use crate::lexer::lexer::*;
 use crate::parser::ast::*;
+use crate::parser::import::Import;
+use crate::resolver::resolver::ImportsResolver;
 use crate::vm::bytecode::{Chunk, Opcode, OpcodeValue};
 use crate::vm::values::*;
 use std::collections::VecDeque;
-use crate::error;
-use crate::errors::errors::{Error};
-use crate::resolver::resolver::ImportsResolver;
 
 /// Visitor
 pub struct CompileVisitor<'visitor> {
@@ -115,10 +115,18 @@ impl<'visitor> CompileVisitor<'visitor> {
             } => {
                 self.visit_if(location, logical, body, elseif.as_deref());
             }
-            Node::While { location, logical, body } => {
+            Node::While {
+                location,
+                logical,
+                body,
+            } => {
                 self.visit_while(location, logical, body);
             }
-            Node::Define { previous, name, value } => {
+            Node::Define {
+                previous,
+                name,
+                value,
+            } => {
                 self.visit_define(previous.as_deref(), name, value);
             }
             Node::Assign {
@@ -128,7 +136,11 @@ impl<'visitor> CompileVisitor<'visitor> {
             } => {
                 self.visit_assign(previous.as_deref(), name, value);
             }
-            Node::Get { previous, name, should_push } => {
+            Node::Get {
+                previous,
+                name,
+                should_push,
+            } => {
                 self.visit_get(previous.as_deref(), name, *should_push);
             }
             Node::Call {
@@ -144,7 +156,7 @@ impl<'visitor> CompileVisitor<'visitor> {
                 full_name,
                 params,
                 body,
-                make_closure
+                make_closure,
             } => {
                 self.visit_fn_decl(name, full_name, params, body, *make_closure);
             }
@@ -152,7 +164,7 @@ impl<'visitor> CompileVisitor<'visitor> {
                 location,
                 params,
                 body,
-                make_closure
+                make_closure,
             } => {
                 self.visit_an_fn_decl(location, params, body, *make_closure);
             }
@@ -188,7 +200,11 @@ impl<'visitor> CompileVisitor<'visitor> {
             Node::Native { name, fn_name } => {
                 self.visit_native(name, fn_name);
             }
-            Node::Instance { name, constructor, should_push, } => {
+            Node::Instance {
+                name,
+                constructor,
+                should_push,
+            } => {
                 self.visit_instance(name, constructor, *should_push);
             }
             Node::Ret { location, value } => {
@@ -206,27 +222,41 @@ impl<'visitor> CompileVisitor<'visitor> {
             } => {
                 self.visit_type(name, full_name, constructor, body, impls);
             }
-            Node::Unit { name, full_name, body, } => {
+            Node::Unit {
+                name,
+                full_name,
+                body,
+            } => {
                 self.visit_unit(name, full_name, body);
             }
-            Node::For { iterable, variable_name, body, } => {
+            Node::For {
+                iterable,
+                variable_name,
+                body,
+            } => {
                 self.visit_for(iterable, variable_name, body);
             }
             Node::Block { body } => {
                 self.visit_block(body);
             }
-            Node::Trait { name, full_name, functions } => {
+            Node::Trait {
+                name,
+                full_name,
+                functions,
+            } => {
                 self.visit_trait(name, full_name, functions);
             }
-            Node::ErrorPropagation { location, value, should_push } => {
+            Node::ErrorPropagation {
+                location,
+                value,
+                should_push,
+            } => {
                 self.visit_error_propagation(location, value, *should_push);
             }
             Node::Impls { value, trait_name } => {
                 self.visit_impls(value, trait_name);
-            },
-            Node::Range { location, from, to } => {
-                self.visit_range(location, from, to)
             }
+            Node::Range { location, from, to } => self.visit_range(location, from, to),
         }
     }
 
@@ -244,8 +274,7 @@ impl<'visitor> CompileVisitor<'visitor> {
                 addr: value.address.clone(),
                 value: OpcodeValue::Float(value.value.parse::<f64>().unwrap()),
             });
-        }
-        else {
+        } else {
             let parsed: i64 = {
                 if value.value.starts_with("0x") {
                     i64::from_str_radix(&value.value[2..], 16).unwrap()
@@ -291,13 +320,7 @@ impl<'visitor> CompileVisitor<'visitor> {
     }
 
     /// Visit if
-    fn visit_if(
-        &mut self,
-        location: &Token,
-        logical: &Node,
-        body: &Node,
-        elif: Option<&Node>,
-    ) {
+    fn visit_if(&mut self, location: &Token, logical: &Node, body: &Node, elif: Option<&Node>) {
         // logical chunk
         self.push_chunk();
         self.visit_node(logical);
@@ -322,12 +345,7 @@ impl<'visitor> CompileVisitor<'visitor> {
     }
 
     /// Visit while
-    fn visit_while(
-        &mut self,
-        location: &Token,
-        logical: &Node,
-        body: &Node,
-    ) {
+    fn visit_while(&mut self, location: &Token, logical: &Node, body: &Node) {
         // logical chunk
         self.push_chunk();
         self.visit_node(logical);
@@ -343,9 +361,15 @@ impl<'visitor> CompileVisitor<'visitor> {
             body: Chunk::new(body_chunk),
             elif: Some(Chunk::of(Opcode::If {
                 addr: location.address.clone(),
-                cond: Chunk::of(Opcode::Push{ addr: location.address.clone(), value: OpcodeValue::Bool(true) }),
-                body: Chunk::of(Opcode::EndLoop { addr: location.address.clone(), current_iteration: false }),
-                elif: None
+                cond: Chunk::of(Opcode::Push {
+                    addr: location.address.clone(),
+                    value: OpcodeValue::Bool(true),
+                }),
+                body: Chunk::of(Opcode::EndLoop {
+                    addr: location.address.clone(),
+                    current_iteration: false,
+                }),
+                elif: None,
             })),
         };
         // push loop
@@ -356,12 +380,7 @@ impl<'visitor> CompileVisitor<'visitor> {
     }
 
     /// Define variable
-    fn visit_define(
-        &mut self,
-        previous: Option<&Node>,
-        name: &Token,
-        value: &Node
-    ) {
+    fn visit_define(&mut self, previous: Option<&Node>, name: &Token, value: &Node) {
         // previous
         let mut has_previous = false;
         if let Some(prev) = previous {
@@ -416,7 +435,7 @@ impl<'visitor> CompileVisitor<'visitor> {
         full_name: &Option<Token>,
         parameters: &Vec<Token>,
         body: &Node,
-        make_closure: bool
+        make_closure: bool,
     ) {
         // full name
         let full_name = full_name.as_ref().map(|n| n.value.clone());
@@ -439,7 +458,7 @@ impl<'visitor> CompileVisitor<'visitor> {
                     location: name.clone(),
                     value: Box::new(Node::Null {
                         location: name.clone(),
-                    })
+                    }),
                 });
             }
         }
@@ -457,7 +476,7 @@ impl<'visitor> CompileVisitor<'visitor> {
     }
 
     /// Visit break
-    fn visit_break(&mut self, location: &Token){
+    fn visit_break(&mut self, location: &Token) {
         self.push_instr(Opcode::EndLoop {
             addr: location.address.clone(),
             current_iteration: false,
@@ -475,9 +494,7 @@ impl<'visitor> CompileVisitor<'visitor> {
     /// Visit import
     fn visit_import(&mut self, imports: &Vec<Import>) {
         for import in imports {
-            let options_node = self.resolver.import(
-                import.addr.clone(), import
-            );
+            let options_node = self.resolver.import(import.addr.clone(), import);
             if let Some(node) = &options_node {
                 self.visit_node(node);
             }
@@ -508,22 +525,16 @@ impl<'visitor> CompileVisitor<'visitor> {
                 self.push_instr(Opcode::Call {
                     addr: location.address.clone(),
                     name: "add".to_string(),
-                    args: Chunk::new(
-                        chunk
-                    ),
+                    args: Chunk::new(chunk),
                     has_previous: true,
-                    should_push: false
+                    should_push: false,
                 })
             }
         }
     }
 
     /// Visit map
-    fn visit_map(
-        &mut self,
-        location: &Token,
-        map: &Vec<(Node, Node)>,
-    ) {
+    fn visit_map(&mut self, location: &Token, map: &Vec<(Node, Node)>) {
         // map
         self.push_instr(Opcode::Instance {
             addr: location.address.clone(),
@@ -547,23 +558,17 @@ impl<'visitor> CompileVisitor<'visitor> {
                 self.push_instr(Opcode::Call {
                     addr: location.address.clone(),
                     name: "set".to_string(),
-                    args: Chunk::new(
-                        chunk
-                    ),
+                    args: Chunk::new(chunk),
                     has_previous: true,
-                    should_push: false
+                    should_push: false,
                 })
             }
         }
     }
 
     /// Visit for
-    fn visit_for(
-        &mut self,
-        iterable: &Node,
-        variable_name: &Token,
-        body: &Node,
-    ) { // todo: add iterable location
+    fn visit_for(&mut self, iterable: &Node, variable_name: &Token, body: &Node) {
+        // todo: add iterable location
         // iterator chunk
         self.push_chunk();
         self.visit_node(iterable);
@@ -586,17 +591,17 @@ impl<'visitor> CompileVisitor<'visitor> {
                     addr: variable_name.address.clone(),
                     name: iterator_variable_name.clone(),
                     has_previous: false,
-                    should_push: true
+                    should_push: true,
                 },
                 Opcode::Call {
                     addr: variable_name.address.clone(),
                     name: "next".to_string(),
                     args: Chunk::new(vec![]),
                     has_previous: true,
-                    should_push: true
-                }
+                    should_push: true,
+                },
             ]),
-            has_previous: false
+            has_previous: false,
         });
         self.visit_node(body);
         let body_chunk = self.pop_chunk();
@@ -609,20 +614,20 @@ impl<'visitor> CompileVisitor<'visitor> {
                     addr: variable_name.address.clone(),
                     name: iterator_variable_name.clone(),
                     has_previous: false,
-                    should_push: true
+                    should_push: true,
                 },
                 Opcode::Call {
                     addr: variable_name.address.clone(),
                     name: "has_next".to_string(),
                     args: Chunk::new(vec![]),
                     has_previous: true,
-                    should_push: true
-                }
+                    should_push: true,
+                },
             ]),
             body: Chunk::new(body_chunk),
             elif: Some(Chunk::of(Opcode::EndLoop {
                 addr: variable_name.address.clone(),
-                current_iteration: false
+                current_iteration: false,
             })),
         });
         let if_chunk = self.pop_chunk();
@@ -634,7 +639,7 @@ impl<'visitor> CompileVisitor<'visitor> {
         // delete temp variable
         self.push_instr(Opcode::DeleteLocal {
             addr: variable_name.address.clone(),
-            name: iterator_variable_name
+            name: iterator_variable_name,
         })
     }
 
@@ -656,7 +661,7 @@ impl<'visitor> CompileVisitor<'visitor> {
             addr: location.address.clone(),
             cond: Chunk::of(Opcode::Push {
                 addr: location.address.clone(),
-                value: OpcodeValue::Bool(true)
+                value: OpcodeValue::Bool(true),
             }),
             body: Chunk::new(body_chunk),
             elif: None,
@@ -682,7 +687,7 @@ impl<'visitor> CompileVisitor<'visitor> {
                 addr: location.address.clone(),
                 cond: Chunk::new(logical_chunk),
                 body: Chunk::new(body_chunk),
-                elif: Some(Chunk::of(if_op))
+                elif: Some(Chunk::of(if_op)),
             }
         }
 
@@ -696,7 +701,7 @@ impl<'visitor> CompileVisitor<'visitor> {
         location: &Token,
         parameters: &Vec<Token>,
         body: &Node,
-        make_closure: bool
+        make_closure: bool,
     ) {
         // params
         let mut params = Vec::new();
@@ -717,7 +722,7 @@ impl<'visitor> CompileVisitor<'visitor> {
                     location: location.clone(),
                     value: Box::new(Node::Null {
                         location: location.clone(),
-                    })
+                    }),
                 });
             }
         }
@@ -774,7 +779,7 @@ impl<'visitor> CompileVisitor<'visitor> {
         full_name: &Option<Token>,
         constructor: &Vec<Token>,
         body: &Node,
-        impl_tokens: &Vec<Token>
+        impl_tokens: &Vec<Token>,
     ) {
         // full name
         let full_name = full_name.as_ref().map(|name| name.value.clone());
@@ -799,17 +804,12 @@ impl<'visitor> CompileVisitor<'visitor> {
             full_name,
             constructor: constructor_params,
             body: Chunk::new(chunk),
-            impls
+            impls,
         });
     }
 
     /// Visit trait
-    fn visit_trait(
-        &mut self,
-        name: &Token,
-        full_name: &Option<Token>,
-        functions: &[TraitNodeFn]
-    ) {
+    fn visit_trait(&mut self, name: &Token, full_name: &Option<Token>, functions: &[TraitNodeFn]) {
         // full name
         let full_name = full_name.as_ref().map(|name| name.value.clone());
         // trait functions
@@ -823,43 +823,36 @@ impl<'visitor> CompileVisitor<'visitor> {
                 self.push_chunk();
                 self.visit_node(node_fn.default.as_ref().unwrap());
                 let chunk = Chunk::new(self.pop_chunk());
-                let params: Vec<String> = node_fn.params.iter().map(|param| param.value.clone()).collect();
+                let params: Vec<String> = node_fn
+                    .params
+                    .iter()
+                    .map(|param| param.value.clone())
+                    .collect();
 
                 // setting default
-                default = Some(DefaultTraitFn::new(
-                    params,
-                    chunk,
-                ))
-            }
-            else {
+                default = Some(DefaultTraitFn::new(params, chunk))
+            } else {
                 // setting default
                 default = None
             }
 
-            trait_functions.push(
-                TraitFn::new(
-                    node_fn.name.value.clone(),
-                    node_fn.params.len(),
-                    default
-                )
-            )
+            trait_functions.push(TraitFn::new(
+                node_fn.name.value.clone(),
+                node_fn.params.len(),
+                default,
+            ))
         }
         // push define trait
         self.push_instr(Opcode::DefineTrait {
             addr: name.address.clone(),
             name: name.value.clone(),
             full_name,
-            functions: trait_functions
+            functions: trait_functions,
         });
     }
 
     /// Visit unit
-    fn visit_unit(
-        &mut self,
-        name: &Token,
-        full_name: &Option<Token>,
-        body: &Node,
-    ) {
+    fn visit_unit(&mut self, name: &Token, full_name: &Option<Token>, body: &Node) {
         // full name
         let full_name = full_name.as_ref().map(|name| name.value.clone());
         // body chunk
@@ -876,12 +869,7 @@ impl<'visitor> CompileVisitor<'visitor> {
     }
 
     /// Visit condition
-    fn visit_cond(
-        &mut self,
-        left: &Node,
-        right: &Node,
-        op: &Token,
-    ) {
+    fn visit_cond(&mut self, left: &Node, right: &Node, op: &Token) {
         self.visit_node(right);
         self.visit_node(left);
         self.push_instr(Opcode::Cond {
@@ -891,12 +879,7 @@ impl<'visitor> CompileVisitor<'visitor> {
     }
 
     /// Visit logical
-    fn visit_logical(
-        &mut self,
-        left: &Node,
-        right: &Node,
-        op: &Token,
-    ) {
+    fn visit_logical(&mut self, left: &Node, right: &Node, op: &Token) {
         self.push_chunk();
         self.visit_node(left);
         let a = Chunk::new(self.pop_chunk());
@@ -934,12 +917,7 @@ impl<'visitor> CompileVisitor<'visitor> {
     }
 
     /// Visit instance
-    fn visit_instance(
-        &mut self,
-        name: &Token,
-        constructor: &Vec<Node>,
-        should_push: bool,
-    ) {
+    fn visit_instance(&mut self, name: &Token, constructor: &Vec<Node>, should_push: bool) {
         // constructor
         self.push_chunk();
         for arg in constructor {
@@ -956,12 +934,7 @@ impl<'visitor> CompileVisitor<'visitor> {
     }
 
     /// Visit assign
-    fn visit_assign(
-        &mut self,
-        previous: Option<&Node>,
-        name: &Token,
-        value: &Node,
-    ) {
+    fn visit_assign(&mut self, previous: Option<&Node>, name: &Token, value: &Node) {
         // previous
         let mut has_previous = false;
         if let Some(prev) = &previous {
@@ -982,12 +955,7 @@ impl<'visitor> CompileVisitor<'visitor> {
     }
 
     /// Visit get
-    fn visit_get(
-        &mut self,
-        previous: Option<&Node>,
-        name: &Token,
-        should_push: bool,
-    ) {
+    fn visit_get(&mut self, previous: Option<&Node>, name: &Token, should_push: bool) {
         // previous
         let mut has_previous = false;
         if let Some(prev) = previous {
@@ -1002,14 +970,9 @@ impl<'visitor> CompileVisitor<'visitor> {
             should_push,
         });
     }
-    
+
     /// Visit error propagation
-    fn visit_error_propagation(
-        &mut self,
-        location: &Token,
-        value: &Node,
-        should_push: bool,
-    ) {
+    fn visit_error_propagation(&mut self, location: &Token, value: &Node, should_push: bool) {
         self.push_chunk();
         self.visit_node(value);
         let chunk = self.pop_chunk();
@@ -1021,11 +984,7 @@ impl<'visitor> CompileVisitor<'visitor> {
     }
 
     /// Visit impls trait
-    pub fn visit_impls(
-        &mut self,
-        value: &Node,
-        trait_name: &Token
-    ) {
+    pub fn visit_impls(&mut self, value: &Node, trait_name: &Token) {
         self.push_chunk();
         self.visit_node(value);
         let chunk = self.pop_chunk();

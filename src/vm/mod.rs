@@ -1,7 +1,7 @@
-﻿pub mod bytecode;
-pub mod values;
-pub mod table;
-pub mod vm;
+pub mod bytecode;
 pub mod flow;
-pub mod natives;
 pub mod memory;
+pub mod natives;
+pub mod table;
+pub mod values;
+pub mod vm;

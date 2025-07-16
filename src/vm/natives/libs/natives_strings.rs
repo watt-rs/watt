@@ -7,7 +7,7 @@ use crate::vm::memory::memory;
 use crate::vm::natives::libs::utils;
 use crate::vm::natives::natives;
 use crate::vm::table::Table;
-use crate::vm::values::{Value};
+use crate::vm::values::Value;
 use crate::vm::vm::VM;
 
 /// Provides
@@ -28,7 +28,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 vm.op_push(OpcodeValue::String(result), table)?;
             }
             Ok(())
-        }
+        },
     );
     natives::provide(
         vm,
@@ -45,7 +45,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 vm.op_push(OpcodeValue::String(result), table)?;
             }
             Ok(())
-        }
+        },
     );
     natives::provide(
         vm,
@@ -62,7 +62,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 vm.op_push(OpcodeValue::String(string), table)?;
             }
             Ok(())
-        }
+        },
     );
     natives::provide(
         vm,
@@ -73,11 +73,11 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             let i = utils::expect_int(addr.clone(), vm.pop(&addr)?, None);
             let string = utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
             if should_push {
-                let result = (*string).chars().nth(i as  usize).unwrap();
+                let result = (*string).chars().nth(i as usize).unwrap();
                 vm.op_push(OpcodeValue::String(result.to_string()), table)?;
             }
             Ok(())
-        }
+        },
     );
     natives::provide(
         vm,
@@ -88,12 +88,15 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             let i = utils::expect_int(addr.clone(), vm.pop(&addr)?, None);
             let string = utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
             if should_push {
-                let result: Vec<Value> = (*string).chars().map(|ch| {
-                    let string = Value::String(memory::alloc_value(ch.to_string()));
-                    vm.gc_guard(string);
-                    vm.gc_register(string, table);
-                    string
-                }).collect();
+                let result: Vec<Value> = (*string)
+                    .chars()
+                    .map(|ch| {
+                        let string = Value::String(memory::alloc_value(ch.to_string()));
+                        vm.gc_guard(string);
+                        vm.gc_register(string, table);
+                        string
+                    })
+                    .collect();
 
                 // unguarding strings
                 for _ in 0..(*string).len() {
@@ -105,7 +108,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 vm.op_push(OpcodeValue::Raw(raw_list), table)?;
             }
             Ok(())
-        }
+        },
     );
     natives::provide(
         vm,
@@ -118,7 +121,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 vm.op_push(OpcodeValue::String((*string).trim().to_string()), table)?;
             }
             Ok(())
-        }
+        },
     );
     natives::provide(
         vm,
@@ -129,12 +132,15 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             let delimiter = utils::expect_cloned_string(addr.clone(), vm.pop(&addr)?, None);
             let string = utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
             if should_push {
-                let result: Vec<Value> = (*string).split(delimiter.as_str()).map(|str| {
-                    let string = Value::String(memory::alloc_value(str.to_string()));
-                    vm.gc_guard(string);
-                    vm.gc_register(string, table);
-                    string
-                }).collect();
+                let result: Vec<Value> = (*string)
+                    .split(delimiter.as_str())
+                    .map(|str| {
+                        let string = Value::String(memory::alloc_value(str.to_string()));
+                        vm.gc_guard(string);
+                        vm.gc_register(string, table);
+                        string
+                    })
+                    .collect();
 
                 // unguarding strings
                 for _ in 0..(*string).len() {
@@ -146,7 +152,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 vm.op_push(OpcodeValue::Raw(raw_list), table)?;
             }
             Ok(())
-        }
+        },
     );
     natives::provide(
         vm,
@@ -162,7 +168,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 vm.op_push(OpcodeValue::String(result), table)?;
             }
             Ok(())
-        }
+        },
     );
     natives::provide(
         vm,
@@ -176,7 +182,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 vm.op_push(OpcodeValue::Bool((*string).contains(value.as_str())), table)?;
             }
             Ok(())
-        }
+        },
     );
     natives::provide(
         vm,
@@ -204,7 +210,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 }
             }
             Ok(())
-        }
+        },
     );
     natives::provide(
         vm,
@@ -232,7 +238,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 }
             }
             Ok(())
-        }
+        },
     );
     Ok(())
 }

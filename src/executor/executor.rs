@@ -1,6 +1,4 @@
-﻿// imports
-use std::fs;
-use std::path::{PathBuf};
+// imports
 use crate::compiler::visitor::CompileVisitor;
 use crate::error;
 use crate::errors::errors::Error;
@@ -10,7 +8,9 @@ use crate::parser::ast::Node;
 use crate::parser::parser::Parser;
 use crate::semantic::analyzer::Analyzer;
 use crate::vm::bytecode::Chunk;
-use crate::vm::vm::{VmSettings, VM};
+use crate::vm::vm::{VM, VmSettings};
+use std::fs;
+use std::path::PathBuf;
 
 /// Runs code from a file
 ///
@@ -47,36 +47,24 @@ pub unsafe fn run(
         &path,
         &code.chars().collect::<Vec<char>>(),
         lexer_debug,
-        lexer_bench
+        lexer_bench,
     );
 
     // parsing
-    let ast = parse(
-        &path,
-        tokens.unwrap(),
-        ast_debug,
-        parser_bench,
-        &None
-    );
+    let ast = parse(&path, tokens.unwrap(), ast_debug, parser_bench, &None);
 
     // analyzing
-    let analyzed = analyze(
-        ast.unwrap()
-    );
+    let analyzed = analyze(ast.unwrap());
 
     // compiling
-    let compiled = compile(
-        &analyzed,
-        opcodes_debug,
-        compile_bench
-    );
+    let compiled = compile(&analyzed, opcodes_debug, compile_bench);
 
     // run compiled opcodes chunk with vm
     run_chunk(
         compiled,
         gc_threshold.unwrap_or(200),
         gc_debug,
-        runtime_bench
+        runtime_bench,
     );
 }
 
@@ -96,7 +84,9 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
     let path: PathBuf = {
         if path.exists() {
             path.to_owned()
-        } else if let Some(address) = &addr && let Some(file_path) = &address.file {
+        } else if let Some(address) = &addr
+            && let Some(file_path) = &address.file
+        {
             match file_path.parent() {
                 None => {
                     error!(Error::own_text(
@@ -115,7 +105,7 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
             crash(format!("file not found: {path:?}"))
         }
     };
-    
+
     // reading file
     if path.exists() {
         if let Ok(result) = fs::read_to_string(&path) {
@@ -131,10 +121,11 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
                 crash(format!("file not found: {:?}", path));
             }
         }
-    }
-    else {
-        panic!("file not exists: {path:?} after checking of existence. \
-        report this error to the developer.")
+    } else {
+        panic!(
+            "file not exists: {path:?} after checking of existence. \
+        report this error to the developer."
+        )
     }
 }
 
@@ -145,15 +136,15 @@ pub fn lex(file_path: &PathBuf, code: &[char], debug: bool, bench: bool) -> Opti
     let start = std::time::Instant::now();
 
     // lexing
-    let tokens = Lexer::new(
-        code,
-        file_path
-    ).lex();
+    let tokens = Lexer::new(code, file_path).lex();
 
     // benchmark end
     if bench {
         let duration = start.elapsed().as_nanos();
-        println!("benchmark 'lexer', elapsed {}", duration as f64 / 1_000_000f64);
+        println!(
+            "benchmark 'lexer', elapsed {}",
+            duration as f64 / 1_000_000f64
+        );
     }
 
     // debug
@@ -165,11 +156,15 @@ pub fn lex(file_path: &PathBuf, code: &[char], debug: bool, bench: bool) -> Opti
     Some(tokens)
 }
 
-
 /// Parsing
 /// Provides AST node on the exhaust
-pub fn parse(file_path: &PathBuf, tokens: Vec<Token>,
-             debug: bool, bench: bool, full_name_prefix: &Option<String>) -> Option<Node> {
+pub fn parse(
+    file_path: &PathBuf,
+    tokens: Vec<Token>,
+    debug: bool,
+    bench: bool,
+    full_name_prefix: &Option<String>,
+) -> Option<Node> {
     // benchmark
     let start = std::time::Instant::now();
 
@@ -177,12 +172,8 @@ pub fn parse(file_path: &PathBuf, tokens: Vec<Token>,
     let file_name = file_path.file_name().and_then(|x| x.to_str()).unwrap();
     fn delete_extension(full_name: &str) -> &str {
         match full_name.rfind(".") {
-            Some(index) => {
-                &full_name[..index]
-            }
-            None => {
-                full_name
-            }
+            Some(index) => &full_name[..index],
+            None => full_name,
         }
     }
 
@@ -190,13 +181,22 @@ pub fn parse(file_path: &PathBuf, tokens: Vec<Token>,
     let raw_ast = Parser::new(
         tokens,
         file_path,
-        delete_extension(full_name_prefix.as_ref().map(String::as_str).unwrap_or(file_name))
-    ).parse();
+        delete_extension(
+            full_name_prefix
+                .as_ref()
+                .map(String::as_str)
+                .unwrap_or(file_name),
+        ),
+    )
+    .parse();
 
     // benchmark end
     if bench {
         let duration = start.elapsed().as_nanos();
-        println!("benchmark 'parse', elapsed {}", duration as f64 / 1_000_000f64);
+        println!(
+            "benchmark 'parse', elapsed {}",
+            duration as f64 / 1_000_000f64
+        );
     }
 
     // handling errors
@@ -206,7 +206,7 @@ pub fn parse(file_path: &PathBuf, tokens: Vec<Token>,
             println!("ast debug: ");
             println!("{:?}", ast);
         }
-        return Some(ast)
+        return Some(ast);
     } else if let Err(error) = raw_ast {
         error!(error);
     };
@@ -234,7 +234,10 @@ pub unsafe fn compile(ast: &Node, opcodes_debug: bool, bench: bool) -> Chunk {
     // benchmark end
     if bench {
         let duration = start.elapsed().as_nanos();
-        println!("benchmark 'compile', elapsed {}", duration as f64 / 1_000_000f64);
+        println!(
+            "benchmark 'compile', elapsed {}",
+            duration as f64 / 1_000_000f64
+        );
     }
 
     // debug
@@ -249,7 +252,7 @@ pub unsafe fn compile(ast: &Node, opcodes_debug: bool, bench: bool) -> Chunk {
 }
 
 /// Runs chunk on the vm
-/// 
+///
 /// * gc_threshold: garbage collector threshold
 #[allow(unused_qualifications)]
 unsafe fn run_chunk(chunk: Chunk, gc_threshold: usize, gc_debug: bool, bench: bool) {
@@ -257,11 +260,8 @@ unsafe fn run_chunk(chunk: Chunk, gc_threshold: usize, gc_debug: bool, bench: bo
     let start = std::time::Instant::now();
 
     // creating vm and running
-    let mut vm = VM::new(VmSettings::new(
-        gc_threshold,
-        gc_debug,
-    ));
-    
+    let mut vm = VM::new(VmSettings::new(gc_threshold, gc_debug));
+
     // handling errors
     if let Err(e) = vm.run(&chunk, vm.globals) {
         error!(Error::own_text(
@@ -274,7 +274,10 @@ unsafe fn run_chunk(chunk: Chunk, gc_threshold: usize, gc_debug: bool, bench: bo
     // benchmark end
     if bench {
         let duration = start.elapsed().as_nanos();
-        println!("benchmark 'runtime', elapsed {}", duration as f64 / 1_000_000f64);
+        println!(
+            "benchmark 'runtime', elapsed {}",
+            duration as f64 / 1_000_000f64
+        );
     }
 
     // cleanup

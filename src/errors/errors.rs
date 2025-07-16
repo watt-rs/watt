@@ -21,7 +21,7 @@ macro_rules! error {
 
 /// Error implementation
 impl Error {
-    /// New error 
+    /// New error
     pub fn new(addr: Address, text: &'static str, hint: &'static str) -> Self {
         Error {
             addr,
@@ -58,11 +58,11 @@ impl Error {
     }
 
     /// Panic error
-    /// 
+    ///
     /// Prints error information,
     /// address, and then
     /// ends process
-    /// 
+    ///
     pub fn panic(&self) -> ! {
         // file_name and line_text
         let file_name = self
@@ -98,7 +98,7 @@ impl Error {
         println!("│");
         println!("│ hint: {hint}", hint = self.hint);
         println!("{}", colors::ResetColor);
-        
+
         // exit process
         std::process::exit(1);
     }

@@ -1,9 +1,9 @@
 // imports
+use crate::vm::memory::memory;
 use crate::vm::table::Table;
 use crate::vm::values::{FnOwner, Value};
 use crate::vm::vm::VM;
-use crate::vm::memory::memory;
-use std::collections::{HashSet};
+use std::collections::HashSet;
 
 /// Garbage collector
 ///
@@ -31,13 +31,15 @@ impl GC {
             marked: HashSet::new(),
             marked_tables: HashSet::new(),
             guard: Vec::new(),
-            debug
+            debug,
         }
     }
 
     /// Prints message is debug is enabled
     fn log(&self, message: &str) {
-        if self.debug { println!("{}", message) };
+        if self.debug {
+            println!("{}", message)
+        };
     }
 
     /// Resets `marked` and `marked_tables` after garbage collection
@@ -64,7 +66,7 @@ impl GC {
             Value::Instance(instance) => unsafe {
                 self.mark_table((*instance).fields);
                 self.marked.insert(value);
-            }
+            },
             Value::Fn(f) => unsafe {
                 self.marked.insert(value);
                 self.mark_table((*f).closure);
@@ -78,11 +80,11 @@ impl GC {
                         }
                     }
                 }
-            }
+            },
             Value::Unit(unit) => unsafe {
                 self.mark_table((*unit).fields);
                 self.marked.insert(value);
-            }
+            },
             Value::Native(_) => {
                 self.marked.insert(value);
             }
@@ -94,7 +96,7 @@ impl GC {
                     self.mark_value(value);
                 }
                 self.marked.insert(value);
-            }
+            },
             Value::Any(_) => {
                 self.marked.insert(value);
             }
@@ -109,7 +111,9 @@ impl GC {
     ///
     unsafe fn mark_table(&mut self, table: *mut Table) {
         // checking pointer is not null
-        if table.is_null() { return; }
+        if table.is_null() {
+            return;
+        }
         // if table is already marked, skip
         if self.marked_tables.contains(&table) {
             return;
@@ -159,15 +163,18 @@ impl GC {
     }
 
     /// Adding object to allocated list
-    /// Necessary for all reference type 
+    /// Necessary for all reference type
     /// values except Type && Trait
     ///
     pub fn add_object(&mut self, value: Value) {
         match value {
-            Value::Instance(_) | Value::Fn(_) |
-            Value::Native(_) | Value::String(_) |
-            Value::Unit(_) | Value::List(_) |
-            Value::Any(_) => {
+            Value::Instance(_)
+            | Value::Fn(_)
+            | Value::Native(_)
+            | Value::String(_)
+            | Value::Unit(_)
+            | Value::List(_)
+            | Value::Any(_) => {
                 if !self.objects.contains(&value) {
                     self.objects.insert(value);
                 }
@@ -183,25 +190,39 @@ impl GC {
         // free
         match value {
             Value::Fn(f) => {
-                if !f.is_null() { memory::free_value(f); }
+                if !f.is_null() {
+                    memory::free_value(f);
+                }
             }
             Value::Instance(i) => {
-                if !i.is_null() { memory::free_value(i); }
+                if !i.is_null() {
+                    memory::free_value(i);
+                }
             }
             Value::String(s) => {
-                if !s.is_null() { memory::free_const_value(s); }
+                if !s.is_null() {
+                    memory::free_const_value(s);
+                }
             }
             Value::Native(n) => {
-                if !n.is_null() { memory::free_value(n); }
+                if !n.is_null() {
+                    memory::free_value(n);
+                }
             }
             Value::Unit(u) => {
-                if !u.is_null() { memory::free_value(u); }
+                if !u.is_null() {
+                    memory::free_value(u);
+                }
             }
             Value::List(l) => {
-                if !l.is_null() { memory::free_value(l); }
+                if !l.is_null() {
+                    memory::free_value(l);
+                }
             }
             Value::Any(a) => {
-                if !a.is_null() { memory::free_value(a); }
+                if !a.is_null() {
+                    memory::free_value(a);
+                }
             }
             _ => {
                 println!("unexpected gc value = {:?}.", value);
@@ -235,7 +256,7 @@ impl GC {
         // > stack
         for val in vm.stack.clone() {
             self.mark_value(val)
-        };
+        }
         // > units
         self.mark_table(vm.units);
         // > natives
@@ -256,18 +277,18 @@ impl GC {
         // log gc ended
         self.log("gc :: end");
     }
-    
+
     /// Allocated values amount
     pub fn objects_amount(&mut self) -> usize {
         self.objects.len()
     }
-    
+
     /// Full garbage collector cleanup
     /// Freeing all allocated values
     pub fn cleanup(&mut self) {
         // log gc is cleaning up
         self.log(&format!("gc :: cleanup :: {:?}", self.objects.len()));
-        
+
         // freeing objects
         for value in &self.objects {
             self.free_value(value.clone());

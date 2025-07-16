@@ -1,6 +1,6 @@
 // imports
-use crate::{lexer::address::Address, vm::values::Value};
 use crate::vm::values::TraitFn;
+use crate::{lexer::address::Address, vm::values::Value};
 
 /// Opcodes chunk
 #[derive(Clone, Debug)]
@@ -39,7 +39,7 @@ pub enum OpcodeValue {
 pub enum Opcode {
     Push {
         addr: Address,
-        value: OpcodeValue
+        value: OpcodeValue,
     },
     Pop {
         addr: Address,
@@ -87,14 +87,14 @@ pub enum Opcode {
         params: Vec<String>,
         body: Chunk,
         make_closure: bool,
-    },    
+    },
     DefineType {
         addr: Address,
         name: String,
         full_name: Option<String>,
         constructor: Vec<String>,
         body: Chunk,
-        impls: Vec<String>
+        impls: Vec<String>,
     },
     DefineUnit {
         addr: Address,
@@ -161,18 +161,18 @@ pub enum Opcode {
     Impls {
         addr: Address,
         value: Chunk,
-        trait_name: String
+        trait_name: String,
     },
     DeleteLocal {
         addr: Address,
         name: String,
-    }
+    },
 }
 /// Opcode Implementation
 impl Opcode {
     /// Prints opcode
     /// with nested opcodes
-    /// 
+    ///
     /// Just like tree 🌴
     pub fn print(&self, indent: usize) {
         /// Print text with indent
@@ -221,14 +221,20 @@ impl Opcode {
                 print_indent(indent + 1, "cond:");
                 print_chunk(indent + 2, cond);
                 print_indent(indent + 1, "body:");
-                print_chunk(indent + 2, body);                
+                print_chunk(indent + 2, body);
             }
             Opcode::Loop { body, .. } => {
                 print_indent(indent, "loop");
                 print_indent(indent + 1, "body:");
                 print_chunk(indent + 2, body);
             }
-            Opcode::DefineFn { name, full_name, params, body, .. } => {
+            Opcode::DefineFn {
+                name,
+                full_name,
+                params,
+                body,
+                ..
+            } => {
                 print_indent(indent, format!("fn '{name}' '{full_name:?}'").as_str());
                 print_indent(indent + 1, "params:");
                 for param in params {
@@ -246,45 +252,97 @@ impl Opcode {
                 print_indent(indent + 1, "body:");
                 print_chunk(indent + 2, body);
             }
-            Opcode::DefineType { name, full_name, constructor, body, .. } => {
-                print_indent(indent, format!("define_type '{name}' '{full_name:?}'").as_str());
+            Opcode::DefineType {
+                name,
+                full_name,
+                constructor,
+                body,
+                ..
+            } => {
+                print_indent(
+                    indent,
+                    format!("define_type '{name}' '{full_name:?}'").as_str(),
+                );
                 print_indent(indent + 1, "constructor:");
                 for param in constructor {
                     print_indent(indent + 2, format!("{param}").as_str());
                 }
                 print_indent(indent + 1, "body:");
-                print_chunk(indent + 2, body);                
+                print_chunk(indent + 2, body);
             }
-            Opcode::DefineUnit { name, full_name, body, .. } => {
-                print_indent(indent, format!("define_unit '{name}' '{full_name:?}'").as_str());
+            Opcode::DefineUnit {
+                name,
+                full_name,
+                body,
+                ..
+            } => {
+                print_indent(
+                    indent,
+                    format!("define_unit '{name}' '{full_name:?}'").as_str(),
+                );
                 print_indent(indent + 1, "body:");
                 print_chunk(indent + 2, body);
             }
-            Opcode::DefineTrait { name, full_name, functions, .. } => {
-                print_indent(indent, format!("define_trait '{name}' '{full_name:?}'").as_str());
+            Opcode::DefineTrait {
+                name,
+                full_name,
+                functions,
+                ..
+            } => {
+                print_indent(
+                    indent,
+                    format!("define_trait '{name}' '{full_name:?}'").as_str(),
+                );
                 print_indent(indent + 1, "functions:");
                 for function in functions {
                     print_indent(indent + 2, format!("{function:?}").as_str());
                 }
             }
-            Opcode::Define { name, value, has_previous, .. } => {
+            Opcode::Define {
+                name,
+                value,
+                has_previous,
+                ..
+            } => {
                 print_indent(indent, format!("define '{name}'").as_str());
                 print_indent(indent + 1, format!("has_previous:{has_previous}").as_str());
                 print_indent(indent + 1, "value:");
                 print_chunk(indent + 2, value);
             }
-            Opcode::Set { name, value, has_previous, .. } => {
+            Opcode::Set {
+                name,
+                value,
+                has_previous,
+                ..
+            } => {
                 print_indent(indent, format!("set '{name}'").as_str());
                 print_indent(indent + 1, format!("has_previous:{has_previous}").as_str());
                 print_indent(indent + 1, "value:");
-                print_chunk(indent + 2, value);                
+                print_chunk(indent + 2, value);
             }
-            Opcode::Load { name, has_previous, should_push, .. } => {
-                print_indent(indent, format!("load '{name}', should_push:{should_push}").as_str());
+            Opcode::Load {
+                name,
+                has_previous,
+                should_push,
+                ..
+            } => {
+                print_indent(
+                    indent,
+                    format!("load '{name}', should_push:{should_push}").as_str(),
+                );
                 print_indent(indent + 1, format!("has_previous:{has_previous}").as_str());
             }
-            Opcode::Call { name, has_previous, should_push, args, .. } => {
-                print_indent(indent, format!("call '{name}', should_push:{should_push}").as_str());
+            Opcode::Call {
+                name,
+                has_previous,
+                should_push,
+                args,
+                ..
+            } => {
+                print_indent(
+                    indent,
+                    format!("call '{name}', should_push:{should_push}").as_str(),
+                );
                 print_indent(indent + 1, format!("has_previous:{has_previous}").as_str());
                 print_indent(indent + 1, "args:");
                 print_chunk(indent + 2, args);
@@ -292,13 +350,26 @@ impl Opcode {
             Opcode::Duplicate { .. } => {
                 print_indent(indent, "duplicate");
             }
-            Opcode::Instance { name, args, should_push, .. } => {
-                print_indent(indent, format!("instance '{name}', should_push:{should_push}").as_str());
+            Opcode::Instance {
+                name,
+                args,
+                should_push,
+                ..
+            } => {
+                print_indent(
+                    indent,
+                    format!("instance '{name}', should_push:{should_push}").as_str(),
+                );
                 print_indent(indent + 1, "args:");
                 print_chunk(indent + 2, args);
             }
-            Opcode::EndLoop { current_iteration, .. } => {
-                print_indent(indent, format!("break, current iteration:{current_iteration}").as_str());
+            Opcode::EndLoop {
+                current_iteration, ..
+            } => {
+                print_indent(
+                    indent,
+                    format!("break, current iteration:{current_iteration}").as_str(),
+                );
             }
             Opcode::Ret { value, .. } => {
                 print_indent(indent, "return");
@@ -313,7 +384,9 @@ impl Opcode {
                 print_indent(indent + 1, "value:");
                 print_chunk(indent + 2, value);
             }
-            Opcode::Impls { value, trait_name, .. } => {
+            Opcode::Impls {
+                value, trait_name, ..
+            } => {
                 print_indent(indent, format!("impls {:?}", trait_name).as_str());
                 print_indent(indent + 1, "value:");
                 print_chunk(indent + 2, value);

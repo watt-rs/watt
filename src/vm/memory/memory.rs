@@ -1,4 +1,4 @@
-﻿/// Allocates value in heap using box
+/// Allocates value in heap using box
 ///
 /// returns raw pointer
 ///

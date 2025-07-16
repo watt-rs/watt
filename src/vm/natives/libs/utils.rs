@@ -1,13 +1,13 @@
 // imports
-use crate::lexer::address::Address;
-use crate::vm::values::{Function, Instance, Native, Trait, Type, Unit, Value};
 use crate::error;
 use crate::errors::errors::Error;
+use crate::lexer::address::Address;
+use crate::vm::values::{Function, Instance, Native, Trait, Type, Unit, Value};
 use std::any::Any;
 
 /// Expects value is int, otherwise raises error
 #[allow(unused)]
-pub fn expect_int(addr: Address, value: Value, error: Option<Error>) ->i64 {
+pub fn expect_int(addr: Address, value: Value, error: Option<Error>) -> i64 {
     if let Value::Int(i) = value {
         i
     } else {
@@ -21,7 +21,7 @@ pub fn expect_int(addr: Address, value: Value, error: Option<Error>) ->i64 {
 
 /// Expects value is float, otherwise raises error
 #[allow(unused)]
-pub fn expect_float(addr: Address, value: Value, error: Option<Error>) ->f64 {
+pub fn expect_float(addr: Address, value: Value, error: Option<Error>) -> f64 {
     if let Value::Float(f) = value {
         f
     } else {
@@ -35,7 +35,7 @@ pub fn expect_float(addr: Address, value: Value, error: Option<Error>) ->f64 {
 
 /// Expects value is bool, otherwise raises error
 #[allow(unused)]
-pub fn expect_bool(addr: Address, value: Value, error: Option<Error>) ->bool {
+pub fn expect_bool(addr: Address, value: Value, error: Option<Error>) -> bool {
     if let Value::Bool(b) = value {
         b
     } else {
@@ -49,7 +49,7 @@ pub fn expect_bool(addr: Address, value: Value, error: Option<Error>) ->bool {
 
 /// Expects value is instance, otherwise raises error
 #[allow(unused)]
-pub fn expect_instance(addr: Address, value: Value, error: Option<Error>) ->*mut Instance {
+pub fn expect_instance(addr: Address, value: Value, error: Option<Error>) -> *mut Instance {
     if let Value::Instance(i) = value {
         i
     } else {
@@ -63,7 +63,7 @@ pub fn expect_instance(addr: Address, value: Value, error: Option<Error>) ->*mut
 
 /// Expects value is unit, otherwise raises error
 #[allow(unused)]
-pub fn expect_unit(addr: Address, value: Value, error: Option<Error>) ->*mut Unit {
+pub fn expect_unit(addr: Address, value: Value, error: Option<Error>) -> *mut Unit {
     if let Value::Unit(u) = value {
         u
     } else {
@@ -77,7 +77,7 @@ pub fn expect_unit(addr: Address, value: Value, error: Option<Error>) ->*mut Uni
 
 /// Expects value is trait, otherwise raises error
 #[allow(unused)]
-pub fn expect_trait(addr: Address, value: Value, error: Option<Error>) ->*mut Trait {
+pub fn expect_trait(addr: Address, value: Value, error: Option<Error>) -> *mut Trait {
     if let Value::Trait(t) = value {
         t
     } else {
@@ -91,7 +91,7 @@ pub fn expect_trait(addr: Address, value: Value, error: Option<Error>) ->*mut Tr
 
 /// Expects value is type, otherwise raises error
 #[allow(unused)]
-pub fn expect_type(addr: Address, value: Value, error: Option<Error>) ->*mut Type {
+pub fn expect_type(addr: Address, value: Value, error: Option<Error>) -> *mut Type {
     if let Value::Type(t) = value {
         t
     } else {
@@ -105,7 +105,7 @@ pub fn expect_type(addr: Address, value: Value, error: Option<Error>) ->*mut Typ
 
 /// Expects value is fn, otherwise raises error
 #[allow(unused)]
-pub fn expect_fn(addr: Address, value: Value, error: Option<Error>) ->*mut Function {
+pub fn expect_fn(addr: Address, value: Value, error: Option<Error>) -> *mut Function {
     if let Value::Fn(f) = value {
         f
     } else {
@@ -119,7 +119,7 @@ pub fn expect_fn(addr: Address, value: Value, error: Option<Error>) ->*mut Funct
 
 /// Expects value is native, otherwise raises error
 #[allow(unused)]
-pub fn expect_native(addr: Address, value: Value, error: Option<Error>) ->*mut Native {
+pub fn expect_native(addr: Address, value: Value, error: Option<Error>) -> *mut Native {
     if let Value::Native(n) = value {
         n
     } else {
@@ -133,7 +133,7 @@ pub fn expect_native(addr: Address, value: Value, error: Option<Error>) ->*mut N
 
 /// Expects value is any, otherwise raises error
 #[allow(unused)]
-pub fn expect_any(addr: Address, value: Value, error: Option<Error>) ->*mut dyn Any {
+pub fn expect_any(addr: Address, value: Value, error: Option<Error>) -> *mut dyn Any {
     if let Value::Any(a) = value {
         a
     } else {
@@ -175,7 +175,7 @@ pub unsafe fn expect_cloned_string(addr: Address, value: Value, error: Option<Er
 
 /// Expects value is list, otherwise raises error
 #[allow(unused)]
-pub fn expect_list(addr: Address, value: Value, error: Option<Error>) ->*mut Vec<Value> {
+pub fn expect_list(addr: Address, value: Value, error: Option<Error>) -> *mut Vec<Value> {
     if let Value::List(l) = value {
         l
     } else {

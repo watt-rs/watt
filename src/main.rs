@@ -2,15 +2,15 @@
 #![allow(unsafe_op_in_unsafe_fn)]
 
 // modules
-mod lexer;
-mod compiler;
-mod parser;
-mod vm;
-mod errors;
-mod semantic;
 mod cli;
+mod compiler;
+mod errors;
 mod executor;
+mod lexer;
+mod parser;
 mod resolver;
+mod semantic;
+mod vm;
 
 // main
 fn main() {

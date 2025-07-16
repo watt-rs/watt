@@ -1,10 +1,10 @@
-﻿// imports
+// imports
 use crate::error;
 use crate::errors::errors::Error;
 use crate::lexer::address::*;
+use crate::lexer::cursor::Cursor;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use crate::lexer::cursor::Cursor;
 
 /// Token kind
 #[derive(Debug, Clone, Eq, PartialEq, Copy, Hash)]
@@ -218,7 +218,9 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
                     }
                     // multi-line comment
                     else if self.is_match('*') {
-                        while !(self.cursor.peek() == '*' && self.cursor.next() == '/') && !self.cursor.is_at_end() {
+                        while !(self.cursor.peek() == '*' && self.cursor.next() == '/')
+                            && !self.cursor.is_at_end()
+                        {
                             if self.is_match('\n') {
                                 self.new_line();
                                 continue;
@@ -334,11 +336,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
                     // unexpected
                     else {
                         error!(Error::own(
-                            Address::new(
-                                self.line,
-                                self.column,
-                                self.file_path.clone(),
-                            ),
+                            Address::new(self.line, self.column, self.file_path.clone(),),
                             format!("unexpected char: {}", ch),
                             format!("delete char: {}", ch),
                         ));
@@ -362,11 +360,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
             }
             if self.cursor.is_at_end() || self.is_match('\n') {
                 error!(Error::new(
-                    Address::new(
-                        self.line,
-                        self.column,
-                        self.file_path.clone(),
-                    ),
+                    Address::new(self.line, self.column, self.file_path.clone(),),
                     "unclosed string quotes.",
                     "did you forget ' symbol?",
                 ));
@@ -376,11 +370,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         Token {
             tk_type: TokenKind::Text,
             value: text,
-            address: Address::new(
-                self.line,
-                self.column,
-                self.file_path.clone(),
-            ),
+            address: Address::new(self.line, self.column, self.file_path.clone()),
         }
     }
 
@@ -399,11 +389,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
                 }
                 if is_float {
                     error!(Error::new(
-                        Address::new(
-                            self.line,
-                            self.column,
-                            self.file_path.clone(),
-                        ),
+                        Address::new(self.line, self.column, self.file_path.clone(),),
                         "couldn't parse number with two dots",
                         "check your code.",
                     ));
@@ -420,11 +406,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::new(
-                self.line,
-                self.column,
-                self.file_path.clone(),
-            ),
+            address: Address::new(self.line, self.column, self.file_path.clone()),
         }
     }
 
@@ -435,7 +417,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         // Number text
         let mut text: String = String::from("0x");
         fn is_16(ch: &char) -> bool {
-            ('0'..='9').contains(&ch) || ('a'..='f').contains(&ch) ||  ('A'..='F').contains(&ch)
+            ('0'..='9').contains(&ch) || ('a'..='f').contains(&ch) || ('A'..='F').contains(&ch)
         }
         while is_16(&self.cursor.peek()) {
             text.push(self.advance());
@@ -446,11 +428,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::new(
-                self.line,
-                self.column,
-                self.file_path.clone(),
-            ),
+            address: Address::new(self.line, self.column, self.file_path.clone()),
         }
     }
 
@@ -472,11 +450,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::new(
-                self.line,
-                self.column,
-                self.file_path.clone(),
-            ),
+            address: Address::new(self.line, self.column, self.file_path.clone()),
         }
     }
 
@@ -498,14 +472,9 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::new(
-                self.line,
-                self.column,
-                self.file_path.clone(),
-            ),
+            address: Address::new(self.line, self.column, self.file_path.clone()),
         }
-    }    
-
+    }
 
     /// Scans identifier, and checks if it is keyword.
     /// Returns token with kind Identifier or Keyword.
@@ -516,24 +485,24 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
     ///
     fn scan_id_or_keyword(&mut self, start: char) -> Token {
         let mut text: String = String::from(start);
-        
+
         while self.is_id(self.cursor.peek()) {
             text.push(self.advance());
             if self.cursor.is_at_end() {
                 break;
             }
         }
-        
-        let tk_type: TokenKind = self.keywords.get(text.as_str()).cloned().unwrap_or(TokenKind::Id);
-        
+
+        let tk_type: TokenKind = self
+            .keywords
+            .get(text.as_str())
+            .cloned()
+            .unwrap_or(TokenKind::Id);
+
         Token {
             tk_type,
             value: text,
-            address: Address::new(
-                self.line,
-                self.column,
-                self.file_path.clone(),
-            ),
+            address: Address::new(self.line, self.column, self.file_path.clone()),
         }
     }
 
@@ -552,7 +521,6 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         ch
     }
 
-
     /// Checking current character is equal to `ch`
     /// If current character is equal to `ch` advances it
     #[allow(clippy::wrong_self_convention)]
@@ -560,7 +528,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         if !self.cursor.is_at_end() {
             if self.cursor.char_at(0) == ch {
                 self.advance();
-                return true
+                return true;
             }
         }
         false
@@ -571,11 +539,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         self.tokens.push(Token::new(
             tk_type,
             tk_value.to_string(),
-            Address::new(
-                self.line,
-                self.column,
-                self.file_path.clone(),
-            ),
+            Address::new(self.line, self.column, self.file_path.clone()),
         ));
     }
 
@@ -583,7 +547,6 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
     fn is_digit(&self, ch: char) -> bool {
         ch >= '0' && ch <= '9'
     }
-
 
     /// Checks character is 'a..z', 'A..Z', '_'
     fn is_letter(&self, ch: char) -> bool {

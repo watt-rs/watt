@@ -27,9 +27,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
 
             let env_key = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
             let value = match std::env::vars().find(|x| &x.0 == env_key) {
-                Some((key, value)) => {
-                    value
-                }
+                Some((key, value)) => value,
                 None => {
                     vm.push(Value::Null);
                     return Ok(());
@@ -64,15 +62,13 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             if !should_push {
                 return Ok(());
             }
-            
+
             // getting cwd with error handling
             let cwd = match std::env::current_dir() {
                 Ok(cwd) => {
                     let path = cwd.to_str().map(|x| x.to_string());
                     match path {
-                        Some(p) => {
-                            p
-                        }
+                        Some(p) => p,
                         None => {
                             vm.push(Value::Null);
                             return Ok(());
@@ -104,19 +100,19 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 .skip(1)
                 .map(|x| {
                     let string = Value::String(memory::alloc_value(x));
-                    
+
                     vm.gc_guard(string);
                     vm.gc_register(string, table);
 
                     string
                 })
                 .collect();
-            
+
             // unguarding strings
-            for _ in  0..args.len() {
+            for _ in 0..args.len() {
                 vm.gc_unguard();
             }
-            
+
             // safety of strings will not be erased
             // guaranteed by list marking if gc will invoke.
             let raw_list = Value::List(memory::alloc_value(args));
@@ -231,7 +227,10 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
 
             match descriptor.spawn() {
                 Ok(child) => {
-                    vm.op_push(OpcodeValue::Raw(Value::Any(memory::alloc_value(child))), table)?;
+                    vm.op_push(
+                        OpcodeValue::Raw(Value::Any(memory::alloc_value(child))),
+                        table,
+                    )?;
                 }
                 Err(_e) => {
                     vm.push(Value::Null);

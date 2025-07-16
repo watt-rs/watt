@@ -1,2 +1,2 @@
-﻿pub mod errors;
 pub mod colors;
+pub mod errors;
