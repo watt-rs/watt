@@ -1,4 +1,12 @@
 /*
+ Display trait
+ | guarantees the type has to_string
+*/
+trait Display {
+    fn to_string
+}
+
+/*
  List utils
  | implementation of: add, set, get,
  | index_of, length, delete, to_string
@@ -24,8 +32,7 @@ unit __list_utils {
  | can be found in:
  | > list_utils unit
 */
-type List {
-
+type List impl Display {
     fn init {
         self.internal := __list_utils.make()
     }
@@ -305,14 +312,6 @@ native panic -> 'base@panic'
 */
 fn _range(a, b) {
     return new NumbersIterator(a, b)
-}
-
-/*
- Display trait
- | guarantees the type has to_string
-*/
-trait Display {
-    fn to_string
 }
 
 /*
