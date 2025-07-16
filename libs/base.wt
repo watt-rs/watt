@@ -131,7 +131,7 @@ type ListIterator(list) impl Iterator {
      if has_next returns false, raises error
     */
     fn next {
-        if self.has_next() {
+        if !self.has_next() {
             panic(
                 'could not use next.',
                 'iterator has no elements left.'
