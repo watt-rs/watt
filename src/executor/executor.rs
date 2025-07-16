@@ -1,6 +1,6 @@
 ﻿// imports
 use std::fs;
-use std::path::PathBuf;
+use std::path::{PathBuf};
 use crate::compiler::visitor::CompileVisitor;
 use crate::error;
 use crate::errors::errors::Error;
@@ -92,47 +92,49 @@ pub fn crash(reason: String) -> ! {
 /// or file can not be read.
 ///
 pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
-    // If path already exist, pass it
-    let path = if path.exists() {
-        path
-    } else {
-        // If not, so we take the directory path of our program that imports the file
-        let mut rpath = addr
-            .as_ref()
-            .and_then(|x| x.file.as_ref()).unwrap()
-            .parent().map(|x| x.to_path_buf()).unwrap();
-
-        // And add library name to it.
-        rpath.push(path);
-
-        &rpath.clone()
+    // if path doesn't exist, we take the directory path of our program that imports the file
+    let path: PathBuf = {
+        if path.exists() {
+            path.to_owned()
+        } else if let Some(address) = &addr && let Some(file_path) = &address.file {
+            match file_path.parent() {
+                None => {
+                    error!(Error::own_text(
+                        address.to_owned(),
+                        format!("file not found: {path:?}"),
+                        "check file existence."
+                    ))
+                }
+                Some(parent) => {
+                    let mut result = parent.to_path_buf();
+                    result.push(path);
+                    result
+                }
+            }
+        } else {
+            crash(format!("file not found: {path:?}"))
+        }
     };
-
+    
+    // reading file
     if path.exists() {
-        if let Ok(result) = fs::read_to_string(path) {
+        if let Ok(result) = fs::read_to_string(&path) {
             result
         } else {
             if let Some(address) = addr {
                 error!(Error::own_text(
-                        address,
-                        format!("io error with file: {:?}", path),
-                        "check file existence"
-                    ));
+                    address,
+                    format!("io error with file: {:?}", path),
+                    "check file existence"
+                ));
             } else {
                 crash(format!("file not found: {:?}", path));
             }
         }
     }
     else {
-        if let Some(address) = addr {
-            error!(Error::own_text(
-                    address,
-                    format!("file not found: {:?}", path),
-                    "check file existence"
-                ));
-        } else {
-            crash(format!("file not found: {:?}", path));
-        }
+        panic!("file not exists: {path:?} after checking of existence. \
+        report this error to the developer.")
     }
 }
 

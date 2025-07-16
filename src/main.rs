@@ -1,4 +1,7 @@
-// объявление модулей
+// fixed 24 edition warnings
+#![allow(unsafe_op_in_unsafe_fn)]
+
+// modules
 mod lexer;
 mod compiler;
 mod parser;
