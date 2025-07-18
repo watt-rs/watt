@@ -242,5 +242,105 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             Ok(())
         },
     );
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        2,
+        "strings@push",
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            let what = utils::expect_cloned_string(addr.clone(), vm.pop(&addr)?, None);
+            let target = utils::expect_string(addr.clone(), vm.pop(&addr)?, None) as *mut String;
+            (*target).push_str(what.as_str());
+            if should_push {
+                vm.push(Value::Null);
+            }
+            Ok(())
+        },
+    );
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        1,
+        "strings@length",
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            let string = utils::expect_cloned_string(addr.clone(), vm.pop(&addr)?, None);
+            if should_push {
+                vm.push(Value::Int(string.len() as i64));
+            }
+            Ok(())
+        },
+    );
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        1,
+        "char@is_ascii_letter",
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            let raw_ch = utils::expect_cloned_string(addr.clone(), vm.pop(&addr)?, None);
+            
+            if should_push {
+                vm.push(Value::Bool(raw_ch.is_ascii()));
+            }
+
+            Ok(())
+        },
+    );
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        2,
+        "char@is_digit",
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            let radix = utils::expect_int(addr.clone(), vm.pop(&addr)?, None);
+            let raw_ch = utils::expect_cloned_string(addr.clone(), vm.pop(&addr)?, None);
+
+            // radix rust bounds
+            if radix > 36 || radix < 2 {
+                error!(Error::own_text(
+                    addr.clone(),
+                    format!("invalid radix: {}", radix),
+                    "radix should be in 2..36 range."
+                ))
+            }
+            if raw_ch.len() != 1 {
+                error!(Error::own_hint(
+                    addr.clone(),
+                    "could not represent string as char.",
+                    format!("string: {raw_ch:?}")
+                ))
+            }
+
+            if should_push {
+                let ch = raw_ch.chars().next().unwrap();
+                vm.push(Value::Bool(ch.is_digit(radix as u32)));
+            }
+
+            Ok(())
+        },
+    );
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        1,
+        "char@as_int",
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            let raw_ch = utils::expect_cloned_string(addr.clone(), vm.pop(&addr)?, None);
+
+            if raw_ch.len() != 1 {
+                error!(Error::own_hint(
+                    addr.clone(),
+                    "could not represent string as char.",
+                    format!("string: {raw_ch:?}")
+                ))
+            }
+
+            if should_push {
+                let ch = raw_ch.chars().next().unwrap();
+                vm.push(Value::Int(ch as i64));
+            }
+
+            Ok(())
+        },
+    );    
     Ok(())
 }

@@ -44,6 +44,7 @@ pub struct VM {
     pub stack: Vec<Value>,
 }
 /// Vm implementation
+#[allow(dangerous_implicit_autorefs)]
 #[allow(non_upper_case_globals)]
 #[allow(unused_qualifications)]
 impl VM {
@@ -230,6 +231,13 @@ impl VM {
             ));
         };
 
+        // concat
+        let concat = |mut string: String, a, b| {
+            string.push_str(a);
+            string.push_str(b);
+            Value::String(memory::alloc_value(string))
+        };
+
         // binary operators
         match op {
             "+" => match operand_a {
@@ -241,7 +249,11 @@ impl VM {
                         self.push(Value::Float(a + (b as f64)));
                     }
                     Value::String(b) => {
-                        let string = Value::String(memory::alloc_value(format!("{}{}", a, *b)));
+                        let string = concat(
+                            String::with_capacity((*b).len()), 
+                            &a.to_string(), 
+                            &*b
+                        );
                         self.push(string);
                         self.gc_register(string, table);
                     }
@@ -257,7 +269,11 @@ impl VM {
                         self.push(Value::Int(a + b));
                     }
                     Value::String(b) => {
-                        let string = Value::String(memory::alloc_value(format!("{}{}", a, *b)));
+                        let string = concat(
+                            String::with_capacity((*b).len()), 
+                            &a.to_string(), 
+                            &*b
+                        );
                         self.push(string);
                         self.gc_register(string, table);
                     }
@@ -265,17 +281,34 @@ impl VM {
                         invalid_op_error();
                     }
                 },
-                Value::String(a) => {
-                    let string =
-                        Value::String(memory::alloc_value(format!("{}{:?}", *a, operand_b)));
-                    self.push(string);
-                    self.gc_register(string, table);
+                Value::String(a) => match operand_b {
+                    Value::String(b) => {
+                        let string = concat(
+                            String::with_capacity((*a).len() + (*b).len()), 
+                            &*a, 
+                            &*b
+                        );
+                        self.push(string);
+                        self.gc_register(string, table);
+                    }
+                    _ => {
+                        let string = concat(
+                            String::with_capacity((*a).len()),
+                            &*a, 
+                            &operand_b.to_string()
+                        );
+                        self.push(string);
+                        self.gc_register(string, table);
+                    }
                 }
                 _ => {
-                    if let Value::String(_) = operand_b {
-                        let string = Value::String(memory::alloc_value(format!(
-                            "{operand_a:?}{operand_b:?}"
-                        )));
+                    if let Value::String(b) = operand_b {
+                        let string = concat(
+                            String::with_capacity((*b).len()),
+                            &operand_a.to_string(), 
+                            &operand_b.to_string()
+                        );
+
                         self.push(string);
                         self.gc_register(string, table);
                     } else {

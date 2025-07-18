@@ -134,9 +134,11 @@ a := result.err('111')
 io.println(a?)
 */
 import 'std.io'
-s := ''
-for i in 0..100000 {
-    io.println('iter ' + i)
-    s += i
-}
-io.println('done')
+import 'std.strings'
+
+io.println(char.is_digit('3', 10))
+io.println(char.is_digit('e', 10))
+io.println(char.is_digit('0', 16)) // todo add arg position
+io.println(char.is_ascii_letter('a'))
+io.println(char.is_ascii_letter('б')) // todo add representation of char with len > 1
+io.println(char.as_int('1'))

@@ -252,6 +252,7 @@ impl GC {
     ///
     pub unsafe fn collect_garbage(&mut self, vm: &mut VM, table: *mut Table) {
         println!("triggered gc");
+        println!("allocated before: {}", self.objects.len());
         // logging gc is triggered
         self.log(|| Cow::Borrowed("gc :: triggered"));
 
@@ -279,6 +280,7 @@ impl GC {
 
         // log gc ended
         self.log(|| Cow::Borrowed("gc :: end"));
+        println!("allocated after: {}", self.objects.len());
     }
 
     /// Allocated values amount

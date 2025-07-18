@@ -1,13 +1,13 @@
 /*
- Library: Strings. StringEx.
+ Library: Strings. String.
  | implementation of replace, strip, split,
  | trim, substring, char_at, replace_first,
  | replace_last, contains, index_of, last_index_of,
  | first_index_of
  | can be found in
- | > crate::vm::natives::libs::natives_io
+ | > crate::vm::natives::libs::natives_strings
  */
-type StringEx(string) impl Display {
+type String(string) impl Display {
 
     /*
      Subs string from x to n
@@ -67,6 +67,16 @@ type StringEx(string) impl Display {
     native __internal_rfind -> 'strings@rfind'
 
     /*
+     Push str to current string
+    */
+    native __internal_push -> 'strings@push'
+
+    /*
+     Length of string
+    */
+    native __internal_length -> 'strings@length'
+
+    /*
      Native functions wrappers
     */
     fn replace(a, b) { return new StringEx(self.__internal_replace(self.string, a, b)) }
@@ -91,4 +101,27 @@ type StringEx(string) impl Display {
     fn to_string {
         return string
     }
+    fn push(str) {
+        if typeof(str) == 'string' {
+            self.__internal_push(self.string, str)
+        } else {
+            self.__internal_push(self.string, '' + str)
+        }
+    }
+    fn length { return self.__internal_length(self.string) }
+}
+
+/*
+ Library: Strings. Unit char.
+ | implementation of is_digit, is_ascii_letter, as_int,
+ | can be found in
+ | > crate::vm::natives::libs::natives_strings
+*/
+unit char {
+   // Checks char is digit with specific radix in range 2..36
+   native is_digit -> 'char@is_digit'
+   // Checks char is ascii letter
+   native is_ascii_letter -> 'char@is_ascii_letter'
+   // Returns char as int
+   native as_int -> 'char@as_int'
 }
