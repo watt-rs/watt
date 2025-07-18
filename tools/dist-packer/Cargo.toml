@@ -1,0 +1,10 @@
+[package]
+name = "dist-packer"
+version = "0.1.0"
+edition = "2024"
+build = "build.rs"
+
+[dependencies]
+clap = "4.5.40"
+walkdir = "2.5.0"
+zip = { version = "4.3.0", default-features = false, features = ["deflate"] }

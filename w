@@ -14,6 +14,12 @@ elif [[ $1 == "bench" ]]; then
 	fi
 	cd $DIR/tools/$TESTER_NAME
 	cargo r -q --release bench $DIR $2
+elif [[ $1 == "dist" ]]; then
+    echo "Building dist-packer tool"
+    shift
+    cd $DIR/tools/dist-packer
+    cargo r --release -- $DIR $@
+    exit 1
 elif [[ $1 == "help" ]]; then
 	echo "Usage: $0 mode [FILES...]"
 	echo "Available modes: test, bench"
