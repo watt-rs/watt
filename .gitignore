@@ -4,3 +4,4 @@ perf.data*
 .vscode
 docs/mdbook.exe
 docs/book
+watt-*.zip
