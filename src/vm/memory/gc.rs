@@ -3,8 +3,8 @@ use crate::vm::memory::memory;
 use crate::vm::table::Table;
 use crate::vm::values::{FnOwner, Value};
 use crate::vm::vm::VM;
-use std::collections::HashSet;
 use std::borrow::Cow;
+use rustc_hash::FxHashSet;
 
 /// Garbage collector
 ///
@@ -16,9 +16,9 @@ use std::borrow::Cow;
 ///
 #[derive(Debug)]
 pub struct GC {
-    objects: HashSet<Value>,
-    marked: HashSet<Value>,
-    marked_tables: HashSet<*mut Table>,
+    objects: FxHashSet<Value>,
+    marked: FxHashSet<Value>,
+    marked_tables: FxHashSet<*mut Table>,
     guard: Vec<Value>,
     debug: bool,
 }
@@ -28,9 +28,9 @@ impl GC {
     /// New gc
     pub fn new(debug: bool) -> GC {
         GC {
-            objects: HashSet::new(),
-            marked: HashSet::new(),
-            marked_tables: HashSet::new(),
+            objects: FxHashSet::default(),
+            marked: FxHashSet::default(),
+            marked_tables: FxHashSet::default(),
             guard: Vec::new(),
             debug,
         }
@@ -46,8 +46,8 @@ impl GC {
 
     /// Resets `marked` and `marked_tables` after garbage collection
     fn reset(&mut self) {
-        self.marked = HashSet::new();
-        self.marked_tables = HashSet::new();
+        self.marked.clear();
+        self.marked_tables.clear();
     }
 
     /// Marks value
@@ -151,7 +151,7 @@ impl GC {
         // finding unmarked objects
         let mut to_free = vec![];
         self.objects.retain(|value| {
-            if self.marked.contains(&value.clone()) {
+            if self.marked.contains(value) {
                 true
             } else {
                 to_free.push(*value);

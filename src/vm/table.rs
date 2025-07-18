@@ -3,7 +3,8 @@ use crate::errors::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::memory::memory;
 use crate::vm::values::Value;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashSet};
+use rustc_hash::FxHashMap;
 
 /// Table
 ///
@@ -14,7 +15,7 @@ use std::collections::{HashMap, HashSet};
 #[derive(Clone)]
 pub struct Table {
     /// this table fields list
-    pub fields: HashMap<String, Value>,
+    pub fields: FxHashMap<String, Value>,
     ///
     /// root table, previous lexical table
     /// for example:
@@ -36,7 +37,7 @@ impl Table {
     /// New table
     pub fn new() -> Table {
         Table {
-            fields: HashMap::new(),
+            fields: FxHashMap::default(),
             root: std::ptr::null_mut(),
             parent: std::ptr::null_mut(),
             closure: std::ptr::null_mut(),
