@@ -277,7 +277,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "char@is_ascii_letter",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let raw_ch = utils::expect_cloned_string(addr.clone(), vm.pop(&addr)?, None);
-            
+
             if should_push {
                 vm.push(Value::Bool(raw_ch.is_ascii()));
             }
@@ -341,6 +341,32 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
 
             Ok(())
         },
-    );    
+    );
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        1,
+        "strings@lower",
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            let string = utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
+            if should_push {
+                vm.op_push(OpcodeValue::String((*string).to_lowercase()), table)?;
+            }
+            Ok(())
+        },
+    );
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        1,
+        "strings@upper",
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            let string = utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
+            if should_push {
+                vm.op_push(OpcodeValue::String((*string).to_uppercase()), table)?;
+            }
+            Ok(())
+        },
+    );
     Ok(())
 }

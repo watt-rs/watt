@@ -77,22 +77,32 @@ type String(string) impl Display {
     native __internal_length -> 'strings@length'
 
     /*
+     To lower case
+    */
+    native __internal_lower -> 'strings@lower'
+
+    /*
+     To upper case
+    */
+    native __internal_upper -> 'strings@upper'
+
+    /*
      Native functions wrappers
     */
-    fn replace(a, b) { return new StringEx(self.__internal_replace(self.string, a, b)) }
-    fn replace_n(a, b) { return new StringEx(self.__internal_replace_n(self.string, a, b)) }
-    fn replace_range(a, b) { return new StringEx(self.__internal_replace_range(self.string, a, b)) }
+    fn replace(a, b) { return new String(self.__internal_replace(self.string, a, b)) }
+    fn replace_n(a, b) { return new String(self.__internal_replace_n(self.string, a, b)) }
+    fn replace_range(a, b) { return new String(self.__internal_replace_range(self.string, a, b)) }
     fn find(x) { return self.__internal_find(self.string, x) }
     fn rfind(x) { return self.__internal_rfind(self.string, x) }
     fn contains(x) { return self.__internal_contains(self.string, x) }
-    fn trim { return new StringEx(self.__internal_trim(self.string)) }
+    fn trim { return new String(self.__internal_trim(self.string)) }
     fn split(x) {
         list := new List()
         list.internal = self.__internal_split(self.string, x)
         return list
     }
-    fn sub(x, n) { return new StringEx(self.__internal_substring(self.string, x, n)) }
-    fn char_at(i) { return new StringEx(self.__internal_char_at(self.string, i)) }
+    fn sub(x, n) { return new String(self.__internal_substring(self.string, x, n)) }
+    fn char_at(i) { return new String(self.__internal_char_at(self.string, i)) }
     fn chars {
         list := new List()
         list.internal = self.__internal_chars(self.string)
@@ -109,6 +119,8 @@ type String(string) impl Display {
         }
     }
     fn length { return self.__internal_length(self.string) }
+    fn to_lowercase { return new String(self.__internal_lower(self.string)) }
+    fn to_uppercase { return new String(self.__internal_upper(self.string)) }
 }
 
 /*
