@@ -134,13 +134,9 @@ a := result.err('111')
 io.println(a?)
 */
 import 'std.io'
-fn factorial(n) {
-    f := 1
-    r := 1
-    while f <= n {
-        r *= f
-        f += 1
-    }
-    return r
+s := ''
+for i in 0..100000 {
+    io.println('iter ' + i)
+    s += i
 }
-io.println(factorial(15))
+io.println('done')

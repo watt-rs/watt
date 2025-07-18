@@ -4,6 +4,7 @@ use crate::vm::table::Table;
 use crate::vm::values::{FnOwner, Value};
 use crate::vm::vm::VM;
 use std::collections::HashSet;
+use std::borrow::Cow;
 
 /// Garbage collector
 ///
@@ -35,11 +36,12 @@ impl GC {
         }
     }
 
-    /// Prints message is debug is enabled
-    fn log(&self, message: &str) {
+    /// Prints message by calling
+    /// closure, if debug is enabled
+    fn log<F: FnOnce() -> Cow<'static, str>>(&self, message: F) {
         if self.debug {
-            println!("{message}")
-        };
+            println!("{}", message());
+        }
     }
 
     /// Resets `marked` and `marked_tables` after garbage collection
@@ -60,7 +62,7 @@ impl GC {
             return;
         }
         // logging marking value
-        self.log(&format!("gc :: mark :: value = {value:?}"));
+        self.log(|| Cow::Owned(format!("gc :: mark :: value = {value:?}")));
         // marking reference types
         match value {
             Value::Instance(instance) => unsafe {
@@ -92,8 +94,8 @@ impl GC {
                 self.marked.insert(value);
             }
             Value::List(list) => unsafe {
-                for value in (*list).clone() {
-                    self.mark_value(value);
+                for value in &*list{
+                    self.mark_value(*value);
                 }
                 self.marked.insert(value);
             },
@@ -121,7 +123,7 @@ impl GC {
         // adding to marked list
         self.marked_tables.insert(table);
         // logging marked table
-        self.log(&format!("gc :: mark :: table = {table:?}"));
+        self.log(|| Cow::Owned(format!("gc :: mark :: table = {table:?}")));
         // marking table values
         for val in (*table).fields.values() {
             self.mark_value(*val);
@@ -145,7 +147,7 @@ impl GC {
     ///
     fn sweep(&mut self) {
         // logging sweep is running
-        self.log("gc :: sweep :: running");
+        self.log(|| Cow::Borrowed("gc :: sweep :: running"));
         // finding unmarked objects
         let mut to_free = vec![];
         self.objects.retain(|value| {
@@ -186,7 +188,7 @@ impl GC {
     /// Freeing value
     fn free_value(&self, value: Value) {
         // logging value is freeing
-        self.log(&format!("gc :: free :: value = {value:?}"));
+        self.log(|| Cow::Owned(format!("gc :: free :: value = {value:?}")));
         // free
         match value {
             Value::Fn(f) => {
@@ -249,13 +251,14 @@ impl GC {
     /// Has medium runtime cost
     ///
     pub unsafe fn collect_garbage(&mut self, vm: &mut VM, table: *mut Table) {
+        println!("triggered gc");
         // logging gc is triggered
-        self.log("gc :: triggered");
+        self.log(|| Cow::Borrowed("gc :: triggered"));
 
         // mark phase
         // > stack
-        for val in vm.stack.clone() {
-            self.mark_value(val)
+        for val in &vm.stack {
+            self.mark_value(*val)
         }
         // > units
         self.mark_table(vm.units);
@@ -275,7 +278,7 @@ impl GC {
         self.reset();
 
         // log gc ended
-        self.log("gc :: end");
+        self.log(|| Cow::Borrowed("gc :: end"));
     }
 
     /// Allocated values amount
@@ -287,7 +290,7 @@ impl GC {
     /// Freeing all allocated values
     pub fn cleanup(&mut self) {
         // log gc is cleaning up
-        self.log(&format!("gc :: cleanup :: {:?}", self.objects.len()));
+        self.log(|| Cow::Owned(format!("gc :: cleanup :: {:?}", self.objects.len())));
 
         // freeing objects
         for value in &self.objects {
