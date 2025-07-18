@@ -1112,7 +1112,7 @@ impl VM {
         // inserting temp self
         (*(*unit).fields)
             .fields
-            .insert("self".to_string(), Value::Unit(unit));
+            .insert("self".to_string(), unit_value);
         // executing body
         self.run(body, (*unit).fields)?;
         // deleting temp self
