@@ -150,7 +150,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
 
     /// Converts source code represented as `&'cursor [char]`
     /// To a Vec<Token> - tokens list.
-    #[allow(clippy::nonminimal_bool)] 
+    #[allow(clippy::nonminimal_bool)]
     pub fn lex(mut self) -> Vec<Token> {
         if !self.tokens.is_empty() {
             panic!("tokens len already > 0. report this error to the developer.")
@@ -526,11 +526,10 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
     /// If current character is equal to `ch` advances it
     #[allow(clippy::wrong_self_convention)]
     fn is_match(&mut self, ch: char) -> bool {
-        if !self.cursor.is_at_end()
-            && self.cursor.char_at(0) == ch {
-                self.advance();
-                return true;
-            }
+        if !self.cursor.is_at_end() && self.cursor.char_at(0) == ch {
+            self.advance();
+            return true;
+        }
         false
     }
 

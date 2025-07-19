@@ -217,9 +217,7 @@ impl VM {
         let invalid_op_error = || {
             error!(Error::own_text(
                 address.clone(),
-                format!(
-                    "could not use '{op}' with {operand_a:?} and {operand_b:?}"
-                ),
+                format!("could not use '{op}' with {operand_a:?} and {operand_b:?}"),
                 "check your code."
             ));
         };
@@ -249,11 +247,7 @@ impl VM {
                         self.push(Value::Float(a + (b as f64)));
                     }
                     Value::String(b) => {
-                        let string = concat(
-                            String::with_capacity((*b).len()), 
-                            &a.to_string(), 
-                            &*b
-                        );
+                        let string = concat(String::with_capacity((*b).len()), &a.to_string(), &*b);
                         self.push(string);
                         self.gc_register(string, table);
                     }
@@ -269,11 +263,7 @@ impl VM {
                         self.push(Value::Int(a + b));
                     }
                     Value::String(b) => {
-                        let string = concat(
-                            String::with_capacity((*b).len()), 
-                            &a.to_string(), 
-                            &*b
-                        );
+                        let string = concat(String::with_capacity((*b).len()), &a.to_string(), &*b);
                         self.push(string);
                         self.gc_register(string, table);
                     }
@@ -283,30 +273,27 @@ impl VM {
                 },
                 Value::String(a) => match operand_b {
                     Value::String(b) => {
-                        let string = concat(
-                            String::with_capacity((*a).len() + (*b).len()), 
-                            &*a, 
-                            &*b
-                        );
+                        let string =
+                            concat(String::with_capacity((*a).len() + (*b).len()), &*a, &*b);
                         self.push(string);
                         self.gc_register(string, table);
                     }
                     _ => {
                         let string = concat(
                             String::with_capacity((*a).len()),
-                            &*a, 
-                            &operand_b.to_string()
+                            &*a,
+                            &operand_b.to_string(),
                         );
                         self.push(string);
                         self.gc_register(string, table);
                     }
-                }
+                },
                 _ => {
                     if let Value::String(b) = operand_b {
                         let string = concat(
                             String::with_capacity((*b).len()),
-                            &operand_a.to_string(), 
-                            &operand_b.to_string()
+                            &operand_a.to_string(),
+                            &operand_b.to_string(),
                         );
 
                         self.push(string);
@@ -552,9 +539,7 @@ impl VM {
         let invalid_op_error = || {
             Error::own_text(
                 address.clone(),
-                format!(
-                    "could not use '{op}' for {operand_a:?} and {operand_b:?}"
-                ),
+                format!("could not use '{op}' for {operand_a:?} and {operand_b:?}"),
                 "check your code.",
             )
         };
@@ -793,9 +778,7 @@ impl VM {
                 self.op_bang(address)?;
             }
             _ => {
-                panic!(
-                    "operator {op} is not found. report this error to the developer."
-                )
+                panic!("operator {op} is not found. report this error to the developer.")
             }
         }
         Ok(())
@@ -848,9 +831,7 @@ impl VM {
                         operand_b,
                         Error::own_text(
                             address.clone(),
-                            format!(
-                                "could not use '{op}' for {operand_a:?} and {operand_b:?}"
-                            ),
+                            format!("could not use '{op}' for {operand_a:?} and {operand_b:?}"),
                             "check your code.",
                         ),
                     );
@@ -873,9 +854,7 @@ impl VM {
                         operand_b,
                         Error::own_text(
                             address.clone(),
-                            format!(
-                                "could not use '{op}' for {operand_a:?} and {operand_b:?}"
-                            ),
+                            format!("could not use '{op}' for {operand_a:?} and {operand_b:?}"),
                             "check your code.",
                         ),
                     );
@@ -1852,9 +1831,7 @@ impl VM {
             } else {
                 error!(Error::own(
                     addr.clone(),
-                    format!(
-                        "invalid args amount: {passed_amount} to create instance of {name}."
-                    ),
+                    format!("invalid args amount: {passed_amount} to create instance of {name}."),
                     format!("expected {params_amount} arguments.")
                 ));
             }

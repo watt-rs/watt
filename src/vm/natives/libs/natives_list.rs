@@ -242,9 +242,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             } else {
                 error!(Error::own_text(
                     addr.clone(),
-                    format!(
-                        "could not get element index from {list_value:?}, not a list"
-                    ),
+                    format!("could not get element index from {list_value:?}, not a list"),
                     "check your code"
                 ));
             }

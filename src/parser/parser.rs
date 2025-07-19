@@ -171,14 +171,12 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                     self.consume(TokenKind::Question)?;
                     Ok(Node::ErrorPropagation {
                         location: identifier.clone(),
-                        value: Box::new(
-                            Node::Call {
-                                previous,
-                                name: identifier,
-                                args,
-                                should_push: true,
-                            }
-                        ),
+                        value: Box::new(Node::Call {
+                            previous,
+                            name: identifier,
+                            args,
+                            should_push: true,
+                        }),
                         should_push: true,
                     })
                 } else {
@@ -188,7 +186,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                         args,
                         should_push: true,
                     })
-                }
+                };
             }
             // get
             else {
@@ -1089,7 +1087,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             }
             self.consume(TokenKind::Rbrace)?;
         }
-        
+
         Ok(Node::Unit {
             name: name.clone(),
             full_name: Some(self.to_full_name(name)),
@@ -1176,9 +1174,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     /// Check current token type is equal to tk_type
     fn check(&self, tk_type: TokenKind) -> bool {
         match self.tokens.get(self.current as usize) {
-            Some(tk) => {
-                tk.tk_type == tk_type
-            }
+            Some(tk) => tk.tk_type == tk_type,
             None => false,
         }
     }

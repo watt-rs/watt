@@ -3,8 +3,8 @@ use crate::vm::memory::memory;
 use crate::vm::table::Table;
 use crate::vm::values::{FnOwner, Value};
 use crate::vm::vm::VM;
-use std::borrow::Cow;
 use rustc_hash::FxHashSet;
+use std::borrow::Cow;
 
 /// Garbage collector
 ///
@@ -94,7 +94,7 @@ impl GC {
                 self.marked.insert(value);
             }
             Value::List(list) => unsafe {
-                for value in &*list{
+                for value in &*list {
                     self.mark_value(*value);
                 }
                 self.marked.insert(value);
