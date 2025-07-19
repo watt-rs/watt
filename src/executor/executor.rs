@@ -98,7 +98,15 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
                 Some(parent) => {
                     let mut result = parent.to_path_buf();
                     result.push(path);
-                    result
+                    if result.exists() {
+                        result
+                    } else {
+                        error!(Error::own_text(
+                            address.to_owned(),
+                            format!("file not found: {path:?}"),
+                            "check file existence."
+                        ))
+                    }
                 }
             }
         } else {

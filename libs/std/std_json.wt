@@ -1,0 +1,304 @@
+// imports
+import 'std.strings'
+import 'std.convert'
+import 'std.errors'
+
+// Token unit.
+unit JsonTokenKind {
+    String := 'string'
+    Lbrace := 'lbrace'
+    Rbrace := 'rbrace'
+    Lbracket := 'lbracket'
+    Rbracket := 'rbracket'
+    Comma := 'comma'
+    Boolean := 'bool'
+    Float := 'float'
+    Int := 'int'
+    Colon := ','
+}
+
+// Token structure.
+type JsonToken (
+    kind,
+    value,
+    line
+)
+
+// Error
+type JsonError(message, line) impl Display {
+    fn to_string() {
+        return '[err:' + message + '; at ' + line + ']'
+    }
+}
+
+// Json unit. Contains encode and decode.
+unit json {
+    // lexing data, returns tokens
+    fn _lex(data) {
+        // temp variables
+        tokens := []
+        line := 1
+        index := 0
+        chars := data.chars()
+
+        // returns current symbol
+        fn get { return chars.get(index) }
+
+        // checks char match
+        fn is_match(ch) { return chars.get(index) == ch }
+
+        // eats token
+        fn eat {
+            ch := chars.get(index)
+            index += 1
+            return ch
+        }
+
+        // checks cursor is at end
+        fn is_at_end {
+            return chars.length() <= index
+        }
+
+        // lexing number, with result
+        fn lex_number(ch) {
+            string := new String(ch)
+            is_float := false
+
+            while char.is_digit(get(), 10) or get() == '.' {
+                if get() == '.' {
+                    if is_float {
+                         return result.err(
+                            new JsonError('could not parse number.', line)
+                         )
+                    } else {
+                        is_float = true
+                    }
+                }
+                string.push(eat())
+            }
+
+            if is_float {
+                return result.ok(
+                    new JsonToken(
+                        JsonTokenKind.Float,
+                        string,
+                        line
+                    )
+                )
+            } else {
+                return result.ok(
+                    new JsonToken(
+                        JsonTokenKind.Int,
+                        string,
+                        line
+                    )
+                )
+            }
+        }
+
+        // lexing string
+        fn lex_string {
+            string := new String('')
+            while get() != '"' {
+                string.push(eat())
+                if is_at_end() {
+                    return result.err(
+                        new JsonError('could not parse string.', line)
+                    )
+                }
+            }
+            eat()
+            return result.ok(
+                new JsonToken(
+                    JsonTokenKind.String,
+                    string,
+                    line
+                )
+            )
+        }
+
+        // lexing
+        while is_at_end() == false {
+            current := eat()
+            match current {
+                case '{' -> tokens.add(new JsonToken(JsonTokenKind.Lbrace, '{', line))
+                case '}' -> tokens.add(new JsonToken(JsonTokenKind.Rbrace, '}', line))
+                case '[' -> tokens.add(new JsonToken(JsonTokenKind.Lbracket, '[', line))
+                case ']' -> tokens.add(new JsonToken(JsonTokenKind.Rbracket, ']', line))
+                case ',' -> tokens.add(new JsonToken(JsonTokenKind.Comma, ',', line))
+                case ':' -> tokens.add(new JsonToken(JsonTokenKind.Colon, ':', line))
+                case '-' -> tokens.add(lex_number(current)?)
+                case ' ' {}
+                case '\n' -> line += 1
+                case '\t' {}
+                default {
+                    if char.is_digit(current, 10) {
+                        tokens.add(lex_number(current)?)
+                    } elif current == '"' {
+                        tokens.add(lex_string()?)
+                    } elif current == 't' {
+                        for i in 0..3 { eat() }
+                        tokens.add(new JsonToken(JsonTokenKind.Boolean, 'true', line))
+                    } elif current == 'f' {
+                        for i in 0..4 { eat() }
+                        tokens.add(new JsonToken(JsonTokenKind.Boolean, 'false', line))
+                    } else {
+                        eat()
+                    }
+                }
+            }
+        }
+
+        // returning tokens
+        return result.ok(tokens)
+    }
+
+    // parse to map
+    fn _parse(tokens) {
+        // current index
+        index := 0
+
+        // gets char from tokens list
+        fn get { return tokens.get(index) }
+
+        // matches char
+        fn is_match(kind) { return get().kind == kind }
+
+        // eats token
+        fn consume(kind) {
+            tk := get()
+            if tk.kind == kind {
+                return result.err(new JsonError('unexpected token: ' + tk, tk.line))
+            }
+            index += 1
+            return tk
+        }
+
+        // checks cursor is at end
+        fn is_at_end { return code.length() <= index }
+
+        // parses value
+        fn parse_value {
+            match get().kind {
+                case JsonTokenKind.Float {
+                    return convert.to_float(
+                        eat(JsonTokenKind.Float).value
+                    )
+                }
+                case JsonTokenKind.Int {
+                    return convert.to_int(
+                        eat(JsonTokenKind.Int).value
+                    )
+                }
+                case JsonTokenKind.String {
+                    return eat(JsonTokenKind.String).value
+                }
+                case JsonTokenKind.Lbrace {
+                    return map()
+                }
+                case JsonTokenKind.Lbracket {
+                    return list()
+                }
+                default {
+                    return result.err(new JsonError('unexpected token: ' + tk, tk.line))
+                }
+            }
+        }
+
+        // parses list
+        fn parse_list {
+            eat(JsonTokenKind.Lbracket)
+            if is_match(JsonTokenKind.Rbracket) {
+                eat(JsonTokenKind.Rbracket)
+                return []
+            }
+            list := [value()]
+            while is_match(JsonTokenKind.Comma) {
+                eat(JsonTokenKind.Comma)
+                list.add(value())
+            }
+            eat(JsonTokenKind.Rbracket)
+            return list
+        }
+
+        // parses key
+        fn key {
+            k := eat(JsonTokenKind.String).value
+            eat(JsonTokenKind.Colon)
+            return k
+        }
+
+        // parses map
+        fn map {
+            eat(JsonTokenKind.Lbrace)
+            if is_match(JsonTokenKind.Rbrace) {
+                eat(JsonTokenKind.Rbrace)
+                return []
+            }
+            map := {}
+            k := key()
+            v := value()
+            map.set(k, v)
+            while is_match(JsonTokenKind.Comma) {
+                eat(JsonTokenKind.Comma)
+                k := key()
+                v := value()
+                map.set(k, v)
+            }
+            eat(JsonTokenKind.Rbrace)
+            return map
+        }
+
+        // parsing
+        return result.ok(map())
+    }
+
+    // decoding json
+    fn decode(string) {
+        return _parse(_lex(new String(string)))
+    }
+
+    // encoding value
+    fn encode_value(value) {
+        if typeof(value) == 'string' {
+            return '"' + value + '"'
+        } elif typeof(value) == 'List' {
+            return encode_list()
+        } elif typeof(value) == 'Map' {
+            return encode_map()
+        } else {
+            return value
+        }
+    }
+
+    // encodes list
+    fn encode_list(list) {
+        string := new String('[')
+        for i in list.iter() {
+            string.push(encode_value())
+            eat(JsonTokenKind.Comma)
+        }
+        string.push(']')
+        return string
+    }
+
+    // encodes map
+    fn encode_map(map) {
+        keys := map.keys()
+        string := new String('{')
+
+        for key in keys.iter() {
+            value := map.get(key)
+            string.push('"').push(key).push('"')
+                .push(': ').push(encode_value(value))
+        }
+
+        string.push('}')
+        return string
+    }
+
+    // encode
+    fn encode(map) {
+        return encode_map(map)
+    }
+}

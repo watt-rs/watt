@@ -82,10 +82,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
     natives::provide(
         vm,
         built_in_address.clone(),
-        2,
+        1,
         "strings@chars",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let i = utils::expect_int(addr.clone(), vm.pop(&addr)?, None);
             let string = utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
             if should_push {
                 let result: Vec<Value> = (*string)

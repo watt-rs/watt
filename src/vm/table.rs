@@ -4,7 +4,9 @@ use crate::lexer::address::Address;
 use crate::vm::memory::memory;
 use crate::vm::values::Value;
 use std::collections::{HashSet};
+use std::rc::Rc;
 use rustc_hash::FxHashMap;
+use std::cell::RefCell;
 
 /// Table
 ///
@@ -97,6 +99,8 @@ impl Table {
     ///
     pub unsafe fn set(&mut self, address: Address, name: &str, value: Value) -> Result<(), Error> {
         let mut current = self as *mut Table;
+        self.print(0);
+
         while !(*current).fields.contains_key(name) {
             if (*current).root.is_null() {
                 return Err(Error::own_text(
@@ -279,3 +283,6 @@ impl Table {
 /// Send & sync for future multi-threading.
 unsafe impl Send for Table {}
 unsafe impl Sync for Table {}
+
+/// Rc<RefCell<Table>> table
+type RcTable = Rc<RefCell<Table>>;

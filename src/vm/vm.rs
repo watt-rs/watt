@@ -1532,7 +1532,7 @@ impl VM {
                     }
                 }
             } else {
-                (*call_table).set_root(self.globals)
+                (*call_table).set_root(table)
             }
             // passing args
             pass_arguments(

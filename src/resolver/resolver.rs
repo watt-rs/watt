@@ -19,6 +19,7 @@ pub struct ImportsResolver<'import_key, 'import_path> {
     builtins: Vec<String>,
 }
 /// Import resolver implementation
+/// todo: add could not resolve error instead of file not found
 #[allow(unused_qualifications)]
 impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
     /// New import resolver
@@ -37,6 +38,7 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
                 ("std.system", "./libs/std/std_system.wt"),
                 ("std.crypto", "./libs/std/std_crypto.wt"),
                 ("std.strings", "./libs/std/std_strings.wt"),
+                ("std.json", "./libs/std/std_json.wt"),
             ]),
             builtins: vec!["./libs/base.wt".to_string()],
         }

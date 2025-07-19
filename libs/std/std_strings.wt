@@ -117,6 +117,7 @@ type String(string) impl Display {
         } else {
             self.__internal_push(self.string, '' + str)
         }
+        return self
     }
     fn length { return self.__internal_length(self.string) }
     fn to_lowercase { return new String(self.__internal_lower(self.string)) }

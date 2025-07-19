@@ -954,41 +954,43 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             }
         }
         // body
-        self.consume(TokenKind::Lbrace)?;
         let mut body = Vec::new();
-        while !self.is_at_end() && !self.check(TokenKind::Rbrace) {
-            let location = self.peek()?.clone();
-            let mut node = self.statement()?;
-            match node {
-                Node::FnDeclaration {
-                    name, params, body, ..
-                } => {
-                    node = Node::FnDeclaration {
-                        name,
-                        full_name: None,
-                        params,
-                        body,
-                        make_closure: false,
+        if self.check(TokenKind::Lbrace) {
+            self.consume(TokenKind::Lbrace)?;
+            while !self.is_at_end() && !self.check(TokenKind::Rbrace) {
+                let location = self.peek()?.clone();
+                let mut node = self.statement()?;
+                match node {
+                    Node::FnDeclaration {
+                        name, params, body, ..
+                    } => {
+                        node = Node::FnDeclaration {
+                            name,
+                            full_name: None,
+                            params,
+                            body,
+                            make_closure: false,
+                        }
+                    }
+                    Node::Native { .. }
+                    | Node::Get { .. }
+                    | Node::Define { .. }
+                    | Node::Assign { .. } => {}
+                    _ => {
+                        return Err(Error::own_text(
+                            location.address,
+                            format!(
+                                "invalid node for type: {:?}:{:?}",
+                                location.tk_type, location.value
+                            ),
+                            "check your code.",
+                        ));
                     }
                 }
-                Node::Native { .. }
-                | Node::Get { .. }
-                | Node::Define { .. }
-                | Node::Assign { .. } => {}
-                _ => {
-                    return Err(Error::own_text(
-                        location.address,
-                        format!(
-                            "invalid node for type: {:?}:{:?}",
-                            location.tk_type, location.value
-                        ),
-                        "check your code.",
-                    ));
-                }
+                body.push(node);
             }
-            body.push(node);
+            self.consume(TokenKind::Rbrace)?;
         }
-        self.consume(TokenKind::Rbrace)?;
 
         Ok(Node::Type {
             name: name.clone(),
@@ -1057,42 +1059,44 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         let name = self.consume(TokenKind::Id)?.clone();
 
         // unit body
-        self.consume(TokenKind::Lbrace)?;
         let mut body = Vec::new();
-        while !self.is_at_end() && !self.check(TokenKind::Rbrace) {
-            let location = self.peek()?.clone();
-            let mut node = self.statement()?;
-            match node {
-                Node::FnDeclaration {
-                    name, params, body, ..
-                } => {
-                    node = Node::FnDeclaration {
-                        name,
-                        full_name: None,
-                        params,
-                        body,
-                        make_closure: false,
+        if self.check(TokenKind::Lbrace) {
+            self.consume(TokenKind::Lbrace)?;
+            while !self.is_at_end() && !self.check(TokenKind::Rbrace) {
+                let location = self.peek()?.clone();
+                let mut node = self.statement()?;
+                match node {
+                    Node::FnDeclaration {
+                        name, params, body, ..
+                    } => {
+                        node = Node::FnDeclaration {
+                            name,
+                            full_name: None,
+                            params,
+                            body,
+                            make_closure: false,
+                        }
+                    }
+                    Node::Native { .. }
+                    | Node::Get { .. }
+                    | Node::Define { .. }
+                    | Node::Assign { .. } => {}
+                    _ => {
+                        return Err(Error::own_text(
+                            location.address,
+                            format!(
+                                "invalid node for unit: {:?}:{:?}",
+                                location.tk_type, location.value
+                            ),
+                            "check your code.",
+                        ));
                     }
                 }
-                Node::Native { .. }
-                | Node::Get { .. }
-                | Node::Define { .. }
-                | Node::Assign { .. } => {}
-                _ => {
-                    return Err(Error::own_text(
-                        location.address,
-                        format!(
-                            "invalid node for unit: {:?}:{:?}",
-                            location.tk_type, location.value
-                        ),
-                        "check your code.",
-                    ));
-                }
+                body.push(node);
             }
-            body.push(node);
+            self.consume(TokenKind::Rbrace)?;
         }
-        self.consume(TokenKind::Rbrace)?;
-
+        
         Ok(Node::Unit {
             name: name.clone(),
             full_name: Some(self.to_full_name(name)),
