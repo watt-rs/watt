@@ -166,12 +166,29 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             }
             // ( args )
             else if self.check(TokenKind::Lparen) {
-                return Ok(Node::Call {
-                    previous,
-                    name: identifier,
-                    args: self.args()?,
-                    should_push: true,
-                });
+                let args = self.args()?;
+                return if self.check(TokenKind::Question) {
+                    self.consume(TokenKind::Question)?;
+                    Ok(Node::ErrorPropagation {
+                        location: identifier.clone(),
+                        value: Box::new(
+                            Node::Call {
+                                previous,
+                                name: identifier,
+                                args,
+                                should_push: true,
+                            }
+                        ),
+                        should_push: true,
+                    })
+                } else {
+                    Ok(Node::Call {
+                        previous,
+                        name: identifier,
+                        args,
+                        should_push: true,
+                    })
+                }
             }
             // get
             else {
@@ -227,38 +244,14 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         Ok(left)
     }
 
-    /// Error propagation
-    fn error_propagation(&mut self, is_expr: bool) -> Result<Node, Error> {
-        let mut node = self.access(is_expr)?;
-
-        if self.check(TokenKind::Question) {
-            let question = self.consume(TokenKind::Question)?.clone();
-            node = Node::ErrorPropagation {
-                location: question,
-                value: Box::new(node),
-                should_push: is_expr,
-            }
-        }
-
-        Ok(node)
-    }
-
     /// Access expr parsing
     fn access_expr(&mut self) -> Result<Node, Error> {
-        if self.check(TokenKind::New) {
-            self.access(true)
-        } else {
-            self.error_propagation(true)
-        }
+        self.access(true)
     }
 
     /// Access statement parsing
     fn access_stmt(&mut self) -> Result<Node, Error> {
-        if self.check(TokenKind::New) {
-            self.access(false)
-        } else {
-            self.error_propagation(false)
-        }
+        self.access(false)
     }
 
     /// Grouping expr `( expr )`

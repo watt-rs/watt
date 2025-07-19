@@ -167,11 +167,11 @@ unit json {
         // eats token
         fn consume(kind) {
             tk := get()
-            if tk.kind == kind {
-                return result.err(new JsonError('unexpected token: ' + tk, tk.line))
+            if tk.kind != kind {
+                return result.err(new JsonError('unexpected token: ' + tk.kind, tk.line))
             }
             index += 1
-            return tk
+            return result.ok(tk)
         }
 
         // checks cursor is at end
@@ -179,83 +179,86 @@ unit json {
 
         // parses value
         fn parse_value {
-            match get().kind {
+            tk := get()
+            match tk.kind {
                 case JsonTokenKind.Float {
-                    return convert.to_float(
-                        eat(JsonTokenKind.Float).value
-                    )
+                    return result.ok(convert.to_float(
+                        consume(JsonTokenKind.Float)?.valueto_string()
+                    ))
                 }
                 case JsonTokenKind.Int {
-                    return convert.to_int(
-                        eat(JsonTokenKind.Int).value
-                    )
+                    return result.ok(convert.to_int(
+                        consume(JsonTokenKind.Int)?.value.to_string()
+                    ))
                 }
                 case JsonTokenKind.String {
-                    return eat(JsonTokenKind.String).value
+                    return result.ok(
+                        consume(JsonTokenKind.String)?.value.to_string()
+                    )
                 }
                 case JsonTokenKind.Lbrace {
-                    return map()
+                    return parse_map()
                 }
                 case JsonTokenKind.Lbracket {
-                    return list()
+                    return parse_list()
                 }
                 default {
-                    return result.err(new JsonError('unexpected token: ' + tk, tk.line))
+                    return result.err(new JsonError('unexpected token: ' + tk.kind, tk.line))
                 }
             }
         }
 
         // parses list
         fn parse_list {
-            eat(JsonTokenKind.Lbracket)
+            consume(JsonTokenKind.Lbracket)?
             if is_match(JsonTokenKind.Rbracket) {
-                eat(JsonTokenKind.Rbracket)
+                consume(JsonTokenKind.Rbracket)?
                 return []
             }
-            list := [value()]
+            list := [parse_value()?]
             while is_match(JsonTokenKind.Comma) {
-                eat(JsonTokenKind.Comma)
-                list.add(value())
+                consume(JsonTokenKind.Comma)?
+                list.add(parse_value())
             }
-            eat(JsonTokenKind.Rbracket)
-            return list
+            consume(JsonTokenKind.Rbracket)?
+            return result.ok(list)
         }
 
         // parses key
         fn key {
-            k := eat(JsonTokenKind.String).value
-            eat(JsonTokenKind.Colon)
-            return k
+            k := consume(JsonTokenKind.String)?.value.to_string()
+            consume(JsonTokenKind.Colon)?
+            return result.ok(k)
         }
 
         // parses map
-        fn map {
-            eat(JsonTokenKind.Lbrace)
+        fn parse_map {
+            consume(JsonTokenKind.Lbrace)?
             if is_match(JsonTokenKind.Rbrace) {
-                eat(JsonTokenKind.Rbrace)
+                consume(JsonTokenKind.Rbrace)?
                 return []
             }
             map := {}
-            k := key()
-            v := value()
+            k := key()?
+            v := parse_value()?
             map.set(k, v)
             while is_match(JsonTokenKind.Comma) {
-                eat(JsonTokenKind.Comma)
-                k := key()
-                v := value()
+                consume(JsonTokenKind.Comma)?
+                k := key()?
+                v := parse_value()?
                 map.set(k, v)
             }
-            eat(JsonTokenKind.Rbrace)
-            return map
+            consume(JsonTokenKind.Rbrace)?
+            return result.ok(map)
         }
 
         // parsing
-        return result.ok(map())
+        return parse_map()
     }
 
     // decoding json
     fn decode(string) {
-        return _parse(_lex(new String(string)))
+        return _parse(_lex(new String(string))?)
     }
 
     // encoding value

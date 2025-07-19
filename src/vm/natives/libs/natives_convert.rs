@@ -42,7 +42,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                             error!(Error::own_text(
                                 addr,
                                 format!("could not cast string: {} to i64", *s),
-                                "you can convert only number string to i63."
+                                "you can convert only number string to i64."
                             ));
                         }
                     }
@@ -64,8 +64,8 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 _ => {
                     error!(Error::own_text(
                         addr,
-                        format!("could not cast value: {value:?} to i63"),
-                        "check your value"
+                        format!("could not cast value: {value:?} to i64."),
+                        "check your value."
                     ));
                 }
             }
