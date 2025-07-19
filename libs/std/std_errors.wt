@@ -17,6 +17,14 @@ type Result(ok, err) {
                 'you can use only ok or err at the same time.'
             )
         }
+
+        if self.ok == null and self.err == null {
+            panic(
+                'could not create result with both values are `null`',
+                'if you\'re using `result.ok` or `result.err`, pass non-null value then.'
+            )
+        }
+
     }
 
     /*
