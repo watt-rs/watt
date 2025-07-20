@@ -4,7 +4,7 @@ use crate::vm::bytecode::Chunk;
 use crate::vm::flow::ControlFlow;
 use crate::vm::memory::memory;
 use crate::vm::table::Table;
-use crate::vm::vm::{try_free_table, VM};
+use crate::vm::vm::{VM, try_free_table};
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 
@@ -102,7 +102,9 @@ impl Instance {
 /// Instance drop implementation
 impl Drop for Instance {
     fn drop(&mut self) {
-        unsafe { try_free_table(self.fields); }
+        unsafe {
+            try_free_table(self.fields);
+        }
     }
 }
 
@@ -126,7 +128,9 @@ impl Unit {
 /// Unit drop implementation
 impl Drop for Unit {
     fn drop(&mut self) {
-        unsafe { try_free_table(self.fields); }
+        unsafe {
+            try_free_table(self.fields);
+        }
     }
 }
 

@@ -133,6 +133,7 @@ import 'std.errors'
 a := result.err('111')
 io.println(a?)
 */
+/*
 import 'std.io'
 import 'std.json'
 
@@ -144,3 +145,18 @@ if text.is_err() {
 } else {
     io.println(text.unwrap())
 }
+*/
+import 'std.ffi'
+import 'std.io'
+
+lib := ffi.load(
+    '/home/vyacheslav/Watt/RustWatt/watt/libsum.so',
+    [
+        {
+            'name': 'sum',
+            'out': 'i32',
+            'params': ['i32','i32']
+        }
+    ]
+)
+io.println(lib.call('sum', [3,5]))

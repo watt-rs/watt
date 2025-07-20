@@ -44,7 +44,6 @@ pub struct VM {
     pub stack: Vec<Value>,
 }
 /// Vm implementation
-#[allow(dangerous_implicit_autorefs)]
 #[allow(non_upper_case_globals)]
 #[allow(unused_qualifications)]
 impl VM {
@@ -1959,7 +1958,7 @@ impl VM {
         addr: &Address,
         value: &Chunk,
         table: *mut Table,
-        should_push: bool
+        should_push: bool,
     ) -> Result<(), ControlFlow> {
         // running value
         self.run(value, table)?;
@@ -1992,14 +1991,7 @@ impl VM {
                         "is_ok should be fn."
                     ));
                 }
-                vm.call(
-                    addr,
-                    "is_ok",
-                    callable,
-                    &Chunk::new(vec![]),
-                    table,
-                    true,
-                )?;
+                vm.call(addr, "is_ok", callable, &Chunk::new(vec![]), table, true)?;
 
                 let is_ok = vm.pop(addr)?;
 
@@ -2046,14 +2038,7 @@ impl VM {
                             "unwrap should be fn."
                         ));
                     }
-                    vm.call(
-                        addr,
-                        "unwrap",
-                        callable,
-                        &Chunk::new(vec![]),
-                        table,
-                        true,
-                    )?;
+                    vm.call(addr, "unwrap", callable, &Chunk::new(vec![]), table, true)?;
                     Ok(())
                 }
                 Err(e) => {
@@ -2303,7 +2288,11 @@ impl VM {
                 Opcode::Native { addr, fn_name } => {
                     self.op_native(addr, fn_name)?;
                 }
-                Opcode::ErrorPropagation { addr, value, should_push } => {
+                Opcode::ErrorPropagation {
+                    addr,
+                    value,
+                    should_push,
+                } => {
                     self.op_error_propagation(addr, value, table, *should_push)?;
                 }
                 Opcode::Impls {

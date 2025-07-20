@@ -11,7 +11,6 @@ use crate::vm::vm::VM;
 
 // провайд
 #[allow(unused_variables)]
-#[allow(dangerous_implicit_autorefs)]
 pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Error> {
     // функции
     natives::provide(

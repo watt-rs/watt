@@ -1,0 +1,37 @@
+/*
+ FFILibrary type
+*/
+type FFILibrary(raw) {
+    fn call(name, args) {
+        return ffi.__internal_call_fn(
+            raw,
+            name,
+            args.internal
+        )
+    }
+}
+
+/*
+ Library: ffi.
+ | implementation of __internal_*
+ | can be found in
+ | > crate::vm::natives::libs::natives_ffi
+*/
+unit ffi {
+    native __internal_load -> 'ffi@load'
+    native __internal_load_fn -> 'ffi@load_fn'
+    native __internal_call_fn -> 'ffi@call_fn'
+
+    fn load(lib, functions) {
+        library := __internal_load(lib)
+        for function in functions.iter() {
+            __internal_load_fn(
+                library,
+                function.get('name'),
+                function.get('params').internal,
+                function.get('out')
+            )
+        }
+        return new FFILibrary(library)
+    }
+}

@@ -43,7 +43,7 @@ impl Table {
             root: std::ptr::null_mut(),
             parent: std::ptr::null_mut(),
             closure: std::ptr::null_mut(),
-            captures: 0
+            captures: 0,
         }
     }
 
@@ -112,7 +112,7 @@ impl Table {
                 address.clone(),
                 format!("{name} is not defined."),
                 "check variable existence.",
-            ))
+            ));
         }
         Ok(())
     }
@@ -159,7 +159,7 @@ impl Table {
             Ok(self.fields[name])
         } else if !self.root.is_null() && (*self.root).has(name) {
             (*self.root).lookup(address, name)
-        } else if !self.closure.is_null()  && (*self.closure).exists(name){
+        } else if !self.closure.is_null() && (*self.closure).exists(name) {
             (*self.closure).find(address, name)
         } else {
             Err(Error::own_text(

@@ -978,7 +978,7 @@ impl<'visitor> CompileVisitor<'visitor> {
         self.push_instr(Opcode::ErrorPropagation {
             addr: location.address.clone(),
             value: Chunk::new(chunk),
-            should_push
+            should_push,
         });
     }
 

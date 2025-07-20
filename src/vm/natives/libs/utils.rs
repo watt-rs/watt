@@ -186,3 +186,31 @@ pub fn expect_list(addr: Address, value: Value, error: Option<Error>) -> *mut Ve
         )));
     }
 }
+
+/// Expects value is list of strings, otherwise raises error
+pub unsafe fn expect_string_list(addr: Address, value: Value, error: Option<Error>) -> Vec<String> {
+    if let Value::List(l) = value {
+        let mut strings = vec![];
+        for value in &(*l) {
+            match value {
+                Value::String(string) => {
+                    strings.push((**string).clone());
+                }
+                _ => {
+                    error!(error.unwrap_or(Error::own_text(
+                        addr.clone(),
+                        format!("expected strings list, got {value:?}"),
+                        "check for types"
+                    )));
+                }
+            }
+        }
+        strings
+    } else {
+        error!(error.unwrap_or(Error::own_text(
+            addr.clone(),
+            format!("expected strings list, got {value:?}"),
+            "check for types"
+        )));
+    }
+}

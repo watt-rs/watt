@@ -157,7 +157,7 @@ pub enum Opcode {
     ErrorPropagation {
         addr: Address,
         value: Chunk,
-        should_push: bool
+        should_push: bool,
     },
     Impls {
         addr: Address,

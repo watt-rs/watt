@@ -11,8 +11,8 @@ use crate::vm::values::Value;
 use crate::vm::vm::VM;
 
 /// Provides
-#[allow(dangerous_implicit_autorefs)]
 #[allow(unused_variables)]
+#[allow(clippy::manual_range_contains)]
 pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Error> {
     natives::provide(
         vm,
@@ -297,7 +297,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             if radix > 36 || radix < 2 {
                 error!(Error::own_text(
                     addr.clone(),
-                    format!("invalid radix: {}", radix),
+                    format!("invalid radix: {radix}"),
                     "radix should be in 2..36 range."
                 ))
             }
