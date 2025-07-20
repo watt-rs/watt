@@ -54,6 +54,7 @@ impl FFIType {
             _ => panic!("unknown type {type_name}"),
         }
     }
+
     /// Converts ffi type to `libffi::middle::Type`
     pub fn to_ffi_type(&self) -> Type {
         match self {
@@ -83,6 +84,7 @@ fn value_to_arg(addr: Address, param: &FFIType, value: &Value) -> Result<Arg, Er
         format!("could not convert {value:?} to {param:?}"),
         "check for types.",
     );
+
     // match
     match param {
         FFIType::I8 => match value {
@@ -236,6 +238,7 @@ impl FFILibrary {
         name: String,
         args: *mut Vec<Value>,
     ) -> Result<Value, Error> {
+
         // loading fn
         let func = self.fns.get(&name).ok_or_else(|| {
             Error::own_text(
@@ -244,6 +247,7 @@ impl FFILibrary {
                 "check foreign fn existence.",
             )
         })?;
+
         // checking arguments amount
         if func.sign.len() != (*args).len() {
             return Err(Error::own(
@@ -373,9 +377,9 @@ impl FFILibrary {
     }
 }
 
+/// Provides
 #[allow(unused_variables)]
 pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Error> {
-    // функции
     natives::provide(
         vm,
         built_in_address.clone(),
