@@ -277,7 +277,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             location,
             params,
             body: Box::new(body),
-            make_closure: true,
+            make_closure: false,
         })
     }
 
@@ -301,7 +301,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                 location,
                 value: Box::new(body),
             }),
-            make_closure: true,
+            make_closure: false,
         })
     }
 

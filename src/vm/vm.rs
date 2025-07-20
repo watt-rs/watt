@@ -964,7 +964,7 @@ impl VM {
             params.to_owned(),
         ));
         // if it's need to make_closure
-        if make_closure {
+        if make_closure && table != self.globals {
             // setting closure
             (*table).captures += 1;
             (*function).closure = table;
@@ -1959,6 +1959,7 @@ impl VM {
         addr: &Address,
         value: &Chunk,
         table: *mut Table,
+        should_push: bool
     ) -> Result<(), ControlFlow> {
         // running value
         self.run(value, table)?;
@@ -2068,7 +2069,9 @@ impl VM {
                 return Err(ControlFlow::Return(value));
             } else {
                 // calling unwrap
-                call_unwrap(self, addr, instance)?;
+                if should_push {
+                    call_unwrap(self, addr, instance)?;
+                }
             }
         } else {
             error!(Error::own_text(
@@ -2298,8 +2301,8 @@ impl VM {
                 Opcode::Native { addr, fn_name } => {
                     self.op_native(addr, fn_name)?;
                 }
-                Opcode::ErrorPropagation { addr, value } => {
-                    self.op_error_propagation(addr, value, table)?;
+                Opcode::ErrorPropagation { addr, value, should_push } => {
+                    self.op_error_propagation(addr, value, table, *should_push)?;
                 }
                 Opcode::Impls {
                     addr,
