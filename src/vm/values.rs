@@ -4,7 +4,7 @@ use crate::vm::bytecode::Chunk;
 use crate::vm::flow::ControlFlow;
 use crate::vm::memory::memory;
 use crate::vm::table::Table;
-use crate::vm::vm::VM;
+use crate::vm::vm::{try_free_table, VM};
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 
@@ -241,7 +241,7 @@ impl Function {
 /// Function drop implementation
 impl Drop for Function {
     fn drop(&mut self) {
-        memory::free_value(self.closure);
+        unsafe { try_free_table(self.closure); }
         memory::free_const_value(self.body);
     }
 }
@@ -300,7 +300,7 @@ impl Debug for Value {
                     write!(fmt, "{}", **s)
                 }
                 Value::Instance(i) => {
-                    write!(fmt, "Instance{:?}", *i)
+                    write!(fmt, "Instance{:?} of {}", *i, (*(**i).t).name.name)
                 }
                 Value::Trait(t) => {
                     write!(fmt, "Trait{:?}", *t)

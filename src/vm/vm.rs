@@ -883,7 +883,7 @@ impl VM {
         (*table).set_root(root);
         // defer condition table free
         defer! {
-            memory::free_value(table);
+            try_free_table(table);
         }
         // running condition
         self.run(cond, table)?;
@@ -918,7 +918,7 @@ impl VM {
         (*table).set_root(root);
         // defer loop table free
         defer! {
-            memory::free_value(table);
+            try_free_table(table);
         }
         // loop
         loop {
@@ -965,13 +965,9 @@ impl VM {
         ));
         // if it's need to make_closure
         if make_closure {
-            // creating closure
-            let closure = memory::alloc_value(Table::new());
-            // copying table
-            (*closure).fields = (*table).fields.clone();
-            (*closure).closure = (*table).closure;
             // setting closure
-            (*function).closure = closure;
+            (*table).captures += 1;
+            (*function).closure = table;
         }
 
         // function value
@@ -1490,7 +1486,7 @@ impl VM {
             (*call_table).closure = (*function).closure;
             // freeing call table
             defer! {
-                memory::free_value(call_table);
+                try_free_table(call_table);
             }
             // root & self
             if (*function).owner.is_some() {
@@ -1551,7 +1547,7 @@ impl VM {
             (*call_table).parent = table;
             // freeing
             defer! {
-                memory::free_value(call_table);
+                try_free_table(call_table);
             }
             // root to globals
             (*call_table).set_root(self.globals);
@@ -2322,3 +2318,10 @@ impl VM {
 /// Send & sync for future multi-threading.
 unsafe impl Send for VM {}
 unsafe impl Sync for VM {}
+
+/// Try free table
+pub unsafe fn try_free_table(table: *mut Table) {
+    if !table.is_null() && (*table).captures == 0 {
+        memory::free_value(table)
+    }
+}

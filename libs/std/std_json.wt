@@ -183,7 +183,7 @@ unit json {
             match tk.kind {
                 case JsonTokenKind.Float {
                     return result.ok(convert.to_float(
-                        consume(JsonTokenKind.Float)?.valueto_string()
+                        consume(JsonTokenKind.Float)?.value.to_string()
                     ))
                 }
                 case JsonTokenKind.Int {

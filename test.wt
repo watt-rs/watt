@@ -133,14 +133,24 @@ import 'std.errors'
 a := result.err('111')
 io.println(a?)
 */
+import 'std.gc'
 import 'std.io'
-fn factorial(n) {
-    f := 1
-    r := 1
-    while f <= n {
-        r *= f
-        f += 1
+fn a() {
+    e := 5
+    fn b() {
+        e += 3
+        io.println(e)
     }
-    return r
+    return b
 }
-io.println(factorial(15))
+f := a()
+a = null
+f()
+gc.invoke()
+f()
+f()
+f()
+f()
+f()
+f()
+f()
