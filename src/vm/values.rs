@@ -241,7 +241,12 @@ impl Function {
 /// Function drop implementation
 impl Drop for Function {
     fn drop(&mut self) {
-        unsafe { try_free_table(self.closure); }
+        unsafe {
+            if !self.closure.is_null() {
+                (*self.closure).captures -= 1;
+                try_free_table(self.closure);
+            }
+        }
         memory::free_const_value(self.body);
     }
 }
