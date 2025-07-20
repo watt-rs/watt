@@ -1972,6 +1972,7 @@ impl VM {
             vm: &mut VM,
             addr: &Address,
             instance: *mut Instance,
+            table: *mut Table,
         ) -> Result<bool, ControlFlow> {
             let lookup_result = (*(*instance).fields).find(addr, "is_ok");
 
@@ -1996,7 +1997,7 @@ impl VM {
                     "is_ok",
                     callable,
                     &Chunk::new(vec![]),
-                    memory::alloc_value(Table::new()),
+                    table,
                     true,
                 )?;
 
@@ -2024,6 +2025,7 @@ impl VM {
             vm: &mut VM,
             addr: &Address,
             instance: *mut Instance,
+            table: *mut Table,
         ) -> Result<(), ControlFlow> {
             let lookup_result = (*(*instance).fields).find(addr, "unwrap");
 
@@ -2049,7 +2051,7 @@ impl VM {
                         "unwrap",
                         callable,
                         &Chunk::new(vec![]),
-                        memory::alloc_value(Table::new()),
+                        table,
                         true,
                     )?;
                     Ok(())
@@ -2062,7 +2064,7 @@ impl VM {
 
         if let Value::Instance(instance) = value {
             // calling is ok
-            let is_ok = call_is_ok(self, addr, instance)?;
+            let is_ok = call_is_ok(self, addr, instance, table)?;
             // if it's no ok
             if !is_ok {
                 // returning value back
@@ -2070,7 +2072,7 @@ impl VM {
             } else {
                 // calling unwrap
                 if should_push {
-                    call_unwrap(self, addr, instance)?;
+                    call_unwrap(self, addr, instance, table)?;
                 }
             }
         } else {

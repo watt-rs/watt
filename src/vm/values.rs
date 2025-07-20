@@ -102,7 +102,7 @@ impl Instance {
 /// Instance drop implementation
 impl Drop for Instance {
     fn drop(&mut self) {
-        memory::free_value(self.fields);
+        unsafe { try_free_table(self.fields); }
     }
 }
 
@@ -126,7 +126,7 @@ impl Unit {
 /// Unit drop implementation
 impl Drop for Unit {
     fn drop(&mut self) {
-        memory::free_value(self.fields);
+        unsafe { try_free_table(self.fields); }
     }
 }
 
