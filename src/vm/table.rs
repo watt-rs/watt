@@ -103,7 +103,7 @@ impl Table {
     pub unsafe fn set(&mut self, address: Address, name: &str, value: Value) -> Result<(), Error> {
         if self.fields.contains_key(name) {
             self.fields.insert(name.to_string(), value);
-        } else if !self.root.is_null() && (*self.root).exists(name) {
+        } else if !self.root.is_null() && (*self.root).has(name) {
             (*self.root).set(address, name, value)?;
         } else if !self.closure.is_null() && (*self.closure).exists(name) {
             (*self.closure).set(address, name, value)?;

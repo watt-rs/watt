@@ -133,24 +133,6 @@ import 'std.errors'
 a := result.err('111')
 io.println(a?)
 */
-import 'std.gc'
 import 'std.io'
-fn a() {
-    e := 5
-    fn b() {
-        e += 3
-        io.println(e)
-    }
-    return b
-}
-f := a()
-a = null
-f()
-gc.invoke()
-f()
-f()
-f()
-f()
-f()
-f()
-f()
+import 'std.json'
+io.println(json.decode('{"a":"b","b":3.14}').unwrap())
