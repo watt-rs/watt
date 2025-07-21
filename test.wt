@@ -160,4 +160,4 @@ lib := ffi.load(
         }
     ]
 )
-io.println(lib.call('weather',['Ташкент', '4d6d0285de3e4956100ebac5b27d253d', 'ru']))
+io.println(lib.call('weather',['Ташкент', '-', 'ru']))
