@@ -148,23 +148,16 @@ if text.is_err() {
 */
 import 'std.ffi'
 import 'std.io'
+import 'std.system'
 
 lib := ffi.load(
-    '/home/vyacheslav/Watt/RustWatt/watt/libbutterfly.so',
+    '/home/vyacheslav/Watt/RustWatt/watt/libsum.so',
     [
         {
-            'name': 'init',
-            'out': 'void',
-            'params': ['ptr','u32','u32']
-        },
-	{
-	    'name': 'tick',
-	    'out': 'void',
-	    'params': []
-	}
+            'name': 'sum',
+            'out': 'i32',
+            'params': ['i32', 'i32']
+        }
     ]
 )
-lib.call('init', ['hello, world!',1080,720])
-while true {
-	lib.call('tick', [])
-}
+io.println(lib.call('sum',[10, 12]))

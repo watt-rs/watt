@@ -445,7 +445,7 @@ impl FFILibrary {
             .enumerate()
             .map(|(i, v)|  v.as_arg(&func.sign[i]))
             .collect();
-        
+
         // calling a fn
         match func.out {
             FFIType::I8 => {
