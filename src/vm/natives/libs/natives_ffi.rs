@@ -14,8 +14,242 @@ use crate::vm::memory::memory;
 use crate::vm::natives::libs::utils;
 use crate::vm::natives::natives;
 
-/// The FFIType representation
-#[derive(Debug)]
+/// The FFIValue representation
+pub union FFIValue {
+    i8: i8,
+    u8: u8,
+    i16: i16,
+    u16: u16,
+    i32: i32,
+    u32: u32,
+    i64: i64,
+    u64: u64,
+    f32: f32,
+    f64: f64,
+    isize: isize,
+    usize: usize,
+    ptr: *const c_void,
+}
+/// Implementation of FFI value
+impl FFIValue {
+    /// Creates i8 FFIValue from Value
+    pub fn i8(address: &Address, value: Value) -> Self {
+        match value {
+            Value::Int(i) => {
+                FFIValue { i8: i as i8 }
+            }
+            _ => {
+                error!(Error::own_text(
+                    address.clone(),
+                    format!("could not convert {value} to ffi type i8."),
+                    "you can convert only i64 to i8."
+                ))
+            }
+        }
+    }
+    /// Creates u8 FFIValue from Value
+    pub fn u8(address: &Address, value: Value) -> Self {
+        match value {
+            Value::Int(i) => {
+                FFIValue { u8: i as u8 }
+            }
+            _ => {
+                error!(Error::own_text(
+                    address.clone(),
+                    format!("could not convert {value} to ffi type u8."),
+                    "you can convert only i64 to u8."
+                ))
+            }
+        }
+    }
+    /// Creates i16 FFIValue from Value
+    pub fn i16(address: &Address, value: Value) -> Self {
+        match value {
+            Value::Int(i) => {
+                FFIValue { i16: i as i16 }
+            }
+            _ => {
+                error!(Error::own_text(
+                    address.clone(),
+                    format!("could not convert {value} to ffi type i16."),
+                    "you can convert only i64 to i16."
+                ))
+            }
+        }
+    }
+    /// Creates u16 FFIValue from Value
+    pub fn u16(address: &Address, value: Value) -> Self {
+        match value {
+            Value::Int(i) => {
+                FFIValue { u16: i as u16 }
+            }
+            _ => {
+                error!(Error::own_text(
+                    address.clone(),
+                    format!("could not convert {value} to ffi type u16."),
+                    "you can convert only i64 to u16."
+                ))
+            }
+        }
+    }
+    /// Creates i32 FFIValue from Value
+    pub fn i32(address: &Address, value: Value) -> Self {
+        match value {
+            Value::Int(i) => {
+                FFIValue { i32: i as i32 }
+            }
+            _ => {
+                error!(Error::own_text(
+                    address.clone(),
+                    format!("could not convert {value} to ffi type i32."),
+                    "you can convert only i64 to i32."
+                ))
+            }
+        }
+    }
+    /// Creates u32 FFIValue from Value
+    pub fn u32(address: &Address, value: Value) -> Self {
+        match value {
+            Value::Int(i) => {
+                FFIValue { u32: i as u32 }
+            }
+            _ => {
+                error!(Error::own_text(
+                    address.clone(),
+                    format!("could not convert {value} to ffi type u32."),
+                    "you can convert only i64 to u32."
+                ))
+            }
+        }
+    }
+    /// Creates i64 FFIValue from Value
+    pub fn i64(address: &Address, value: Value) -> Self {
+        match value {
+            Value::Int(i) => {
+                FFIValue { i64: i }
+            }
+            _ => {
+                error!(Error::own_text(
+                    address.clone(),
+                    format!("could not convert {value} to ffi type i64."),
+                    "you can only use i64."
+                ))
+            }
+        }
+    }
+    /// Creates u64 FFIValue from Value
+    pub fn u64(address: &Address, value: Value) -> Self {
+        match value {
+            Value::Int(i) => {
+                FFIValue { u64: i as u64 }
+            }
+            _ => {
+                error!(Error::own_text(
+                    address.clone(),
+                    format!("could not convert {value} to ffi type u64."),
+                    "you can convert only i64 to u64."
+                ))
+            }
+        }
+    }
+    /// Creates isize FFIValue from Value
+    pub fn isize(address: &Address, value: Value) -> Self {
+        match value {
+            Value::Int(i) => {
+                FFIValue { isize: i as isize }
+            }
+            _ => {
+                error!(Error::own_text(
+                    address.clone(),
+                    format!("could not convert {value} to ffi type isize."),
+                    "you can convert only i64 to isize."
+                ))
+            }
+        }
+    }
+    /// Creates usize FFIValue from Value
+    pub fn usize(address: &Address, value: Value) -> Self {
+        match value {
+            Value::Int(i) => {
+                FFIValue { usize: i as usize }
+            }
+            _ => {
+                error!(Error::own_text(
+                    address.clone(),
+                    format!("could not convert {value} to ffi type usize."),
+                    "you can convert only i64 to usize."
+                ))
+            }
+        }
+    }
+    /// Creates f32 FFIValue from Value
+    pub fn f32(address: &Address, value: Value) -> Self {
+        match value {
+            Value::Float(f) => {
+                FFIValue { f32: f as f32 }
+            }
+            _ => {
+                error!(Error::own_text(
+                    address.clone(),
+                    format!("could not convert {value} to ffi type f32."),
+                    "you can convert only f64 to f32."
+                ))
+            }
+        }
+    }
+    /// Creates f64 FFIValue from Value
+    pub fn f64(address: &Address, value: Value) -> Self {
+        match value {
+            Value::Float(f) => {
+                FFIValue { f64: f }
+            }
+            _ => {
+                error!(Error::own_text(
+                    address.clone(),
+                    format!("could not convert {value} to ffi type f64."),
+                    "you can only use f64."
+                ))
+            }
+        }
+    }
+    /// Creates ptr FFIValue from Value
+    pub fn ptr(address: &Address, value: Value) -> Self {
+        match value {
+            Value::Any(a) => {
+                FFIValue { ptr: a as *const c_void }
+            }
+            _ => {
+                error!(Error::own_text(
+                    address.clone(),
+                    format!("could not convert {value} to ffi type ptr."),
+                    "you can convert: Any."
+                ))
+            }
+        }
+    }
+    /// As arguments
+    unsafe fn as_arg(&self, t: FFIType) -> Arg {
+        match t {
+            FFIType::I8 => Arg::new(&self.i8),
+            FFIType::U8 => Arg::new(&self.u8),
+            FFIType::I16 => Arg::new(&self.i16),
+            FFIType::U16 => Arg::new(&self.u16),
+            FFIType::I32 => Arg::new(&self.i32),
+            FFIType::U32 => Arg::new(&self.u32),
+            FFIType::I64 => Arg::new(&self.i64),
+            FFIType::U64 => Arg::new(&self.u64),
+            FFIType::F32 => Arg::new(&self.f32),
+            FFIType::F64 => Arg::new(&self.f64),
+            FFIType::Pointer => Arg::new(&self.ptr),
+            FFIType::Isize => Arg::new(&self.isize),
+            FFIType::Usize => Arg::new(&self.usize),
+            _ => unreachable!()
+        }
+    }
+}
+
+/// The FFI Type representation
+#[derive(Debug, Clone)]
 enum FFIType {
     I8,
     U8,
@@ -73,83 +307,6 @@ impl FFIType {
             FFIType::Isize => Type::isize(),
             FFIType::Usize => Type::usize(),
         }
-    }
-}
-
-/// Converts value to argument
-fn value_to_arg(addr: Address, param: &FFIType, value: &Value) -> Result<Arg, Error> {
-    // error
-    let error = Error::own_text(
-        addr,
-        format!("could not convert {value:?} to {param:?}"),
-        "check for types.",
-    );
-
-    // match
-    match param {
-        FFIType::I8 => match value {
-            Value::Int(i) => Ok(Arg::new(&(*i as i8))),
-            _ => Err(error),
-        },
-        FFIType::U8 => match value {
-            Value::Int(i) => Ok(Arg::new(&(*i as u8))),
-            _ => Err(error),
-        },
-        FFIType::I16 => match value {
-            Value::Int(i) => Ok(Arg::new(&(*i as i16))),
-            _ => Err(error),
-        },
-        FFIType::U16 => match value {
-            Value::Int(i) => Ok(Arg::new(&(*i as u8))),
-            _ => Err(error),
-        },
-        FFIType::I32 => match value {
-            Value::Int(i) => Ok(Arg::new(&(*i as i32))),
-            _ => Err(error),
-        },
-        FFIType::U32 => match value {
-            Value::Int(i) => Ok(Arg::new(&(*i as u32))),
-            _ => Err(error),
-        },
-        FFIType::I64 => match value {
-            Value::Int(i) => Ok(Arg::new(i)),
-            _ => Err(error),
-        },
-        FFIType::U64 => match value {
-            Value::Int(i) => Ok(Arg::new(&(*i as u64))),
-            _ => Err(error),
-        },
-        FFIType::F32 => match value {
-            Value::Float(f) => Ok(Arg::new(&(*f as f32))),
-            _ => Err(error),
-        },
-        FFIType::F64 => match value {
-            Value::Float(f) => Ok(Arg::new(f)),
-            _ => Err(error),
-        },
-        FFIType::Void => match value {
-            Value::Null => Ok(Arg::new(&())),
-            _ => Err(error),
-        },
-        FFIType::Pointer => match value {
-            Value::Type(t) => Ok(Arg::new(t)),
-            Value::Fn(f) => Ok(Arg::new(f)),
-            Value::Native(n) => Ok(Arg::new(n)),
-            Value::Instance(i) => Ok(Arg::new(i)),
-            Value::Unit(u) => Ok(Arg::new(u)),
-            Value::Trait(t) => Ok(Arg::new(t)),
-            Value::List(l) => Ok(Arg::new(l)),
-            Value::Any(a) => Ok(Arg::new(a)),
-            _ => Err(error),
-        },
-        FFIType::Isize => match value {
-            Value::Int(i) => Ok(Arg::new(&(*i as isize))),
-            _ => Err(error),
-        },
-        FFIType::Usize => match value {
-            Value::Int(i) => Ok(Arg::new(&(*i as usize))),
-            _ => Err(error),
-        },
     }
 }
 
@@ -257,104 +414,106 @@ impl FFILibrary {
             ));
         }
 
-        /// Converts arguments
-        unsafe fn convert_args(
-            addr: Address,
-            params: &[FFIType],
-            args: *mut Vec<Value>,
-        ) -> Vec<Arg> {
-            let mut converted: Vec<Arg> = vec![];
-
-            for i in 0..params.len() {
-                let param = params.get(i).unwrap();
-                let arg = (*args).get(i).unwrap();
-
-                let result = value_to_arg(addr.clone(), param, arg);
-
-                match result {
-                    Ok(ok) => {
-                        converted.push(ok)
-                    }
-                    Err(err) => {
-                        error!(err);
-                    }
-                }
+        // converting arguments
+        let mut ffi_args: Vec<FFIValue> = Vec::with_capacity(func.sign.len());
+        for (index, param) in func.sign.iter().enumerate() {
+            let arg = (*args)[index];
+            match param {
+                FFIType::I8 => ffi_args.push(FFIValue::i8(&addr, arg)),
+                FFIType::U8 => ffi_args.push(FFIValue::u8(&addr, arg)),
+                FFIType::I16 => ffi_args.push(FFIValue::i16(&addr, arg)),
+                FFIType::U16 => ffi_args.push(FFIValue::u16(&addr, arg)),
+                FFIType::I32 => ffi_args.push(FFIValue::i32(&addr, arg)),
+                FFIType::U32 => ffi_args.push(FFIValue::u32(&addr, arg)),
+                FFIType::I64 => ffi_args.push(FFIValue::i64(&addr, arg)),
+                FFIType::U64 => ffi_args.push(FFIValue::u64(&addr, arg)),
+                FFIType::F32 => ffi_args.push(FFIValue::f32(&addr, arg)),
+                FFIType::F64 => ffi_args.push(FFIValue::f64(&addr, arg)),
+                FFIType::Void => unreachable!(),
+                FFIType::Pointer => ffi_args.push(FFIValue::ptr(&addr, arg)),
+                FFIType::Isize => ffi_args.push(FFIValue::isize(&addr, arg)),
+                FFIType::Usize => ffi_args.push(FFIValue::usize(&addr, arg)),
             }
-
-            converted
         }
 
+        // calling arguments
+        let call_args: Vec<Arg> = ffi_args
+            .iter()
+            .enumerate()
+            .map(|(i, v)|  v.as_arg(func.sign[i].clone()))
+            .collect();
+        
         // calling a fn
         match func.out {
             FFIType::I8 => {
                 let result = func
                     .cif
-                    .call::<i8>(func.ptr, &convert_args(addr, &func.sign, args));
+                    .call::<i8>(func.ptr, &call_args);
                 Ok(Value::Int(result as i64))
             }
             FFIType::U8 => {
                 let result = func
                     .cif
-                    .call::<u8>(func.ptr, &convert_args(addr, &func.sign, args));
+                    .call::<u8>(func.ptr, &call_args);
                 Ok(Value::Int(result as i64))
             }
             FFIType::I16 => {
                 let result = func
                     .cif
-                    .call::<i16>(func.ptr, &convert_args(addr, &func.sign, args));
+                    .call::<i16>(func.ptr, &call_args);
                 Ok(Value::Int(result as i64))
             }
             FFIType::U16 => {
                 let result = func
                     .cif
-                    .call::<u16>(func.ptr, &convert_args(addr, &func.sign, args));
+                    .call::<u16>(func.ptr, &call_args);
                 Ok(Value::Int(result as i64))
             }
             FFIType::I32 => {
                 let result = func
                     .cif
-                    .call::<i32>(func.ptr, &convert_args(addr, &func.sign, args));
+                    .call::<i32>(func.ptr, &call_args);
                 Ok(Value::Int(result as i64))
             }
             FFIType::U32 => {
                 let result = func
                     .cif
-                    .call::<u32>(func.ptr, &convert_args(addr, &func.sign, args));
+                    .call::<u32>(func.ptr, &call_args);
                 Ok(Value::Int(result as i64))
             }
             FFIType::I64 => {
                 let result = func
                     .cif
-                    .call::<i64>(func.ptr, &convert_args(addr, &func.sign, args));
+                    .call::<i64>(func.ptr, &call_args);
                 Ok(Value::Int(result))
             }
             FFIType::U64 => {
                 let result = func
                     .cif
-                    .call::<i64>(func.ptr, &convert_args(addr, &func.sign, args));
+                    .call::<i64>(func.ptr, &call_args);
                 Ok(Value::Int(result))
             }
             FFIType::F32 => {
                 let result = func
                     .cif
-                    .call::<f32>(func.ptr, &convert_args(addr, &func.sign, args));
+                    .call::<f32>(func.ptr, &call_args);
                 Ok(Value::Float(result as f64))
             }
             FFIType::F64 => {
                 let result = func
                     .cif
-                    .call::<f64>(func.ptr, &convert_args(addr, &func.sign, args));
+                    .call::<f64>(func.ptr, &call_args);
                 Ok(Value::Float(result))
             }
             FFIType::Void => {
                 func.cif
-                    .call::<()>(func.ptr, &convert_args(addr, &func.sign, args));
+                    .call::<()>(func.ptr, &call_args);
                 Ok(Value::Null)
             }
             FFIType::Pointer => {
                 let result = func
                     .cif
-                    .call::<*mut c_void>(func.ptr, &convert_args(addr, &func.sign, args));
+                    .call::<*mut c_void>(func.ptr, &call_args);
                 let value = Value::Any(result);
                 vm.gc_guard(value);
                 vm.gc_register(value, table);
@@ -364,13 +523,13 @@ impl FFILibrary {
             FFIType::Isize => {
                 let result = func
                     .cif
-                    .call::<isize>(func.ptr, &convert_args(addr, &func.sign, args));
+                    .call::<isize>(func.ptr, &call_args);
                 Ok(Value::Int(result as i64))
             }
             FFIType::Usize => {
                 let result = func
                     .cif
-                    .call::<usize>(func.ptr, &convert_args(addr, &func.sign, args));
+                    .call::<usize>(func.ptr, &call_args);
                 Ok(Value::Int(result as i64))
             }
         }
