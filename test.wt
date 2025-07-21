@@ -150,13 +150,21 @@ import 'std.ffi'
 import 'std.io'
 
 lib := ffi.load(
-    '/home/vyacheslav/Watt/RustWatt/watt/libunicorn.so',
+    '/home/vyacheslav/Watt/RustWatt/watt/libbutterfly.so',
     [
         {
-            'name': 'open',
+            'name': 'init',
             'out': 'void',
-            'params': []
-        }
+            'params': ['u32','u32']
+        },
+	{
+	    'name': 'tick',
+	    'out': 'void',
+	    'params': []
+	}
     ]
 )
-io.println(lib.call('open', []))
+lib.call('init', ['hello, world!',1080,720])
+while true {
+	lib.call('tick', [])
+}

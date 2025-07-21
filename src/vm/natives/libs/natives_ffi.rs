@@ -218,11 +218,14 @@ impl FFIValue {
             Value::Any(a) => {
                 FFIValue { ptr: a as *const c_void }
             }
+            Value::String(s) => {
+                FFIValue { ptr: s as *const c_void }
+            }
             _ => {
                 error!(Error::own_text(
                     address.clone(),
                     format!("could not convert {value} to ffi type ptr."),
-                    "you can convert: Any."
+                    "you can convert: Any, String."
                 ))
             }
         }
