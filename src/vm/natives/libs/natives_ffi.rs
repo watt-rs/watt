@@ -228,7 +228,7 @@ impl FFIValue {
         }
     }
     /// As arguments
-    unsafe fn as_arg(&self, t: FFIType) -> Arg {
+    unsafe fn as_arg(&self, t: &FFIType) -> Arg {
         match t {
             FFIType::I8 => Arg::new(&self.i8),
             FFIType::U8 => Arg::new(&self.u8),
@@ -440,7 +440,7 @@ impl FFILibrary {
         let call_args: Vec<Arg> = ffi_args
             .iter()
             .enumerate()
-            .map(|(i, v)|  v.as_arg(func.sign[i].clone()))
+            .map(|(i, v)|  v.as_arg(&func.sign[i]))
             .collect();
         
         // calling a fn

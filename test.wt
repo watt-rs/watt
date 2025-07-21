@@ -150,13 +150,13 @@ import 'std.ffi'
 import 'std.io'
 
 lib := ffi.load(
-    '/home/vyacheslav/Watt/RustWatt/watt/libsum.so',
+    '/home/vyacheslav/Watt/RustWatt/watt/libunicorn.so',
     [
         {
-            'name': 'sum',
-            'out': 'i32',
-            'params': ['i32','i32']
+            'name': 'open',
+            'out': 'void',
+            'params': []
         }
     ]
 )
-io.println(lib.call('sum', [3,5]))
+io.println(lib.call('open', []))
