@@ -155,7 +155,7 @@ lib := ffi.load(
         {
             'name': 'init',
             'out': 'void',
-            'params': ['u32','u32']
+            'params': ['ptr','u32','u32']
         },
 	{
 	    'name': 'tick',
