@@ -268,6 +268,7 @@ enum FFIType {
     Pointer,
     Isize,
     Usize,
+    String,
 }
 /// Implementation of FFI type
 impl FFIType {
@@ -288,6 +289,7 @@ impl FFIType {
             "ptr" => FFIType::Pointer,
             "isize" => FFIType::Isize,
             "usize" => FFIType::Usize,
+            "string" => FFIType::String,
             _ => panic!("unknown type {type_name}"),
         }
     }
@@ -309,6 +311,7 @@ impl FFIType {
             FFIType::Pointer => Type::pointer(),
             FFIType::Isize => Type::isize(),
             FFIType::Usize => Type::usize(),
+            FFIType::String => Type::pointer()
         }
     }
 }
@@ -436,6 +439,7 @@ impl FFILibrary {
                 FFIType::Pointer => ffi_args.push(FFIValue::ptr(&addr, arg)),
                 FFIType::Isize => ffi_args.push(FFIValue::isize(&addr, arg)),
                 FFIType::Usize => ffi_args.push(FFIValue::usize(&addr, arg)),
+                FFIType::String => ffi_args.push(FFIValue::ptr(&addr, arg)),
             }
         }
 
@@ -518,6 +522,16 @@ impl FFILibrary {
                     .cif
                     .call::<*mut c_void>(func.ptr, &call_args);
                 let value = Value::Any(result);
+                vm.gc_guard(value);
+                vm.gc_register(value, table);
+                vm.gc_unguard();
+                Ok(value)
+            }
+            FFIType::String => {
+                let result = func
+                    .cif
+                    .call::<*mut c_void>(func.ptr, &call_args);
+                let value = Value::String(result as *const String);
                 vm.gc_guard(value);
                 vm.gc_register(value, table);
                 vm.gc_unguard();

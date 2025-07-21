@@ -151,13 +151,13 @@ import 'std.io'
 import 'std.system'
 
 lib := ffi.load(
-    '/home/vyacheslav/Watt/RustWatt/watt/libsum.so',
+    '/home/vyacheslav/Watt/RustWatt/watt/libowm.so',
     [
         {
-            'name': 'sum',
-            'out': 'i32',
-            'params': ['i32', 'i32']
+            'name': 'weather',
+            'out': 'string',
+            'params': ['ptr', 'ptr', 'ptr']
         }
     ]
 )
-io.println(lib.call('sum',[10, 12]))
+io.println(lib.call('weather',['Ташкент', '4d6d0285de3e4956100ebac5b27d253d', 'ru']))
