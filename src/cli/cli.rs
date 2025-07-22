@@ -52,13 +52,11 @@ pub unsafe fn cli() {
             Arg::new("gc-threshold")
                 .long("gc-threshold")
                 .value_parser(clap::value_parser!(usize))
-                .default_value("200"),
         )
         .arg(
             Arg::new("gc-threshold-grow-factor")
                 .long("gc-threshold-grow-factor")
                 .value_parser(clap::value_parser!(usize))
-                .default_value("2"),
         )
         .arg(Arg::new("file").required(true))
         .arg(Arg::new("args").action(ArgAction::Append));
