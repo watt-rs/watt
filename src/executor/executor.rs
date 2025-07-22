@@ -30,6 +30,7 @@ use std::path::PathBuf;
 pub unsafe fn run(
     path: PathBuf,
     gc_threshold: Option<usize>,
+    gc_threshold_grow_factor: Option<usize>,
     gc_debug: bool,
     lexer_debug: bool,
     ast_debug: bool,
@@ -63,6 +64,7 @@ pub unsafe fn run(
     run_chunk(
         compiled,
         gc_threshold.unwrap_or(200),
+        gc_threshold_grow_factor.unwrap_or(2),
         gc_debug,
         runtime_bench,
     );
@@ -261,12 +263,22 @@ pub unsafe fn compile(ast: &Node, opcodes_debug: bool, bench: bool) -> Chunk {
 ///
 /// * gc_threshold: garbage collector threshold
 #[allow(unused_qualifications)]
-unsafe fn run_chunk(chunk: Chunk, gc_threshold: usize, gc_debug: bool, bench: bool) {
+unsafe fn run_chunk(
+    chunk: Chunk,
+    gc_threshold: usize,
+    gc_threshold_grow_factor: usize,
+    gc_debug: bool,
+    bench: bool,
+) {
     // benchmark
     let start = std::time::Instant::now();
 
     // creating vm and running
-    let mut vm = VM::new(VmSettings::new(gc_threshold, gc_debug));
+    let mut vm = VM::new(VmSettings::new(
+        gc_threshold,
+        gc_threshold_grow_factor,
+        gc_debug,
+    ));
 
     // handling errors
     if let Err(e) = vm.run(&chunk, vm.globals) {

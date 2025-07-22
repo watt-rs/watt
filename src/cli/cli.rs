@@ -54,6 +54,12 @@ pub unsafe fn cli() {
                 .value_parser(clap::value_parser!(usize))
                 .default_value("200"),
         )
+        .arg(
+            Arg::new("gc-threshold-grow-factor")
+                .long("gc-threshold-grow-factor")
+                .value_parser(clap::value_parser!(usize))
+                .default_value("2"),
+        )
         .arg(Arg::new("file").required(true))
         .arg(Arg::new("args").action(ArgAction::Append));
 
@@ -65,6 +71,9 @@ pub unsafe fn cli() {
     executor::run(
         file.into(),
         matches.get_one::<usize>("gc-threshold").copied(),
+        matches
+            .get_one::<usize>("gc-threshold-grow-factor")
+            .copied(),
         matches.get_flag("gc-debug"),
         matches.get_flag("lexer-debug"),
         matches.get_flag("ast-debug"),

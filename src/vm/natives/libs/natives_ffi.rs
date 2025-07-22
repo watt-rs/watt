@@ -2,6 +2,10 @@
 use crate::error;
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
+use crate::vm::bytecode::OpcodeValue;
+use crate::vm::memory::memory;
+use crate::vm::natives::libs::utils;
+use crate::vm::natives::natives;
 use crate::vm::table::Table;
 use crate::vm::values::Value;
 use crate::vm::vm::VM;
@@ -9,10 +13,6 @@ use libffi::middle::{Arg, Cif, CodePtr, Type};
 use libloading::{Library, Symbol};
 use std::collections::HashMap;
 use std::ffi::c_void;
-use crate::vm::bytecode::OpcodeValue;
-use crate::vm::memory::memory;
-use crate::vm::natives::libs::utils;
-use crate::vm::natives::natives;
 
 /// The FFIValue representation
 pub union FFIValue {
@@ -35,9 +35,7 @@ impl FFIValue {
     /// Creates i8 FFIValue from Value
     pub fn i8(address: &Address, value: Value) -> Self {
         match value {
-            Value::Int(i) => {
-                FFIValue { i8: i as i8 }
-            }
+            Value::Int(i) => FFIValue { i8: i as i8 },
             _ => {
                 error!(Error::own_text(
                     address.clone(),
@@ -50,9 +48,7 @@ impl FFIValue {
     /// Creates u8 FFIValue from Value
     pub fn u8(address: &Address, value: Value) -> Self {
         match value {
-            Value::Int(i) => {
-                FFIValue { u8: i as u8 }
-            }
+            Value::Int(i) => FFIValue { u8: i as u8 },
             _ => {
                 error!(Error::own_text(
                     address.clone(),
@@ -65,9 +61,7 @@ impl FFIValue {
     /// Creates i16 FFIValue from Value
     pub fn i16(address: &Address, value: Value) -> Self {
         match value {
-            Value::Int(i) => {
-                FFIValue { i16: i as i16 }
-            }
+            Value::Int(i) => FFIValue { i16: i as i16 },
             _ => {
                 error!(Error::own_text(
                     address.clone(),
@@ -80,9 +74,7 @@ impl FFIValue {
     /// Creates u16 FFIValue from Value
     pub fn u16(address: &Address, value: Value) -> Self {
         match value {
-            Value::Int(i) => {
-                FFIValue { u16: i as u16 }
-            }
+            Value::Int(i) => FFIValue { u16: i as u16 },
             _ => {
                 error!(Error::own_text(
                     address.clone(),
@@ -95,9 +87,7 @@ impl FFIValue {
     /// Creates i32 FFIValue from Value
     pub fn i32(address: &Address, value: Value) -> Self {
         match value {
-            Value::Int(i) => {
-                FFIValue { i32: i as i32 }
-            }
+            Value::Int(i) => FFIValue { i32: i as i32 },
             _ => {
                 error!(Error::own_text(
                     address.clone(),
@@ -110,9 +100,7 @@ impl FFIValue {
     /// Creates u32 FFIValue from Value
     pub fn u32(address: &Address, value: Value) -> Self {
         match value {
-            Value::Int(i) => {
-                FFIValue { u32: i as u32 }
-            }
+            Value::Int(i) => FFIValue { u32: i as u32 },
             _ => {
                 error!(Error::own_text(
                     address.clone(),
@@ -125,9 +113,7 @@ impl FFIValue {
     /// Creates i64 FFIValue from Value
     pub fn i64(address: &Address, value: Value) -> Self {
         match value {
-            Value::Int(i) => {
-                FFIValue { i64: i }
-            }
+            Value::Int(i) => FFIValue { i64: i },
             _ => {
                 error!(Error::own_text(
                     address.clone(),
@@ -140,9 +126,7 @@ impl FFIValue {
     /// Creates u64 FFIValue from Value
     pub fn u64(address: &Address, value: Value) -> Self {
         match value {
-            Value::Int(i) => {
-                FFIValue { u64: i as u64 }
-            }
+            Value::Int(i) => FFIValue { u64: i as u64 },
             _ => {
                 error!(Error::own_text(
                     address.clone(),
@@ -155,9 +139,7 @@ impl FFIValue {
     /// Creates isize FFIValue from Value
     pub fn isize(address: &Address, value: Value) -> Self {
         match value {
-            Value::Int(i) => {
-                FFIValue { isize: i as isize }
-            }
+            Value::Int(i) => FFIValue { isize: i as isize },
             _ => {
                 error!(Error::own_text(
                     address.clone(),
@@ -170,9 +152,7 @@ impl FFIValue {
     /// Creates usize FFIValue from Value
     pub fn usize(address: &Address, value: Value) -> Self {
         match value {
-            Value::Int(i) => {
-                FFIValue { usize: i as usize }
-            }
+            Value::Int(i) => FFIValue { usize: i as usize },
             _ => {
                 error!(Error::own_text(
                     address.clone(),
@@ -185,9 +165,7 @@ impl FFIValue {
     /// Creates f32 FFIValue from Value
     pub fn f32(address: &Address, value: Value) -> Self {
         match value {
-            Value::Float(f) => {
-                FFIValue { f32: f as f32 }
-            }
+            Value::Float(f) => FFIValue { f32: f as f32 },
             _ => {
                 error!(Error::own_text(
                     address.clone(),
@@ -200,9 +178,7 @@ impl FFIValue {
     /// Creates f64 FFIValue from Value
     pub fn f64(address: &Address, value: Value) -> Self {
         match value {
-            Value::Float(f) => {
-                FFIValue { f64: f }
-            }
+            Value::Float(f) => FFIValue { f64: f },
             _ => {
                 error!(Error::own_text(
                     address.clone(),
@@ -215,12 +191,12 @@ impl FFIValue {
     /// Creates ptr FFIValue from Value
     pub fn ptr(address: &Address, value: Value) -> Self {
         match value {
-            Value::Any(a) => {
-                FFIValue { ptr: a as *const c_void }
-            }
-            Value::String(s) => {
-                FFIValue { ptr: s as *const c_void }
-            }
+            Value::Any(a) => FFIValue {
+                ptr: a as *const c_void,
+            },
+            Value::String(s) => FFIValue {
+                ptr: s as *const c_void,
+            },
             _ => {
                 error!(Error::own_text(
                     address.clone(),
@@ -246,7 +222,7 @@ impl FFIValue {
             FFIType::Pointer => Arg::new(&self.ptr),
             FFIType::Isize => Arg::new(&self.isize),
             FFIType::Usize => Arg::new(&self.usize),
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }
@@ -315,7 +291,7 @@ impl FFIType {
             FFIType::Pointer => Type::pointer(),
             FFIType::Isize => Type::isize(),
             FFIType::Usize => Type::usize(),
-            FFIType::String => Type::pointer()
+            FFIType::String => Type::pointer(),
         }
     }
 }
@@ -406,15 +382,18 @@ impl FFILibrary {
         name: String,
         args: *mut Vec<Value>,
     ) -> Value {
-
         // loading fn
-        let func = self.fns.get(&name).ok_or_else(|| {
-            error!(Error::own_text(
-                addr.clone(),
-                format!("foreign fn: {name} is not found"),
-                "check foreign fn existence.",
-            ));
-        }).unwrap();
+        let func = self
+            .fns
+            .get(&name)
+            .ok_or_else(|| {
+                error!(Error::own_text(
+                    addr.clone(),
+                    format!("foreign fn: {name} is not found"),
+                    "check foreign fn existence.",
+                ));
+            })
+            .unwrap();
 
         // checking arguments amount
         if func.sign.len() != (*args).len() {
@@ -452,80 +431,57 @@ impl FFILibrary {
         let call_args: Vec<Arg> = ffi_args
             .iter()
             .enumerate()
-            .map(|(i, v)|  v.as_arg(&func.sign[i]))
+            .map(|(i, v)| v.as_arg(&func.sign[i]))
             .collect();
 
         // calling a fn
         match func.out {
             FFIType::I8 => {
-                let result = func
-                    .cif
-                    .call::<i8>(func.ptr, &call_args);
+                let result = func.cif.call::<i8>(func.ptr, &call_args);
                 Value::Int(result as i64)
             }
             FFIType::U8 => {
-                let result = func
-                    .cif
-                    .call::<u8>(func.ptr, &call_args);
+                let result = func.cif.call::<u8>(func.ptr, &call_args);
                 Value::Int(result as i64)
             }
             FFIType::I16 => {
-                let result = func
-                    .cif
-                    .call::<i16>(func.ptr, &call_args);
+                let result = func.cif.call::<i16>(func.ptr, &call_args);
                 Value::Int(result as i64)
             }
             FFIType::U16 => {
-                let result = func
-                    .cif
-                    .call::<u16>(func.ptr, &call_args);
+                let result = func.cif.call::<u16>(func.ptr, &call_args);
                 Value::Int(result as i64)
             }
             FFIType::I32 => {
-                let result = func
-                    .cif
-                    .call::<i32>(func.ptr, &call_args);
+                let result = func.cif.call::<i32>(func.ptr, &call_args);
                 Value::Int(result as i64)
             }
             FFIType::U32 => {
-                let result = func
-                    .cif
-                    .call::<u32>(func.ptr, &call_args);
+                let result = func.cif.call::<u32>(func.ptr, &call_args);
                 Value::Int(result as i64)
             }
             FFIType::I64 => {
-                let result = func
-                    .cif
-                    .call::<i64>(func.ptr, &call_args);
+                let result = func.cif.call::<i64>(func.ptr, &call_args);
                 Value::Int(result)
             }
             FFIType::U64 => {
-                let result = func
-                    .cif
-                    .call::<i64>(func.ptr, &call_args);
+                let result = func.cif.call::<i64>(func.ptr, &call_args);
                 Value::Int(result)
             }
             FFIType::F32 => {
-                let result = func
-                    .cif
-                    .call::<f32>(func.ptr, &call_args);
+                let result = func.cif.call::<f32>(func.ptr, &call_args);
                 Value::Float(result as f64)
             }
             FFIType::F64 => {
-                let result = func
-                    .cif
-                    .call::<f64>(func.ptr, &call_args);
+                let result = func.cif.call::<f64>(func.ptr, &call_args);
                 Value::Float(result)
             }
             FFIType::Void => {
-                func.cif
-                    .call::<()>(func.ptr, &call_args);
+                func.cif.call::<()>(func.ptr, &call_args);
                 Value::Null
             }
             FFIType::Pointer => {
-                let result = func
-                    .cif
-                    .call::<*mut c_void>(func.ptr, &call_args);
+                let result = func.cif.call::<*mut c_void>(func.ptr, &call_args);
                 let value = Value::Any(result);
                 vm.gc_guard(value);
                 vm.gc_register(value, table);
@@ -533,9 +489,7 @@ impl FFILibrary {
                 value
             }
             FFIType::String => {
-                let result = func
-                    .cif
-                    .call::<*mut c_void>(func.ptr, &call_args);
+                let result = func.cif.call::<*mut c_void>(func.ptr, &call_args);
                 let value = Value::String(result as *const String);
                 vm.gc_guard(value);
                 vm.gc_register(value, table);
@@ -543,15 +497,11 @@ impl FFILibrary {
                 value
             }
             FFIType::Isize => {
-                let result = func
-                    .cif
-                    .call::<isize>(func.ptr, &call_args);
+                let result = func.cif.call::<isize>(func.ptr, &call_args);
                 Value::Int(result as i64)
             }
             FFIType::Usize => {
-                let result = func
-                    .cif
-                    .call::<usize>(func.ptr, &call_args);
+                let result = func.cif.call::<usize>(func.ptr, &call_args);
                 Value::Int(result as i64)
             }
         }
@@ -582,9 +532,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                         }
                         let unwrapped_lib = lib.unwrap();
                         vm.op_push(
-                            OpcodeValue::Raw(Value::Any(memory::alloc_value(
-                                FFILibrary::new(unwrapped_lib)
-                            ))),
+                            OpcodeValue::Raw(Value::Any(memory::alloc_value(FFILibrary::new(
+                                unwrapped_lib,
+                            )))),
                             table,
                         )?;
                     }

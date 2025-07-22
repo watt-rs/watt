@@ -16,13 +16,15 @@ use scopeguard::defer;
 #[derive(Debug)]
 pub struct VmSettings {
     gc_threshold: usize,
+    gc_threshold_grow_factor: usize,
     gc_debug: bool,
 }
 /// Vm settings implementation
 impl VmSettings {
-    pub fn new(gc_threshold: usize, gc_debug: bool) -> Self {
+    pub fn new(gc_threshold: usize, gc_threshold_grow_factor: usize, gc_debug: bool) -> Self {
         Self {
             gc_threshold,
+            gc_threshold_grow_factor,
             gc_debug,
         }
     }
@@ -125,7 +127,8 @@ impl VM {
             // calling gc
             self.gc_invoke(table);
             // doubling current max gc threshold
-            self.settings.gc_threshold = (*self.gc).objects_amount() * 2;
+            self.settings.gc_threshold =
+                (*self.gc).objects_amount() * self.settings.gc_threshold_grow_factor;
         }
     }
 
