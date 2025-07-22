@@ -273,7 +273,7 @@ enum FFIType {
 /// Implementation of FFI type
 impl FFIType {
     /// Creates FFI type from the type name
-    pub fn from(type_name: &str) -> Self {
+    pub fn from(address: &Address, type_name: &str) -> Self {
         match type_name {
             "i8" => FFIType::I8,
             "u8" => FFIType::U8,
@@ -290,7 +290,11 @@ impl FFIType {
             "isize" => FFIType::Isize,
             "usize" => FFIType::Usize,
             "string" => FFIType::String,
-            _ => panic!("unknown type {type_name}"),
+            _ => error!(Error::own_text(
+                address.clone(),
+                format!("unknown type {type_name}"),
+                "available: i8,u8,i16,u16,i32,i64,isize,usize,f32,f43,string,void,ptr"
+            )),
         }
     }
 
@@ -363,6 +367,7 @@ impl FFILibrary {
     /// Loads function to cache
     pub unsafe fn load_fn(
         &mut self,
+        address: &Address,
         name: String,
         out: String,
         params: Vec<String>,
@@ -373,9 +378,9 @@ impl FFILibrary {
         // params
         let params: Vec<FFIType> = params
             .iter()
-            .map(|arg| FFIType::from(arg.as_str()))
+            .map(|arg| FFIType::from(address, arg.as_str()))
             .collect();
-        let out = FFIType::from(out.as_str());
+        let out = FFIType::from(address, out.as_str());
 
         // cif
         let cif_params = params
@@ -400,20 +405,20 @@ impl FFILibrary {
         addr: Address,
         name: String,
         args: *mut Vec<Value>,
-    ) -> Result<Value, Error> {
+    ) -> Value {
 
         // loading fn
         let func = self.fns.get(&name).ok_or_else(|| {
-            Error::own_text(
+            error!(Error::own_text(
                 addr.clone(),
                 format!("foreign fn: {name} is not found"),
                 "check foreign fn existence.",
-            )
-        })?;
+            ));
+        }).unwrap();
 
         // checking arguments amount
         if func.sign.len() != (*args).len() {
-            return Err(Error::own(
+            error!(Error::own(
                 addr,
                 format!("invalid args amount: {} to call: {}.", (*args).len(), name),
                 format!("expected {} arguments.", func.sign.len()),
@@ -456,66 +461,66 @@ impl FFILibrary {
                 let result = func
                     .cif
                     .call::<i8>(func.ptr, &call_args);
-                Ok(Value::Int(result as i64))
+                Value::Int(result as i64)
             }
             FFIType::U8 => {
                 let result = func
                     .cif
                     .call::<u8>(func.ptr, &call_args);
-                Ok(Value::Int(result as i64))
+                Value::Int(result as i64)
             }
             FFIType::I16 => {
                 let result = func
                     .cif
                     .call::<i16>(func.ptr, &call_args);
-                Ok(Value::Int(result as i64))
+                Value::Int(result as i64)
             }
             FFIType::U16 => {
                 let result = func
                     .cif
                     .call::<u16>(func.ptr, &call_args);
-                Ok(Value::Int(result as i64))
+                Value::Int(result as i64)
             }
             FFIType::I32 => {
                 let result = func
                     .cif
                     .call::<i32>(func.ptr, &call_args);
-                Ok(Value::Int(result as i64))
+                Value::Int(result as i64)
             }
             FFIType::U32 => {
                 let result = func
                     .cif
                     .call::<u32>(func.ptr, &call_args);
-                Ok(Value::Int(result as i64))
+                Value::Int(result as i64)
             }
             FFIType::I64 => {
                 let result = func
                     .cif
                     .call::<i64>(func.ptr, &call_args);
-                Ok(Value::Int(result))
+                Value::Int(result)
             }
             FFIType::U64 => {
                 let result = func
                     .cif
                     .call::<i64>(func.ptr, &call_args);
-                Ok(Value::Int(result))
+                Value::Int(result)
             }
             FFIType::F32 => {
                 let result = func
                     .cif
                     .call::<f32>(func.ptr, &call_args);
-                Ok(Value::Float(result as f64))
+                Value::Float(result as f64)
             }
             FFIType::F64 => {
                 let result = func
                     .cif
                     .call::<f64>(func.ptr, &call_args);
-                Ok(Value::Float(result))
+                Value::Float(result)
             }
             FFIType::Void => {
                 func.cif
                     .call::<()>(func.ptr, &call_args);
-                Ok(Value::Null)
+                Value::Null
             }
             FFIType::Pointer => {
                 let result = func
@@ -525,7 +530,7 @@ impl FFILibrary {
                 vm.gc_guard(value);
                 vm.gc_register(value, table);
                 vm.gc_unguard();
-                Ok(value)
+                value
             }
             FFIType::String => {
                 let result = func
@@ -535,19 +540,19 @@ impl FFILibrary {
                 vm.gc_guard(value);
                 vm.gc_register(value, table);
                 vm.gc_unguard();
-                Ok(value)
+                value
             }
             FFIType::Isize => {
                 let result = func
                     .cif
                     .call::<isize>(func.ptr, &call_args);
-                Ok(Value::Int(result as i64))
+                Value::Int(result as i64)
             }
             FFIType::Usize => {
                 let result = func
                     .cif
                     .call::<usize>(func.ptr, &call_args);
-                Ok(Value::Int(result as i64))
+                Value::Int(result as i64)
             }
         }
     }
@@ -606,7 +611,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             let lib = utils::expect_any(addr.clone(), vm.pop(&addr)?, None);
 
             if let Some(library) = (*lib).downcast_mut::<FFILibrary>() {
-                if let Err(e) = library.load_fn((*name).clone(), (*out).clone(), params) {
+                if let Err(e) = library.load_fn(&addr, (*name).clone(), (*out).clone(), params) {
                     error!(Error::own_text(
                         addr.clone(),
                         format!("load fn error: {e:?}"),
@@ -639,22 +644,10 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             let lib = utils::expect_any(addr.clone(), vm.pop(&addr)?, None);
 
             if let Some(library) = (*lib).downcast_mut::<FFILibrary>() {
-                let called = library.call_fn(vm, table, addr.clone(), (*name).clone(), args);
-                match called {
-                    Ok(ok) => {
-                        if should_push {
-                            vm.op_push(OpcodeValue::Raw(ok), table)?;
-                        }
-                    }
-                    Err(err) => {
-                        error!(Error::own_text(
-                            addr.clone(),
-                            format!("call fn error: {err:?}"),
-                            "check your code"
-                        ))
-                    }
+                let result = library.call_fn(vm, table, addr.clone(), (*name).clone(), args);
+                if should_push {
+                    vm.op_push(OpcodeValue::Raw(result), table)?;
                 }
-
             } else {
                 error!(Error::own_text(
                     addr.clone(),

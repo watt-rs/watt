@@ -151,13 +151,49 @@ import 'std.io'
 import 'std.system'
 
 lib := ffi.load(
-    '/home/vyacheslav/Watt/RustWatt/watt/libowm.so',
+    '/home/vyacheslav/Watt/RustWatt/watt/libbutterfly.so',
     [
         {
-            'name': 'weather',
+            'name': 'init',
+            'out': 'void',
+            'params': []
+        },
+        {
+            'name': 'clear_screen',
+            'out': 'void',
+            'params': []
+        },
+        {
+            'name': 'redraw_screen',
+            'out': 'void',
+            'params': []
+        },
+        {
+            'name': 'load_texture',
+            'out': 'usize',
+            'params': ['ptr']
+        },
+        {
+            'name': 'draw_texture',
+            'out': 'void',
+            'params': ['usize','i32','i32','u32','u32']
+        },
+        {
+            'name': 'poll_event',
             'out': 'string',
-            'params': ['ptr', 'ptr', 'ptr']
+            'params': []
         }
     ]
 )
-io.println(lib.call('weather',['Ташкент', '-', 'ru']))
+lib.call('init',[])
+lib.call('load_texture', ['/home/vyacheslav/Images/2.png'])
+i := 0
+while true {
+    lib.call('draw_texture', [0, 100, 100, 100, 100])
+    lib.call('redraw_screen',[])
+    event := lib.call('poll_event', [])
+    if event != 'nop' {
+        io.println('event: ' + event)
+    }
+    i += 1
+}
