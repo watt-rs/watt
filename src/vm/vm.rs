@@ -125,7 +125,7 @@ impl VM {
             // calling gc
             self.gc_invoke(table);
             // doubling current max gc threshold
-            self.settings.gc_threshold *= 2;
+            self.settings.gc_threshold = (*self.gc).objects_amount() * 2;
         }
     }
 
