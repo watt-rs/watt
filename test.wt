@@ -146,57 +146,14 @@ if text.is_err() {
     io.println(text.unwrap())
 }
 */
-import 'std.ffi'
 import 'std.io'
-import 'std.system'
+import 'std.json'
 
-lib := ffi.load(
-    '/home/vyacheslav/Watt/RustWatt/watt/libbutterfly.so',
-    [
-        {
-            'name': 'init',
-            'out': 'void',
-            'params': []
-        },
-        {
-            'name': 'clear_screen',
-            'out': 'void',
-            'params': []
-        },
-        {
-            'name': 'redraw_screen',
-            'out': 'void',
-            'params': []
-        },
-        {
-            'name': 'load_texture',
-            'out': 'usize',
-            'params': ['ptr']
-        },
-        {
-            'name': 'draw_texture',
-            'out': 'void',
-            'params': ['usize','i32','i32','u32','u32']
-        },
-        {
-            'name': 'poll_event',
-            'out': 'string',
-            'params': []
-        }
-    ]
-)
-lib.call('init',[])
-lib.call('load_texture', ['/home/vyacheslav/Images/2.png'])
-i := 0
-while true {
-    lib.call('draw_texture', [0, 100, 100, 100, 100])
-    lib.call('redraw_screen',[])
-    event := lib.call('poll_event', [])
-    if event != 'nop' {
-        io.println('event: ' + event)
-    }
-    if event == 'app_quit' {
-        break
-    }
-    i += 1
+text := json.decode('{ "a": [123,4,5], "b":6 }')
+io.println(text)
+
+if text.is_err() {
+    io.println(text.unwrap_err())
+} else {
+    io.println(text.unwrap())
 }

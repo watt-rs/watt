@@ -200,7 +200,15 @@ type NumbersIterator(start, end) impl Iterator {
 */
 type Entry(key, value) impl Display {
     fn to_string {
-        return '(' + key + ',' + value + ')'
+        key_display := key
+        value_display := value
+        if is_instance(key) and key impls Display {
+            key_display = key.to_string()
+        }
+        if is_instance(value) and value impls Display {
+            value_display = value.to_string()
+        }
+        return '(' + key_display + ',' + value_display + ')'
     }
 }
 
