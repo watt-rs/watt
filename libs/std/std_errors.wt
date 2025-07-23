@@ -4,7 +4,7 @@
  | to work with errors and error propagation.
  | can contains ok or err at the same time.
  */
-type Result(ok, err) {
+type Result(ok, err) impl Display {
     /*
      Result init,
      checks only one value is passed.
@@ -101,6 +101,28 @@ type Result(ok, err) {
         else {
             return self.err
         }
+    }
+
+    // to_string
+    fn to_string {
+        string := null
+        if is_ok() {
+            if is_instance(self.ok) and self.ok impls Display {
+                string = 'Result(ok=true, value=' + self.ok.to_string() + ')'
+            }
+            else {
+                string = 'Result(ok=true, value=' + self.ok + ')'
+            }
+        }
+        if is_err() {
+            if is_instance(self.err) and self.err impls Display {
+                string = 'Result(ok=false, value=' + self.err.to_string() + ')'
+            }
+            else {
+                string = 'Result(ok=false, value=' + self.err + ')'
+            }
+        }
+        return string
     }
 }
 

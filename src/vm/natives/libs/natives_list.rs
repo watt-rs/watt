@@ -274,31 +274,6 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             Ok(())
         },
     );
-    natives::provide(
-        vm,
-        built_in_address.clone(),
-        1,
-        "list@to_string",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            // список
-            let list_value = vm.pop(&addr).unwrap();
-            // проверяем
-            if let Value::List(list) = list_value {
-                // если надо пушить
-                if should_push {
-                    vm.op_push(OpcodeValue::String(format!("{:?}", *list)), table)?;
-                }
-            } else {
-                error!(Error::own_text(
-                    addr.clone(),
-                    format!("could not use to_string for {list_value:?}, not a list"),
-                    "check your code"
-                ));
-            }
-            // успех
-            Ok(())
-        },
-    );
     // успех
     Ok(())
 }

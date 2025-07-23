@@ -151,9 +151,3 @@ import 'std.json'
 
 text := json.decode('{ "a": [123,4,5], "b":6 }')
 io.println(text)
-
-if text.is_err() {
-    io.println(text.unwrap_err())
-} else {
-    io.println(text.unwrap())
-}

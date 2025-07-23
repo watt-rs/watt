@@ -22,7 +22,6 @@ unit __list_utils {
     native length -> 'list@length'
     native delete -> 'list@delete'
     native delete_at -> 'list@delete_at'
-    native to_string -> 'list@to_string'
 }
 
 /*
@@ -58,7 +57,16 @@ type List impl Display {
     }
     // to_string
     fn to_string {
-        return __list_utils.to_string(self.internal)
+        string := '['
+        for value in self.iter() {
+            if is_instance(value) and value impls Display {
+                string += value.to_string() + ','
+            } else {
+                string += value + ','
+            }
+        }
+        string += ']'
+        return string
     }
     // gets value by index
     fn get(index) {
