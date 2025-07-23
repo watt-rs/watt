@@ -29,6 +29,7 @@ pub union FFIValue {
     isize: isize,
     usize: usize,
     ptr: *const c_void,
+    bool: bool
 }
 /// Implementation of FFI value
 impl FFIValue {
@@ -188,6 +189,19 @@ impl FFIValue {
             }
         }
     }
+    /// Creates bool FFIValue from Value
+    pub fn bool(address: &Address, value: Value) -> Self {
+        match value {
+            Value::Bool(b) => FFIValue { bool: b },
+            _ => {
+                error!(Error::own_text(
+                    address.clone(),
+                    format!("could not convert {value} to ffi type bool."),
+                    "you can only use bool."
+                ))
+            }
+        }
+    }
     /// Creates ptr FFIValue from Value
     pub fn ptr(address: &Address, value: Value) -> Self {
         match value {
@@ -222,6 +236,7 @@ impl FFIValue {
             FFIType::Pointer => Arg::new(&self.ptr),
             FFIType::Isize => Arg::new(&self.isize),
             FFIType::Usize => Arg::new(&self.usize),
+            FFIType::Bool => Arg::new(&self.bool),
             _ => unreachable!(),
         }
     }
@@ -245,6 +260,7 @@ enum FFIType {
     Isize,
     Usize,
     String,
+    Bool,
 }
 /// Implementation of FFI type
 impl FFIType {
@@ -266,10 +282,11 @@ impl FFIType {
             "isize" => FFIType::Isize,
             "usize" => FFIType::Usize,
             "string" => FFIType::String,
+            "bool" => FFIType::Bool,
             _ => error!(Error::own_text(
                 address.clone(),
                 format!("unknown type {type_name}"),
-                "available: i8,u8,i16,u16,i32,i64,isize,usize,f32,f43,string,void,ptr"
+                "available: i8,u8,i16,u16,i32,i64,isize,usize,f32,f43,string,void,ptr,bool"
             )),
         }
     }
@@ -278,7 +295,7 @@ impl FFIType {
     pub fn to_ffi_type(&self) -> Type {
         match self {
             FFIType::I8 => Type::i8(),
-            FFIType::U8 => Type::i16(),
+            FFIType::U8 | FFIType::Bool => Type::u8(),
             FFIType::I16 => Type::i16(),
             FFIType::U16 => Type::u16(),
             FFIType::I32 => Type::i32(),
@@ -424,6 +441,7 @@ impl FFILibrary {
                 FFIType::Isize => ffi_args.push(FFIValue::isize(&addr, arg)),
                 FFIType::Usize => ffi_args.push(FFIValue::usize(&addr, arg)),
                 FFIType::String => ffi_args.push(FFIValue::ptr(&addr, arg)),
+                FFIType::Bool => ffi_args.push(FFIValue::bool(&addr, arg)),
             }
         }
 
@@ -503,6 +521,10 @@ impl FFILibrary {
             FFIType::Usize => {
                 let result = func.cif.call::<usize>(func.ptr, &call_args);
                 Value::Int(result as i64)
+            }
+            FFIType::Bool => {
+                let result = func.cif.call::<bool>(func.ptr, &call_args);
+                Value::Bool(result)
             }
         }
     }
