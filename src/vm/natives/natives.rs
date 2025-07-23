@@ -1,5 +1,4 @@
 // imports
-use crate::error;
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::flow::ControlFlow;
@@ -49,9 +48,7 @@ pub unsafe fn provide(
     vm.gc_guard(native_fn);
     vm.gc_register(native_fn, vm.globals);
     // define native
-    if let Err(e) = (*vm.natives).define(&addr, name, native_fn) {
-        error!(e);
-    }
+    (*vm.natives).define(&addr, name, native_fn);
     // unguard native in gc
     vm.gc_unguard();
 }

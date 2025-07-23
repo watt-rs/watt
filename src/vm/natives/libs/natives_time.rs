@@ -4,8 +4,8 @@ use crate::errors::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::bytecode::OpcodeValue;
 use crate::vm::memory::memory;
-use crate::vm::natives::libs::utils;
 use crate::vm::natives::natives;
+use crate::vm::natives::utils;
 use crate::vm::table::Table;
 use crate::vm::values::Value;
 use crate::vm::vm::VM;
@@ -37,7 +37,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let timestamp_value = vm.pop(&addr.clone())?;
             let timestamp = utils::expect_any(
-                addr.clone(),
+                &addr,
                 timestamp_value,
                 Some(Error::own_text(
                     addr.clone(),
@@ -70,7 +70,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let timestamp_value = vm.pop(&addr.clone())?;
             let timestamp = utils::expect_any(
-                addr.clone(),
+                &addr,
                 timestamp_value,
                 Some(Error::own_text(
                     addr.clone(),
@@ -103,7 +103,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let timestamp_value = vm.pop(&addr.clone())?;
             let timestamp = utils::expect_any(
-                addr.clone(),
+                &addr,
                 timestamp_value,
                 Some(Error::own_text(
                     addr.clone(),
@@ -136,7 +136,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let timestamp_value = vm.pop(&addr.clone())?;
             let timestamp = utils::expect_any(
-                addr.clone(),
+                &addr,
                 timestamp_value,
                 Some(Error::own_text(
                     addr.clone(),
@@ -169,7 +169,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let timestamp_value = vm.pop(&addr.clone())?;
             let timestamp = utils::expect_any(
-                addr.clone(),
+                &addr,
                 timestamp_value,
                 Some(Error::own_text(
                     addr.clone(),
@@ -202,7 +202,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let timestamp_value = vm.pop(&addr.clone())?;
             let timestamp = utils::expect_any(
-                addr.clone(),
+                &addr,
                 timestamp_value,
                 Some(Error::own_text(
                     addr.clone(),
@@ -235,7 +235,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let timestamp_value = vm.pop(&addr.clone())?;
             let timestamp = utils::expect_any(
-                addr.clone(),
+                &addr,
                 timestamp_value,
                 Some(Error::own_text(
                     addr.clone(),

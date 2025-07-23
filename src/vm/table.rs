@@ -1,4 +1,5 @@
 // imports
+use crate::error;
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::memory::memory;
@@ -20,7 +21,7 @@ pub struct Table {
     /// root table, previous lexical table
     /// for example:
     /// ```
-    /// if a { // table one         
+    /// if a { // table one
     ///   if b { // table two, root: table one
     ///   }
     /// }
@@ -63,15 +64,15 @@ impl Table {
     ///
     /// raises error if not exists
     ///
-    pub unsafe fn find(&self, address: &Address, name: &str) -> Result<Value, Error> {
+    pub unsafe fn find(&self, address: &Address, name: &str) -> Value {
         if self.exists(name) {
             if self.fields.contains_key(name) {
-                Ok(self.fields[name])
+                self.fields[name]
             } else {
-                Ok((*self.closure).find(address, name)?)
+                (*self.closure).find(address, name)
             }
         } else {
-            Err(Error::own_text(
+            error!(Error::own_text(
                 address.clone(),
                 format!("{name} is not defined."),
                 "check variable existence.",
@@ -83,12 +84,11 @@ impl Table {
     ///
     /// raises error if already defined
     ///
-    pub fn define(&mut self, address: &Address, name: &str, value: Value) -> Result<(), Error> {
+    pub fn define(&mut self, address: &Address, name: &str, value: Value) {
         if !self.fields.contains_key(name) {
             self.fields.insert(name.to_string(), value);
-            Ok(())
         } else {
-            Err(Error::own_text(
+            error!(Error::own_text(
                 address.clone(),
                 format!("{name} is already defined."),
                 "you can rename variable.",
@@ -100,42 +100,35 @@ impl Table {
     ///
     /// raises error if not defined
     ///
-    pub unsafe fn set(&mut self, address: Address, name: &str, value: Value) -> Result<(), Error> {
+    pub unsafe fn set(&mut self, address: Address, name: &str, value: Value) {
         if self.fields.contains_key(name) {
             self.fields.insert(name.to_string(), value);
         } else if !self.root.is_null() && (*self.root).has(name) {
-            (*self.root).set(address, name, value)?;
+            (*self.root).set(address, name, value);
         } else if !self.closure.is_null() && (*self.closure).exists(name) {
-            (*self.closure).set(address, name, value)?;
+            (*self.closure).set(address, name, value);
         } else {
-            return Err(Error::own_text(
+            error!(Error::own_text(
                 address.clone(),
                 format!("{name} is not defined."),
                 "check variable existence.",
             ));
         }
-        Ok(())
     }
 
     /// Sets variable in fields
     ///
     /// raises error if not defined
     ///
-    pub unsafe fn set_local(
-        &mut self,
-        address: &Address,
-        name: &str,
-        value: Value,
-    ) -> Result<(), Error> {
+    pub unsafe fn set_local(&mut self, address: &Address, name: &str, value: Value) {
         if !self.fields.contains_key(name) {
-            return Err(Error::own_text(
+            error!(Error::own_text(
                 address.clone(),
                 format!("{name} is not defined."),
                 "you can define it, using := op.",
             ));
         }
         self.fields.insert(name.to_string(), value);
-        Ok(())
     }
 
     /// Checks variable exists in fields, closures or roots
@@ -154,15 +147,15 @@ impl Table {
     ///
     /// raises error if not exists
     ///
-    pub unsafe fn lookup(&mut self, address: &Address, name: &str) -> Result<Value, Error> {
+    pub unsafe fn lookup(&mut self, address: &Address, name: &str) -> Value {
         if self.fields.contains_key(name) {
-            Ok(self.fields[name])
+            self.fields[name]
         } else if !self.root.is_null() && (*self.root).has(name) {
             (*self.root).lookup(address, name)
         } else if !self.closure.is_null() && (*self.closure).exists(name) {
             (*self.closure).find(address, name)
         } else {
-            Err(Error::own_text(
+            error!(Error::own_text(
                 address.clone(),
                 format!("{name} is not defined."),
                 "check variable existence.",

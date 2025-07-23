@@ -804,9 +804,11 @@ impl VM {
                 }
             }
         }
+
         // running first chunk
         self.run(a, table)?;
         let operand_a = self.pop(address)?;
+
         // operand a
         let a = expect_bool(
             operand_a,
@@ -816,6 +818,7 @@ impl VM {
                 "check your code.",
             ),
         );
+
         // logical op
         match op {
             "and" => {
@@ -868,6 +871,7 @@ impl VM {
                 panic!("operator {op} is not found.")
             }
         }
+
         Ok(())
     }
 
@@ -883,13 +887,16 @@ impl VM {
         // condition table
         let table = memory::alloc_value(Table::new());
         (*table).set_root(root);
+
         // defer condition table free
         defer! {
             try_free_table(table);
         }
+
         // running condition
         self.run(cond, table)?;
         let bool = self.pop(addr)?;
+
         // checking condition returned true
         if let Value::Bool(b) = bool {
             if b {
@@ -904,6 +911,7 @@ impl VM {
                 "condition should provide a bool."
             ))
         }
+
         Ok(())
     }
 
@@ -918,10 +926,12 @@ impl VM {
         // loop table
         let table = memory::alloc_value(Table::new());
         (*table).set_root(root);
+
         // defer loop table free
         defer! {
             try_free_table(table);
         }
+
         // loop
         loop {
             if let Err(e) = self.run(body, table) {
@@ -938,6 +948,7 @@ impl VM {
                 }
             }
         }
+
         Ok(())
     }
 
@@ -965,6 +976,7 @@ impl VM {
             memory::alloc_value(body.clone()),
             params.to_owned(),
         ));
+
         // if it's need to make_closure
         if make_closure && table != self.globals {
             // setting closure
@@ -980,16 +992,11 @@ impl VM {
         self.gc_register(function_value, table);
 
         // defining fn by name and full name
-        if let Err(e) = (*table).define(addr, &symbol.name, function_value) {
-            error!(e);
-        }
+        (*table).define(addr, &symbol.name, function_value);
         if symbol.full_name.is_some() {
-            if let Err(e) =
-                (*table).define(addr, symbol.full_name.as_ref().unwrap(), function_value)
-            {
-                error!(e);
-            }
+            (*table).define(addr, symbol.full_name.as_ref().unwrap(), function_value);
         }
+
         // deleting gc guard
         self.gc_unguard();
 
@@ -1016,6 +1023,7 @@ impl VM {
             memory::alloc_value(body.clone()),
             params.to_owned(),
         ));
+
         // if it's need to make_closure
         if make_closure {
             // creating closure
@@ -1032,6 +1040,7 @@ impl VM {
 
         // push function value to stack
         self.push(function_value);
+
         // register value in gc
         self.gc_register(function_value, table);
 
@@ -1075,17 +1084,13 @@ impl VM {
             memory::alloc_value(body.clone()),
             impls.to_owned(),
         ));
+
         // defining type by name && full name
-        if let Err(e) = (*self.types).define(addr, &symbol.name, Value::Type(t)) {
-            error!(e);
-        }
+        (*self.types).define(addr, &symbol.name, Value::Type(t));
         if symbol.full_name.is_some() {
-            if let Err(e) =
-                (*self.types).define(addr, symbol.full_name.as_ref().unwrap(), Value::Type(t))
-            {
-                error!(e);
-            }
+            (*self.types).define(addr, symbol.full_name.as_ref().unwrap(), Value::Type(t));
         }
+
         Ok(())
     }
 
@@ -1115,39 +1120,43 @@ impl VM {
         // guarding value in gc and registering it
         self.gc_guard(unit_value);
         self.gc_register(unit_value, table);
+
         // setting root for fields
         (*(*unit).fields).set_root(self.globals);
+
         // setting temp parent for fields
         (*(*unit).fields).parent = table;
+
         // inserting temp self
         (*(*unit).fields)
             .fields
             .insert("self".to_string(), unit_value);
+
         // executing body
         self.run(body, (*unit).fields)?;
+
         // deleting temp self
         (*(*unit).fields).fields.remove("self");
+
         // binding function
         self.bind_functions((*unit).fields, FnOwner::Unit(unit));
+
         // calling optional init fn
         let init_fn = "init";
         if (*(*unit).fields).exists(init_fn) {
             self.push(unit_value);
             self.op_call(addr, init_fn, true, false, &Chunk::new(vec![]), table)?
         }
+
         // defining unit by name and full name
-        if let Err(e) = (*self.units).define(addr, &symbol.name, unit_value) {
-            error!(e);
-        }
+        (*self.units).define(addr, &symbol.name, unit_value);
         if symbol.full_name.is_some() {
-            if let Err(e) =
-                (*self.units).define(addr, symbol.full_name.as_ref().unwrap(), unit_value)
-            {
-                error!(e);
-            }
+            (*self.units).define(addr, symbol.full_name.as_ref().unwrap(), unit_value);
         }
+
         // deleting temp parent
         (*(*unit).fields).parent = std::ptr::null_mut();
+
         // deleting gc guard
         self.gc_unguard();
         Ok(())
@@ -1170,19 +1179,17 @@ impl VM {
     ) -> Result<(), ControlFlow> {
         // allocating trait
         let _trait = memory::alloc_value(Trait::new(symbol.clone(), functions.to_owned()));
+
         // define trait by name and full name
-        if let Err(e) = (*self.traits).define(addr, &symbol.name, Value::Trait(_trait)) {
-            error!(e);
-        }
+        (*self.traits).define(addr, &symbol.name, Value::Trait(_trait));
         if symbol.full_name.is_some() {
-            if let Err(e) = (*self.traits).define(
+            (*self.traits).define(
                 addr,
                 symbol.full_name.as_ref().unwrap(),
                 Value::Trait(_trait),
-            ) {
-                error!(e);
-            }
+            );
         }
+
         Ok(())
     }
 
@@ -1206,29 +1213,24 @@ impl VM {
         if !has_previous {
             self.run(value, table)?;
             let operand = self.pop(addr)?;
-            if let Err(e) = (*table).define(addr, name, operand) {
-                error!(e);
-            }
+            (*table).define(addr, name, operand);
         }
         // previous
         else {
             let previous = self.pop(addr)?;
+
             match previous {
                 // define in instance
                 Value::Instance(instance) => {
                     self.run(value, table)?;
                     let operand = self.pop(addr)?;
-                    if let Err(e) = (*(*instance).fields).define(addr, name, operand) {
-                        error!(e);
-                    }
+                    (*(*instance).fields).define(addr, name, operand);
                 }
                 // define in unit
                 Value::Unit(unit) => {
                     self.run(value, table)?;
                     let operand = self.pop(addr)?;
-                    if let Err(e) = (*(*unit).fields).define(addr, name, operand) {
-                        error!(e);
-                    }
+                    (*(*unit).fields).define(addr, name, operand);
                 }
                 _ => {
                     error!(Error::own_text(
@@ -1239,6 +1241,7 @@ impl VM {
                 }
             }
         }
+
         Ok(())
     }
 
@@ -1262,29 +1265,24 @@ impl VM {
         if !has_previous {
             self.run(value, table)?;
             let operand = self.pop(addr)?;
-            if let Err(e) = (*table).set(addr.clone(), name, operand) {
-                error!(e);
-            }
+            (*table).set(addr.clone(), name, operand);
         }
         // previous
         else {
             let previous = self.pop(addr)?;
+
             match previous {
                 // define in instance
                 Value::Instance(instance) => {
                     self.run(value, table)?;
                     let operand = self.pop(addr)?;
-                    if let Err(e) = (*(*instance).fields).set_local(addr, name, operand) {
-                        error!(e);
-                    }
+                    (*(*instance).fields).set_local(addr, name, operand);
                 }
                 // define in unit
                 Value::Unit(unit) => {
                     self.run(value, table)?;
                     let operand = self.pop(addr)?;
-                    if let Err(e) = (*(*unit).fields).set_local(addr, name, operand) {
-                        error!(e);
-                    }
+                    (*(*unit).fields).set_local(addr, name, operand);
                 }
                 _ => {
                     error!(Error::own_text(
@@ -1295,6 +1293,7 @@ impl VM {
                 }
             }
         }
+
         Ok(())
     }
 
@@ -1316,24 +1315,22 @@ impl VM {
     ) -> Result<(), ControlFlow> {
         // non-previous
         if !has_previous {
-            // loads from
-            let lookup_result;
+            // value
+            let value;
+
+            // loading variable value from table
             if (*table).has(name) {
-                lookup_result = (*table).lookup(addr, name);
+                value = (*table).lookup(addr, name);
             } else if (*self.types).has(name) {
-                lookup_result = (*self.types).find(addr, name);
+                value = (*self.types).find(addr, name);
             } else if (*self.traits).has(name) {
-                lookup_result = (*self.traits).find(addr, name);
+                value = (*self.traits).find(addr, name);
             } else {
-                lookup_result = (*self.units).find(addr, name);
+                value = (*self.units).find(addr, name);
             }
-            // error handling
-            if let Err(e) = lookup_result {
-                error!(e)
-            } else if let Ok(value) = lookup_result {
-                if !should_push {
-                    return Ok(());
-                }
+
+            // pushing value
+            if should_push {
                 self.push(value);
             }
         }
@@ -1343,25 +1340,15 @@ impl VM {
             match previous {
                 // from instance
                 Value::Instance(instance) => {
-                    let lookup_result = (*(*instance).fields).find(addr, name);
-                    if let Err(e) = lookup_result {
-                        error!(e)
-                    } else if let Ok(value) = lookup_result {
-                        if !should_push {
-                            return Ok(());
-                        }
+                    let value = (*(*instance).fields).find(addr, name);
+                    if should_push {
                         self.push(value);
                     }
                 }
                 // from unit
                 Value::Unit(unit) => {
-                    let lookup_result = (*(*unit).fields).find(addr, name);
-                    if let Err(e) = lookup_result {
-                        error!(e)
-                    } else if let Ok(value) = lookup_result {
-                        if !should_push {
-                            return Ok(());
-                        }
+                    let value = (*(*unit).fields).find(addr, name);
+                    if should_push {
                         self.push(value);
                     }
                 }
@@ -1374,6 +1361,7 @@ impl VM {
                 }
             }
         }
+
         Ok(())
     }
 
@@ -1420,16 +1408,16 @@ impl VM {
             vm.run(args, table)?;
             let new_size = vm.stack.len();
             let passed_amount = new_size - prev_size;
+
             // ensuring args && params amount are equal
             if passed_amount == params_amount {
                 // defining params variables with
                 // args values
                 for param in params.iter().rev() {
                     let operand = vm.pop(addr)?;
-                    if let Err(e) = (*call_table).define(addr, param, operand) {
-                        error!(e);
-                    }
+                    (*call_table).define(addr, param, operand);
                 }
+
                 Ok(())
             } else {
                 error!(Error::own(
@@ -1463,6 +1451,7 @@ impl VM {
             vm.run(args, table)?;
             let new_size = vm.stack.len();
             let passed_amount = new_size - prev_size;
+
             // ensuring args && params amount are equal
             if passed_amount == params_amount {
                 Ok(())
@@ -1482,35 +1471,33 @@ impl VM {
         if let Value::Fn(function) = callable {
             // call table
             let call_table = memory::alloc_value(Table::new());
+
             // parent and closure tables, to chain call_table
             // with current
             (*call_table).parent = table;
             (*call_table).closure = (*function).closure;
+
             // freeing call table
             defer! {
                 try_free_table(call_table);
             }
+
             // root & self
             if (*function).owner.is_some() {
                 match (*function).owner.clone().unwrap() {
                     FnOwner::Unit(unit) => {
                         (*call_table).set_root((*unit).fields);
-                        if let Err(e) = (*call_table).define(addr, "self", Value::Unit(unit)) {
-                            error!(e);
-                        }
+                        (*call_table).define(addr, "self", Value::Unit(unit));
                     }
                     FnOwner::Instance(instance) => {
                         (*call_table).set_root((*instance).fields);
-                        if let Err(e) =
-                            (*call_table).define(addr, "self", Value::Instance(instance))
-                        {
-                            error!(e);
-                        }
+                        (*call_table).define(addr, "self", Value::Instance(instance));
                     }
                 }
             } else {
                 (*call_table).set_root(table)
             }
+
             // passing args
             pass_arguments(
                 self,
@@ -1522,6 +1509,7 @@ impl VM {
                 table,
                 call_table,
             )?;
+
             // running body
             if let Err(e) = self.run(&*(*function).body, call_table) {
                 return match e {
@@ -1544,20 +1532,26 @@ impl VM {
         else if let Value::Native(function) = callable {
             // call table
             let call_table = memory::alloc_value(Table::new());
+
             // parent and closure tables, to chain call_table
             // with current
             (*call_table).parent = table;
+
             // freeing
             defer! {
                 try_free_table(call_table);
             }
+
             // root to globals
             (*call_table).set_root(self.globals);
+
             // loading arguments to stack
             load_arguments(self, addr, name, (*function).params_amount, args, table)?;
+
             // calling native fn
             let native = (*function).function;
             native(self, addr.clone(), should_push, call_table)?;
+
             Ok(())
         } else {
             error!(Error::own_text(
@@ -1581,12 +1575,8 @@ impl VM {
     ) -> Result<(), ControlFlow> {
         // non-previous
         if !has_previous {
-            let lookup_result = (*table).lookup(addr, name);
-            if let Err(e) = lookup_result {
-                error!(e)
-            } else if let Ok(value) = lookup_result {
-                self.call(addr, name, value, args, table, should_push)?;
-            }
+            let value = (*table).lookup(addr, name);
+            self.call(addr, name, value, args, table, should_push)?;
         }
         // previous
         else {
@@ -1594,23 +1584,13 @@ impl VM {
             match previous {
                 // call from instance
                 Value::Instance(instance) => {
-                    let lookup_result = (*(*instance).fields).find(addr, name);
-
-                    if let Err(e) = lookup_result {
-                        error!(e)
-                    } else if let Ok(value) = lookup_result {
-                        self.call(addr, name, value, args, table, should_push)?;
-                    }
+                    let value = (*(*instance).fields).find(addr, name);
+                    self.call(addr, name, value, args, table, should_push)?;
                 }
                 // call from unit
                 Value::Unit(unit) => {
-                    let lookup_result = (*(*unit).fields).find(addr, name);
-
-                    if let Err(e) = lookup_result {
-                        error!(e)
-                    } else if let Ok(value) = lookup_result {
-                        self.call(addr, name, value, args, table, should_push)?;
-                    }
+                    let value = (*(*unit).fields).find(addr, name);
+                    self.call(addr, name, value, args, table, should_push)?;
                 }
                 _ => {
                     error!(Error::own_text(
@@ -1621,6 +1601,7 @@ impl VM {
                 }
             }
         }
+
         Ok(())
     }
 
@@ -1628,6 +1609,7 @@ impl VM {
     /// duplicates value in stack
     ///
     unsafe fn op_duplicate(&mut self, addr: &Address) -> Result<(), ControlFlow> {
+        // duplicating operand
         let operand = self.pop(addr)?;
         self.push(operand);
         self.push(operand);
@@ -1649,21 +1631,16 @@ impl VM {
             addr: &Address,
             trait_name: &str,
         ) -> Option<*mut Trait> {
-            let trait_result = (*traits).find(addr, trait_name);
-            if let Err(e) = trait_result {
-                error!(e);
-            } else if let Ok(trait_value) = trait_result {
-                match trait_value {
-                    Value::Trait(_trait) => {
-                        // перебираем функции
-                        return Some(_trait);
-                    }
-                    _ => {
-                        panic!("not a trait in traits table. report to developer.")
-                    }
+            // looking up trait
+            let trait_value = (*traits).find(addr, trait_name);
+
+            match trait_value {
+                Value::Trait(_trait) => {
+                    return Some(_trait);
                 }
-            } else {
-                return None;
+                _ => {
+                    panic!("not a trait in traits table. report to developer.")
+                }
             }
         }
 
@@ -1674,21 +1651,12 @@ impl VM {
             impl_name: &str,
         ) -> Option<*mut Function> {
             // looking up for impl
-            let fn_result = (*table).lookup(addr, impl_name);
-            // checking existence
-            if let Err(e) = fn_result {
-                error!(e);
-            } else if let Ok(trait_value) = fn_result {
-                return match trait_value {
-                    Value::Fn(_fn) => {
-                        // перебираем функции
-                        Some(_fn)
-                    }
-                    _ => None,
-                };
-            } else {
-                return None;
-            }
+            let fn_value = (*table).lookup(addr, impl_name);
+
+            return match fn_value {
+                Value::Fn(_fn) => Some(_fn),
+                _ => None,
+            };
         }
 
         // checking all traits from a type
@@ -1743,16 +1711,16 @@ impl VM {
                             memory::alloc_value(default_impl.chunk.clone()),
                             default_impl.params.clone(),
                         )));
+
                         // guarding in gc
                         self.gc_guard(default_fn);
+
                         // registering in gc
                         self.gc_register(default_fn, table);
+
                         // defining fn in fields of instance
-                        if let Err(e) =
-                            (*(*instance).fields).define(addr, &function.name, default_fn)
-                        {
-                            error!(e);
-                        }
+                        (*(*instance).fields).define(addr, &function.name, default_fn);
+
                         // deleting gc guard gc
                         self.gc_unguard();
                     } else {
@@ -1815,15 +1783,14 @@ impl VM {
             vm.run(args, table)?;
             let new_size = vm.stack.len();
             let passed_amount = new_size - prev_size;
+
             // ensuring args && params amount are equal
             if passed_amount == params_amount {
                 // defining params variables with
                 // args values
                 for param in params.iter().rev() {
                     let operand = vm.pop(addr)?;
-                    if let Err(e) = (*fields_table).define(addr, param, operand) {
-                        error!(e);
-                    }
+                    (*fields_table).define(addr, param, operand);
                 }
                 Ok(())
             } else {
@@ -1835,69 +1802,78 @@ impl VM {
             }
         }
         // looking up a type
-        let lookup_result = (*self.types).lookup(addr, name);
-        if let Ok(value) = lookup_result {
-            match value {
-                Value::Type(t) => {
-                    // creating instance
-                    let instance =
-                        memory::alloc_value(Instance::new(t, memory::alloc_value(Table::new())));
-                    let instance_value = Value::Instance(instance);
-                    // guarding instance in gc
-                    self.gc_guard(instance_value);
-                    // registering in gc
-                    self.gc_register(Value::Instance(instance), table);
-                    // passing constructor
-                    pass_constructor(
-                        self,
-                        addr,
-                        name,
-                        (*t).constructor.len(),
-                        args,
-                        (*t).constructor.clone(),
-                        table,
-                        (*instance).fields,
-                    )?;
-                    // setting root
-                    (*(*instance).fields).set_root(self.globals);
-                    // setting temp parent
-                    (*(*instance).fields).parent = table;
-                    // setting temp self
-                    (*(*instance).fields)
-                        .fields
-                        .insert("self".to_string(), Value::Instance(instance));
-                    // executing body
-                    self.run(&*(*t).body, (*instance).fields)?;
-                    // deleting temp self
-                    (*(*instance).fields).fields.remove("self");
-                    // checking traits implementation
-                    self.check_traits(addr, instance, table);
-                    // binding functions
-                    self.bind_functions((*instance).fields, FnOwner::Instance(instance));
-                    // calling optional init fn
-                    let init_fn = "init";
-                    if (*(*instance).fields).exists(init_fn) {
-                        self.push(instance_value);
-                        self.op_call(addr, init_fn, true, false, &Chunk::new(vec![]), table)?
-                    }
-                    // pushing instance
-                    if should_push {
-                        self.push(instance_value);
-                    }
-                    // deleting temp parent
-                    (*(*instance).fields).parent = std::ptr::null_mut();
-                    // unguarding from gc
-                    self.gc_unguard();
-                    Ok(())
+        let value = (*self.types).lookup(addr, name);
+        match value {
+            Value::Type(t) => {
+                // creating instance
+                let instance =
+                    memory::alloc_value(Instance::new(t, memory::alloc_value(Table::new())));
+                let instance_value = Value::Instance(instance);
+
+                // guarding instance in gc
+                self.gc_guard(instance_value);
+
+                // registering in gc
+                self.gc_register(Value::Instance(instance), table);
+
+                // passing constructor
+                pass_constructor(
+                    self,
+                    addr,
+                    name,
+                    (*t).constructor.len(),
+                    args,
+                    (*t).constructor.clone(),
+                    table,
+                    (*instance).fields,
+                )?;
+
+                // setting root
+                (*(*instance).fields).set_root(self.globals);
+
+                // setting temp parent
+                (*(*instance).fields).parent = table;
+
+                // setting temp self
+                (*(*instance).fields)
+                    .fields
+                    .insert("self".to_string(), Value::Instance(instance));
+
+                // executing body
+                self.run(&*(*t).body, (*instance).fields)?;
+
+                // deleting temp self
+                (*(*instance).fields).fields.remove("self");
+
+                // checking traits implementation
+                self.check_traits(addr, instance, table);
+
+                // binding functions
+                self.bind_functions((*instance).fields, FnOwner::Instance(instance));
+
+                // calling optional init fn
+                let init_fn = "init";
+                if (*(*instance).fields).exists(init_fn) {
+                    self.push(instance_value);
+                    self.op_call(addr, init_fn, true, false, &Chunk::new(vec![]), table)?
                 }
-                _ => {
-                    panic!(
-                        "found a non-type value in types table. report this error to the developer."
-                    )
+
+                // pushing instance
+                if should_push {
+                    self.push(instance_value);
                 }
+
+                // deleting temp parent
+                (*(*instance).fields).parent = std::ptr::null_mut();
+
+                // unguarding from gc
+                self.gc_unguard();
+
+                Ok(())
             }
-        } else {
-            error!(lookup_result.unwrap_err());
+            _ => {
+                panic!("found a non-type value in types table. report this error to the developer.")
+            }
         }
     }
 
@@ -1908,6 +1884,7 @@ impl VM {
         addr: &Address,
         current_iteration: bool,
     ) -> Result<(), ControlFlow> {
+        // returning control flow
         if current_iteration {
             Err(ControlFlow::Continue)
         } else {
@@ -1922,6 +1899,7 @@ impl VM {
         value: &Chunk,
         table: *mut Table,
     ) -> Result<(), ControlFlow> {
+        // running value and returning control flow
         self.run(value, table)?;
         let value = self.pop(addr)?;
 
@@ -1936,15 +1914,9 @@ impl VM {
     ///
     unsafe fn op_native(&mut self, addr: &Address, name: &str) -> Result<(), ControlFlow> {
         // finding native function, provided
-        // by `vm/natives/natives.rs`
-        let result = (*self.natives).find(addr, name);
-
-        if let Ok(value) = result {
-            self.push(value);
-        }
-        if let Err(e) = result {
-            error!(e);
-        }
+        // by `vm/natives/natives.rs` and pushing to stack
+        let value = (*self.natives).find(addr, name);
+        self.push(value);
 
         Ok(())
     }
@@ -1976,10 +1948,10 @@ impl VM {
             instance: *mut Instance,
             table: *mut Table,
         ) -> Result<bool, ControlFlow> {
-            let lookup_result = (*(*instance).fields).find(addr, "is_ok");
-
-            if let Ok(callable) = lookup_result {
-                if let Value::Fn(function) = callable {
+            // finding callable
+            let callable = (*(*instance).fields).find(addr, "is_ok");
+            match callable {
+                Value::Fn(function) => {
                     if !(*function).params.is_empty() {
                         error!(Error::own_text(
                             addr.clone(),
@@ -1987,30 +1959,31 @@ impl VM {
                             "is_ok should take 0 params."
                         ));
                     }
-                } else {
+                }
+                _ => {
                     error!(Error::new(
                         addr.clone(),
                         "is_ok is not a fn.",
                         "is_ok should be fn."
                     ));
                 }
-                vm.call(addr, "is_ok", callable, &Chunk::new(vec![]), table, true)?;
+            }
 
-                let is_ok = vm.pop(addr)?;
+            // calling
+            vm.call(addr, "is_ok", callable, &Chunk::new(vec![]), table, true)?;
 
-                return if let Value::Bool(boolean) = is_ok {
-                    Ok(boolean)
-                } else {
+            // matching result
+            let result = vm.pop(addr)?;
+            match result {
+                Value::Bool(boolean) => return Ok(boolean),
+                _ => {
                     error!(Error::own(
                         addr.clone(),
                         "is_ok should return a bool.".to_string(),
-                        format!("it returned: {is_ok:?}")
+                        format!("it returned: {result:?}")
                     ));
-                };
-            } else if let Err(e) = lookup_result {
-                error!(e);
+                }
             }
-            Ok(false)
         }
 
         /// Calls unwrap
@@ -2022,37 +1995,35 @@ impl VM {
             instance: *mut Instance,
             table: *mut Table,
         ) -> Result<(), ControlFlow> {
-            let lookup_result = (*(*instance).fields).find(addr, "unwrap");
+            let callable = (*(*instance).fields).find(addr, "unwrap");
 
-            match lookup_result {
-                Ok(callable) => {
-                    if let Value::Fn(function) = callable {
-                        if !(*function).params.is_empty() {
-                            error!(Error::own_text(
-                                addr.clone(),
-                                format!("unwrap takes {} params", (*function).params.len()),
-                                "unwrap should take 0 params."
-                            ));
-                        }
-                    } else {
-                        error!(Error::new(
+            match callable {
+                Value::Fn(function) => {
+                    if !(*function).params.is_empty() {
+                        error!(Error::own_text(
                             addr.clone(),
-                            "unwrap is not a fn.",
-                            "unwrap should be fn."
+                            format!("unwrap takes {} params", (*function).params.len()),
+                            "unwrap should take 0 params."
                         ));
                     }
-                    vm.call(addr, "unwrap", callable, &Chunk::new(vec![]), table, true)?;
-                    Ok(())
                 }
-                Err(e) => {
-                    error!(e);
+                _ => {
+                    error!(Error::new(
+                        addr.clone(),
+                        "unwrap is not a fn.",
+                        "unwrap should be fn."
+                    ));
                 }
             }
+
+            vm.call(addr, "unwrap", callable, &Chunk::new(vec![]), table, true)?;
+            Ok(())
         }
 
         if let Value::Instance(instance) = value {
             // calling is ok
             let is_ok = call_is_ok(self, addr, instance, table)?;
+
             // if it's no ok
             if !is_ok {
                 // returning value back
@@ -2070,6 +2041,7 @@ impl VM {
                 "requires instance of type that impls .is_ok() and .unwrap() fn-s."
             ))
         }
+
         Ok(())
     }
 
@@ -2093,32 +2065,28 @@ impl VM {
         // is implemented
         if let Value::Instance(instance) = value {
             // checking trait is implemented
-            let lookup_result = (*self.traits).lookup(addr, trait_name);
+            let trait_value = (*self.traits).lookup(addr, trait_name);
+            match trait_value {
+                Value::Trait(_trait) => {
+                    let impls = &(*(*instance).t).impls;
 
-            if let Ok(trait_value) = lookup_result {
-                match trait_value {
-                    Value::Trait(_trait) => {
-                        let impls = &(*(*instance).t).impls;
+                    let name = &(*_trait).name.name;
+                    let full_name_option = &(*_trait).name.full_name;
 
-                        let name = &(*_trait).name.name;
-                        let full_name_option = &(*_trait).name.full_name;
-
-                        if let Some(full_name) = full_name_option {
+                    match full_name_option {
+                        Some(full_name) => {
                             self.push(Value::Bool(
                                 impls.contains(name) || impls.contains(full_name),
                             ));
-                        } else {
+                        }
+                        _ => {
                             self.push(Value::Bool(impls.contains(name)));
                         }
                     }
-                    _ => {
-                        panic!("not a trait in traits table. report to developer.")
-                    }
                 }
-            }
-            // если трейта не существует
-            else if let Err(e) = lookup_result {
-                error!(e);
+                _ => {
+                    panic!("not a trait in traits table. report to developer.")
+                }
             }
         } else {
             error!(Error::own_text(

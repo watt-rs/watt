@@ -3,8 +3,8 @@ use crate::error;
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::bytecode::OpcodeValue;
-use crate::vm::natives::libs::utils;
 use crate::vm::natives::natives;
+use crate::vm::natives::utils;
 use crate::vm::table::Table;
 use crate::vm::vm::VM;
 use base64::Engine;
@@ -22,13 +22,15 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "crypto@b64_encode",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let to_encode = utils::expect_cloned_string(addr.clone(), vm.pop(&addr)?, None);
+            let to_encode = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
+
             if should_push {
                 vm.op_push(
                     OpcodeValue::String(BASE64_STANDARD.encode(to_encode)),
                     table,
                 )?;
             }
+
             Ok(())
         },
     );
@@ -38,7 +40,8 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "crypto@b64_decode",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let to_decode = utils::expect_cloned_string(addr.clone(), vm.pop(&addr)?, None);
+            let to_decode = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
+
             if should_push {
                 match BASE64_STANDARD.decode(to_decode.clone()) {
                     Ok(decoded) => match String::from_utf8(decoded.clone()) {
@@ -62,6 +65,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     }
                 }
             }
+
             Ok(())
         },
     );
@@ -71,13 +75,15 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "crypto@sha256",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let to_crypto = utils::expect_cloned_string(addr.clone(), vm.pop(&addr)?, None);
+            let to_crypto = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
+
             if should_push {
                 vm.op_push(
                     OpcodeValue::String(hex::encode(Sha256::digest(to_crypto))),
                     table,
                 )?;
             }
+
             Ok(())
         },
     );
@@ -87,13 +93,15 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "crypto@sha224",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let to_crypto = utils::expect_cloned_string(addr.clone(), vm.pop(&addr)?, None);
+            let to_crypto = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
+
             if should_push {
                 vm.op_push(
                     OpcodeValue::String(hex::encode(Sha224::digest(to_crypto))),
                     table,
                 )?;
             }
+
             Ok(())
         },
     );
@@ -103,13 +111,15 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "crypto@sha512",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let to_crypto = utils::expect_cloned_string(addr.clone(), vm.pop(&addr)?, None);
+            let to_crypto = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
+
             if should_push {
                 vm.op_push(
                     OpcodeValue::String(hex::encode(Sha512::digest(to_crypto))),
                     table,
                 )?;
             }
+
             Ok(())
         },
     );
@@ -119,13 +129,15 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "crypto@sha384",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let to_crypto = utils::expect_cloned_string(addr.clone(), vm.pop(&addr)?, None);
+            let to_crypto = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
+
             if should_push {
                 vm.op_push(
                     OpcodeValue::String(hex::encode(Sha384::digest(to_crypto))),
                     table,
                 )?;
             }
+
             Ok(())
         },
     );
@@ -135,13 +147,15 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "crypto@md5",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let to_crypto = utils::expect_cloned_string(addr.clone(), vm.pop(&addr)?, None);
+            let to_crypto = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
+
             if should_push {
                 vm.op_push(
                     OpcodeValue::String(hex::encode(Md5::digest(to_crypto))),
                     table,
                 )?;
             }
+
             Ok(())
         },
     );

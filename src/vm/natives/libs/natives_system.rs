@@ -4,8 +4,8 @@ use crate::errors::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::bytecode::OpcodeValue;
 use crate::vm::memory::memory::{self};
-use crate::vm::natives::libs::utils;
 use crate::vm::natives::natives;
+use crate::vm::natives::utils;
 use crate::vm::table::Table;
 use crate::vm::values::Value;
 use crate::vm::vm::VM;
@@ -25,7 +25,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 return Ok(());
             }
 
-            let env_key = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
+            let env_key = &*utils::expect_string(&addr, vm.pop(&addr)?);
             let value = match std::env::vars().find(|x| &x.0 == env_key) {
                 Some((key, value)) => value,
                 None => {
@@ -45,8 +45,8 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         2,
         "system@setenv",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let env_value = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
-            let env_key = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
+            let env_value = &*utils::expect_string(&addr, vm.pop(&addr)?);
+            let env_key = &*utils::expect_string(&addr, vm.pop(&addr)?);
 
             std::env::set_var(env_key, env_value);
 
@@ -195,7 +195,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "system@this_process_terminate",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let code = utils::expect_int(addr.clone(), vm.pop(&addr)?, None);
+            let code = utils::expect_int(&addr, vm.pop(&addr)?);
             std::process::exit(code as _);
         },
     );
@@ -214,7 +214,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 ));
             }
 
-            let command = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
+            let command = &*utils::expect_string(&addr, vm.pop(&addr)?);
             let mut descriptor = if cfg!(target_os = "windows") {
                 let mut shell = Command::new("cmd");
                 shell.args(["/C", command]);
@@ -246,8 +246,8 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "system@process_wait",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let child = &mut *utils::expect_any(addr.clone(), vm.pop(&addr)?, None);
-            let child: Option<&mut std::process::Child> = child.downcast_mut();
+            let child = utils::expect_any(&addr, vm.pop(&addr)?, None);
+            let child: Option<&mut std::process::Child> = (*child).downcast_mut();
 
             match child {
                 Some(ch) => {
@@ -282,8 +282,8 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "system@process_terminate",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let child = &mut *utils::expect_any(addr.clone(), vm.pop(&addr)?, None);
-            let child: Option<&mut std::process::Child> = child.downcast_mut();
+            let child = utils::expect_any(&addr, vm.pop(&addr)?, None);
+            let child: Option<&mut std::process::Child> = (*child).downcast_mut();
 
             match child {
                 Some(ch) => {
@@ -311,8 +311,8 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "system@process_id",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let child = &mut *utils::expect_any(addr.clone(), vm.pop(&addr)?, None);
-            let child: Option<&mut std::process::Child> = child.downcast_mut();
+            let child = utils::expect_any(&addr, vm.pop(&addr)?, None);
+            let child: Option<&mut std::process::Child> = (*child).downcast_mut();
 
             match child {
                 Some(ch) => {

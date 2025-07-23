@@ -1,14 +1,15 @@
 // imports
+use crate::error;
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::bytecode::OpcodeValue;
 use crate::vm::flow::ControlFlow;
 use crate::vm::memory::memory;
 use crate::vm::natives::natives;
+use crate::vm::natives::utils;
 use crate::vm::table::Table;
 use crate::vm::values::Value;
 use crate::vm::vm::VM;
-use crate::{error, vm::natives::libs::utils};
 use std::io::{Read, Seek, Write};
 
 /// Provides
@@ -20,7 +21,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "fs@open",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // file name
-            let filename = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
+            let filename = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
 
             if should_push {
                 // opening file for reading
@@ -49,7 +50,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "fs@create",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // file name
-            let filename = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
+            let filename = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
 
             if should_push {
                 // opening file for reading, writing, creating
@@ -80,7 +81,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         addr: &Address,
     ) -> Result<&'vm mut std::fs::File, ControlFlow> {
         // getting a raw file
-        let raw_file = utils::expect_any(addr.clone(), vm.pop(addr)?, None);
+        let raw_file = utils::expect_any(&addr, vm.pop(addr)?, None);
 
         if !(*raw_file).is::<std::fs::File>() {
             error!(Error::new(
@@ -119,7 +120,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "fs@write",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // getting data for writing
-            let data = utils::expect_cloned_string(addr.clone(), vm.pop(&addr)?, None);
+            let data = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
             // getting raw file
             let file: &mut std::fs::File = pop_file(vm, &addr)?;
 
@@ -163,8 +164,8 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "fs@seek",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // getting whence and position
-            let whence = utils::expect_int(addr.clone(), vm.pop(&addr)?, None);
-            let position = utils::expect_int(addr.clone(), vm.pop(&addr)?, None);
+            let whence = utils::expect_int(&addr, vm.pop(&addr)?);
+            let position = utils::expect_int(&addr, vm.pop(&addr)?);
             // getting raw file
             let file: &mut std::fs::File = pop_file(vm, &addr)?;
 
@@ -189,7 +190,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "fs@mkdir",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // getting directory name
-            let name = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
+            let name = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
 
             // creating directory
             let result = std::fs::create_dir(name);
@@ -211,7 +212,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "fs@delete_directory",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // getting directory name
-            let name = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
+            let name = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
 
             // deleting directory
             let result = std::fs::remove_dir(name);
@@ -233,7 +234,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "fs@delete_directory_all",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // getting directory name
-            let name = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
+            let name = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
 
             // deleting directory tree
             let result = std::fs::remove_dir_all(name);
@@ -255,7 +256,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "fs@exists",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // getting path and checking existence
-            let path = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
+            let path = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
             let result = std::fs::exists(path);
 
             if should_push {
@@ -277,7 +278,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "fs@list",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // getting path
-            let path = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
+            let path = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
 
             // reading directory
             if should_push {
@@ -308,7 +309,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "fs@is_directory",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // getting path
-            let path = &*utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
+            let path = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
 
             if should_push {
                 let result = std::fs::metadata(path);

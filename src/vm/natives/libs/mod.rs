@@ -7,7 +7,7 @@ pub mod natives_gc;
 pub mod natives_io;
 pub mod natives_list;
 pub mod natives_math;
+pub mod natives_net;
 pub mod natives_strings;
 pub mod natives_system;
 pub mod natives_time;
-mod utils;

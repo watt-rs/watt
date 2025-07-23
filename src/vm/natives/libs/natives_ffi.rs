@@ -4,8 +4,8 @@ use crate::errors::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::bytecode::OpcodeValue;
 use crate::vm::memory::memory;
-use crate::vm::natives::libs::utils;
 use crate::vm::natives::natives;
+use crate::vm::natives::utils;
 use crate::vm::table::Table;
 use crate::vm::values::Value;
 use crate::vm::vm::VM;
@@ -29,7 +29,7 @@ pub union FFIValue {
     isize: isize,
     usize: usize,
     ptr: *const c_void,
-    bool: bool
+    bool: bool,
 }
 /// Implementation of FFI value
 impl FFIValue {
@@ -539,33 +539,25 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "ffi@load",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let name = vm.pop(&addr)?;
+            let name = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
+            let path = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
 
             if should_push {
-                match name {
-                    Value::String(path) => {
-                        let lib = Library::new((*path).clone());
-                        if let Err(e) = lib {
-                            error!(Error::own_text(
-                                addr.clone(),
-                                format!("lib open error: {e:?}"),
-                                "check your code"
-                            ));
-                        }
-                        let unwrapped_lib = lib.unwrap();
-                        vm.op_push(
-                            OpcodeValue::Raw(Value::Any(memory::alloc_value(FFILibrary::new(
-                                unwrapped_lib,
-                            )))),
-                            table,
-                        )?;
-                    }
-                    _ => error!(Error::own_text(
-                        addr.clone(),
-                        format!("not a lib path: {name:?}"),
+                let lib = Library::new(path);
+                if let Err(e) = lib {
+                    error!(Error::own_text(
+                        addr,
+                        format!("lib open error: {e:?}"),
                         "check your code"
-                    )),
+                    ));
                 }
+                let unwrapped_lib = lib.unwrap();
+                vm.op_push(
+                    OpcodeValue::Raw(Value::Any(memory::alloc_value(FFILibrary::new(
+                        unwrapped_lib,
+                    )))),
+                    table,
+                )?;
             }
 
             Ok(())
@@ -577,22 +569,22 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         4,
         "ffi@load_fn",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let out = utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
-            let params = utils::expect_string_list(addr.clone(), vm.pop(&addr)?, None);
-            let name = utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
-            let lib = utils::expect_any(addr.clone(), vm.pop(&addr)?, None);
+            let out = utils::expect_string(&addr, vm.pop(&addr)?);
+            let params = utils::expect_string_list(&addr, vm.pop(&addr)?);
+            let name = utils::expect_string(&addr, vm.pop(&addr)?);
+            let lib = utils::expect_any(&addr, vm.pop(&addr)?, None);
 
             if let Some(library) = (*lib).downcast_mut::<FFILibrary>() {
                 if let Err(e) = library.load_fn(&addr, (*name).clone(), (*out).clone(), params) {
                     error!(Error::own_text(
-                        addr.clone(),
+                        addr,
                         format!("load fn error: {e:?}"),
                         "check your code"
                     ))
                 }
             } else {
                 error!(Error::own_text(
-                    addr.clone(),
+                    addr,
                     format!("not a library: {lib:?}"),
                     "check your code"
                 ))
@@ -611,18 +603,18 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         3,
         "ffi@call_fn",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let args = utils::expect_list(addr.clone(), vm.pop(&addr)?, None);
-            let name = utils::expect_string(addr.clone(), vm.pop(&addr)?, None);
-            let lib = utils::expect_any(addr.clone(), vm.pop(&addr)?, None);
+            let args = utils::expect_list(&addr, vm.pop(&addr)?);
+            let name = utils::expect_string(&addr, vm.pop(&addr)?);
+            let lib = utils::expect_any(&addr, vm.pop(&addr)?, None);
 
             if let Some(library) = (*lib).downcast_mut::<FFILibrary>() {
-                let result = library.call_fn(vm, table, addr.clone(), (*name).clone(), args);
+                let result = library.call_fn(vm, table, addr, (*name).clone(), args);
                 if should_push {
                     vm.op_push(OpcodeValue::Raw(result), table)?;
                 }
             } else {
                 error!(Error::own_text(
-                    addr.clone(),
+                    addr,
                     format!("not a library: {lib:?}"),
                     "check your code"
                 ))

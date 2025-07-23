@@ -64,6 +64,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "io@input",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let mut input: String = String::new();
+
             if let Err(e) = io::stdin().read_line(&mut input) {
                 error!(Error::own_text(
                     addr,
@@ -71,9 +72,11 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     "check your code"
                 ))
             }
+
             if should_push {
                 vm.op_push(OpcodeValue::String(input), table)?;
             }
+
             Ok(())
         },
     );

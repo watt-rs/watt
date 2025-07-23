@@ -4,6 +4,7 @@ use crate::errors::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::bytecode::OpcodeValue;
 use crate::vm::natives::natives;
+use crate::vm::natives::utils;
 use crate::vm::table::Table;
 use crate::vm::values::Value;
 use crate::vm::vm::VM;
@@ -19,31 +20,10 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "base@panic",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // hint and error texts
-            let hint = vm.pop(&addr)?;
-            let error = vm.pop(&addr)?;
-
-            if let Value::String(hint_string) = hint {
-                if let Value::String(error_string) = error {
-                    // raising error, if everything ok
-                    error!(Error::own(
-                        addr.clone(),
-                        (*error_string).clone(),
-                        (*hint_string).clone()
-                    ));
-                } else {
-                    error!(Error::own_text(
-                        addr.clone(),
-                        "error text should be a string.".to_string(),
-                        "check your code."
-                    ))
-                }
-            } else {
-                error!(Error::own_text(
-                    addr.clone(),
-                    "hint text should be a string.".to_string(),
-                    "check your code."
-                ))
-            }
+            let hint = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
+            let error = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
+            // raising an error
+            error!(Error::own(addr.clone(), error, hint));
         },
     );
     natives::provide(
@@ -53,9 +33,11 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "base@typeof",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let value = vm.pop(&addr)?;
+
             if !should_push {
                 return Ok(());
             }
+
             match value {
                 Value::Float(_) => {
                     vm.op_push(OpcodeValue::String("f64".to_string()), table)?;
@@ -107,9 +89,11 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "base@full_typeof",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let value = vm.pop(&addr)?;
+
             if !should_push {
                 return Ok(());
             }
+
             match value {
                 Value::Float(_) => {
                     vm.op_push(OpcodeValue::String("watt:f64".to_string()), table)?;
@@ -145,6 +129,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 }
                 Value::Unit(u) => {
                     let symbol = (*u).name.clone();
+
                     match symbol.full_name {
                         Some(full_name) => {
                             vm.op_push(OpcodeValue::String(full_name), table)?;
@@ -156,6 +141,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 }
                 Value::Trait(t) => {
                     let symbol = (*t).name.clone();
+
                     match symbol.full_name {
                         Some(full_name) => {
                             vm.op_push(OpcodeValue::String(full_name), table)?;
@@ -185,9 +171,11 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "base@is_instance",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let value = vm.pop(&addr)?;
+
             if !should_push {
                 return Ok(());
             }
+
             match value {
                 Value::Instance(_) => {
                     vm.op_push(OpcodeValue::Bool(true), table)?;
