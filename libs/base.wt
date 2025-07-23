@@ -58,11 +58,20 @@ type List impl Display {
     // to_string
     fn to_string {
         string := '['
-        for value in self.iter() {
+        for i in 0..self.length() {
+            value := self.get(i)
             if is_instance(value) and value impls Display {
-                string += value.to_string() + ','
+                if i + 1 == self.length() {
+                    string += value.to_string()
+                } else {
+                    string += value.to_string() + ', '
+                }
             } else {
-                string += value + ','
+                if i + 1 == self.length() {
+                    string += value
+                } else {
+                    string += value + ', '
+                }
             }
         }
         string += ']'
@@ -190,9 +199,9 @@ type NumbersIterator(start, end) impl Iterator {
                 'iterator has no elements left.'
             )
         }
-        
+
         value := self._current
-        
+
         if self.direction == 0 {
             self._current += 1
         } else {
