@@ -18,7 +18,7 @@ unsafe fn pop_file<'vm>(
     addr: &Address,
 ) -> Result<&'vm mut std::fs::File, ControlFlow> {
     // getting a raw file
-    let raw_file = utils::expect_any(&addr, vm.pop(addr)?, None);
+    let raw_file = utils::expect_any(addr, vm.pop(addr)?, None);
 
     if !(*raw_file).is::<std::fs::File>() {
         error!(Error::new(

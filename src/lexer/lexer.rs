@@ -149,7 +149,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
     }
 
     /// Converts source code represented as `&'cursor [char]`
-    /// To a Vec<Token> - tokens list.
+    /// To a `Vec<Token>` - tokens list.
     #[allow(clippy::nonminimal_bool)]
     pub fn lex(mut self) -> Vec<Token> {
         if !self.tokens.is_empty() {

@@ -12,12 +12,12 @@ use crate::vm::values::Value;
 use crate::vm::vm::VM;
 
 /// Gets request from stack
-unsafe fn pop_request<'vm>(
-    vm: &'vm mut VM,
+unsafe fn pop_request(
+    vm: &mut VM,
     addr: &Address,
 ) -> Result<minreq::Request, ControlFlow> {
     // getting a raw request
-    let raw_request = utils::expect_any(&addr, vm.pop(addr)?, None);
+    let raw_request = utils::expect_any(addr, vm.pop(addr)?, None);
 
     if !(*raw_request).is::<minreq::Request>() {
         error!(Error::new(
@@ -34,12 +34,12 @@ unsafe fn pop_request<'vm>(
 }
 
 /// Gets response from stack
-unsafe fn pop_response<'vm>(
-    vm: &'vm mut VM,
+unsafe fn pop_response(
+    vm: &mut VM,
     addr: &Address,
 ) -> Result<minreq::Response, ControlFlow> {
     // getting a raw request
-    let raw_request = utils::expect_any(&addr, vm.pop(addr)?, None);
+    let raw_request = utils::expect_any(addr, vm.pop(addr)?, None);
 
     if !(*raw_request).is::<minreq::Response>() {
         error!(Error::new(
@@ -260,11 +260,11 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     headers.push_str(format!("\"{key}\":\"{value}\",",).as_str());
                 }
 
-                if response.headers.len() > 0 {
+                if !response.headers.is_empty() {
                     headers.pop();
                 }
 
-                headers.push_str("}");
+                headers.push('}');
 
                 vm.op_push(OpcodeValue::String(headers), table)?
             }

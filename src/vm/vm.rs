@@ -1636,7 +1636,7 @@ impl VM {
 
             match trait_value {
                 Value::Trait(_trait) => {
-                    return Some(_trait);
+                    Some(_trait)
                 }
                 _ => {
                     panic!("not a trait in traits table. report to developer.")
@@ -1653,10 +1653,10 @@ impl VM {
             // looking up for impl
             let fn_value = (*table).lookup(addr, impl_name);
 
-            return match fn_value {
+            match fn_value {
                 Value::Fn(_fn) => Some(_fn),
                 _ => None,
-            };
+            }
         }
 
         // checking all traits from a type
@@ -1975,7 +1975,7 @@ impl VM {
             // matching result
             let result = vm.pop(addr)?;
             match result {
-                Value::Bool(boolean) => return Ok(boolean),
+                Value::Bool(boolean) => Ok(boolean),
                 _ => {
                     error!(Error::own(
                         addr.clone(),
