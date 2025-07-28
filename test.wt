@@ -149,4 +149,4 @@ if text.is_err() {
 import 'std.io'
 import 'std.net'
 
-io.println1s(net.get('https://wttr.in/').send().utf8())
+io.println(net.get('https://wttr.in/').send().utf8())

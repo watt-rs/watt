@@ -55,7 +55,7 @@ pub unsafe fn run(
     let ast = parse(&path, tokens.unwrap(), ast_debug, parser_bench, &None);
 
     // analyzing
-    let analyzed = analyze(ast.unwrap());
+    let analyzed = analyze(ast);
 
     // compiling
     let compiled = compile(&analyzed, opcodes_debug, compile_bench);
@@ -171,7 +171,7 @@ pub fn parse(
     debug: bool,
     bench: bool,
     full_name_prefix: &Option<String>,
-) -> Option<Node> {
+) -> Node {
     // benchmark
     let start = std::time::Instant::now();
 
@@ -185,7 +185,7 @@ pub fn parse(
     }
 
     // building ast
-    let raw_ast = Parser::new(
+    let ast = Parser::new(
         tokens,
         file_path,
         delete_extension(
@@ -206,20 +206,14 @@ pub fn parse(
         );
     }
 
-    // handling errors
-    if let Ok(ast) = raw_ast {
-        // debug
-        if debug {
-            println!("ast debug: ");
-            println!("{ast:?}");
-        }
-        return Some(ast);
-    } else if let Err(err) = raw_ast {
-        error!(err);
-    };
+    // debug
+    if debug {
+        println!("ast debug: ");
+        println!("{ast:?}");
+    }
 
-    // panic, if something went wrong
-    panic!("result error in parsing. report to developer.")
+    // returning ast
+    return ast;
 }
 
 /// Semantic analyzer

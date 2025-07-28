@@ -5,3 +5,5 @@ perf.data*
 docs/mdbook.exe
 docs/book
 watt-*.zip
+.idea/
+.zed/

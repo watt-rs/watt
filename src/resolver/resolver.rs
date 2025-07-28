@@ -98,7 +98,7 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
         let ast = executor::parse(&path, tokens.unwrap(), false, false, &import.full_name);
 
         // analyzing
-        let mut analyzed = executor::analyze(ast.unwrap());
+        let mut analyzed = executor::analyze(ast);
 
         // getting necessary nodes
         let result: Node;

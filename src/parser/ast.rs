@@ -1,5 +1,4 @@
 // imports
-use crate::errors::errors::Error;
 use crate::lexer::lexer::*;
 use crate::parser::import::Import;
 
@@ -200,38 +199,38 @@ impl TraitNodeFn {
 }
 
 /// Sets should push for access node
-pub fn set_should_push(node: Node, should_push: bool) -> Result<Node, Error> {
+pub fn set_should_push(node: Node, should_push: bool) -> Node {
     match node {
-        Node::Get { previous, name, .. } => Ok(Node::Get {
+        Node::Get { previous, name, .. } => Node::Get {
             previous,
             name,
             should_push,
-        }),
+        },
         Node::Call {
             previous,
             name,
             args,
             ..
-        } => Ok(Node::Call {
+        } => Node::Call {
             previous,
             name,
             args,
             should_push,
-        }),
+        },
         Node::Instance {
             name, constructor, ..
-        } => Ok(Node::Instance {
+        } => Node::Instance {
             name,
             constructor,
             should_push,
-        }),
+        },
         Node::ErrorPropagation {
             location, value, ..
-        } => Ok(Node::ErrorPropagation {
+        } => Node::ErrorPropagation {
             location,
             value,
             should_push,
-        }),
-        _ => Ok(node),
+        },
+        _ => node,
     }
 }
