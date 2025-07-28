@@ -40,6 +40,7 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
                 ("std.strings", "./libs/std/std_strings.wt"),
                 ("std.json", "./libs/std/std_json.wt"),
                 ("std.ffi", "./libs/std/std_ffi.wt"),
+                ("std.net", "./libs/std/std_net.wt"),
             ]),
             builtins: vec!["./libs/base.wt".to_string()],
         }
@@ -76,7 +77,7 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
     ///
     /// 3. Lexing, parsing, analyzing, source files
     /// - leaves only `Import`, `Trait`, `Unit`,
-    ///   `Type`, `FnDeclaration`, `Native` node types.  
+    ///   `Type`, `FnDeclaration`, `Native` node types.
     ///
     /// returns: analyzed AST node
     ///

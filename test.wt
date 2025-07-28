@@ -147,7 +147,6 @@ if text.is_err() {
 }
 */
 import 'std.io'
-import 'std.json'
+import 'std.net'
 
-text := json.decode('{ "a": [123,4,5], "b":6 }')
-io.println(text)
+io.println(net.get('https://wttr.in/').send().utf8())

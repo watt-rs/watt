@@ -1,0 +1,101 @@
+// Response type
+type Response(raw_handle) {
+    // Gets status code
+    fn status {
+        return net.__internal_response_status(raw_handle)
+    }
+
+    // Gets response headers
+    fn headers {
+        return net.__internal_response_headers(raw_handle)
+    }
+
+    // Gets response body as utf-8
+    fn utf8 {
+        return net.__internal_response_utf8(raw_handle)
+    }
+
+    // Gets response body as rusty Vec<byte>
+    fn bytes {
+        return net.__internal_response_bytes(raw_handle)
+    }
+}
+
+// Request type
+type Request(raw_handle) {
+    // Sets body
+    fn body(body) {
+        self.raw_handle = net.__internal_body(raw_handle, body)
+        return self
+    }
+
+    // Sets header
+    fn header(key, value) {
+        self.raw_handle = net.__internal_header(raw_handle, key, value)
+        return self
+    }
+
+    // Sets headers
+    fn headers(map) {
+        for key in map.keys().iter() {
+            value := map.get(key)
+            self.raw_handle = net.__internal_header(raw_handle, key, value)
+        }
+        return self
+    }
+
+    // Sends request
+    fn send {
+        return new Response(net.__internal_send(self.raw_handle))
+    }
+}
+
+/*
+ Library: net.
+ |
+ | implementation of natives
+ | can be found in:
+ | > crate::vm::natives::libs::natives_net
+ */
+unit net {
+    /*
+     Request creation natives
+    */
+    native __internal_get -> 'net@get'
+    native __internal_put -> 'net@put'
+    native __internal_post -> 'net@post'
+    native __internal_head -> 'net@head'
+    native __internal_patch -> 'net@patch'
+    native __internal_options -> 'net@options'
+    native __internal_delete -> 'net@delete'
+
+    /*
+     Request change natives
+    */
+    native __internal_header -> 'net@header'
+    native __internal_body -> 'net@body'
+
+    /*
+     Request send native
+    */
+    native __internal_send -> 'net@send'
+
+    /*
+     Response internals
+    */
+    native __internal_response_status -> 'net@response_status'
+    native __internal_response_headers -> 'net@response_headers'
+    native __internal_response_utf8 -> 'net@response_utf8'
+    native __internal_response_bytes -> 'net@response_bytes'
+
+    /*
+     Request creation wrappers
+    */
+    fn get(url) { return new Request(__internal_get(url)) }
+    fn post(url) { return new Request(__internal_post(url)) }
+    fn put(url) { return new Request(__internal_put(url)) }
+    fn patch(url) { return new Request(__internal_patch(url)) }
+    fn delete(url) { return new Request(__internal_delete(url)) }
+    fn options(url) { return new Request(__internal_options(url)) }
+    fn head(url) { return new Request(__internal_head(url)) }
+}

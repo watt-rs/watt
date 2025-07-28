@@ -15,3 +15,4 @@ hex = "0.4.3"
 rustc-hash = "2.1.1"
 libloading = "0.8.8"
 libffi = "4.1.1"
+minreq = { version = "2.14.0", features = ["https"] }

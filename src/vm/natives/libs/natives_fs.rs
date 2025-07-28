@@ -12,6 +12,25 @@ use crate::vm::values::Value;
 use crate::vm::vm::VM;
 use std::io::{Read, Seek, Write};
 
+/// Gets file from stack
+unsafe fn pop_file<'vm>(
+    vm: &'vm mut VM,
+    addr: &Address,
+) -> Result<&'vm mut std::fs::File, ControlFlow> {
+    // getting a raw file
+    let raw_file = utils::expect_any(&addr, vm.pop(addr)?, None);
+
+    if !(*raw_file).is::<std::fs::File>() {
+        error!(Error::new(
+            addr.clone(),
+            "internal type in std.fs.File is not a Rust's `std::io::File`!",
+            "please, file an issue at https://github.com/vyacheslavhere/watt"
+        ));
+    }
+
+    Ok((*raw_file).downcast_mut().unwrap())
+}
+
 /// Provides
 pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Error> {
     natives::provide(
@@ -75,24 +94,6 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             Ok(())
         },
     );
-    /// Get file from stack
-    pub unsafe fn pop_file<'vm>(
-        vm: &'vm mut VM,
-        addr: &Address,
-    ) -> Result<&'vm mut std::fs::File, ControlFlow> {
-        // getting a raw file
-        let raw_file = utils::expect_any(&addr, vm.pop(addr)?, None);
-
-        if !(*raw_file).is::<std::fs::File>() {
-            error!(Error::new(
-                addr.clone(),
-                "internal type in std.fs.File is not a Rust's `std::io::File`!",
-                "please file an issue at https://github.com/vyacheslavhere/watt"
-            ));
-        }
-
-        Ok((*raw_file).downcast_mut().unwrap())
-    }
     // continue providing
     natives::provide(
         vm,

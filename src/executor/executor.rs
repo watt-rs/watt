@@ -131,8 +131,7 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
         }
     } else {
         panic!(
-            "file not exists: {path:?} after checking of existence. \
-        report this error to the developer."
+            "file not exists: {path:?} after checking of existence. report this error to the developer."
         )
     }
 }
@@ -215,8 +214,8 @@ pub fn parse(
             println!("{ast:?}");
         }
         return Some(ast);
-    } else if let Err(error) = raw_ast {
-        error!(error);
+    } else if let Err(err) = raw_ast {
+        error!(err);
     };
 
     // panic, if something went wrong

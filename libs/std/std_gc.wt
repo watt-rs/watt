@@ -6,7 +6,7 @@
  */
 unit gc {
     /*
-     Очищает мусор в куче
+     Starts garbage collection
     */
     native invoke -> 'gc@invoke'
 }
