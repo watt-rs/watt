@@ -76,13 +76,17 @@ impl Error {
 
         // print
         println!(
-            "┌─ {color}panic:{reset} {text}",
-            color = colors::RedColor,
+            "┌─ {red}panic:{reset} {text}",
+            red = colors::RedColor,
             reset = colors::ResetColor,
             text = self.text,
         );
         println!("│");
-        println!("│ {file_name}:");
+        println!(
+            "│ {cyan}{file_name}{reset}:",
+            cyan = colors::CyanColor,
+            reset = colors::ResetColor,
+        );
         println!(
             "│ {gray}{line}{reset} {text}",
             line = self.addr.line,
@@ -91,13 +95,20 @@ impl Error {
             reset = colors::ResetColor,
         );
         println!(
-            "│ {space:spaces$}{arrows}",
+            "│ {space:spaces$}{red}{arrows}{reset}",
             space = " ",
             spaces = self.addr.span.start as usize + self.addr.line.to_string().len(),
-            arrows = "^".repeat((self.addr.span.end - self.addr.span.start) as usize + 1)
+            arrows = "^".repeat((self.addr.span.end - self.addr.span.start) as usize + 1),
+            red = colors::RedColor,
+            reset = colors::ResetColor,
         );
         println!("│");
-        println!("│ hint: {hint}", hint = self.hint);
+        println!(
+            "│ {cyan}hint{reset}: {hint}",
+            hint = self.hint,
+            cyan = colors::CyanColor,
+            reset = colors::ResetColor
+        );
         println!("{}", colors::ResetColor);
 
         // exit process
