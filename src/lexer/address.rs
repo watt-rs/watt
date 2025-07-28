@@ -1,20 +1,29 @@
 // imports
+use std::ops::Range;
 use std::{io::BufRead, path::PathBuf};
 
 /// Address structure
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Address {
     pub line: u64,
-    pub column: u16,
+    pub span: Range<u16>,
     pub file: Option<PathBuf>,
 }
 /// Address implementation
 impl Address {
-    /// New address
+    /// New address with column
     pub fn new(line: u64, column: u16, file_path: PathBuf) -> Address {
         Address {
             line,
-            column,
+            span: column..column,
+            file: Some(file_path),
+        }
+    }
+    /// New address with span
+    pub fn span(line: u64, span: Range<u16>, file_path: PathBuf) -> Address {
+        Address {
+            line,
+            span,
             file: Some(file_path),
         }
     }
@@ -22,7 +31,7 @@ impl Address {
     pub fn unknown() -> Address {
         Address {
             line: 0,
-            column: 0,
+            span: 0..0,
             file: None,
         }
     }

@@ -1635,9 +1635,7 @@ impl VM {
             let trait_value = (*traits).find(addr, trait_name);
 
             match trait_value {
-                Value::Trait(_trait) => {
-                    Some(_trait)
-                }
+                Value::Trait(_trait) => Some(_trait),
                 _ => {
                     panic!("not a trait in traits table. report to developer.")
                 }
@@ -2284,7 +2282,7 @@ impl VM {
 unsafe impl Send for VM {}
 unsafe impl Sync for VM {}
 
-/// Try free table
+/// Frees table, if table captures equals 0.
 pub unsafe fn try_free_table(table: *mut Table) {
     if !table.is_null() && (*table).captures == 0 {
         memory::free_value(table)

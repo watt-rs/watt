@@ -91,9 +91,10 @@ impl Error {
             reset = colors::ResetColor,
         );
         println!(
-            "│ {space:count$}^",
+            "│ {space:spaces$}{arrows}",
             space = " ",
-            count = self.addr.column as usize + self.addr.line.to_string().len()
+            spaces = self.addr.span.start as usize + self.addr.line.to_string().len(),
+            arrows = "^".repeat((self.addr.span.end - self.addr.span.start) as usize + 1)
         );
         println!("│");
         println!("│ hint: {hint}", hint = self.hint);

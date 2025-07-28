@@ -352,13 +352,17 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
     fn scan_string(&mut self) -> Token {
         // String text
         let mut text: String = String::new();
+        let span_start = self.column;
+
         while self.cursor.peek() != '\'' {
             let ch = self.advance();
+
             if ch == '\\' && self.cursor.peek() == '\'' {
                 text.push(self.advance());
             } else {
                 text.push(ch);
             }
+
             if self.cursor.is_at_end() || self.is_match('\n') {
                 error!(Error::new(
                     Address::new(self.line, self.column, self.file_path.clone(),),
@@ -367,11 +371,14 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
                 ));
             }
         }
+
         self.advance();
+        let span_end = self.column;
+
         Token {
             tk_type: TokenKind::Text,
             value: text,
-            address: Address::new(self.line, self.column, self.file_path.clone()),
+            address: Address::span(self.line, span_start..span_end, self.file_path.clone()),
         }
     }
 
@@ -381,8 +388,13 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
     /// * `start`: starting char of token
     ///
     fn scan_number(&mut self, start: char) -> Token {
+        // Start of span
+        let span_start = self.column;
+        // Number text
         let mut text: String = String::from(start);
+        // If number is float
         let mut is_float: bool = false;
+
         while self.is_digit(self.cursor.peek()) || self.cursor.peek() == '.' {
             if self.cursor.peek() == '.' {
                 if self.cursor.next() == '.' {
@@ -397,6 +409,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
                 }
                 is_float = true;
                 text.push(self.advance());
+
                 continue;
             }
             text.push(self.advance());
@@ -404,76 +417,88 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
                 break;
             }
         }
+
+        let span_end = self.column;
+
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::new(self.line, self.column, self.file_path.clone()),
+            address: Address::span(self.line, span_start..span_end, self.file_path.clone()),
         }
     }
 
     /// Scans hexadecimal numbers `0x{pattern}`
     fn scan_hexadecimal_number(&mut self) -> Token {
+        // Start of span
+        let span_start = self.column;
         // Skip 'x'
         self.advance();
         // Number text
         let mut text: String = String::from("0x");
-        fn is_16(ch: &char) -> bool {
-            ch.is_ascii_digit() || ('a'..='f').contains(ch) || ('A'..='F').contains(ch)
-        }
-        while is_16(&self.cursor.peek()) {
+
+        while self.cursor.peek().is_digit(16) {
             text.push(self.advance());
             if self.cursor.is_at_end() {
                 break;
             }
         }
+
+        let span_end = self.column;
+
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::new(self.line, self.column, self.file_path.clone()),
+            address: Address::span(self.line, span_start..span_end, self.file_path.clone()),
         }
     }
 
     /// Scans octal numbers `0o{pattern}`
     fn scan_octal_number(&mut self) -> Token {
+        // Start of span
+        let span_start = self.column;
         // Skip 'o'
         self.advance();
         // Number text
         let mut text: String = String::from("0o");
-        fn is_8(ch: &char) -> bool {
-            ('0'..='7').contains(ch)
-        }
-        while is_8(&self.cursor.peek()) {
+
+        while self.cursor.peek().is_digit(8) {
             text.push(self.advance());
             if self.cursor.is_at_end() {
                 break;
             }
         }
+
+        let span_end = self.column;
+
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::new(self.line, self.column, self.file_path.clone()),
+            address: Address::span(self.line, span_start..span_end, self.file_path.clone()),
         }
     }
 
     /// Scans binary numbers `0b{pattern}`
     fn scan_binary_number(&mut self) -> Token {
+        // Start of span
+        let span_start = self.column;
         // Skip 'b'
         self.advance();
         // Number text
         let mut text: String = String::from("0b");
-        fn is_2(ch: &char) -> bool {
-            ('0'..='1').contains(ch)
-        }
-        while is_2(&self.cursor.peek()) {
+
+        while self.cursor.peek().is_digit(2) {
             text.push(self.advance());
             if self.cursor.is_at_end() {
                 break;
             }
         }
+
+        let span_end = self.column;
+
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::new(self.line, self.column, self.file_path.clone()),
+            address: Address::span(self.line, span_start..span_end, self.file_path.clone()),
         }
     }
 
@@ -485,6 +510,9 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
     /// * `start`: starting char of token
     ///
     fn scan_id_or_keyword(&mut self, start: char) -> Token {
+        // Start of span
+        let span_start = self.column;
+        // Id/keyword text
         let mut text: String = String::from(start);
 
         while self.is_id(self.cursor.peek()) {
@@ -500,10 +528,12 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
             .cloned()
             .unwrap_or(TokenKind::Id);
 
+        let span_end = self.column;
+
         Token {
             tk_type,
             value: text,
-            address: Address::new(self.line, self.column, self.file_path.clone()),
+            address: Address::span(self.line, span_start..span_end, self.file_path.clone()),
         }
     }
 
