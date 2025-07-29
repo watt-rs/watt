@@ -20,8 +20,8 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "base@panic",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // hint and error texts
-            let hint = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
-            let error = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
+            let hint = utils::expect_cloned_string(&addr, vm.pop(&addr));
+            let error = utils::expect_cloned_string(&addr, vm.pop(&addr));
             // raising an error
             error!(Error::own(addr.clone(), error, hint));
         },
@@ -32,7 +32,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "base@typeof",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let value = vm.pop(&addr)?;
+            let value = vm.pop(&addr);
 
             if !should_push {
                 return Ok(());
@@ -88,7 +88,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "base@full_typeof",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let value = vm.pop(&addr)?;
+            let value = vm.pop(&addr);
 
             if !should_push {
                 return Ok(());
@@ -170,7 +170,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "base@is_instance",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let value = vm.pop(&addr)?;
+            let value = vm.pop(&addr);
 
             if !should_push {
                 return Ok(());

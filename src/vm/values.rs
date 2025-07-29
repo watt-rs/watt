@@ -309,13 +309,13 @@ impl Debug for Value {
                     write!(fmt, "{}", **s)
                 }
                 Value::Instance(i) => {
-                    write!(fmt, "Instance{:?} of {}", *i, (*(**i).t).name.name)
+                    write!(fmt, "Instance{:?}", *i)
                 }
                 Value::Trait(t) => {
                     write!(fmt, "Trait{:?}", *t)
                 }
                 Value::Fn(f) => {
-                    write!(fmt, "Fn{:?}", *f)
+                    write!(fmt, "Fn{:?}", (**f).name)
                 }
                 Value::Native(n) => {
                     write!(fmt, "Native{:?}", *n)
@@ -351,7 +351,12 @@ impl Debug for Value {
 /// Display implementation for value
 impl Display for Value {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "{self:?}")
+        match self {
+            Value::Instance(i) => unsafe {
+                write!(fmt, "Instance{:?} of {:?}", *i, (*(**i).t).name.name)
+            },
+            _ => write!(fmt, "{self:?}"),
+        }
     }
 }
 /// PartialEq implementation for value

@@ -147,6 +147,14 @@ if text.is_err() {
 }
 */
 import 'std.io'
-import 'std.net'
+import 'std.math'
 
-io.println(net.get('https://wttr.in/').send().utf8())
+io.println(new Matrix(
+    [[3,3,3],
+    [4,4,4],
+    [5,5,5]]
+).add(new Matrix(
+    [[3,4,5],
+    [4,4,5],
+    [3,4,5]]
+)))

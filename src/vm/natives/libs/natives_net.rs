@@ -17,7 +17,7 @@ unsafe fn pop_request(
     addr: &Address,
 ) -> Result<minreq::Request, ControlFlow> {
     // getting a raw request
-    let raw_request = utils::expect_any(addr, vm.pop(addr)?, None);
+    let raw_request = utils::expect_any(addr, vm.pop(addr), None);
 
     if !(*raw_request).is::<minreq::Request>() {
         error!(Error::new(
@@ -39,7 +39,7 @@ unsafe fn pop_response(
     addr: &Address,
 ) -> Result<minreq::Response, ControlFlow> {
     // getting a raw request
-    let raw_request = utils::expect_any(addr, vm.pop(addr)?, None);
+    let raw_request = utils::expect_any(addr, vm.pop(addr), None);
 
     if !(*raw_request).is::<minreq::Response>() {
         error!(Error::new(
@@ -64,7 +64,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "net@get",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let url = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
+            let url = utils::expect_cloned_string(&addr, vm.pop(&addr));
             let requst = memory::alloc_value(minreq::get(url));
 
             if should_push {
@@ -80,7 +80,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "net@post",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let url = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
+            let url = utils::expect_cloned_string(&addr, vm.pop(&addr));
             let requst = memory::alloc_value(minreq::post(url));
 
             if should_push {
@@ -96,7 +96,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "net@put",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let url = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
+            let url = utils::expect_cloned_string(&addr, vm.pop(&addr));
             let requst = memory::alloc_value(minreq::put(url));
 
             if should_push {
@@ -112,7 +112,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "net@options",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let url = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
+            let url = utils::expect_cloned_string(&addr, vm.pop(&addr));
             let requst = memory::alloc_value(minreq::options(url));
 
             if should_push {
@@ -128,7 +128,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "net@delete",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let url = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
+            let url = utils::expect_cloned_string(&addr, vm.pop(&addr));
             let requst = memory::alloc_value(minreq::delete(url));
 
             if should_push {
@@ -144,7 +144,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "net@patch",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let url = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
+            let url = utils::expect_cloned_string(&addr, vm.pop(&addr));
             let requst = memory::alloc_value(minreq::patch(url));
 
             if should_push {
@@ -160,7 +160,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "net@head",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let url = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
+            let url = utils::expect_cloned_string(&addr, vm.pop(&addr));
             let requst = memory::alloc_value(minreq::head(url));
 
             if should_push {
@@ -176,8 +176,8 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         3,
         "net@header",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let value = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
-            let key = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
+            let value = utils::expect_cloned_string(&addr, vm.pop(&addr));
+            let key = utils::expect_cloned_string(&addr, vm.pop(&addr));
             let cloned_request: minreq::Request = pop_request(vm, &addr)?;
             let request = memory::alloc_value(cloned_request.with_header(key, value));
 
@@ -194,7 +194,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         2,
         "net@body",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let data = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
+            let data = utils::expect_cloned_string(&addr, vm.pop(&addr));
             let cloned_request: minreq::Request = pop_request(vm, &addr)?;
             let request = memory::alloc_value(cloned_request.with_body(data));
 

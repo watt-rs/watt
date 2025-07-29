@@ -539,8 +539,8 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "ffi@load",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let name = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
-            let path = utils::expect_cloned_string(&addr, vm.pop(&addr)?);
+            let name = utils::expect_cloned_string(&addr, vm.pop(&addr));
+            let path = utils::expect_cloned_string(&addr, vm.pop(&addr));
 
             if should_push {
                 let lib = Library::new(path);
@@ -569,10 +569,10 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         4,
         "ffi@load_fn",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let out = utils::expect_string(&addr, vm.pop(&addr)?);
-            let params = utils::expect_string_list(&addr, vm.pop(&addr)?);
-            let name = utils::expect_string(&addr, vm.pop(&addr)?);
-            let lib = utils::expect_any(&addr, vm.pop(&addr)?, None);
+            let out = utils::expect_string(&addr, vm.pop(&addr));
+            let params = utils::expect_string_list(&addr, vm.pop(&addr));
+            let name = utils::expect_string(&addr, vm.pop(&addr));
+            let lib = utils::expect_any(&addr, vm.pop(&addr), None);
 
             if let Some(library) = (*lib).downcast_mut::<FFILibrary>() {
                 if let Err(e) = library.load_fn(&addr, (*name).clone(), (*out).clone(), params) {
@@ -603,9 +603,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         3,
         "ffi@call_fn",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let args = utils::expect_list(&addr, vm.pop(&addr)?);
-            let name = utils::expect_string(&addr, vm.pop(&addr)?);
-            let lib = utils::expect_any(&addr, vm.pop(&addr)?, None);
+            let args = utils::expect_list(&addr, vm.pop(&addr));
+            let name = utils::expect_string(&addr, vm.pop(&addr));
+            let lib = utils::expect_any(&addr, vm.pop(&addr), None);
 
             if let Some(library) = (*lib).downcast_mut::<FFILibrary>() {
                 let result = library.call_fn(vm, table, addr, (*name).clone(), args);

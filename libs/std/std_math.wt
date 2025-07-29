@@ -1,5 +1,6 @@
 // imports
 import 'std.convert'
+import 'std.errors'
 
 /*
  Library: math.
@@ -333,5 +334,246 @@ unit math {
             }
         }
         return result
+    }
+
+    /*
+     Normalizes one value from vector
+    */
+    fn normalize(value) {
+        if value > 0 {
+            return 1
+        } elif value < 0 {
+            return -1
+        } else {
+            return 0
+        }
+    }
+}
+
+/*
+ Library: math. Type Vec2
+*/
+type Vec2(x,y) impl Display {
+    // Adds two vectors, returns new
+    fn add(x,y) {
+        return new Vec2(self.x + x, self.y + y)
+    }
+    // Subs two vectors, returns new
+    fn sub(x,y) {
+        return new Vec2(self.x - x, self.y - y)
+    }
+    // Multiplies two vectors, returns new
+    fn mul(x,y) {
+        return new Vec2(self.x * x, self.y * y)
+    }
+    // Divides two vectors, returns new
+    fn div(x,y) {
+        return new Vec2(self.x / x, self.y / y)
+    }
+    // Normalizes two vectors, returns new
+    fn normalize {
+        return new Vec2(math.normalize(x), math.normalize(y))
+    }
+    // To string
+    fn to_string {
+        return 'Vec2(x=' + x + ',y=' + y + ')'
+    }
+}
+
+/*
+ Library: math. Type Vec3
+*/
+type Vec3(x,y,z) impl Display {
+    // Adds two vectors, returns new
+    fn add(x,y,z) {
+        return new Vec3(self.x + x, self.y + y, self.z + z)
+    }
+    // Subs two vectors, returns new
+    fn sub(x,y,z) {
+        return new Vec3(self.x - x, self.y - y, self.z - z)
+    }
+    // Multiplies two vectors, returns new
+    fn mul(x,y,z) {
+        return new Vec3(self.x * x, self.y * y, self.z * z)
+    }
+    // Divides two vectors, returns new
+    fn div(x,y,z) {
+        return new Vec3(self.x / x, self.y / y, self.z / z)
+    }
+    // Normalizes two vectors, returns new
+    fn normalize {
+        return new Vec3(math.normalize(x), math.normalize(y), math.normalize(z))
+    }
+    // To string
+    fn to_string {
+        return 'Vec3(x=' + x + ',y=' + y + ',z=' + z + ')'
+    }
+}
+
+/*
+ Library: math. Type Vec4
+*/
+type Vec4(x,y,z,w) impl Display {
+    // Adds two vectors, returns new
+    fn add(x,y,z,w) {
+        return new Vec4(self.x + x, self.y + y, self.z + z, self.w + w)
+    }
+    // Subs two vectors, returns new
+    fn sub(x,y,z) {
+        return new Vec4(self.x - x, self.y - y, self.z - z, self.w - w)
+    }
+    // Multiplies two vectors, returns new
+    fn mul(x,y,z) {
+        return new Vec4(self.x * x, self.y * y, self.z * z, self.w * w)
+    }
+    // Divides two vectors, returns new
+    fn div(x,y,z) {
+        return new Vec4(self.x / x, self.y / y, self.z / z, self.w / w)
+    }
+    // Normalizes two vectors, returns new
+    fn normalize {
+        return new Vec4(math.normalize(x), math.normalize(y), math.normalize(z), math.normalize(w))
+    }
+    // To string
+    fn to_string {
+        return 'Vec4(x=' + x + ',y=' + y + ',z=' + z + ',w=' + w + ')'
+    }
+}
+
+/*
+ Library: math. Type Matrix
+*/
+type Matrix(fill) impl Display {
+    // Returns value at coordinates
+    fn get(x,y) {
+        if y >= fill.length() {
+            return result.err('out of matrix bounds by \'y\'')
+        }
+        if x >= fill.get(y).length() {
+            return result.err('out of matrix bounds by \'x\'')
+        }
+        return result.ok(fill.get(y).get(x))
+    }
+    // Sets value at coordinates
+    fn set(x,y,value) {
+        if y >= fill.length() {
+            return result.err('out of matrix bounds by \'y\'')
+        }
+        if x >= fill.get(y).length() {
+            return result.err('out of matrix bounds by \'x\'')
+        }
+        return result.ok(fill.get(y).set(x, value))
+    }
+    // Adds two matrixes, returns new
+    fn add(matrix) {
+        if matrix.fill.length() != self.fill.length() {
+            return result.err(
+                'incompatible size of matrix: '
+                + matrix.fill.length()
+                + 'with: '
+                + self.fill.length()
+            )
+        }
+        if matrix.fill.get(0).length() != self.fill.get(0).length() {
+            return result.err(
+                'incompatible size of matrix: '
+                + matrix.fill.get(0).length()
+                + 'with: '
+                + self.fill.get(0).length())
+        }
+        result_matrix := new Matrix(self.fill)
+        for y in 0..result_matrix.fill.length() {
+            for x in 0..result_matrix.fill.get(y).length() {
+                result_matrix.fill.get(y).set(x,
+                    result_matrix.fill.get(y).get(x) + matrix.fill.get(y).get(x)
+                )
+            }
+        }
+        return result.ok(result_matrix)
+    }
+    // Subs two matrixes, returns new
+    fn sub(matrix) {
+        if matrix.fill.length() != self.fill.length() {
+            return result.err(
+                'incompatible size of matrix: '
+                + matrix.fill.length()
+                + 'with: '
+                + self.fill.length()
+            )
+        }
+        if matrix.fill.get(0).length() != self.fill.get(0).length() {
+            return result.err(
+                'incompatible size of matrix: '
+                + matrix.fill.get(0).length()
+                + 'with: '
+                + self.fill.get(0).length())
+        }
+        result_matrix := new Matrix(self.fill)
+        for y in 0..result_matrix.fill.length() {
+            for x in 0..result_matrix.fill.get(y).length() {
+                result_matrix.fill.get(y).set(x,
+                    result_matrix.fill.get(y).get(x) - matrix.fill.get(y).get(x)
+                )
+            }
+        }
+        return result.ok(result_matrix)
+    }
+    // Multiplies two matrixes, returns new
+    fn mul(matrix) {
+        if matrix.fill.length() != self.fill.length() {
+            return result.err(
+                'incompatible size of matrix: '
+                + matrix.fill.length()
+                + 'with: '
+                + self.fill.length()
+            )
+        }
+        if matrix.fill.get(0).length() != self.fill.get(0).length() {
+            return result.err(
+                'incompatible size of matrix: '
+                + matrix.fill.get(0).length()
+                + 'with: '
+                + self.fill.get(0).length())
+        }
+        result_matrix := new Matrix(self.fill)
+        for y in 0..result_matrix.fill.length() {
+            for x in 0..result_matrix.fill.get(y).length() {
+                result_matrix.fill.get(y).set(x,
+                    result_matrix.fill.get(y).get(x) * matrix.fill.get(y).get(x)
+                )
+            }
+        }
+        return result.ok(result_matrix)
+    }
+    // Divides two matrixes, returns new
+    fn div(matrix) {
+        if matrix.fill.length() != self.fill.length() {
+            return result.err(
+                'incompatible size of matrix: '
+                + matrix.fill.length()
+                + 'with: '
+                + self.fill.length()
+            )
+        }
+        if matrix.fill.get(0).length() != self.fill.get(0).length() {
+            return result.err(
+                'incompatible size of matrix: '
+                + matrix.fill.get(0).length()
+                + 'with: '
+                + self.fill.get(0).length())
+        }
+        result_matrix := new Matrix(self.fill)
+        for y in 0..result_matrix.fill.length() {
+            for x in 0..result_matrix.fill.get(y).length() {
+                result_matrix.fill.get(y).set(x,
+                    result_matrix.fill.get(y).get(x) / matrix.fill.get(y).get(x)
+                )
+            }
+        }
+        return result.ok(result_matrix)
+    }
+    // To string
+    fn to_string {
+        return self.fill.to_string()
     }
 }

@@ -76,7 +76,7 @@ impl VM {
     }
 
     /// Pop value from vm stack
-    pub fn pop(&mut self, address: &Address) -> Result<Value, ControlFlow> {
+    pub fn pop(&mut self, address: &Address) -> Value {
         if self.stack.is_empty() {
             error!(Error::new(
                 address.clone(),
@@ -84,7 +84,7 @@ impl VM {
                 "check your code."
             ));
         }
-        Ok(self.stack.pop().unwrap())
+        self.stack.pop().unwrap()
     }
 
     /// Cleanup vm
@@ -212,8 +212,8 @@ impl VM {
         table: *mut Table,
     ) -> Result<(), ControlFlow> {
         // operands
-        let operand_a = self.pop(address)?;
-        let operand_b = self.pop(address)?;
+        let operand_a = self.pop(address);
+        let operand_b = self.pop(address);
 
         // error generators
         let invalid_op_error = || {
@@ -492,7 +492,7 @@ impl VM {
     /// Opcode: Negate operation
     unsafe fn op_negate(&mut self, address: &Address) -> Result<(), ControlFlow> {
         // operand
-        let operand = self.pop(address)?;
+        let operand = self.pop(address);
         // negate
         match operand {
             Value::Float(a) => {
@@ -515,7 +515,7 @@ impl VM {
     /// Opcode: Bang operation
     unsafe fn op_bang(&mut self, address: &Address) -> Result<(), ControlFlow> {
         // operand
-        let operand = self.pop(address)?;
+        let operand = self.pop(address);
         // bang
         match operand {
             Value::Bool(b) => {
@@ -535,8 +535,8 @@ impl VM {
     /// Opcode: Conditional operation
     unsafe fn op_conditional(&mut self, address: &Address, op: &str) -> Result<(), ControlFlow> {
         // operands
-        let operand_a = self.pop(address)?;
-        let operand_b = self.pop(address)?;
+        let operand_a = self.pop(address);
+        let operand_b = self.pop(address);
         // error
         let invalid_op_error = || {
             Error::own_text(
@@ -807,7 +807,7 @@ impl VM {
 
         // running first chunk
         self.run(a, table)?;
-        let operand_a = self.pop(address)?;
+        let operand_a = self.pop(address);
 
         // operand a
         let a = expect_bool(
@@ -830,7 +830,7 @@ impl VM {
                 else {
                     // evaluating second chunk
                     self.run(b, table)?;
-                    let operand_b = self.pop(address)?;
+                    let operand_b = self.pop(address);
                     // operand b
                     let b = expect_bool(
                         operand_b,
@@ -853,7 +853,7 @@ impl VM {
                 else {
                     // evaluating second chunk
                     self.run(b, table)?;
-                    let operand_b = self.pop(address)?;
+                    let operand_b = self.pop(address);
                     // operand b
                     let b = expect_bool(
                         operand_b,
@@ -895,7 +895,7 @@ impl VM {
 
         // running condition
         self.run(cond, table)?;
-        let bool = self.pop(addr)?;
+        let bool = self.pop(addr);
 
         // checking condition returned true
         if let Value::Bool(b) = bool {
@@ -1212,24 +1212,24 @@ impl VM {
         // non-previous
         if !has_previous {
             self.run(value, table)?;
-            let operand = self.pop(addr)?;
+            let operand = self.pop(addr);
             (*table).define(addr, name, operand);
         }
         // previous
         else {
-            let previous = self.pop(addr)?;
+            let previous = self.pop(addr);
 
             match previous {
                 // define in instance
                 Value::Instance(instance) => {
                     self.run(value, table)?;
-                    let operand = self.pop(addr)?;
+                    let operand = self.pop(addr);
                     (*(*instance).fields).define(addr, name, operand);
                 }
                 // define in unit
                 Value::Unit(unit) => {
                     self.run(value, table)?;
-                    let operand = self.pop(addr)?;
+                    let operand = self.pop(addr);
                     (*(*unit).fields).define(addr, name, operand);
                 }
                 _ => {
@@ -1264,24 +1264,24 @@ impl VM {
         // non-previous
         if !has_previous {
             self.run(value, table)?;
-            let operand = self.pop(addr)?;
+            let operand = self.pop(addr);
             (*table).set(addr.clone(), name, operand);
         }
         // previous
         else {
-            let previous = self.pop(addr)?;
+            let previous = self.pop(addr);
 
             match previous {
                 // define in instance
                 Value::Instance(instance) => {
                     self.run(value, table)?;
-                    let operand = self.pop(addr)?;
+                    let operand = self.pop(addr);
                     (*(*instance).fields).set_local(addr, name, operand);
                 }
                 // define in unit
                 Value::Unit(unit) => {
                     self.run(value, table)?;
-                    let operand = self.pop(addr)?;
+                    let operand = self.pop(addr);
                     (*(*unit).fields).set_local(addr, name, operand);
                 }
                 _ => {
@@ -1336,7 +1336,7 @@ impl VM {
         }
         // previous
         else {
-            let previous = self.pop(addr)?;
+            let previous = self.pop(addr);
             match previous {
                 // from instance
                 Value::Instance(instance) => {
@@ -1414,7 +1414,7 @@ impl VM {
                 // defining params variables with
                 // args values
                 for param in params.iter().rev() {
-                    let operand = vm.pop(addr)?;
+                    let operand = vm.pop(addr);
                     (*call_table).define(addr, param, operand);
                 }
 
@@ -1520,9 +1520,9 @@ impl VM {
                         }
                         Ok(())
                     }
+                    // otherwise, panic
                     _ => {
-                        // otherwise, propagate
-                        Err(e)
+                        panic!("unhandled control flow: {e:?}. report this error to the developer.")
                     }
                 };
             }
@@ -1563,7 +1563,13 @@ impl VM {
     }
 
     /// Opcode: Call
+    ///
     /// calls value by name
+    ///
+    /// if has_previous is true,
+    /// safety if previous is tempo,
+    /// guaranteed by guarding in gc
+    ///
     pub unsafe fn op_call(
         &mut self,
         addr: &Address,
@@ -1576,21 +1582,24 @@ impl VM {
         // non-previous
         if !has_previous {
             let value = (*table).lookup(addr, name);
-            self.call(addr, name, value, args, table, should_push)?;
+            self.call(addr, name, value, args, table, should_push)
         }
         // previous
         else {
-            let previous = self.pop(addr)?;
-            match previous {
+            // getting previous and guarding
+            let previous = self.pop(addr);
+            self.gc_guard(previous);
+            // calling a function
+            let result = match previous {
                 // call from instance
                 Value::Instance(instance) => {
                     let value = (*(*instance).fields).find(addr, name);
-                    self.call(addr, name, value, args, table, should_push)?;
+                    self.call(addr, name, value, args, table, should_push)
                 }
                 // call from unit
                 Value::Unit(unit) => {
                     let value = (*(*unit).fields).find(addr, name);
-                    self.call(addr, name, value, args, table, should_push)?;
+                    self.call(addr, name, value, args, table, should_push)
                 }
                 _ => {
                     error!(Error::own_text(
@@ -1599,10 +1608,11 @@ impl VM {
                         "you can call fn from unit, instance or foreign."
                     ))
                 }
-            }
+            };
+            // unguarding and returning result
+            self.gc_unguard();
+            result
         }
-
-        Ok(())
     }
 
     /// Opcode: Duplicate
@@ -1610,7 +1620,7 @@ impl VM {
     ///
     unsafe fn op_duplicate(&mut self, addr: &Address) -> Result<(), ControlFlow> {
         // duplicating operand
-        let operand = self.pop(addr)?;
+        let operand = self.pop(addr);
         self.push(operand);
         self.push(operand);
         Ok(())
@@ -1787,7 +1797,7 @@ impl VM {
                 // defining params variables with
                 // args values
                 for param in params.iter().rev() {
-                    let operand = vm.pop(addr)?;
+                    let operand = vm.pop(addr);
                     (*fields_table).define(addr, param, operand);
                 }
                 Ok(())
@@ -1899,7 +1909,7 @@ impl VM {
     ) -> Result<(), ControlFlow> {
         // running value and returning control flow
         self.run(value, table)?;
-        let value = self.pop(addr)?;
+        let value = self.pop(addr);
 
         Err(ControlFlow::Return(value))
     }
@@ -1935,7 +1945,7 @@ impl VM {
     ) -> Result<(), ControlFlow> {
         // running value
         self.run(value, table)?;
-        let value = self.pop(addr)?;
+        let value = self.pop(addr);
 
         /// Calls is ok
         /// from an instance
@@ -1971,7 +1981,7 @@ impl VM {
             vm.call(addr, "is_ok", callable, &Chunk::new(vec![]), table, true)?;
 
             // matching result
-            let result = vm.pop(addr)?;
+            let result = vm.pop(addr);
             match result {
                 Value::Bool(boolean) => Ok(boolean),
                 _ => {
@@ -2057,7 +2067,7 @@ impl VM {
     ) -> Result<(), ControlFlow> {
         // running impl
         self.run(value, table)?;
-        let value = self.pop(addr)?;
+        let value = self.pop(addr);
 
         // if value returned instance, checking trait
         // is implemented
@@ -2117,7 +2127,7 @@ impl VM {
                     self.op_push(value.clone(), table)?;
                 }
                 Opcode::Pop { addr } => {
-                    self.pop(addr)?;
+                    self.pop(addr);
                 }
                 Opcode::Bin { addr, op } => {
                     self.op_binary(addr, op, table)?;

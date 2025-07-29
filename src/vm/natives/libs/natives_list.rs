@@ -37,9 +37,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "list@add",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // значение
-            let value = vm.pop(&addr)?;
+            let value = vm.pop(&addr);
             // список
-            let list_value = vm.pop(&addr)?;
+            let list_value = vm.pop(&addr);
             // проверяем
             if let Value::List(list) = list_value {
                 (*list).push(value);
@@ -65,11 +65,11 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "list@set",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // значение
-            let value = vm.pop(&addr)?;
+            let value = vm.pop(&addr);
             // индекс
-            let index_value = vm.pop(&addr)?;
+            let index_value = vm.pop(&addr);
             // список
-            let list_value = vm.pop(&addr)?;
+            let list_value = vm.pop(&addr);
             // проверяем
             if let Value::List(list) = list_value {
                 if let Value::Int(index) = index_value {
@@ -105,9 +105,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "list@get",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // индекс
-            let index_value = vm.pop(&addr)?;
+            let index_value = vm.pop(&addr);
             // список
-            let list_value = vm.pop(&addr)?;
+            let list_value = vm.pop(&addr);
             // проверяем
             if let Value::List(list) = list_value {
                 if let Value::Int(index) = index_value {
@@ -152,9 +152,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "list@delete_at",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // индекс
-            let index_value = vm.pop(&addr)?;
+            let index_value = vm.pop(&addr);
             // список
-            let list_value = vm.pop(&addr)?;
+            let list_value = vm.pop(&addr);
             // проверяем
             if let Value::List(list) = list_value {
                 if let Value::Int(index) = index_value {
@@ -199,9 +199,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "list@delete",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // индекс
-            let value = vm.pop(&addr)?;
+            let value = vm.pop(&addr);
             // список
-            let list_value = vm.pop(&addr)?;
+            let list_value = vm.pop(&addr);
             // проверяем
             if let Value::List(list) = list_value {
                 for (index, element) in (*list).iter().enumerate() {
@@ -228,9 +228,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "list@index_of",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // индекс
-            let value = vm.pop(&addr)?;
+            let value = vm.pop(&addr);
             // список
-            let list_value = vm.pop(&addr)?;
+            let list_value = vm.pop(&addr);
             // проверяем
             if let Value::List(list) = list_value {
                 // если надо пушить
@@ -256,7 +256,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         "list@length",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             // список
-            let list_value = vm.pop(&addr)?;
+            let list_value = vm.pop(&addr);
             // проверяем
             if let Value::List(list) = list_value {
                 // если надо пушить

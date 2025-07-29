@@ -18,7 +18,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "convert@to_int",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let value = vm.pop(&addr)?;
+            let value = vm.pop(&addr);
 
             match value {
                 Value::Float(f) => {
@@ -79,7 +79,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "convert@to_float",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let value = vm.pop(&addr)?;
+            let value = vm.pop(&addr);
 
             match value {
                 Value::Float(f) => {
@@ -140,7 +140,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "convert@to_string",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let value = vm.pop(&addr)?;
+            let value = vm.pop(&addr);
 
             if should_push {
                 vm.op_push(OpcodeValue::String(format!("{value:?}")), table)?;
@@ -155,7 +155,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         1,
         "convert@to_bool",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let value = vm.pop(&addr)?;
+            let value = vm.pop(&addr);
 
             match value {
                 Value::Float(f) => {
