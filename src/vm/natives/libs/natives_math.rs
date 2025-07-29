@@ -164,7 +164,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         vm,
         built_in_address.clone(),
         1,
-        "math@cat",
+        "math@ctg",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let value = vm.pop(&addr)?;
 

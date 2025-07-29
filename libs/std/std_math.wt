@@ -62,7 +62,7 @@ unit math {
     fn round(x) {
         i := convert.to_int(x)
         difference := self.abs(x - i)
-        if difference > 0.5 {
+        if difference >= 0.5 {
             return i + 1
         }
         else {
@@ -245,7 +245,7 @@ unit math {
     native sin -> 'math@sin'
     native cos -> 'math@cos'
     native tan -> 'math@tan'
-    native cat -> 'math@cat'
+    native ctg -> 'math@ctg'
     native atan -> 'math@atan'
     native asin -> 'math@asin'
     native acos -> 'math@acos'
@@ -263,5 +263,75 @@ unit math {
     */
     fn to_radians(degrees) {
         return degrees * (self.pi/180)
+    }
+
+    /*
+     Mean of list
+    */
+    fn mean(list) {
+        sum := 0
+        for value in list.iter() {
+            sum += value
+        }
+        return sum / list.length()
+    }
+
+    /*
+     Harmonic mean of list
+    */
+    fn hmean(list) {
+        sum := 0
+        for value in list.iter() {
+            sum += 1.0 / value
+        }
+        return list.length() / sum
+    }
+
+    /*
+     Median of list
+    */
+    fn median(list) {
+        if list.length() % 2 == 0 {
+            return mean([
+                list.get(list.length() / 2),
+                list.get(list.length() / 2 - 1)
+            ])
+        }
+        else {
+            return list.get(floor(list.length() / 2))
+        }
+    }
+
+    /*
+     Popularity of list
+    */
+    fn popularity(list) {
+        popularity := {}
+        for element in list.iter() {
+            if popularity.has_key(element) {
+                popularity.set(element, popularity.get(element) + 1)
+            }
+            else {
+                popularity.set(element, 1)
+            }
+        }
+        return popularity
+    }
+
+    /*
+     Mode of list
+    */
+    fn mode(list) {
+        popularity := popularity(list)
+        greatest_popularity := 0
+        result := null
+        for key in popularity.keys().iter() {
+            populartiy := popularity.get(key)
+            if populartiy > greatest_popularity {
+                greatest_popularity = populartiy
+                result = key
+            }
+        }
+        return result
     }
 }
