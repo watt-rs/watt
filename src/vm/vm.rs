@@ -1,14 +1,14 @@
 // imports
-use crate::error;
 use crate::errors::errors::Error;
 use crate::lexer::address::Address;
 use crate::vm::bytecode::{Chunk, Opcode, OpcodeValue};
 use crate::vm::flow::ControlFlow;
-use crate::vm::memory::gc::GC;
+use crate::vm::memory::gc::{GC, GcGuard};
 use crate::vm::memory::memory;
 use crate::vm::natives::natives;
 use crate::vm::table::Table;
 use crate::vm::values::{FnOwner, Function, Instance, Symbol, Trait, TraitFn, Type, Unit, Value};
+use crate::{error, gc_guard};
 use scopeguard::defer;
 
 /// Vm settings,
@@ -988,7 +988,7 @@ impl VM {
         let function_value = Value::Fn(function);
 
         // guarding value in gc and registering it
-        self.gc_guard(function_value);
+        gc_guard!(self.gc, function_value);
         self.gc_register(function_value, table);
 
         // defining fn by name and full name
@@ -996,9 +996,6 @@ impl VM {
         if symbol.full_name.is_some() {
             (*table).define(addr, symbol.full_name.as_ref().unwrap(), function_value);
         }
-
-        // deleting gc guard
-        self.gc_unguard();
 
         Ok(())
     }
@@ -1118,7 +1115,7 @@ impl VM {
         let unit_value = Value::Unit(unit);
 
         // guarding value in gc and registering it
-        self.gc_guard(unit_value);
+        gc_guard!(self.gc, unit_value);
         self.gc_register(unit_value, table);
 
         // setting root for fields
@@ -1157,8 +1154,6 @@ impl VM {
         // deleting temp parent
         (*(*unit).fields).parent = std::ptr::null_mut();
 
-        // deleting gc guard
-        self.gc_unguard();
         Ok(())
     }
 
@@ -1588,9 +1583,9 @@ impl VM {
         else {
             // getting previous and guarding
             let previous = self.pop(addr);
-            self.gc_guard(previous);
+            gc_guard!(self.gc, previous);
             // calling a function
-            let result = match previous {
+            match previous {
                 // call from instance
                 Value::Instance(instance) => {
                     let value = (*(*instance).fields).find(addr, name);
@@ -1608,10 +1603,7 @@ impl VM {
                         "you can call fn from unit, instance or foreign."
                     ))
                 }
-            };
-            // unguarding and returning result
-            self.gc_unguard();
-            result
+            }
         }
     }
 
@@ -1721,16 +1713,13 @@ impl VM {
                         )));
 
                         // guarding in gc
-                        self.gc_guard(default_fn);
+                        gc_guard!(self.gc, default_fn);
 
                         // registering in gc
                         self.gc_register(default_fn, table);
 
                         // defining fn in fields of instance
                         (*(*instance).fields).define(addr, &function.name, default_fn);
-
-                        // deleting gc guard gc
-                        self.gc_unguard();
                     } else {
                         error!(Error::own(
                             addr.clone(),
@@ -1819,7 +1808,7 @@ impl VM {
                 let instance_value = Value::Instance(instance);
 
                 // guarding instance in gc
-                self.gc_guard(instance_value);
+                gc_guard!(self.gc, instance_value);
 
                 // registering in gc
                 self.gc_register(Value::Instance(instance), table);
@@ -1873,9 +1862,6 @@ impl VM {
 
                 // deleting temp parent
                 (*(*instance).fields).parent = std::ptr::null_mut();
-
-                // unguarding from gc
-                self.gc_unguard();
 
                 Ok(())
             }

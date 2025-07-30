@@ -297,3 +297,38 @@ impl GC {
         }
     }
 }
+
+/// Garbage collector guard
+///
+/// A RAII style struct around
+/// garbage collector's push_guard,
+/// pop_guard
+///
+pub struct GcGuard {
+    gc: *mut GC,
+}
+/// Garbage collector guard implementation
+impl GcGuard {
+    /// New garbage collector guard
+    pub unsafe fn new(gc: *mut GC, value: Value) -> Self {
+        (*gc).push_guard(value);
+        GcGuard { gc }
+    }
+}
+/// Drop of garabage collector guard
+impl Drop for GcGuard {
+    fn drop(&mut self) {
+        unsafe {
+            (*self.gc).pop_guard();
+        }
+    }
+}
+
+/// Garbage collector guard
+/// RAII style macros
+#[macro_export]
+macro_rules! gc_guard {
+    ($gc:expr, $value:expr) => {
+        let _guard = GcGuard::new($gc, $value);
+    };
+}
