@@ -18,10 +18,16 @@ type FFILibrary(raw) {
  | > crate::vm::natives::libs::natives_ffi
 */
 unit ffi {
+    /*
+     Natives
+    */
     native __internal_load -> 'ffi@load'
     native __internal_load_fn -> 'ffi@load_fn'
     native __internal_call_fn -> 'ffi@call_fn'
 
+    /*
+     Loads library
+    */
     fn load(lib, functions) {
         library := __internal_load(lib)
         for function in functions.iter() {

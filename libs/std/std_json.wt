@@ -33,7 +33,7 @@ type JsonError(message, line) impl Display {
 
 // Json unit. Contains encode and decode.
 unit json {
-    // lexing data, returns tokens
+    // Lexing data, returns tokens
     fn _lex(data) {
         // temp variables
         tokens := []
@@ -153,7 +153,7 @@ unit json {
         return result.ok(tokens)
     }
 
-    // parse to map
+    // Parses tokens to map
     fn _parse(tokens) {
         // current index
         index := 0
@@ -256,12 +256,12 @@ unit json {
         return parse_map()
     }
 
-    // decoding json
+    // Decodes json
     fn decode(string) {
         return _parse(_lex(new String(string))?)
     }
 
-    // encoding value
+    // Encodes value
     fn encode_value(value) {
         if typeof(value) == 'string' {
             return '"' + value + '"'
@@ -274,7 +274,7 @@ unit json {
         }
     }
 
-    // encodes list
+    // Encodes list
     fn encode_list(list) {
         string := new String('[')
         for i in list.iter() {
@@ -285,7 +285,7 @@ unit json {
         return string
     }
 
-    // encodes map
+    // Encodes map
     fn encode_map(map) {
         keys := map.keys()
         string := new String('{')
@@ -300,7 +300,7 @@ unit json {
         return string
     }
 
-    // encode
+    // Encodes map to json
     fn encode(map) {
         return encode_map(map)
     }

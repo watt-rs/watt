@@ -1,11 +1,45 @@
 /*
+ Timedelta type
+ | implementation of natives
+ | can be found in:
+ | > crate::vm::natives::libs::natives_time
+*/
+type Timedelta(seconds) {
+    // Natives
+    native __new -> 'timedelta@new'
+    native __millis -> 'timedelta@millis'
+    native __days -> 'timedelta@days'
+    native __hours -> 'timedelta@hours'
+    native __minutes -> 'timedelta@minutes'
+    native __seconds -> 'timedelta@seconds'
+    native __weeks -> 'timedelta@weeks'
+    native __sub -> 'timedelta@sub'
+    native __add -> 'timedelta@add'
+    native __gt -> 'timedelta@gt'
+    native __lt -> 'timedelta@lt'
+    native __ge -> 'timedelta@ge'
+    native __le -> 'timedelta@le'
+
+    // Init
+    fn init {
+        self.raw := __new(seconds)
+    }
+}
+
+/*
  Timestamp type
  | implementation of natives
  | can be found in:
  | > crate::vm::natives::libs::natives_time
 */
-type Timestamp(raw) {
+type Timestamp(raw) impl Display {
+    // Represents as millis
     native __millis -> 'timestamp@millis'
+
+    // Represents as seconds
+    native __seconds -> 'timestamp@seconds'
+
+    // Gets value from timestamp
     native __month -> 'timestamp@month'
     native __year -> 'timestamp@year'
     native __day -> 'timestamp@day'
@@ -15,10 +49,35 @@ type Timestamp(raw) {
     native __weekday -> 'timestamp@weekday'
     native __week -> 'timestamp@week'
 
+    // Timestamp modifications
+    native __sub -> 'timestamp@sub'
+    native __add_weeks -> 'timestamp@add_weeks'
+    native __add_days -> 'timestamp@add_days'
+    native __add_hours -> 'timestamp@add_hours'
+    native __add_minutes -> 'timestamp@add_minutes'
+    native __add_seconds -> 'timestamp@add_seconds'
+    native __add_millis -> 'timestamp@add_millis'
+    native __add_delta -> 'timestamp@add_delta'
+
+    // Compare operations
+    native __gt -> 'timestamp@gt'
+    native __ge -> 'timestamp@ge'
+    native __lt -> 'timestamp@lt'
+    native __le -> 'timestamp@le'
+
+    // Equality operation
+    native __eq -> 'timestamp@eq'
+
+
+    // To string
     fn to_string {
         return __day(raw) + '.' + __month(raw) + '.' + __year(raw) + ' ' +
                __hour(raw) + ':' + __minute(raw) + ':' + __second(raw)
     }
+
+    /*
+     Native wrappers
+    */
 
     fn millis {
         return __millis(raw)
@@ -55,11 +114,64 @@ type Timestamp(raw) {
     fn week {
         return __week(raw)
     }
+
+    fn sub(other) {
+        delta := new Timedelta()
+        delta.raw = __sub(raw, other.raw)
+    }
+
+    fn add_days(days) {
+        self.raw = __add_days(raw, days)
+    }
+
+    fn add_weeks(weeks) {
+        self.raw = __add_weeks(raw, weeks)
+    }
+
+    fn add_minutes(minutes) {
+        self.raw = __add_minutes(raw, minutes)
+    }
+
+    fn add_hours(hours) {
+        self.raw = __add_hours(raw, hours)
+    }
+
+    fn add_seconds(seconds) {
+        self.raw = __add_seconds(raw, seconds)
+    }
+
+    fn add_millis(days) {
+        self.raw = __add_millis(raw, days)
+    }
+
+    fn add_delta(delta) {
+        self.raw = __add_delta(raw, delta.raw)
+    }
+
+    fn gt(other) {
+        return __gt(raw, other.raw)
+    }
+
+    fn lt(other) {
+        return __lt(raw, other.raw)
+    }
+
+    fn ge(other) {
+        return __ge(raw, other.raw)
+    }
+
+    fn le(other) {
+        return __le(raw, other.raw)
+    }
+
+    fn eq(other) {
+        return __eq(raw, other.raw)
+    }
 }
 
 /*
- Library: time.
- | implementation of: now, from, format, at
+ Library: time. Unit time.
+ | implementation of: now, at
  | can be found in:
  | > crate::vm::natives::libs::natives_time
  */
@@ -71,6 +183,4 @@ unit time {
         raw := self.__now()
         return new Timestamp(raw)
     }
-
-    // TODO: add from, at.
 }

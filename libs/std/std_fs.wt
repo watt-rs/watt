@@ -9,7 +9,7 @@ import 'std.io'
  */
 type File(raw_handle) {
     /*
-     file initialization
+     File initialization
      | by default is_open = true
     */
     fn init {
@@ -17,7 +17,7 @@ type File(raw_handle) {
     }
 
     /*
-     ensuring file is open
+     Ensuring file is open
     */
     fn __ensure_open {
         if self.is_open == false {
@@ -26,7 +26,7 @@ type File(raw_handle) {
     }
 
     /*
-     writing data to file
+     Writing data to file
     */
 	fn write(data) {
         self.__ensure_open()
@@ -40,7 +40,7 @@ type File(raw_handle) {
 	}
 
     /*
-     close file
+     Close file
     */
     fn close {
         self.is_open = false
@@ -48,7 +48,7 @@ type File(raw_handle) {
     }
 
 	/*
-	 read to string
+	 Read to string
 	*/
     fn read_to_string {
         self.__ensure_open()
@@ -62,14 +62,14 @@ type File(raw_handle) {
     }
 
     /*
-     seek
+     Seek
     */
     fn seek(position, whence) {
         fs.__internal_seek(self.raw_handle, position, whence)
     }
 
     /*
-     tell
+     Tell
     */
     fn tell() {
         return fs.__internal_tell(self.raw_handle)
@@ -84,7 +84,7 @@ type File(raw_handle) {
 */
 unit fs {
     /*
-     natives
+     Natives
     */
     native __internal_open -> 'fs@open'
     native __internal_create -> 'fs@create'
@@ -100,7 +100,7 @@ unit fs {
     native __internal_is_directory -> 'fs@is_directory'
 
     /*
-     whence
+     Whence
     */
 
     // from start
@@ -111,7 +111,7 @@ unit fs {
     w_end := 2
 
     /*
-     create file
+     Creates file
     */
 	fn create(filename) {
 		file_handle := __internal_create(filename)
@@ -124,7 +124,7 @@ unit fs {
 	}
 
     /*
-     open file
+     Opens file
     */
     fn open(filename) {
         file_handle := __internal_open(filename)
@@ -137,7 +137,7 @@ unit fs {
     }
 
     /*
-     create directory
+     Creates directory
     */
     fn mkdir(dirname) {
         mkdir_result := __internal_mkdir(dirname)
@@ -150,7 +150,7 @@ unit fs {
     }
 
     /*
-     delete empty directory
+     Deletes empty directory
     */
     fn delete_directory(dirname) {
         delete_result := __internal_delete_directory(dirname)
@@ -163,7 +163,7 @@ unit fs {
     }
 
     /*
-     delete directory
+     Deletes directory
     */
     fn delete_directory_all(dirname) {
         delete_result := __internal_delete_directory_all(dirname)
@@ -176,7 +176,7 @@ unit fs {
     }
 
     /*
-     check path existence
+     Checks path existence
     */
     fn is_exists(path) {
         exists_result := __internal_exists(path)
@@ -189,7 +189,7 @@ unit fs {
     }
 
     /*
-     get directory files list
+     Gets directory files list
     */
     fn list(path) {
         list_result := __internal_list(path)
@@ -205,7 +205,7 @@ unit fs {
     }
 
     /*
-     check is directory
+     Checks is directory
     */
     fn is_directory(path) {
         result_is_dir := __internal_is_directory(path)

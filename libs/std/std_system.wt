@@ -52,13 +52,13 @@ type ProcessBuilder {
  | > crate::vm::natives::libs::natives_system
  */
 unit process {
-    // нативные функции для процессов
+    // Native process functions
     native __internal_process_spawn_shell -> 'system@process_spawn_shell'
     native __internal_process_id -> 'system@process_id'
     native __internal_process_wait -> 'system@process_wait'
     native __internal_process_terminate -> 'system@process_terminate'
 
-    // Запуск нового процесса по команде для командной оболочки (`sh` для Unix, `cmd` для Windows)
+    // Spawns new process with shell
     fn spawn_with_shell(command) {
         proc := new ProcessBuilder()
 
@@ -72,6 +72,7 @@ unit process {
  | > crate::vm::natives::libs::natives_system
  */
 unit system {
+    // Natives
     native __internal_getenv -> 'system@getenv'
     native __internal_setenv -> 'system@setenv'
     native __internal_getcwd -> 'system@getcwd'

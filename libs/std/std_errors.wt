@@ -103,7 +103,7 @@ type Result(ok, err) impl Display {
         }
     }
 
-    // to_string
+    // To string
     fn to_string {
         string := null
         if is_ok() {

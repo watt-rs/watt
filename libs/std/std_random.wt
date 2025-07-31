@@ -7,29 +7,29 @@ import 'std.time'
  | implementation of: int, float, choose
  */
 unit random {
-    // params (from c)
+    // Params (from C)
     a := 1664525
     c := 1013904223
     m := math.pow(2, 32)
     seed := time.now().mills()
 
-    // next
+    // Next seed
     fn next {
         self.seed = (self.a * self.seed + self.c) % self.m
         return self.seed
     }
 
-    // random float from 0 to 1
+    // Returns random float from 0 to 1
     fn _float {
         return next() / 4294967296
     }
 
-    // random int from 0 to 1
+    // Returns random int in range
     fn int(min, max) {
         return min + self.next() % (max - min + 1)
     }
 
-    // random float
+    // Returns random float in range
     fn float(min, max) {
         return min + (_float() * (max-min))
     }
