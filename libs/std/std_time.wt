@@ -5,21 +5,23 @@
  | > crate::vm::natives::libs::natives_time
 */
 type Timestamp(raw) {
-    native __mills -> 'timestamp@mills'
+    native __millis -> 'timestamp@millis'
     native __month -> 'timestamp@month'
     native __year -> 'timestamp@year'
     native __day -> 'timestamp@day'
     native __hour -> 'timestamp@hour'
     native __minute -> 'timestamp@minute'
     native __second -> 'timestamp@second'
+    native __weekday -> 'timestamp@weekday'
+    native __week -> 'timestamp@week'
 
     fn to_string {
         return __day(raw) + '.' + __month(raw) + '.' + __year(raw) + ' ' +
                __hour(raw) + ':' + __minute(raw) + ':' + __second(raw)
     }
 
-    fn mills {
-        return __mills(raw)
+    fn millis {
+        return __millis(raw)
     }
 
     fn month {
@@ -41,8 +43,17 @@ type Timestamp(raw) {
     fn second {
         return __seconds(raw)
     }
+
     fn minute {
         return __minute(raw)
+    }
+
+    fn weekday {
+        return __weekday(raw)
+    }
+
+    fn week {
+        return __week(raw)
     }
 }
 

@@ -33,7 +33,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         vm,
         built_in_address.clone(),
         1,
-        "timestamp@mills",
+        "timestamp@millis",
         |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
             let timestamp_value = vm.pop(&addr.clone());
             let timestamp = utils::expect_any(
@@ -247,6 +247,72 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 Some(time) => {
                     if should_push {
                         vm.push(Value::Int(time.month().into()));
+                    }
+                }
+                None => {
+                    error!(Error::own_text(
+                        addr,
+                        format!("invalid timestamp: {timestamp:?}"),
+                        "check your code.",
+                    ))
+                }
+            }
+            Ok(())
+        },
+    );
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        1,
+        "timestamp@weekday",
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            let timestamp_value = vm.pop(&addr);
+            let timestamp = utils::expect_any(
+                &addr,
+                timestamp_value,
+                Some(Error::own_text(
+                    addr.clone(),
+                    format!("not a timestamp: {timestamp_value:?}"),
+                    "check your code.",
+                )),
+            );
+            match (*timestamp).downcast_mut::<DateTime<Local>>() {
+                Some(time) => {
+                    if should_push {
+                        vm.push(Value::Int(time.weekday().num_days_from_monday() as i64));
+                    }
+                }
+                None => {
+                    error!(Error::own_text(
+                        addr,
+                        format!("invalid timestamp: {timestamp:?}"),
+                        "check your code.",
+                    ))
+                }
+            }
+            Ok(())
+        },
+    );
+    natives::provide(
+        vm,
+        built_in_address.clone(),
+        1,
+        "timestamp@week",
+        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+            let timestamp_value = vm.pop(&addr);
+            let timestamp = utils::expect_any(
+                &addr,
+                timestamp_value,
+                Some(Error::own_text(
+                    addr.clone(),
+                    format!("not a timestamp: {timestamp_value:?}"),
+                    "check your code.",
+                )),
+            );
+            match (*timestamp).downcast_mut::<DateTime<Local>>() {
+                Some(time) => {
+                    if should_push {
+                        vm.push(Value::Int(time.iso_week().week() as i64));
                     }
                 }
                 None => {
