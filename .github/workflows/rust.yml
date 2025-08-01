@@ -21,4 +21,4 @@ jobs:
         working-directory: watt
 
       - name: Run Watt tests
-        run: ./w test
+        run: ./tool test
