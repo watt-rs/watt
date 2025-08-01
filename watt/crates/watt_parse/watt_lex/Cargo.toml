@@ -1,7 +1,0 @@
-[package]
-name = "watt_lex"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-watt_common = { path = "../watt_common" }
