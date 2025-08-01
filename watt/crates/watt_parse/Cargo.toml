@@ -1,0 +1,9 @@
+[package]
+name = "watt_parse"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+watt_common = { path = "../watt_common" }
+watt_lex = { path = "../watt_lex" }
+watt_ast = { path = "../watt_ast" }

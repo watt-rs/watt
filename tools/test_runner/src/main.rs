@@ -28,11 +28,10 @@ fn main() {
     };
 
     // Switch to working directory.
-    std::env::set_current_dir(&working_directory).unwrap();
+    std::env::set_current_dir(&format!("{}/watt/", working_directory)).unwrap();
 
-    let compiler_path = working_directory.clone() + "/target/release/Watt";
-
-    println!("Building Watt...");
+    let compiler_path = working_directory.clone() + "/watt/target/release/watt_cli";
+    println!("{}", compiler_path);
     if let Err(e) = std::process::Command::new("cargo")
         .args(["b", "--release"])
         .spawn()

@@ -1,0 +1,10 @@
+import 'std.io'
+
+fn do_something {
+    return false
+}
+
+is_function_lazy := !do_something()
+
+io.println(is_function_lazy)
+io.println(!is_function_lazy)

@@ -1,0 +1,35 @@
+import 'std.io'
+
+fn empty {}
+
+fn value {
+    return 12345678
+}
+
+fn value2 {
+    return 'A string'
+}
+
+fn value3 {
+    return value2() + ' but changed'
+}
+
+type Atom {}
+
+fn value4 {
+    return new Atom()
+}
+
+fn value5 {
+    a := 1234
+    b := 5678
+
+    return a * b
+}
+
+io.println(empty())
+io.println(value())
+io.println(value2())
+io.println(value3())
+io.println(typeof(value4()))
+io.println(value5())

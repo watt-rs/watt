@@ -1,0 +1,13 @@
+[workspace]
+members = [
+    "crates/watt_analyze",
+    "crates/watt_ast",
+    "crates/watt_cli",
+    "crates/watt_common",
+    "crates/watt",
+    "crates/watt_gen",
+    "crates/watt_lex",
+    "crates/watt_parse",
+    "crates/watt_vm",
+]
+resolver = "3"
