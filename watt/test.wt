@@ -146,11 +146,10 @@ if text.is_err() {
     io.println(text.unwrap())
 }
 */
-import 'std.io'
-import 'std.time'
+import 'std.io' as io
+import 'std.time' as time
 
-local_time := time.now()
-local_time.add_delta(new Timedelta(1000))
-io.println(
-    local_time
-)
+_time := time.now()
+if _time impls Display {
+    io.println(_time)
+}

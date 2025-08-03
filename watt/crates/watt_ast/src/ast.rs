@@ -61,7 +61,6 @@ pub enum Node {
     },
     FnDeclaration {
         name: Token,
-        full_name: Option<Token>,
         params: Vec<Token>,
         body: Box<Node>,
         make_closure: bool,
@@ -111,7 +110,8 @@ pub enum Node {
         fn_name: Token,
     },
     Instance {
-        name: Token,
+        location: Token,
+        expr: Box<Node>,
         constructor: Vec<Node>,
         should_push: bool,
     },
@@ -124,14 +124,12 @@ pub enum Node {
     },
     Type {
         name: Token,
-        full_name: Option<Token>,
         constructor: Vec<Token>,
         body: Box<Node>,
         impls: Vec<Token>,
     },
     Unit {
         name: Token,
-        full_name: Option<Token>,
         body: Box<Node>,
     },
     For {
@@ -141,7 +139,6 @@ pub enum Node {
     },
     Trait {
         name: Token,
-        full_name: Option<Token>,
         functions: Vec<TraitNodeFn>,
     },
     ErrorPropagation {
@@ -150,8 +147,9 @@ pub enum Node {
         should_push: bool,
     },
     Impls {
+        location: Token,
         value: Box<Node>,
-        trait_name: Token,
+        expr: Box<Node>,
     },
     Range {
         location: Token,
@@ -218,9 +216,13 @@ pub fn set_should_push(node: Node, should_push: bool) -> Node {
             should_push,
         },
         Node::Instance {
-            name, constructor, ..
+            location,
+            expr,
+            constructor,
+            ..
         } => Node::Instance {
-            name,
+            location,
+            expr,
             constructor,
             should_push,
         },

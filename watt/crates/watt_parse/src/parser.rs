@@ -7,26 +7,20 @@ use watt_common::{error, errors::Error};
 use watt_lex::tokens::{Token, TokenKind};
 
 /// Parser structure
-pub struct Parser<'file_path, 'prefix> {
+pub struct Parser<'file_path> {
     tokens: Vec<Token>,
     current: u128,
     file_path: &'file_path PathBuf,
-    full_name_prefix: &'prefix str,
 }
 /// Parser implementation
 #[allow(unused_qualifications)]
-impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
+impl<'file_path> Parser<'file_path> {
     /// New parser
-    pub fn new(
-        tokens: Vec<Token>,
-        file_path: &'file_path PathBuf,
-        full_name_prefix: &'prefix str,
-    ) -> Self {
+    pub fn new(tokens: Vec<Token>, file_path: &'file_path PathBuf) -> Self {
         Parser {
             tokens,
             current: 0,
             file_path,
-            full_name_prefix,
         }
     }
 
@@ -73,25 +67,36 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         nodes
     }
 
-    /// Converts name to full name, using pattern:
-    /// `test_fn` from file test.wt is converted to `test:test_fn`
-    fn to_full_name(&self, tk: Token) -> Token {
-        Token::new(
-            TokenKind::Text,
-            format!("{}:{}", self.full_name_prefix, tk.value),
-            tk.address,
-        )
+    /// Parses type chained name `a.b.c.d...`
+    fn type_path(&mut self) -> Node {
+        let id = self.consume(TokenKind::Id).clone();
+        let mut expr = Node::Get {
+            previous: None,
+            name: id,
+            should_push: true,
+        };
+        while self.check(TokenKind::Dot) {
+            self.consume(TokenKind::Dot);
+            let id = self.consume(TokenKind::Id).clone();
+            expr = Node::Get {
+                previous: Some(Box::new(expr)),
+                name: id,
+                should_push: true,
+            }
+        }
+        expr
     }
 
     /// Object creation expr
     fn object_creation_expr(&mut self) -> Node {
-        self.consume(TokenKind::New);
+        let location = self.consume(TokenKind::New).clone();
 
-        let name = self.consume(TokenKind::Id).clone();
+        let expr = self.type_path();
         let args = self.args();
 
         Node::Instance {
-            name,
+            location: location,
+            expr: Box::new(expr),
             constructor: args,
             should_push: true,
         }
@@ -120,29 +125,29 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                 }
             }
             // +=, -=, *=, /=
-            else if self.check(TokenKind::AssignAdd)
-                || self.check(TokenKind::AssignSub)
-                || self.check(TokenKind::AssignMul)
-                || self.check(TokenKind::AssignDiv)
+            else if self.check(TokenKind::AddEq)
+                || self.check(TokenKind::SubEq)
+                || self.check(TokenKind::MulEq)
+                || self.check(TokenKind::DivEq)
             {
-                let op;
-                let location;
+                let op: Token;
+                let location: Token;
                 match self.peek().tk_type {
-                    TokenKind::AssignSub => {
-                        location = self.consume(TokenKind::AssignSub).clone();
-                        op = "-";
+                    TokenKind::AddEq => {
+                        location = self.consume(TokenKind::AddEq).clone();
+                        op = Token::new(TokenKind::AddEq, "+".to_string(), location.address);
                     }
-                    TokenKind::AssignMul => {
-                        location = self.consume(TokenKind::AssignMul).clone();
-                        op = "*";
+                    TokenKind::SubEq => {
+                        location = self.consume(TokenKind::SubEq).clone();
+                        op = Token::new(TokenKind::AddEq, "-".to_string(), location.address);
                     }
-                    TokenKind::AssignDiv => {
-                        location = self.consume(TokenKind::AssignDiv).clone();
-                        op = "/";
+                    TokenKind::MulEq => {
+                        location = self.consume(TokenKind::MulEq).clone();
+                        op = Token::new(TokenKind::AddEq, "*".to_string(), location.address);
                     }
-                    TokenKind::AssignAdd => {
-                        location = self.consume(TokenKind::AssignAdd).clone();
-                        op = "+";
+                    TokenKind::DivEq => {
+                        location = self.consume(TokenKind::DivEq).clone();
+                        op = Token::new(TokenKind::AddEq, "/".to_string(), location.address);
                     }
                     _ => {
                         panic!("invalid AssignOp tk_type. report to developer.");
@@ -159,7 +164,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                     value: Box::new(Node::Bin {
                         left: Box::new(var),
                         right: Box::new(self.expr()),
-                        op: Token::new(TokenKind::Op, op.to_string(), location.address),
+                        op,
                     }),
                 };
             }
@@ -516,20 +521,15 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
     /// Unary expr `!` and `-` parsing
     fn unary_expr(&mut self) -> Node {
-        let tk = self.peek();
+        if self.check(TokenKind::Bang) || self.check(TokenKind::Minus) {
+            let op = self.advance().clone();
 
-        match tk {
-            Token { tk_type, value, .. }
-                if (tk_type == &TokenKind::Op && value == "-") || (tk_type == &TokenKind::Bang) =>
-            {
-                let op = self.consume(*tk_type).clone();
-
-                Node::Unary {
-                    op,
-                    value: Box::new(self.primary_expr()),
-                }
+            Node::Unary {
+                op,
+                value: Box::new(self.primary_expr()),
             }
-            _ => self.primary_expr(),
+        } else {
+            self.primary_expr()
         }
     }
 
@@ -537,15 +537,15 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     fn multiplicative_expr(&mut self) -> Node {
         let mut left = self.unary_expr();
 
-        while self.check(TokenKind::Op)
-            && (self.peek().value == "*"
-                || self.peek().value == "&"
-                || self.peek().value == "|"
-                || self.peek().value == "^"
-                || self.peek().value == "/"
-                || self.peek().value == "%")
+        while self.check(TokenKind::Slash)
+            || self.check(TokenKind::Star)
+            || self.check(TokenKind::BitwiseAnd)
+            || self.check(TokenKind::BitwiseOr)
+            || self.check(TokenKind::Percent)
+            || self.check(TokenKind::Or)
         {
-            let op = self.consume(TokenKind::Op).clone();
+            let op = self.peek().clone();
+            self.current += 1;
             let right = self.unary_expr();
             left = Node::Bin {
                 left: Box::new(left),
@@ -561,8 +561,9 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     fn additive_expr(&mut self) -> Node {
         let mut left = self.multiplicative_expr();
 
-        while self.check(TokenKind::Op) && (self.peek().value == "+" || self.peek().value == "-") {
-            let op = self.consume(TokenKind::Op).clone();
+        while self.check(TokenKind::Plus) || self.check(TokenKind::Minus) {
+            let op = self.peek().clone();
+            self.current += 1;
             let right = self.multiplicative_expr();
             left = Node::Bin {
                 left: Box::new(left),
@@ -596,11 +597,12 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         let mut left = self.range_expr();
 
         if self.check(TokenKind::Impls) {
-            self.consume(TokenKind::Impls);
-            let trait_name = self.consume(TokenKind::Id).clone();
+            let location = self.consume(TokenKind::Impls).clone();
+            let expr = self.type_path();
             left = Node::Impls {
+                location,
                 value: Box::new(left),
-                trait_name,
+                expr: Box::new(expr),
             }
         }
 
@@ -616,8 +618,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
             || self.check(TokenKind::LessEq)
             || self.check(TokenKind::GreaterEq)
         {
-            let op = self.peek().clone();
-            self.current += 1;
+            let op = self.advance().clone();
             let right = self.impls_expr();
             left = Node::Cond {
                 left: Box::new(left),
@@ -634,8 +635,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         let mut left = self.compare_expr();
 
         if self.check(TokenKind::Eq) || self.check(TokenKind::NotEq) {
-            let op = self.peek().clone();
-            self.current += 1;
+            let op = self.advance().clone();
             let right = self.compare_expr();
             left = Node::Cond {
                 left: Box::new(left),
@@ -652,8 +652,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         let mut left = self.equality_expr();
 
         while self.check(TokenKind::And) || self.check(TokenKind::Or) {
-            let op = self.peek().clone();
-            self.current += 1;
+            let op = self.advance().clone();
             let right = self.equality_expr();
             left = Node::Logical {
                 left: Box::new(left),
@@ -691,20 +690,13 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
     /// Single import parsing
     ///
-    /// ✔️ With: creates full_name_prefix override
-    /// ❌ with: uses default full_name_prefix
+    /// ✔️ With: uses `symbols_prefix:symbol_name` as name
+    /// ❌ With: uses `symbol_name` as  name
     fn single_import(&mut self) -> Import {
         let name = self.consume(TokenKind::Text).clone();
-        if self.check(TokenKind::With) {
-            self.consume(TokenKind::With);
-            Import::new(
-                Option::Some(name.address),
-                name.value,
-                Option::Some(self.consume(TokenKind::Text).value.clone()),
-            )
-        } else {
-            Import::new(Option::Some(name.address), name.value, Option::None)
-        }
+        self.consume(TokenKind::As);
+        let variable = self.consume(TokenKind::Id).clone();
+        Import::new(name.address, name.value, variable.value)
     }
 
     /// Import statement `import ...` | `import (..., ..., n)` parsing
@@ -918,8 +910,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         self.consume(TokenKind::Rbrace);
 
         Node::FnDeclaration {
-            name: name.clone(),
-            full_name: Option::Some(self.to_full_name(name)),
+            name,
             params,
             body: Box::new(body),
             make_closure: true,
@@ -963,7 +954,6 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                     } => {
                         node = Node::FnDeclaration {
                             name,
-                            full_name: None,
                             params,
                             body,
                             make_closure: false,
@@ -990,8 +980,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         }
 
         Node::Type {
-            name: name.clone(),
-            full_name: Some(self.to_full_name(name)),
+            name,
             constructor,
             body: Box::new(Node::Block { body }),
             impls,
@@ -1043,11 +1032,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
 
         self.consume(TokenKind::Rbrace);
 
-        Node::Trait {
-            name: name.clone(),
-            full_name: Some(self.to_full_name(name)),
-            functions,
-        }
+        Node::Trait { name, functions }
     }
 
     /// Unit declaration parsing
@@ -1070,7 +1055,6 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
                     } => {
                         node = Node::FnDeclaration {
                             name,
-                            full_name: None,
                             params,
                             body,
                             make_closure: false,
@@ -1097,8 +1081,7 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
         }
 
         Node::Unit {
-            name: name.clone(),
-            full_name: Some(self.to_full_name(name)),
+            name,
             body: Box::new(Node::Block { body }),
         }
     }
@@ -1151,6 +1134,21 @@ impl<'file_path, 'prefix> Parser<'file_path, 'prefix> {
     /*
      helper functions
     */
+
+    /// Gets current token, then adds 1 to current.
+    fn advance(&mut self) -> &Token {
+        match self.tokens.get(self.current as usize) {
+            Some(tk) => {
+                self.current += 1;
+                return tk;
+            }
+            None => error!(Error::new(
+                Address::new(0, 0, self.file_path.clone()),
+                "unexpected eof",
+                "check your code.",
+            )),
+        }
+    }
 
     /// Consumes token by kind, if expected kind doesn't equal
     /// current token kind - raises error.

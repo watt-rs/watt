@@ -33,6 +33,10 @@ pub struct Table {
     pub closure: *mut Table,
     /// captures amount
     pub captures: usize,
+    /// is it a modular
+    /// true, if it's a global table,
+    /// or a module table
+    pub is_owner_module: bool,
 }
 /// Table implementation
 impl Table {
@@ -44,9 +48,22 @@ impl Table {
             parent: std::ptr::null_mut(),
             closure: std::ptr::null_mut(),
             captures: 0,
+            is_owner_module: false,
         }
     }
-
+    
+    /// New table for module
+    pub fn for_module() -> Table {
+        Table {
+            fields: FxHashMap::default(),
+            root: std::ptr::null_mut(),
+            parent: std::ptr::null_mut(),
+            closure: std::ptr::null_mut(),
+            captures: 0,
+            is_owner_module: true,
+        }
+    }
+    
     /// Checks variable exists in fields
     /// or closure
     ///

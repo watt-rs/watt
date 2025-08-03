@@ -60,13 +60,13 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     vm.op_push(OpcodeValue::String("native".to_string()), table)?;
                 }
                 Value::Instance(i) => {
-                    vm.op_push(OpcodeValue::String((*(*i).t).name.name.clone()), table)?;
+                    vm.op_push(OpcodeValue::String((*(*i).t).name.clone()), table)?;
                 }
                 Value::Unit(u) => {
-                    vm.op_push(OpcodeValue::String((*u).name.name.clone()), table)?;
+                    vm.op_push(OpcodeValue::String((*u).name.clone()), table)?;
                 }
                 Value::Trait(t) => {
-                    vm.op_push(OpcodeValue::String((*t).name.name.clone()), table)?;
+                    vm.op_push(OpcodeValue::String((*t).name.clone()), table)?;
                 }
                 Value::List(l) => {
                     vm.op_push(OpcodeValue::String("list".to_string()), table)?;
@@ -76,6 +76,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 }
                 Value::Any(_) => {
                     vm.op_push(OpcodeValue::String("any".to_string()), table)?;
+                }
+                Value::Module(m) => {
+                    
                 }
             }
             Ok(())
@@ -116,39 +119,16 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     vm.op_push(OpcodeValue::String("watt:native".to_string()), table)?;
                 }
                 Value::Instance(i) => {
-                    let symbol = (*(*i).t).name.clone();
-                    match symbol.full_name {
-                        Some(full_name) => {
-                            vm.op_push(OpcodeValue::String(full_name), table)?;
-                        }
-                        None => {
-                            vm.op_push(OpcodeValue::String(symbol.name), table)?;
-                        }
-                    }
+                    let name = (*(*i).t).name.clone();
+                    vm.op_push(OpcodeValue::String(name), table)?;
                 }
                 Value::Unit(u) => {
-                    let symbol = (*u).name.clone();
-
-                    match symbol.full_name {
-                        Some(full_name) => {
-                            vm.op_push(OpcodeValue::String(full_name), table)?;
-                        }
-                        None => {
-                            vm.op_push(OpcodeValue::String(symbol.name), table)?;
-                        }
-                    }
+                    let name = (*u).name.clone();
+                    vm.op_push(OpcodeValue::String(name), table)?;
                 }
                 Value::Trait(t) => {
-                    let symbol = (*t).name.clone();
-
-                    match symbol.full_name {
-                        Some(full_name) => {
-                            vm.op_push(OpcodeValue::String(full_name), table)?;
-                        }
-                        None => {
-                            vm.op_push(OpcodeValue::String(symbol.name), table)?;
-                        }
-                    }
+                    let name = (*t).name.clone();
+                    vm.op_push(OpcodeValue::String(name), table)?;
                 }
                 Value::List(l) => {
                     vm.op_push(OpcodeValue::String("watt:list".to_string()), table)?;
@@ -158,6 +138,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 }
                 Value::Any(any) => {
                     vm.op_push(OpcodeValue::String("watt:any".to_string()), table)?;
+                }
+                Value::Module(_) => {
+                    vm.op_push(OpcodeValue::String("watt:module".to_string()), table)?;
                 }
             }
             Ok(())

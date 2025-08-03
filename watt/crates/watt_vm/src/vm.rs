@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 // imports
-use crate::bytecode::{Chunk, Opcode, OpcodeValue};
+use crate::bytecode::{Chunk, ModuleInfo, Opcode, OpcodeValue};
 use crate::flow::ControlFlow;
 use crate::gc_guard;
 use crate::memory::gc::{GC, GcGuard};
@@ -36,35 +38,45 @@ impl VmSettings {
 ///
 #[derive(Debug)]
 pub struct VM {
-    pub globals: *mut Table,
-    types: *mut Table,
-    pub units: *mut Table,
-    traits: *mut Table,
-    pub natives: *mut Table,
+    pub builtins_table: *mut Table,
+    pub natives_table: *mut Table,
     pub gc: *mut GC,
     settings: VmSettings,
     pub stack: Vec<Value>,
+    pub modules_info: HashMap<usize, ModuleInfo>,
+    pub modules: HashMap<usize, *mut Module>,
 }
 /// Vm implementation
 #[allow(non_upper_case_globals)]
 #[allow(unused_qualifications)]
 impl VM {
     /// New vm
-    pub unsafe fn new(settings: VmSettings) -> VM {
+    pub unsafe fn new(
+        settings: VmSettings,
+        builtins: Chunk,
+        modules_info: HashMap<usize, ModuleInfo>,
+    ) -> VM {
         // vm
         let mut vm = VM {
-            globals: memory::alloc_value(Table::new()),
-            types: memory::alloc_value(Table::new()),
-            units: memory::alloc_value(Table::new()),
-            traits: memory::alloc_value(Table::new()),
-            natives: memory::alloc_value(Table::new()),
+            builtins_table: memory::alloc_value(Table::for_module()),
+            natives_table: memory::alloc_value(Table::new()),
             gc: memory::alloc_value(GC::new(settings.gc_debug)),
             stack: Vec::new(),
+            modules_info,
+            modules: HashMap::new(),
             settings,
         };
         // natives
         if let Err(e) = natives::provide_builtins(&mut vm) {
             error!(e)
+        }
+        // running builtins
+        if let Err(e) = vm.run(&builtins, vm.builtins_table) {
+            error!(Error::own_text(
+                Address::unknown(),
+                format!("control flow leak: {e:?}"),
+                "report this error to the developer."
+            ));
         }
         // returns vm
         vm
@@ -97,16 +109,13 @@ impl VM {
         (*self.gc).cleanup();
         // freeing gc
         memory::free_value(self.gc);
-        // freeing types table fields
-        (*self.types).free_fields();
-        // freeing traits table fields
-        (*self.traits).free_fields();
-        // freeing tables themselves
-        memory::free_value(self.traits);
-        memory::free_value(self.types);
-        memory::free_value(self.natives);
-        memory::free_value(self.units);
-        memory::free_value(self.globals);
+        // freeing tables
+        memory::free_value(self.natives_table);
+        memory::free_value(self.builtins_table);
+        // freeing modules
+        self.modules.iter().for_each(|(_, m)| {
+            memory::free_value(*m);
+        });
     }
 
     /// Invoke garbage collector
@@ -964,7 +973,7 @@ impl VM {
     unsafe fn op_define_fn(
         &mut self,
         addr: &Address,
-        symbol: Symbol,
+        name: &String,
         body: &Chunk,
         params: &[String],
         make_closure: bool,
@@ -972,15 +981,14 @@ impl VM {
     ) -> Result<(), ControlFlow> {
         // allocating function
         let function = memory::alloc_value(Function::new(
-            symbol.clone(),
+            name.clone(),
             memory::alloc_value(body.clone()),
             params.to_owned(),
         ));
 
         // if it's need to make_closure
-        if make_closure && table != self.globals {
+        if make_closure && !(*table).is_owner_module {
             // setting closure
-            (*table).captures += 1;
             (*function).closure = table;
         }
 
@@ -992,10 +1000,7 @@ impl VM {
         self.gc_register(function_value, table);
 
         // defining fn by name and full name
-        (*table).define(addr, &symbol.name, function_value);
-        if symbol.full_name.is_some() {
-            (*table).define(addr, symbol.full_name.as_ref().unwrap(), function_value);
-        }
+        (*table).define(addr, name, function_value);
 
         Ok(())
     }
@@ -1016,13 +1021,13 @@ impl VM {
     ) -> Result<(), ControlFlow> {
         // allocating function
         let function = memory::alloc_value(Function::new(
-            Symbol::by_name("$lambda".to_string()),
+            "$lambda".to_string(),
             memory::alloc_value(body.clone()),
             params.to_owned(),
         ));
 
         // if it's need to make_closure
-        if make_closure {
+        if make_closure && !(*table).is_owner_module {
             // creating closure
             let closure = memory::alloc_value(Table::new());
             // copying table
@@ -1069,25 +1074,23 @@ impl VM {
     unsafe fn op_define_type(
         &mut self,
         addr: &Address,
-        symbol: &Symbol,
+        name: &String,
         body: &Chunk,
         constructor: &[String],
-        impls: &[String],
+        impls: &[String], // todo: replace &[String] with &[Opcode]
+        table: *mut Table,
     ) -> Result<(), ControlFlow> {
         // allocating type
         let t = memory::alloc_value(Type::new(
-            symbol.clone(),
+            name.clone(),
             constructor.to_owned(),
             memory::alloc_value(body.clone()),
             impls.to_owned(),
+            table,
         ));
 
         // defining type by name && full name
-        (*self.types).define(addr, &symbol.name, Value::Type(t));
-        if symbol.full_name.is_some() {
-            (*self.types).define(addr, symbol.full_name.as_ref().unwrap(), Value::Type(t));
-        }
-
+        (*table).define(addr, name.as_str(), Value::Type(t));
         Ok(())
     }
 
@@ -1103,13 +1106,16 @@ impl VM {
     unsafe fn op_define_unit(
         &mut self,
         addr: &Address,
-        symbol: &Symbol,
+        name: &String,
         body: &Chunk,
         table: *mut Table,
     ) -> Result<(), ControlFlow> {
         // allocating unit
-        let unit =
-            memory::alloc_value(Unit::new(symbol.clone(), memory::alloc_value(Table::new())));
+        let unit = memory::alloc_value(Unit::new(
+            name.clone(),
+            memory::alloc_value(Table::new()),
+            table,
+        ));
 
         // unit value
         let unit_value = Value::Unit(unit);
@@ -1119,7 +1125,7 @@ impl VM {
         self.gc_register(unit_value, table);
 
         // setting root for fields
-        (*(*unit).fields).set_root(self.globals);
+        (*(*unit).fields).set_root(table);
 
         // setting temp parent for fields
         (*(*unit).fields).parent = table;
@@ -1142,14 +1148,18 @@ impl VM {
         let init_fn = "init";
         if (*(*unit).fields).exists(init_fn) {
             self.push(unit_value);
-            self.op_call(addr, init_fn, true, false, &Chunk::new(vec![]), table)?
+            self.op_call(
+                addr,
+                init_fn,
+                true,
+                false,
+                &Chunk::new(vec![]),
+                (*unit).fields,
+            )?
         }
 
         // defining unit by name and full name
-        (*self.units).define(addr, &symbol.name, unit_value);
-        if symbol.full_name.is_some() {
-            (*self.units).define(addr, symbol.full_name.as_ref().unwrap(), unit_value);
-        }
+        (*table).define(addr, name.as_str(), unit_value);
 
         // deleting temp parent
         (*(*unit).fields).parent = std::ptr::null_mut();
@@ -1169,21 +1179,15 @@ impl VM {
     unsafe fn op_define_trait(
         &mut self,
         addr: &Address,
-        symbol: &Symbol,
+        name: &String,
         functions: &[TraitFn],
+        table: *mut Table,
     ) -> Result<(), ControlFlow> {
         // allocating trait
-        let _trait = memory::alloc_value(Trait::new(symbol.clone(), functions.to_owned()));
+        let _trait = memory::alloc_value(Trait::new(name.clone(), functions.to_owned()));
 
-        // define trait by name and full name
-        (*self.traits).define(addr, &symbol.name, Value::Trait(_trait));
-        if symbol.full_name.is_some() {
-            (*self.traits).define(
-                addr,
-                symbol.full_name.as_ref().unwrap(),
-                Value::Trait(_trait),
-            );
-        }
+        // define trait by name
+        (*table).define(addr, name.as_str(), Value::Trait(_trait));
 
         Ok(())
     }
@@ -1230,8 +1234,8 @@ impl VM {
                 _ => {
                     error!(Error::own_text(
                         addr.clone(),
-                        format!("{previous:?} is not a container."),
-                        "you can define variable for unit or instance."
+                        format!("could not define variable in {previous:?}"),
+                        "you can define variable in unit or instance."
                     ))
                 }
             }
@@ -1282,8 +1286,8 @@ impl VM {
                 _ => {
                     error!(Error::own_text(
                         addr.clone(),
-                        format!("{previous:?} is not a container."),
-                        "you can define variable for unit or instance."
+                        format!("could not set variable in {previous:?}."),
+                        "you can set variable in unit or instance."
                     ))
                 }
             }
@@ -1314,15 +1318,7 @@ impl VM {
             let value;
 
             // loading variable value from table
-            if (*table).has(name) {
-                value = (*table).lookup(addr, name);
-            } else if (*self.types).has(name) {
-                value = (*self.types).find(addr, name);
-            } else if (*self.traits).has(name) {
-                value = (*self.traits).find(addr, name);
-            } else {
-                value = (*self.units).find(addr, name);
-            }
+            value = (*table).lookup(addr, name);
 
             // pushing value
             if should_push {
@@ -1343,6 +1339,13 @@ impl VM {
                 // from unit
                 Value::Unit(unit) => {
                     let value = (*(*unit).fields).find(addr, name);
+                    if should_push {
+                        self.push(value);
+                    }
+                }
+                // from module
+                Value::Module(module) => {
+                    let value = (*(*module).table).find(addr, name);
                     if should_push {
                         self.push(value);
                     }
@@ -1478,8 +1481,8 @@ impl VM {
             }
 
             // root & self
-            if (*function).owner.is_some() {
-                match (*function).owner.clone().unwrap() {
+            match &(*function).owner {
+                Some(owner) => match *owner {
                     FnOwner::Unit(unit) => {
                         (*call_table).set_root((*unit).fields);
                         (*call_table).define(addr, "self", Value::Unit(unit));
@@ -1488,9 +1491,11 @@ impl VM {
                         (*call_table).set_root((*instance).fields);
                         (*call_table).define(addr, "self", Value::Instance(instance));
                     }
-                }
-            } else {
-                (*call_table).set_root(table)
+                    FnOwner::Module(module) => {
+                        (*call_table).set_root((*module).table);
+                    }
+                },
+                None => {}
             }
 
             // passing args
@@ -1538,7 +1543,7 @@ impl VM {
             }
 
             // root to globals
-            (*call_table).set_root(self.globals);
+            (*call_table).set_root((*function).defined_in);
 
             // loading arguments to stack
             load_arguments(self, addr, name, (*function).params_amount, args, table)?;
@@ -1596,11 +1601,16 @@ impl VM {
                     let value = (*(*unit).fields).find(addr, name);
                     self.call(addr, name, value, args, table, should_push)
                 }
+                // call from module
+                Value::Module(module) => {
+                    let value = (*(*module).table).find(addr, name);
+                    self.call(addr, name, value, args, table, should_push)
+                }
                 _ => {
                     error!(Error::own_text(
                         addr.clone(),
                         format!("couldn't call {name} from {previous:?}."),
-                        "you can call fn from unit, instance or foreign."
+                        "you can call fn from unit, instance or module."
                     ))
                 }
             }
@@ -1634,7 +1644,7 @@ impl VM {
             trait_name: &str,
         ) -> Option<*mut Trait> {
             // looking up trait
-            let trait_value = (*traits).find(addr, trait_name);
+            let trait_value = (*traits).lookup(addr, trait_name);
 
             match trait_value {
                 Value::Trait(_trait) => Some(_trait),
@@ -1661,7 +1671,7 @@ impl VM {
 
         // checking all traits from a type
         for trait_name in &(*instance_type).impls {
-            let _trait = get_trait(self.traits, addr, trait_name).unwrap();
+            let _trait = get_trait(table, addr, trait_name).unwrap();
             // checking all fn-s
             for function in &(*_trait).functions {
                 // if impl exists, checking it
@@ -1677,7 +1687,7 @@ impl VM {
                                 addr.clone(),
                                 format!(
                                     "type {} impls {}, but fn {} has wrong impl.",
-                                    (*instance_type).name.name,
+                                    (*instance_type).name,
                                     trait_name,
                                     function.name
                                 ),
@@ -1693,7 +1703,7 @@ impl VM {
                             addr.clone(),
                             format!(
                                 "type {} impls {}, but doesn't impl fn {}({})",
-                                (*instance_type).name.name.clone(),
+                                (*instance_type).name,
                                 trait_name,
                                 function.name.clone(),
                                 function.params_amount
@@ -1707,7 +1717,7 @@ impl VM {
                         // creating default fn
                         let default_impl = function.default.as_ref().unwrap();
                         let default_fn = Value::Fn(memory::alloc_value(Function::new(
-                            Symbol::by_name(function.name.clone()),
+                            function.name.clone(),
                             memory::alloc_value(default_impl.chunk.clone()),
                             default_impl.params.clone(),
                         )));
@@ -1725,7 +1735,7 @@ impl VM {
                             addr.clone(),
                             format!(
                                 "type {} impls {}, but doesn't impl fn {}({})",
-                                (*instance_type).name.name,
+                                (*instance_type).name,
                                 trait_name,
                                 function.name,
                                 function.params_amount
@@ -1750,7 +1760,6 @@ impl VM {
     unsafe fn op_instance(
         &mut self,
         addr: &Address,
-        name: &str,
         args: &Chunk,
         should_push: bool,
         table: *mut Table,
@@ -1798,8 +1807,8 @@ impl VM {
                 ));
             }
         }
-        // looking up a type
-        let value = (*self.types).lookup(addr, name);
+        // getting a type
+        let value = self.pop(addr);
         match value {
             Value::Type(t) => {
                 // creating instance
@@ -1817,7 +1826,7 @@ impl VM {
                 pass_constructor(
                     self,
                     addr,
-                    name,
+                    &(*t).name,
                     (*t).constructor.len(),
                     args,
                     (*t).constructor.clone(),
@@ -1826,7 +1835,7 @@ impl VM {
                 )?;
 
                 // setting root
-                (*(*instance).fields).set_root(self.globals);
+                (*(*instance).fields).set_root((*t).defined_in);
 
                 // setting temp parent
                 (*(*instance).fields).parent = table;
@@ -1843,7 +1852,7 @@ impl VM {
                 (*(*instance).fields).fields.remove("self");
 
                 // checking traits implementation
-                self.check_traits(addr, instance, table);
+                self.check_traits(addr, instance, (*t).defined_in);
 
                 // binding functions
                 self.bind_functions((*instance).fields, FnOwner::Instance(instance));
@@ -1866,7 +1875,11 @@ impl VM {
                 Ok(())
             }
             _ => {
-                panic!("found a non-type value in types table. report this error to the developer.")
+                error!(Error::own_text(
+                    addr.clone(),
+                    format!("{} is not a type", value),
+                    "you can create instances only of types."
+                ))
             }
         }
     }
@@ -1909,7 +1922,7 @@ impl VM {
     unsafe fn op_native(&mut self, addr: &Address, name: &str) -> Result<(), ControlFlow> {
         // finding native function, provided
         // by `vm/natives/natives.rs` and pushing to stack
-        let value = (*self.natives).find(addr, name);
+        let value = (*self.natives_table).find(addr, name);
         self.push(value);
 
         Ok(())
@@ -2044,48 +2057,35 @@ impl VM {
     /// Checks value is impls a
     /// `trait`, named `trait_name`
     ///
-    unsafe fn op_impls(
-        &mut self,
-        addr: &Address,
-        value: &Chunk,
-        trait_name: &str,
-        table: *mut Table,
-    ) -> Result<(), ControlFlow> {
-        // running impl
-        self.run(value, table)?;
-        let value = self.pop(addr);
-
+    /// todo
+    unsafe fn op_impls(&mut self, addr: &Address) -> Result<(), ControlFlow> {
+        // getting trait
+        let trait_value = self.pop(addr);
+        // getting instance
+        let instance_value = self.pop(addr);
         // if value returned instance, checking trait
         // is implemented
-        if let Value::Instance(instance) = value {
+        if let Value::Instance(instance) = instance_value {
             // checking trait is implemented
-            let trait_value = (*self.traits).lookup(addr, trait_name);
             match trait_value {
                 Value::Trait(_trait) => {
                     let impls = &(*(*instance).t).impls;
 
-                    let name = &(*_trait).name.name;
-                    let full_name_option = &(*_trait).name.full_name;
-
-                    match full_name_option {
-                        Some(full_name) => {
-                            self.push(Value::Bool(
-                                impls.contains(name) || impls.contains(full_name),
-                            ));
-                        }
-                        _ => {
-                            self.push(Value::Bool(impls.contains(name)));
-                        }
-                    }
+                    let name = &(*_trait).name;
+                    self.push(Value::Bool(impls.contains(name)));
                 }
                 _ => {
-                    panic!("not a trait in traits table. report to developer.")
+                    error!(Error::own_text(
+                        addr.clone(),
+                        format!("could not use impls with trait {trait_value:?}."),
+                        "impls op requires instance."
+                    ))
                 }
             }
         } else {
             error!(Error::own_text(
                 addr.clone(),
-                format!("could not use impls with {value:?}."),
+                format!("could not use impls with {instance_value:?}."),
                 "impls op requires instance."
             ))
         }
@@ -2104,7 +2104,51 @@ impl VM {
         (*table).fields.remove(name);
     }
 
-    /// Running chunk
+    /// Opcode: LoadModule
+    ///
+    /// Loads module, if not loaded
+    unsafe fn op_load_module(
+        &mut self,
+        addr: &Address,
+        id: usize,
+        variable: &String,
+        table: *mut Table,
+    ) -> Result<(), ControlFlow> {
+        match self.modules.get(&id) {
+            Some(module) => {
+                (*table).define(addr, variable, Value::Module(*module));
+                Ok(())
+            }
+            None => match self.modules_info.get(&id).cloned() {
+                Some(module_info) => {
+                    let module = self.run_module(&module_info.chunk)?;
+                    self.modules.insert(id, module);
+                    (*table).define(addr, variable, Value::Module(module));
+                    Ok(())
+                }
+                None => {
+                    panic!("module with id {id} is not found. report this error to the developer.")
+                }
+            },
+        }
+    }
+
+    /// Runs module chunk in new table
+    pub unsafe fn run_module(&mut self, chunk: &Chunk) -> Result<*mut Module, ControlFlow> {
+        // creating module table
+        let module_table = memory::alloc_value(Table::for_module());
+        (*module_table).set_root(self.builtins_table);
+        // running chunk
+        self.run(chunk, module_table)?;
+        // module
+        let module = memory::alloc_value(Module::new(module_table));
+        // binding function
+        self.bind_functions(module_table, FnOwner::Module(module));
+        // returning module
+        Ok(module)
+    }
+
+    /// Runs chunk
     #[allow(unused_variables)]
     pub unsafe fn run(&mut self, chunk: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
         for op in chunk.opcodes() {
@@ -2127,7 +2171,9 @@ impl VM {
                 Opcode::Cond { addr, op } => {
                     self.op_conditional(addr, op)?;
                 }
-                Opcode::Logic { addr, a, b, op } => self.op_logical(addr, a, b, op, table)?,
+                Opcode::Logic { addr, a, b, op } => {
+                    self.op_logical(addr, a, b, op, table)?;
+                }
                 Opcode::If {
                     addr,
                     cond,
@@ -2142,19 +2188,11 @@ impl VM {
                 Opcode::DefineFn {
                     addr,
                     name,
-                    full_name,
                     body,
                     params,
                     make_closure,
                 } => {
-                    self.op_define_fn(
-                        addr,
-                        Symbol::new_option(name.clone(), full_name.clone()),
-                        body,
-                        params,
-                        *make_closure,
-                        table,
-                    )?;
+                    self.op_define_fn(addr, name, body, params, *make_closure, table)?;
                 }
                 Opcode::AnonymousFn {
                     addr,
@@ -2167,38 +2205,22 @@ impl VM {
                 Opcode::DefineType {
                     addr,
                     name,
-                    full_name,
                     body,
                     constructor,
                     impls,
-                } => self.op_define_type(
-                    addr,
-                    &Symbol::new_option(name.clone(), full_name.clone()),
-                    body,
-                    constructor,
-                    impls,
-                )?,
-                Opcode::DefineUnit {
-                    addr,
-                    name,
-                    full_name,
-                    body,
-                } => self.op_define_unit(
-                    addr,
-                    &Symbol::new_option(name.clone(), full_name.clone()),
-                    body,
-                    table,
-                )?,
+                } => {
+                    self.op_define_type(addr, name, body, constructor, impls, table)?;
+                }
+                Opcode::DefineUnit { addr, name, body } => {
+                    self.op_define_unit(addr, name, body, table)?;
+                }
                 Opcode::DefineTrait {
                     addr,
                     name,
-                    full_name,
                     functions,
-                } => self.op_define_trait(
-                    addr,
-                    &Symbol::new_option(name.clone(), full_name.clone()),
-                    functions,
-                )?,
+                } => {
+                    self.op_define_trait(addr, name, functions, table)?;
+                }
                 Opcode::Define {
                     addr,
                     name,
@@ -2229,17 +2251,18 @@ impl VM {
                     has_previous,
                     should_push,
                     args,
-                } => self.op_call(addr, name, *has_previous, *should_push, args, table)?,
+                } => {
+                    self.op_call(addr, name, *has_previous, *should_push, args, table)?;
+                }
                 Opcode::Duplicate { addr } => {
                     self.op_duplicate(addr)?;
                 }
                 Opcode::Instance {
                     addr,
-                    name,
                     args,
                     should_push,
                 } => {
-                    self.op_instance(addr, name, args, *should_push, table)?;
+                    self.op_instance(addr, args, *should_push, table)?;
                 }
                 Opcode::EndLoop {
                     addr,
@@ -2260,14 +2283,13 @@ impl VM {
                 } => {
                     self.op_error_propagation(addr, value, table, *should_push)?;
                 }
-                Opcode::Impls {
-                    addr,
-                    value,
-                    trait_name,
-                } => {
-                    self.op_impls(addr, value, trait_name, table)?;
+                Opcode::Impls { addr } => {
+                    self.op_impls(addr)?;
                 }
                 Opcode::DeleteLocal { addr, name } => self.op_delete_local(addr, name, table),
+                Opcode::ImportModule { addr, id, variable } => {
+                    self.op_load_module(addr, *id, variable, table)?
+                }
             }
         }
         Ok(())

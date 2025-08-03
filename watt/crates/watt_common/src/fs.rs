@@ -48,11 +48,3 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> Result<String, FileRe
         return Err(FileReadError::IoError);
     }
 }
-
-// Creates default full_name_prefix
-pub fn delete_extension(file_name: &str) -> String {
-    match file_name.rfind(".") {
-        Some(index) => file_name[..index].to_string(),
-        None => file_name.to_string(),
-    }
-}

@@ -1,2 +1,2 @@
-pub mod resolver;
-pub mod visitor;
+pub mod generator;
+pub(crate) mod visitor;

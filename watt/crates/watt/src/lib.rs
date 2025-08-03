@@ -9,11 +9,11 @@ use std::{fs, path::PathBuf};
 use watt_analyze::analyzer::Analyzer;
 use watt_ast::ast::Node;
 use watt_common::{address::Address, error, errors::Error};
-use watt_gen::visitor::CompileVisitor;
+use watt_gen::generator::{BytecodeGenerator, GeneratorResult};
 use watt_lex::{lexer::Lexer, tokens::Token};
 use watt_parse::parser::Parser;
 use watt_vm::{
-    bytecode::Chunk,
+    memory::memory,
     vm::{VM, VmSettings},
 };
 
@@ -117,16 +117,16 @@ pub unsafe fn run(
     );
 
     // parsing
-    let ast = parse(&path, tokens.unwrap(), ast_debug, parser_bench, &None);
+    let ast = parse(&path, tokens.unwrap(), ast_debug, parser_bench);
 
     // analyzing
     let analyzed = analyze(ast);
 
     // compiling
-    let compiled = compile(&analyzed, opcodes_debug, compile_bench);
+    let compiled = compile(analyzed, opcodes_debug, compile_bench);
 
     // run compiled opcodes chunk with vm
-    run_chunk(
+    run_vm(
         compiled,
         gc_threshold.unwrap_or(200),
         gc_threshold_grow_factor.unwrap_or(2),
@@ -170,37 +170,12 @@ pub fn lex(file_path: &PathBuf, code: &[char], debug: bool, bench: bool) -> Opti
 
 /// Parsing
 /// Provides AST node on the exhaust
-pub fn parse(
-    file_path: &PathBuf,
-    tokens: Vec<Token>,
-    debug: bool,
-    bench: bool,
-    full_name_prefix: &Option<String>,
-) -> Node {
+pub fn parse(file_path: &PathBuf, tokens: Vec<Token>, debug: bool, bench: bool) -> Node {
     // benchmark
     let start = std::time::Instant::now();
 
-    // creating default full_name_prefix
-    let file_name = file_path.file_name().and_then(|x| x.to_str()).unwrap();
-    fn delete_extension(full_name: &str) -> &str {
-        match full_name.rfind(".") {
-            Some(index) => &full_name[..index],
-            None => full_name,
-        }
-    }
-
     // building ast
-    let ast = Parser::new(
-        tokens,
-        file_path,
-        delete_extension(
-            full_name_prefix
-                .as_ref()
-                .map(String::as_str)
-                .unwrap_or(file_name),
-        ),
-    )
-    .parse();
+    let ast = Parser::new(tokens, file_path).parse();
 
     // benchmark end
     if bench {
@@ -230,12 +205,12 @@ pub fn analyze(ast: Node) -> Node {
 
 /// Compilation
 /// Provides compiled chunk on the exhaust
-pub unsafe fn compile(ast: &Node, opcodes_debug: bool, bench: bool) -> Chunk {
+pub unsafe fn compile(ast: Node, opcodes_debug: bool, bench: bool) -> GeneratorResult {
     // benchmark
     let start = std::time::Instant::now();
 
     // compile
-    let compiled = CompileVisitor::new().compile(ast);
+    let compiled = BytecodeGenerator::new().generate(ast);
 
     // benchmark end
     if bench {
@@ -248,21 +223,34 @@ pub unsafe fn compile(ast: &Node, opcodes_debug: bool, bench: bool) -> Chunk {
 
     // debug
     if opcodes_debug {
-        println!("opcodes debug: ");
-        for op in compiled.opcodes() {
-            op.print(0);
+        println!("main module: ");
+        for op in compiled.main.opcodes() {
+            op.print(1);
+        }
+        println!("builtins module: ");
+        for op in compiled.builtins.opcodes() {
+            op.print(1);
+        }
+        println!("other modules: ");
+        for id in compiled.modules.keys() {
+            let module = compiled.modules.get(id).unwrap();
+            println!("  {:?}:", module.path);
+            for op in module.chunk.opcodes() {
+                op.print(2);
+            }
         }
     }
 
     compiled
 }
 
-/// Runs chunk on the vm
+/// Runs bytecode on the vm
 ///
 /// * gc_threshold: garbage collector threshold
+/// * gc_threshold_grow_factor: garbage collector threshold grow factor
 #[allow(unused_qualifications)]
-unsafe fn run_chunk(
-    chunk: Chunk,
+unsafe fn run_vm(
+    bytecode: GeneratorResult,
     gc_threshold: usize,
     gc_threshold_grow_factor: usize,
     gc_debug: bool,
@@ -272,19 +260,20 @@ unsafe fn run_chunk(
     let start = std::time::Instant::now();
 
     // creating vm and running
-    let mut vm = VM::new(VmSettings::new(
-        gc_threshold,
-        gc_threshold_grow_factor,
-        gc_debug,
-    ));
+    let mut vm = VM::new(
+        VmSettings::new(gc_threshold, gc_threshold_grow_factor, gc_debug),
+        bytecode.builtins,
+        bytecode.modules,
+    );
 
     // handling errors
-    if let Err(e) = vm.run(&chunk, vm.globals) {
-        error!(Error::own_text(
+    match vm.run_module(&bytecode.main) {
+        Ok(module) => memory::free_value(module),
+        Err(err) => error!(Error::own_text(
             Address::unknown(),
-            format!("control flow leak: {e:?}"),
+            format!("control flow leak: {err:?}"),
             "report this error to the developer."
-        ));
+        )),
     }
 
     // benchmark end

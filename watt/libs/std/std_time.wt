@@ -175,12 +175,10 @@ type Timestamp(raw) impl Display {
  | can be found in:
  | > crate::vm::natives::libs::natives_time
  */
-unit time {
-    native __now -> 'time@now'
+native __now -> 'time@now'
 
-    // Gets current time
-    fn now {
-        raw := self.__now()
-        return new Timestamp(raw)
-    }
+// Gets current time
+fn now {
+    raw := __now()
+    return new Timestamp(raw)
 }

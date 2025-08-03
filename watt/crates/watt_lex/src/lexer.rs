@@ -51,6 +51,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
             ("impl", TokenKind::Impl),
             ("native", TokenKind::Native),
             ("impls", TokenKind::Impls),
+            ("as", TokenKind::As),
         ]);
         // Lexer
         Lexer {
@@ -75,55 +76,55 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
             match ch {
                 '+' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenKind::AssignAdd, "+=");
+                        self.add_tk(TokenKind::AddEq, "+=");
                     } else {
-                        self.add_tk(TokenKind::Op, "+");
+                        self.add_tk(TokenKind::Plus, "+");
                     }
                 }
                 '&' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenKind::AssignAnd, "&=");
+                        self.add_tk(TokenKind::AndEq, "&=");
                     } else {
-                        self.add_tk(TokenKind::Op, "&");
+                        self.add_tk(TokenKind::BitwiseAnd, "&");
                     }
                 }
                 '|' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenKind::AssignOr, "|=");
+                        self.add_tk(TokenKind::OrEq, "|=");
                     } else {
-                        self.add_tk(TokenKind::Op, "|");
+                        self.add_tk(TokenKind::BitwiseOr, "|");
                     }
                 }
                 '^' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenKind::AssignXor, "^=");
+                        self.add_tk(TokenKind::XorEq, "^=");
                     } else {
-                        self.add_tk(TokenKind::Op, "^");
+                        self.add_tk(TokenKind::Caret, "^");
                     }
                 }
                 '-' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenKind::AssignSub, "-=");
+                        self.add_tk(TokenKind::SubEq, "-=");
                     } else if self.is_match('>') {
                         self.add_tk(TokenKind::Arrow, "->");
                     } else {
-                        self.add_tk(TokenKind::Op, "-");
+                        self.add_tk(TokenKind::Minus, "-");
                     }
                 }
                 '*' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenKind::AssignMul, "*=");
+                        self.add_tk(TokenKind::MulEq, "*=");
                     } else {
-                        self.add_tk(TokenKind::Op, "*");
+                        self.add_tk(TokenKind::Star, "*");
                     }
                 }
                 '%' => {
-                    self.add_tk(TokenKind::Op, "%");
+                    self.add_tk(TokenKind::Percent, "%");
                 }
                 '/' => {
                     // compound operator
                     if self.is_match('=') {
-                        self.add_tk(TokenKind::AssignDiv, "/=");
+                        self.add_tk(TokenKind::DivEq, "/=");
                     }
                     // line comment
                     else if self.is_match('/') {
@@ -148,7 +149,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
                         // /
                         self.advance();
                     } else {
-                        self.add_tk(TokenKind::Op, "/");
+                        self.add_tk(TokenKind::Slash, "/");
                     }
                 }
                 '(' => {

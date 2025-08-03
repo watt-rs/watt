@@ -8,38 +8,27 @@ use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use watt_common::address::Address;
 
-/// Symbol structure
-/// with two parts name, full_name `file:$name`
+/// Module structure
 ///
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Symbol {
-    pub name: String,
-    pub full_name: Option<String>,
+/// `static`, `singleton` and `global`
+/// instance-like object
+///
+#[derive(Clone, Debug)]
+#[allow(unused)]
+pub struct Module {
+    pub table: *mut Table,
 }
-/// Symbol implementation
-impl Symbol {
-    /// New symbol from name and full_name
-    #[allow(unused_qualifications)]
-    #[allow(unused)]
-    pub fn new(name: String, full_name: String) -> Symbol {
-        Symbol {
-            name,
-            full_name: Option::Some(full_name),
-        }
+/// Unit implementation
+impl Module {
+    pub fn new(table: *mut Table) -> Module {
+        Module { table }
     }
-
-    /// New symbol from name and optional full_name
-    pub fn new_option(name: String, full_name: Option<String>) -> Symbol {
-        Symbol { name, full_name }
-    }
-
-    /// New symbol from name only, sets full_name to None
-    #[allow(unused_qualifications)]
-    #[allow(unused)]
-    pub fn by_name(name: String) -> Symbol {
-        Symbol {
-            name,
-            full_name: Option::None,
+}
+/// Unit drop implementation
+impl Drop for Module {
+    fn drop(&mut self) {
+        unsafe {
+            try_free_table(self.table);
         }
     }
 }
@@ -51,25 +40,28 @@ impl Symbol {
 ///
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Type {
-    pub name: Symbol,
+    pub name: String,
     pub constructor: Vec<String>,
     pub body: *const Chunk,
     pub impls: Vec<String>,
+    pub defined_in: *mut Table,
 }
 /// Type implementation
 impl Type {
     /// New type
     pub fn new(
-        name: Symbol,
+        name: String,
         constructor: Vec<String>,
         body: *const Chunk,
         impls: Vec<String>,
+        defined_in: *mut Table,
     ) -> Type {
         Type {
             name,
             constructor,
             body,
             impls,
+            defined_in,
         }
     }
 }
@@ -116,13 +108,18 @@ impl Drop for Instance {
 #[derive(Clone, Debug)]
 #[allow(unused)]
 pub struct Unit {
-    pub name: Symbol,
+    pub name: String,
     pub fields: *mut Table,
+    pub defined_in: *mut Table,
 }
 /// Unit implementation
 impl Unit {
-    pub fn new(name: Symbol, fields: *mut Table) -> Unit {
-        Unit { name, fields }
+    pub fn new(name: String, fields: *mut Table, defined_in: *mut Table) -> Unit {
+        Unit {
+            name,
+            fields,
+            defined_in,
+        }
     }
 }
 /// Unit drop implementation
@@ -185,12 +182,12 @@ impl TraitFn {
 #[derive(Clone, Debug)]
 #[allow(unused)]
 pub struct Trait {
-    pub name: Symbol,
+    pub name: String,
     pub functions: Vec<TraitFn>,
 }
 /// Trait implementation
 impl Trait {
-    pub fn new(name: Symbol, functions: Vec<TraitFn>) -> Trait {
+    pub fn new(name: String, functions: Vec<TraitFn>) -> Trait {
         Trait { name, functions }
     }
 }
@@ -212,6 +209,7 @@ impl Drop for Trait {
 pub enum FnOwner {
     Unit(*mut Unit),
     Instance(*mut Instance),
+    Module(*mut Module),
 }
 
 /// Function
@@ -223,7 +221,7 @@ pub enum FnOwner {
 #[derive(Clone, Debug)]
 #[allow(unused)]
 pub struct Function {
-    pub name: Symbol,
+    pub name: String,
     pub body: *const Chunk,
     pub params: Vec<String>,
     pub owner: Option<FnOwner>,
@@ -232,7 +230,7 @@ pub struct Function {
 /// Function implementation
 impl Function {
     /// New function
-    pub fn new(name: Symbol, body: *const Chunk, params: Vec<String>) -> Function {
+    pub fn new(name: String, body: *const Chunk, params: Vec<String>) -> Function {
         Function {
             name,
             body,
@@ -263,22 +261,25 @@ impl Drop for Function {
 #[derive(Clone, Debug)]
 #[allow(unused)]
 pub struct Native {
-    pub name: Symbol,
+    pub name: String,
     pub params_amount: usize,
     pub function: fn(&mut VM, Address, bool, *mut Table) -> Result<(), ControlFlow>,
+    pub defined_in: *mut Table,
 }
 /// Native implementation
 impl Native {
     /// New native
     pub fn new(
-        name: Symbol,
+        name: String,
         params_amount: usize,
         function: fn(&mut VM, Address, bool, *mut Table) -> Result<(), ControlFlow>,
+        defined_in: *mut Table,
     ) -> Native {
         Native {
             name,
             params_amount,
             function,
+            defined_in,
         }
     }
 }
@@ -298,6 +299,7 @@ pub enum Value {
     Trait(*mut Trait),
     List(*mut Vec<Value>),
     Any(*mut dyn std::any::Any),
+    Module(*mut Module),
     Null,
 }
 /// Debug implementation for value
@@ -344,6 +346,9 @@ impl Debug for Value {
                 Value::Any(a) => {
                     write!(fmt, "Any{:?}", *a)
                 }
+                Value::Module(m) => {
+                    write!(fmt, "Module{:?}", *m)
+                }
             }
         }
     }
@@ -353,7 +358,7 @@ impl Display for Value {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Value::Instance(i) => unsafe {
-                write!(fmt, "Instance{:?} of {:?}", *i, (*(**i).t).name.name)
+                write!(fmt, "Instance{:?} of {:?}", *i, (*(**i).t).name)
             },
             _ => write!(fmt, "{self:?}"),
         }
@@ -431,6 +436,7 @@ impl Hash for Value {
                 let any_ptr = a as *const () as usize;
                 any_ptr.hash(state);
             }
+            Value::Module(m) => (m as usize).hash(state),
             Value::Null => {
                 0.hash(state);
             }

@@ -1,44 +1,36 @@
-// import
-use crate::resolver::ImportsResolver;
+// imports
 use std::collections::VecDeque;
-use watt_ast::ast::*;
-use watt_ast::import::Import;
+use watt_ast::{
+    ast::{MatchCase, Node, TraitNodeFn},
+    import::Import,
+};
 use watt_common::{error, errors::Error};
 use watt_lex::tokens::Token;
-use watt_vm::bytecode::{Chunk, Opcode, OpcodeValue};
-use watt_vm::values::*;
+use watt_vm::{
+    bytecode::{Chunk, Opcode, OpcodeValue},
+    values::{DefaultTraitFn, TraitFn, Value},
+};
 
-/// Visitor
-pub struct CompileVisitor<'visitor> {
+use crate::generator::BytecodeGenerator;
+
+/// Module visitor
+pub struct ModuleVisitor<'generator, 'input_key> {
     opcodes: VecDeque<Vec<Opcode>>,
-    resolver: ImportsResolver<'visitor, 'visitor>,
+    generator: &'generator mut BytecodeGenerator<'input_key>,
 }
-/// Visitor implementation
-#[allow(unused_variables)]
-impl<'visitor> CompileVisitor<'visitor> {
-    /// New visitor
-    pub fn new() -> Self {
-        CompileVisitor {
+/// Module visitor implementation
+impl<'generator, 'input_key> ModuleVisitor<'generator, 'input_key> {
+    /// New module visitor
+    pub fn new(generator: &'generator mut BytecodeGenerator<'input_key>) -> Self {
+        ModuleVisitor {
             opcodes: VecDeque::new(),
-            resolver: ImportsResolver::new(),
+            generator,
         }
     }
 
-    /// Visit built-in imports
-    ///
-    /// visits base.wt ast node.
-    ///
-    fn visit_builtins(&mut self) {
-        let imports = self.resolver.import_builtins();
-        for node in &imports {
-            self.visit_node(node)
-        }
-    }
-
-    /// Compile node
-    pub unsafe fn compile(&mut self, node: &Node) -> Chunk {
+    /// Compiles node
+    pub fn generate(&mut self, node: &Node) -> Chunk {
         self.push_chunk();
-        self.visit_builtins();
         self.visit_node(node);
         Chunk::new(self.pop_chunk())
     }
@@ -152,12 +144,11 @@ impl<'visitor> CompileVisitor<'visitor> {
             }
             Node::FnDeclaration {
                 name,
-                full_name,
                 params,
                 body,
                 make_closure,
             } => {
-                self.visit_fn_decl(name, full_name, params, body, *make_closure);
+                self.visit_fn_decl(name, params, body, *make_closure);
             }
             Node::AnFnDeclaration {
                 location,
@@ -200,11 +191,12 @@ impl<'visitor> CompileVisitor<'visitor> {
                 self.visit_native(name, fn_name);
             }
             Node::Instance {
-                name,
+                location,
+                expr,
                 constructor,
                 should_push,
             } => {
-                self.visit_instance(name, constructor, *should_push);
+                self.visit_instance(location, expr, constructor, *should_push);
             }
             Node::Ret { location, value } => {
                 self.visit_return(location, value);
@@ -214,19 +206,14 @@ impl<'visitor> CompileVisitor<'visitor> {
             }
             Node::Type {
                 name,
-                full_name,
                 constructor,
                 body,
                 impls,
             } => {
-                self.visit_type(name, full_name, constructor, body, impls);
+                self.visit_type(name, constructor, body, impls);
             }
-            Node::Unit {
-                name,
-                full_name,
-                body,
-            } => {
-                self.visit_unit(name, full_name, body);
+            Node::Unit { name, body } => {
+                self.visit_unit(name, body);
             }
             Node::For {
                 iterable,
@@ -238,12 +225,8 @@ impl<'visitor> CompileVisitor<'visitor> {
             Node::Block { body } => {
                 self.visit_block(body);
             }
-            Node::Trait {
-                name,
-                full_name,
-                functions,
-            } => {
-                self.visit_trait(name, full_name, functions);
+            Node::Trait { name, functions } => {
+                self.visit_trait(name, functions);
             }
             Node::ErrorPropagation {
                 location,
@@ -252,8 +235,12 @@ impl<'visitor> CompileVisitor<'visitor> {
             } => {
                 self.visit_error_propagation(location, value, *should_push);
             }
-            Node::Impls { value, trait_name } => {
-                self.visit_impls(value, trait_name);
+            Node::Impls {
+                location,
+                value,
+                expr,
+            } => {
+                self.visit_impls(location, value, expr);
             }
             Node::Range { location, from, to } => self.visit_range(location, from, to),
         }
@@ -431,13 +418,10 @@ impl<'visitor> CompileVisitor<'visitor> {
     fn visit_fn_decl(
         &mut self,
         name: &Token,
-        full_name: &Option<Token>,
         parameters: &Vec<Token>,
         body: &Node,
         make_closure: bool,
     ) {
-        // full name
-        let full_name = full_name.as_ref().map(|n| n.value.clone());
         // params
         let mut params = Vec::with_capacity(parameters.len());
         for param in parameters {
@@ -467,10 +451,9 @@ impl<'visitor> CompileVisitor<'visitor> {
         self.push_instr(Opcode::DefineFn {
             addr: name.address.clone(),
             name: name.value.clone(),
-            full_name,
             params,
-            make_closure,
             body: Chunk::new(chunk),
+            make_closure,
         });
     }
 
@@ -493,19 +476,26 @@ impl<'visitor> CompileVisitor<'visitor> {
     /// Visit import
     fn visit_import(&mut self, imports: &Vec<Import>) {
         for import in imports {
-            let options_node = self.resolver.import(import.addr.clone(), import);
-            if let Some(node) = &options_node {
-                self.visit_node(node);
-            }
+            let id = self.generator.module(import);
+            self.push_instr(Opcode::ImportModule {
+                addr: import.addr.clone(),
+                id,
+                variable: import.variable.clone(),
+            });
         }
     }
 
     /// Visit list initializer
     fn visit_list(&mut self, location: &Token, list: &Vec<Node>) {
         // list
-        self.push_instr(Opcode::Instance {
+        self.push_instr(Opcode::Load {
             addr: location.address.clone(),
             name: "List".to_string(),
+            has_previous: false,
+            should_push: true,
+        });
+        self.push_instr(Opcode::Instance {
+            addr: location.address.clone(),
             args: Chunk::new(vec![]),
             should_push: true,
         });
@@ -535,9 +525,14 @@ impl<'visitor> CompileVisitor<'visitor> {
     /// Visit map
     fn visit_map(&mut self, location: &Token, map: &Vec<(Node, Node)>) {
         // map
-        self.push_instr(Opcode::Instance {
+        self.push_instr(Opcode::Load {
             addr: location.address.clone(),
             name: "Map".to_string(),
+            has_previous: false,
+            should_push: true,
+        });
+        self.push_instr(Opcode::Instance {
+            addr: location.address.clone(),
             args: Chunk::new(vec![]),
             should_push: true,
         });
@@ -775,13 +770,10 @@ impl<'visitor> CompileVisitor<'visitor> {
     fn visit_type(
         &mut self,
         name: &Token,
-        full_name: &Option<Token>,
         constructor: &Vec<Token>,
         body: &Node,
         impl_tokens: &Vec<Token>,
     ) {
-        // full name
-        let full_name = full_name.as_ref().map(|name| name.value.clone());
         // constructor
         let mut constructor_params = Vec::new();
         for param in constructor {
@@ -800,7 +792,6 @@ impl<'visitor> CompileVisitor<'visitor> {
         self.push_instr(Opcode::DefineType {
             addr: name.address.clone(),
             name: name.value.clone(),
-            full_name,
             constructor: constructor_params,
             body: Chunk::new(chunk),
             impls,
@@ -808,9 +799,7 @@ impl<'visitor> CompileVisitor<'visitor> {
     }
 
     /// Visit trait
-    fn visit_trait(&mut self, name: &Token, full_name: &Option<Token>, functions: &[TraitNodeFn]) {
-        // full name
-        let full_name = full_name.as_ref().map(|name| name.value.clone());
+    fn visit_trait(&mut self, name: &Token, functions: &[TraitNodeFn]) {
         // trait functions
         let mut trait_functions: Vec<TraitFn> = Vec::new();
         for node_fn in functions {
@@ -843,15 +832,12 @@ impl<'visitor> CompileVisitor<'visitor> {
         self.push_instr(Opcode::DefineTrait {
             addr: name.address.clone(),
             name: name.value.clone(),
-            full_name,
             functions: trait_functions,
         });
     }
 
     /// Visit unit
-    fn visit_unit(&mut self, name: &Token, full_name: &Option<Token>, body: &Node) {
-        // full name
-        let full_name = full_name.as_ref().map(|name| name.value.clone());
+    fn visit_unit(&mut self, name: &Token, body: &Node) {
         // body chunk
         self.push_chunk();
         self.visit_node(body);
@@ -860,7 +846,6 @@ impl<'visitor> CompileVisitor<'visitor> {
         self.push_instr(Opcode::DefineUnit {
             addr: name.address.clone(),
             name: name.value.clone(),
-            full_name,
             body: Chunk::new(chunk),
         });
     }
@@ -914,17 +899,24 @@ impl<'visitor> CompileVisitor<'visitor> {
     }
 
     /// Visit instance
-    fn visit_instance(&mut self, name: &Token, constructor: &Vec<Node>, should_push: bool) {
+    fn visit_instance(
+        &mut self,
+        location: &Token,
+        expr: &Node,
+        constructor: &Vec<Node>,
+        should_push: bool,
+    ) {
         // constructor
         self.push_chunk();
         for arg in constructor {
             self.visit_node(arg);
         }
         let constructor_args = self.pop_chunk();
+        // type expr
+        self.visit_node(expr);
         // instance
         self.push_instr(Opcode::Instance {
-            addr: name.address.clone(),
-            name: name.value.clone(),
+            addr: location.address.clone(),
             args: Chunk::new(constructor_args),
             should_push,
         });
@@ -982,15 +974,14 @@ impl<'visitor> CompileVisitor<'visitor> {
     }
 
     /// Visit impls trait
-    pub fn visit_impls(&mut self, value: &Node, trait_name: &Token) {
-        self.push_chunk();
+    pub fn visit_impls(&mut self, location: &Token, value: &Node, expr: &Node) {
+        // value expr
         self.visit_node(value);
-        let chunk = self.pop_chunk();
+        // trait expr
+        self.visit_node(expr);
 
         self.push_instr(Opcode::Impls {
-            addr: trait_name.address.clone(),
-            value: Chunk::new(chunk),
-            trait_name: trait_name.value.clone(),
+            addr: location.address.clone(),
         })
     }
 

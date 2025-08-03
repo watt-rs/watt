@@ -1,6 +1,21 @@
+use std::path::PathBuf;
+
 // imports
 use crate::values::{TraitFn, Value};
 use watt_common::address::Address;
+
+/// Module info
+#[derive(Clone, Debug)]
+pub struct ModuleInfo {
+    pub path: PathBuf,
+    pub chunk: Chunk,
+}
+/// Module info implementation
+impl ModuleInfo {
+    pub fn new(path: PathBuf, chunk: Chunk) -> Self {
+        return ModuleInfo { path, chunk };
+    }
+}
 
 /// Opcodes chunk
 #[derive(Clone, Debug)]
@@ -77,7 +92,6 @@ pub enum Opcode {
     DefineFn {
         addr: Address,
         name: String,
-        full_name: Option<String>,
         params: Vec<String>,
         body: Chunk,
         make_closure: bool,
@@ -91,7 +105,6 @@ pub enum Opcode {
     DefineType {
         addr: Address,
         name: String,
-        full_name: Option<String>,
         constructor: Vec<String>,
         body: Chunk,
         impls: Vec<String>,
@@ -99,13 +112,11 @@ pub enum Opcode {
     DefineUnit {
         addr: Address,
         name: String,
-        full_name: Option<String>,
         body: Chunk,
     },
     DefineTrait {
         addr: Address,
         name: String,
-        full_name: Option<String>,
         functions: Vec<TraitFn>,
     },
     Define {
@@ -138,7 +149,6 @@ pub enum Opcode {
     },
     Instance {
         addr: Address,
-        name: String,
         args: Chunk,
         should_push: bool,
     },
@@ -161,12 +171,15 @@ pub enum Opcode {
     },
     Impls {
         addr: Address,
-        value: Chunk,
-        trait_name: String,
     },
     DeleteLocal {
         addr: Address,
         name: String,
+    },
+    ImportModule {
+        addr: Address,
+        id: usize,
+        variable: String,
     },
 }
 /// Opcode Implementation
@@ -230,13 +243,9 @@ impl Opcode {
                 print_chunk(indent + 2, body);
             }
             Opcode::DefineFn {
-                name,
-                full_name,
-                params,
-                body,
-                ..
+                name, params, body, ..
             } => {
-                print_indent(indent, format!("fn '{name}' '{full_name:?}'").as_str());
+                print_indent(indent, format!("fn '{name}'").as_str());
                 print_indent(indent + 1, "params:");
                 for param in params {
                     print_indent(indent + 2, param.to_string().as_str());
@@ -255,15 +264,11 @@ impl Opcode {
             }
             Opcode::DefineType {
                 name,
-                full_name,
                 constructor,
                 body,
                 ..
             } => {
-                print_indent(
-                    indent,
-                    format!("define_type '{name}' '{full_name:?}'").as_str(),
-                );
+                print_indent(indent, format!("define_type '{name}'").as_str());
                 print_indent(indent + 1, "constructor:");
                 for param in constructor {
                     print_indent(indent + 2, param.to_string().as_str());
@@ -271,29 +276,15 @@ impl Opcode {
                 print_indent(indent + 1, "body:");
                 print_chunk(indent + 2, body);
             }
-            Opcode::DefineUnit {
-                name,
-                full_name,
-                body,
-                ..
-            } => {
-                print_indent(
-                    indent,
-                    format!("define_unit '{name}' '{full_name:?}'").as_str(),
-                );
+            Opcode::DefineUnit { name, body, .. } => {
+                print_indent(indent, format!("define_unit '{name}'").as_str());
                 print_indent(indent + 1, "body:");
                 print_chunk(indent + 2, body);
             }
             Opcode::DefineTrait {
-                name,
-                full_name,
-                functions,
-                ..
+                name, functions, ..
             } => {
-                print_indent(
-                    indent,
-                    format!("define_trait '{name}' '{full_name:?}'").as_str(),
-                );
+                print_indent(indent, format!("define_trait '{name}'").as_str());
                 print_indent(indent + 1, "functions:");
                 for function in functions {
                     print_indent(indent + 2, format!("{function:?}").as_str());
@@ -352,14 +343,11 @@ impl Opcode {
                 print_indent(indent, "duplicate");
             }
             Opcode::Instance {
-                name,
-                args,
-                should_push,
-                ..
+                args, should_push, ..
             } => {
                 print_indent(
                     indent,
-                    format!("instance '{name}', should_push:{should_push}").as_str(),
+                    format!("instance, should_push:{should_push}").as_str(),
                 );
                 print_indent(indent + 1, "args:");
                 print_chunk(indent + 2, args);
@@ -385,15 +373,14 @@ impl Opcode {
                 print_indent(indent + 1, "value:");
                 print_chunk(indent + 2, value);
             }
-            Opcode::Impls {
-                value, trait_name, ..
-            } => {
-                print_indent(indent, format!("impls {trait_name:?}").as_str());
-                print_indent(indent + 1, "value:");
-                print_chunk(indent + 2, value);
+            Opcode::Impls { .. } => {
+                print_indent(indent, format!("impls").as_str());
             }
             Opcode::DeleteLocal { name, .. } => {
                 print_indent(indent, format!("delete_local {name}").as_str());
+            }
+            Opcode::ImportModule { id, variable, .. } => {
+                print_indent(indent, format!("import_module {id} as {variable}").as_str());
             }
         }
     }

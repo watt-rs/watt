@@ -1,10 +1,11 @@
 // imports
 use crate::memory::memory;
 use crate::table::Table;
-use crate::values::{FnOwner, Value};
+use crate::values::{FnOwner, Module, Value};
 use crate::vm::VM;
 use rustc_hash::FxHashSet;
 use std::borrow::Cow;
+use std::collections::HashMap;
 
 /// Garbage collector
 ///
@@ -80,6 +81,7 @@ impl GC {
                         FnOwner::Instance(unit) => {
                             self.mark_value(Value::Instance(unit));
                         }
+                        _ => {}
                     }
                 }
             },
@@ -103,6 +105,14 @@ impl GC {
                 self.marked.insert(value);
             }
             _ => {}
+        }
+    }
+
+    /// Marks module
+    unsafe fn mark_modules(&mut self, modules: &HashMap<usize, *mut Module>) {
+        // marking modules
+        for module in modules.values() {
+            self.mark_table((**module).table);
         }
     }
 
@@ -259,10 +269,10 @@ impl GC {
         for val in &vm.stack {
             self.mark_value(*val)
         }
-        // > units
-        self.mark_table(vm.units);
         // > natives
-        self.mark_table(vm.natives);
+        self.mark_table(vm.natives_table);
+        // > modules
+        self.mark_modules(&vm.modules);
         // > table
         self.mark_table(table);
         // > guard
