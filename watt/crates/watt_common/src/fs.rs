@@ -42,9 +42,9 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> Result<String, FileRe
         if let Ok(result) = fs::read_to_string(&path) {
             Ok(result)
         } else {
-            return Err(FileReadError::IoError);
+            Err(FileReadError::IoError)
         }
     } else {
-        return Err(FileReadError::IoError);
+        Err(FileReadError::IoError)
     }
 }

@@ -21,6 +21,12 @@ pub struct Table {
     pub closure: Option<Gc<Table>>,
 }
 /// Table implementation
+impl Default for Table {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Table {
     /// New table
     pub fn new() -> Table {

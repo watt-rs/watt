@@ -24,6 +24,12 @@ pub struct Analyzer {
     analyze_stack: VecDeque<AnalyzerNode>,
 }
 /// Semantic analyzer implementation
+impl Default for Analyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Analyzer {
     /// New analyzer
     pub fn new() -> Self {
@@ -33,7 +39,7 @@ impl Analyzer {
     }
 
     /// Analyzes node
-    pub fn analyze<'node>(&mut self, node: &'node Node) {
+    pub fn analyze(&mut self, node: &Node) {
         match node {
             Node::Block { body } => {
                 for node in body {

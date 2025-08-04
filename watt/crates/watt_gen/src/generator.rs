@@ -28,6 +28,12 @@ pub struct BytecodeGenerator<'import_key> {
     builtins: PathBuf,
 }
 /// Bytecode generator implementation
+impl<'import_key> Default for BytecodeGenerator<'import_key> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'import_key> BytecodeGenerator<'import_key> {
     /// Creates new generator
     pub fn new() -> Self {
@@ -68,19 +74,19 @@ impl<'import_key> BytecodeGenerator<'import_key> {
                     // error if address exists, else panic
                     Some(address) => error!(Error::own_text(
                         address,
-                        format!("failed to resolve: {}", import),
+                        format!("failed to resolve: {import}"),
                         "file not found."
                     )),
-                    None => panic!("failed to resolve: {}. file not found.", import),
+                    None => panic!("failed to resolve: {import}. file not found."),
                 },
                 FileReadError::IoError => match addr {
                     // error if address exists, else panic
                     Some(address) => error!(Error::own_text(
                         address,
-                        format!("failed to resolve: {}", import),
+                        format!("failed to resolve: {import}"),
                         "io error."
                     )),
-                    None => panic!("failed to resolve: {}. io error.", import),
+                    None => panic!("failed to resolve: {import}. io error."),
                 },
             },
         };
@@ -143,7 +149,7 @@ impl<'import_key> BytecodeGenerator<'import_key> {
         let path = self.path_of(import);
         // checking already imported
         match self.resolved.get(&path) {
-            Some(id) => return *id,
+            Some(id) => *id,
             None => {
                 let module = self.compile_module(
                     Some(import.addr.clone()),
@@ -152,7 +158,7 @@ impl<'import_key> BytecodeGenerator<'import_key> {
                 );
                 self.modules.insert(self.modules.len(), module);
                 self.resolved.insert(path, self.modules.len() - 1);
-                return self.modules.len() - 1;
+                self.modules.len() - 1
             }
         }
     }
@@ -209,10 +215,10 @@ impl<'import_key> BytecodeGenerator<'import_key> {
 
             // compiling ast to bytecode
             let mut visitor = ModuleVisitor::new(self);
-            let bytecode = visitor.generate(&final_ast);
+            
 
             // returning bytecode
-            bytecode
+            visitor.generate(&final_ast)
         };
         // main module
         let main_module = {
@@ -220,9 +226,9 @@ impl<'import_key> BytecodeGenerator<'import_key> {
             Analyzer::new().analyze(&ast);
             // compiling ast to bytecode
             let mut visitor = ModuleVisitor::new(self);
-            let bytecode = visitor.generate(&ast);
+            
             // returning bytecode
-            bytecode
+            visitor.generate(&ast)
         };
         // result
         GeneratorResult {

@@ -89,8 +89,8 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 let result: Vec<Value> = (*string)
                     .chars()
                     .map(|ch| {
-                        let string = Value::String(Gc::new(ch.to_string()));
-                        string
+                        
+                        Value::String(Gc::new(ch.to_string()))
                     })
                     .collect();
                 // safety of strings will not be erased
@@ -126,8 +126,8 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 let result: Vec<Value> = (*string)
                     .split(delimiter.as_str())
                     .map(|str| {
-                        let string = Value::String(Gc::new(str.to_string()));
-                        string
+                        
+                        Value::String(Gc::new(str.to_string()))
                     })
                     .collect();
                 // safety of strings will not be erased

@@ -444,8 +444,7 @@ impl VM {
         let invalid_op_error = Error::own_text(
             address.clone(),
             format!(
-                "could not use '{op}' for {:?} and {:?}",
-                operand_a, operand_b
+                "could not use '{op}' for {operand_a:?} and {operand_b:?}"
             ),
             "check your code.",
         );
@@ -1178,10 +1177,10 @@ impl VM {
         // non-previous
         if !has_previous {
             // value
-            let value;
+            
 
             // loading variable value from table
-            value = table.lookup(addr, name);
+            let value = table.lookup(addr, name);
 
             // pushing value
             if should_push {
@@ -1338,22 +1337,19 @@ impl VM {
             call_table.closure = function.closure.clone();
 
             // root & self
-            match &function.owner {
-                Some(owner) => match owner {
-                    FnOwner::Unit(unit) => {
-                        call_table.set_root(unit.fields.clone());
-                        call_table.define(addr, "self", Value::Unit(unit.clone()));
-                    }
-                    FnOwner::Instance(instance) => {
-                        call_table.set_root(instance.fields.clone());
-                        call_table.define(addr, "self", Value::Instance(instance.clone()));
-                    }
-                    FnOwner::Module(module) => {
-                        call_table.set_root(module.table.clone());
-                    }
-                },
-                None => {}
-            }
+            if let Some(owner) = &function.owner { match owner {
+                FnOwner::Unit(unit) => {
+                    call_table.set_root(unit.fields.clone());
+                    call_table.define(addr, "self", Value::Unit(unit.clone()));
+                }
+                FnOwner::Instance(instance) => {
+                    call_table.set_root(instance.fields.clone());
+                    call_table.define(addr, "self", Value::Instance(instance.clone()));
+                }
+                FnOwner::Module(module) => {
+                    call_table.set_root(module.table.clone());
+                }
+            } }
 
             // passing args
             pass_arguments(
@@ -1539,7 +1535,7 @@ impl VM {
                                 addr.clone(),
                                 format!(
                                     "type {} impls {}, but fn {} has wrong impl.",
-                                    (*instance_type).name,
+                                    instance_type.name,
                                     trait_name,
                                     function.name
                                 ),
@@ -1555,7 +1551,7 @@ impl VM {
                             addr.clone(),
                             format!(
                                 "type {} impls {}, but doesn't impl fn {}({})",
-                                (*instance_type).name,
+                                instance_type.name,
                                 trait_name,
                                 function.name.clone(),
                                 function.params_amount
@@ -1581,7 +1577,7 @@ impl VM {
                             addr.clone(),
                             format!(
                                 "type {} impls {}, but doesn't impl fn {}({})",
-                                (*instance_type).name,
+                                instance_type.name,
                                 trait_name,
                                 function.name,
                                 function.params_amount
@@ -1711,7 +1707,7 @@ impl VM {
             _ => {
                 error!(Error::own_text(
                     addr.clone(),
-                    format!("{} is not a type", value),
+                    format!("{value} is not a type"),
                     "you can create instances only of types."
                 ))
             }

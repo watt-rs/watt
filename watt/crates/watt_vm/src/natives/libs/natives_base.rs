@@ -61,13 +61,13 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     vm.op_push(OpcodeValue::String("native".to_string()))?;
                 }
                 Value::Instance(i) => {
-                    vm.op_push(OpcodeValue::String((*(*i).t).name.clone()))?;
+                    vm.op_push(OpcodeValue::String(i.t.name.clone()))?;
                 }
                 Value::Unit(u) => {
-                    vm.op_push(OpcodeValue::String((*u).name.clone()))?;
+                    vm.op_push(OpcodeValue::String(u.name.clone()))?;
                 }
                 Value::Trait(t) => {
-                    vm.op_push(OpcodeValue::String((*t).name.clone()))?;
+                    vm.op_push(OpcodeValue::String(t.name.clone()))?;
                 }
                 Value::List(l) => {
                     vm.op_push(OpcodeValue::String("list".to_string()))?;
@@ -118,15 +118,15 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     vm.op_push(OpcodeValue::String("watt:native".to_string()))?;
                 }
                 Value::Instance(i) => {
-                    let name = (*(*i).t).name.clone();
+                    let name = i.t.name.clone();
                     vm.op_push(OpcodeValue::String(name))?;
                 }
                 Value::Unit(u) => {
-                    let name = (*u).name.clone();
+                    let name = u.name.clone();
                     vm.op_push(OpcodeValue::String(name))?;
                 }
                 Value::Trait(t) => {
-                    let name = (*t).name.clone();
+                    let name = t.name.clone();
                     vm.op_push(OpcodeValue::String(name))?;
                 }
                 Value::List(l) => {

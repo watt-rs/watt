@@ -13,7 +13,7 @@ pub struct ModuleInfo {
 /// Module info implementation
 impl ModuleInfo {
     pub fn new(path: PathBuf, chunk: Chunk) -> Self {
-        return ModuleInfo { path, chunk };
+        ModuleInfo { path, chunk }
     }
 }
 
@@ -374,7 +374,7 @@ impl Opcode {
                 print_chunk(indent + 2, value);
             }
             Opcode::Impls { .. } => {
-                print_indent(indent, format!("impls").as_str());
+                print_indent(indent, "impls".to_string().as_str());
             }
             Opcode::DeleteLocal { name, .. } => {
                 print_indent(indent, format!("delete_local {name}").as_str());

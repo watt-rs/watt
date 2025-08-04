@@ -352,7 +352,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         // Number text
         let mut text: String = String::from("0x");
 
-        while self.cursor.peek().is_digit(16) {
+        while self.cursor.peek().is_ascii_hexdigit() {
             text.push(self.advance());
             if self.cursor.is_at_end() {
                 break;

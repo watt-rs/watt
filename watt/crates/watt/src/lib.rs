@@ -80,8 +80,6 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
 ///
 /// # Run args
 ///
-/// * `gc_threshold`: garbage collector threshold
-/// * `gc_debug`: on/off garbage collector debug
 /// * `lexer_debug`: on/off lexer debug
 /// * `ast_debug`: on/off ast debug
 /// * `opcodes_debug`: on/of opcodes debug
@@ -93,9 +91,6 @@ pub fn read_file(addr: Option<Address>, path: &PathBuf) -> String {
 #[allow(unused_qualifications)]
 pub unsafe fn run(
     path: PathBuf,
-    gc_threshold: Option<usize>,
-    gc_threshold_grow_factor: Option<usize>,
-    gc_debug: bool,
     lexer_debug: bool,
     ast_debug: bool,
     opcodes_debug: bool,
@@ -189,7 +184,7 @@ pub fn parse(file_path: &PathBuf, tokens: Vec<Token>, debug: bool, bench: bool) 
     }
 
     // returning ast
-    return ast;
+    ast
 }
 
 /// Semantic analyzer
@@ -259,14 +254,11 @@ unsafe fn run_vm(
     );
 
     // handling errors
-    match vm.run_module(&bytecode.main) {
-        Err(err) => error!(Error::own_text(
-            Address::unknown(),
-            format!("control flow leak: {err:?}"),
-            "report this error to the developer."
-        )),
-        _ => {}
-    }
+    if let Err(err) = vm.run_module(&bytecode.main) { error!(Error::own_text(
+        Address::unknown(),
+        format!("control flow leak: {err:?}"),
+        "report this error to the developer."
+    )) }
 
     // benchmark end
     if bench {

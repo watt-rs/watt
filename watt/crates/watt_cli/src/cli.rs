@@ -9,11 +9,6 @@ pub unsafe fn cli() {
         .author("Watt developers.")
         .about("The Watt interpreter.")
         .arg(
-            Arg::new("gc-debug")
-                .long("gc-debug")
-                .action(ArgAction::SetTrue),
-        )
-        .arg(
             Arg::new("ast-debug")
                 .long("ast-debug")
                 .action(ArgAction::SetTrue),
@@ -30,7 +25,7 @@ pub unsafe fn cli() {
         )
         .arg(
             Arg::new("parse-bench")
-                .long("parser-bench")
+                .long("parse-bench")
                 .action(ArgAction::SetTrue),
         )
         .arg(
@@ -39,24 +34,14 @@ pub unsafe fn cli() {
                 .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("lexer-bench")
-                .long("lexer-bench")
+            Arg::new("lex-bench")
+                .long("lex-bench")
                 .action(ArgAction::SetTrue),
         )
         .arg(
             Arg::new("runtime-bench")
                 .long("runtime-bench")
                 .action(ArgAction::SetTrue),
-        )
-        .arg(
-            Arg::new("gc-threshold")
-                .long("gc-threshold")
-                .value_parser(clap::value_parser!(usize)),
-        )
-        .arg(
-            Arg::new("gc-threshold-grow-factor")
-                .long("gc-threshold-grow-factor")
-                .value_parser(clap::value_parser!(usize)),
         )
         .arg(Arg::new("file").required(true))
         .arg(Arg::new("args").action(ArgAction::Append));
@@ -68,15 +53,10 @@ pub unsafe fn cli() {
     // run executor with parsed args
     watt::run(
         file.into(),
-        matches.get_one::<usize>("gc-threshold").copied(),
-        matches
-            .get_one::<usize>("gc-threshold-grow-factor")
-            .copied(),
-        matches.get_flag("gc-debug"),
         matches.get_flag("lexer-debug"),
         matches.get_flag("ast-debug"),
         matches.get_flag("opcodes-debug"),
-        matches.get_flag("lexer-bench"),
+        matches.get_flag("lex-bench"),
         matches.get_flag("parse-bench"),
         matches.get_flag("compile-bench"),
         matches.get_flag("runtime-bench"),

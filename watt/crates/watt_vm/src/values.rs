@@ -275,7 +275,7 @@ impl Debug for Value {
                 write!(fmt, "Trait{:?}", *t)
             }
             Value::Fn(f) => {
-                write!(fmt, "Fn{:?}", (**f).name)
+                write!(fmt, "Fn{:?}", f.name)
             }
             Value::Native(n) => {
                 write!(fmt, "Native{:?}", *n)
@@ -315,7 +315,7 @@ impl Display for Value {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Value::Instance(i) => {
-                write!(fmt, "Instance{:?} of {:?}", *i, (*(**i).t).name)
+                write!(fmt, "Instance{:?} of {:?}", *i, i.t.name)
             }
             _ => write!(fmt, "{self:?}"),
         }

@@ -100,8 +100,8 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             let args: Vec<Value> = std::env::args()
                 .skip(1)
                 .map(|x| {
-                    let string = Value::String(Gc::new(x));
-                    string
+                    
+                    Value::String(Gc::new(x))
                 })
                 .collect();
 

@@ -78,7 +78,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             let requst = memory::alloc_value(minreq::post(url));
 
             if should_push {
-                vm.op_push(OpcodeValue::Raw(Value::Any(Gc::new(requst))));
+                vm.op_push(OpcodeValue::Raw(Value::Any(Gc::new(requst))))?;
             }
 
             Ok(())
@@ -94,7 +94,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             let requst = memory::alloc_value(minreq::put(url));
 
             if should_push {
-                vm.op_push(OpcodeValue::Raw(Value::Any(Gc::new(requst))));
+                vm.op_push(OpcodeValue::Raw(Value::Any(Gc::new(requst))))?;
             }
 
             Ok(())
@@ -110,7 +110,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             let requst = memory::alloc_value(minreq::options(url));
 
             if should_push {
-                vm.op_push(OpcodeValue::Raw(Value::Any(Gc::new(requst))));
+                vm.op_push(OpcodeValue::Raw(Value::Any(Gc::new(requst))))?;
             }
 
             Ok(())
@@ -126,7 +126,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             let requst = memory::alloc_value(minreq::delete(url));
 
             if should_push {
-                vm.op_push(OpcodeValue::Raw(Value::Any(Gc::new(requst))));
+                vm.op_push(OpcodeValue::Raw(Value::Any(Gc::new(requst))))?;
             }
 
             Ok(())
@@ -142,7 +142,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             let requst = memory::alloc_value(minreq::patch(url));
 
             if should_push {
-                vm.op_push(OpcodeValue::Raw(Value::Any(Gc::new(requst))));
+                vm.op_push(OpcodeValue::Raw(Value::Any(Gc::new(requst))))?;
             }
 
             Ok(())
@@ -158,7 +158,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             let requst = memory::alloc_value(minreq::head(url));
 
             if should_push {
-                vm.op_push(OpcodeValue::Raw(Value::Any(Gc::new(requst))));
+                vm.op_push(OpcodeValue::Raw(Value::Any(Gc::new(requst))))?;
             }
 
             Ok(())
@@ -176,7 +176,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             let request = memory::alloc_value(cloned_request.with_header(key, value));
 
             if should_push {
-                vm.op_push(OpcodeValue::Raw(Value::Any(Gc::new(request))));
+                vm.op_push(OpcodeValue::Raw(Value::Any(Gc::new(request))))?;
             }
 
             Ok(())
@@ -193,7 +193,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             let request = memory::alloc_value(cloned_request.with_body(data));
 
             if should_push {
-                vm.op_push(OpcodeValue::Raw(Value::Any(Gc::new(request))));
+                vm.op_push(OpcodeValue::Raw(Value::Any(Gc::new(request))))?;
             }
 
             Ok(())

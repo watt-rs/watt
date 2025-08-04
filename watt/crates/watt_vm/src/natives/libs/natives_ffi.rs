@@ -496,13 +496,13 @@ impl FFILibrary {
             FFIType::Pointer => {
                 let result = func.cif.call::<*mut c_void>(func.ptr, &call_args);
                 let any_ptr: *mut dyn std::any::Any = result as *mut dyn std::any::Any;
-                let value = Value::Any(Gc::new(any_ptr));
-                value
+                
+                Value::Any(Gc::new(any_ptr))
             }
             FFIType::String => {
                 let result = func.cif.call::<*mut c_void>(func.ptr, &call_args);
-                let value = Value::String(Gc::from_raw(result as *mut String));
-                value
+                
+                Value::String(Gc::from_raw(result as *mut String))
             }
             FFIType::Isize => {
                 let result = func.cif.call::<isize>(func.ptr, &call_args);

@@ -95,7 +95,7 @@ impl<'file_path> Parser<'file_path> {
         let args = self.args();
 
         Node::Instance {
-            location: location,
+            location,
             expr: Box::new(expr),
             constructor: args,
             should_push: true,
@@ -1140,7 +1140,7 @@ impl<'file_path> Parser<'file_path> {
         match self.tokens.get(self.current as usize) {
             Some(tk) => {
                 self.current += 1;
-                return tk;
+                tk
             }
             None => error!(Error::new(
                 Address::new(0, 0, self.file_path.clone()),
