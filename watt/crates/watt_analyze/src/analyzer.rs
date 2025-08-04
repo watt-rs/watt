@@ -24,12 +24,6 @@ pub struct Analyzer {
     analyze_stack: VecDeque<AnalyzerNode>,
 }
 /// Semantic analyzer implementation
-impl Default for Analyzer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Analyzer {
     /// New analyzer
     pub fn new() -> Self {

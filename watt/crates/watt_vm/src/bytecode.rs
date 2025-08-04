@@ -374,7 +374,7 @@ impl Opcode {
                 print_chunk(indent + 2, value);
             }
             Opcode::Impls { .. } => {
-                print_indent(indent, "impls".to_string().as_str());
+                print_indent(indent, "impls");
             }
             Opcode::DeleteLocal { name, .. } => {
                 print_indent(indent, format!("delete_local {name}").as_str());

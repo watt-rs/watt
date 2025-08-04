@@ -28,12 +28,6 @@ pub struct BytecodeGenerator<'import_key> {
     builtins: PathBuf,
 }
 /// Bytecode generator implementation
-impl<'import_key> Default for BytecodeGenerator<'import_key> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl<'import_key> BytecodeGenerator<'import_key> {
     /// Creates new generator
     pub fn new() -> Self {
@@ -215,7 +209,6 @@ impl<'import_key> BytecodeGenerator<'import_key> {
 
             // compiling ast to bytecode
             let mut visitor = ModuleVisitor::new(self);
-            
 
             // returning bytecode
             visitor.generate(&final_ast)
@@ -226,7 +219,7 @@ impl<'import_key> BytecodeGenerator<'import_key> {
             Analyzer::new().analyze(&ast);
             // compiling ast to bytecode
             let mut visitor = ModuleVisitor::new(self);
-            
+
             // returning bytecode
             visitor.generate(&ast)
         };
