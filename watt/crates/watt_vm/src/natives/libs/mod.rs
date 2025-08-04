@@ -3,7 +3,6 @@ pub mod natives_convert;
 pub mod natives_crypto;
 pub mod natives_ffi;
 pub mod natives_fs;
-pub mod natives_gc;
 pub mod natives_io;
 pub mod natives_list;
 pub mod natives_math;

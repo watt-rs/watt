@@ -1,3 +1,4 @@
+use crate::memory::gc::Gc;
 // imports
 use crate::values::{Function, Instance, Native, Trait, Type, Unit, Value};
 use std::any::Any;
@@ -48,7 +49,7 @@ pub fn expect_bool(addr: &Address, value: Value) -> bool {
 
 /// Expects value is instance, otherwise raises error
 #[allow(unused)]
-pub fn expect_instance(addr: &Address, value: Value) -> *mut Instance {
+pub fn expect_instance(addr: &Address, value: Value) -> Gc<Instance> {
     if let Value::Instance(i) = value {
         i
     } else {
@@ -62,7 +63,7 @@ pub fn expect_instance(addr: &Address, value: Value) -> *mut Instance {
 
 /// Expects value is unit, otherwise raises error
 #[allow(unused)]
-pub fn expect_unit(addr: &Address, value: Value) -> *mut Unit {
+pub fn expect_unit(addr: &Address, value: Value) -> Gc<Unit> {
     if let Value::Unit(u) = value {
         u
     } else {
@@ -76,7 +77,7 @@ pub fn expect_unit(addr: &Address, value: Value) -> *mut Unit {
 
 /// Expects value is trait, otherwise raises error
 #[allow(unused)]
-pub fn expect_trait(addr: &Address, value: Value) -> *mut Trait {
+pub fn expect_trait(addr: &Address, value: Value) -> Gc<Trait> {
     if let Value::Trait(t) = value {
         t
     } else {
@@ -90,7 +91,7 @@ pub fn expect_trait(addr: &Address, value: Value) -> *mut Trait {
 
 /// Expects value is type, otherwise raises error
 #[allow(unused)]
-pub fn expect_type(addr: &Address, value: Value) -> *mut Type {
+pub fn expect_type(addr: &Address, value: Value) -> Gc<Type> {
     if let Value::Type(t) = value {
         t
     } else {
@@ -104,7 +105,7 @@ pub fn expect_type(addr: &Address, value: Value) -> *mut Type {
 
 /// Expects value is fn, otherwise raises error
 #[allow(unused)]
-pub fn expect_fn(addr: &Address, value: Value) -> *mut Function {
+pub fn expect_fn(addr: &Address, value: Value) -> Gc<Function> {
     if let Value::Fn(f) = value {
         f
     } else {
@@ -118,7 +119,7 @@ pub fn expect_fn(addr: &Address, value: Value) -> *mut Function {
 
 /// Expects value is native, otherwise raises error
 #[allow(unused)]
-pub fn expect_native(addr: &Address, value: Value) -> *mut Native {
+pub fn expect_native(addr: &Address, value: Value) -> Gc<Native> {
     if let Value::Native(n) = value {
         n
     } else {
@@ -134,7 +135,7 @@ pub fn expect_native(addr: &Address, value: Value) -> *mut Native {
 #[allow(unused)]
 pub fn expect_any(addr: &Address, value: Value, error: Option<Error>) -> *mut dyn Any {
     if let Value::Any(a) = value {
-        a
+        *a
     } else {
         error!(error.unwrap_or(Error::own_text(
             addr.clone(),
@@ -146,7 +147,7 @@ pub fn expect_any(addr: &Address, value: Value, error: Option<Error>) -> *mut dy
 
 /// Expects value is string, otherwise raises error
 #[allow(unused)]
-pub fn expect_string(addr: &Address, value: Value) -> *const String {
+pub fn expect_string(addr: &Address, value: Value) -> Gc<String> {
     if let Value::String(s) = value {
         s
     } else {
@@ -174,7 +175,7 @@ pub unsafe fn expect_cloned_string(addr: &Address, value: Value) -> String {
 
 /// Expects value is list, otherwise raises error
 #[allow(unused)]
-pub fn expect_list(addr: &Address, value: Value) -> *mut Vec<Value> {
+pub fn expect_list(addr: &Address, value: Value) -> Gc<Vec<Value>> {
     if let Value::List(l) = value {
         l
     } else {
@@ -190,10 +191,10 @@ pub fn expect_list(addr: &Address, value: Value) -> *mut Vec<Value> {
 pub unsafe fn expect_string_list(addr: &Address, value: Value) -> Vec<String> {
     if let Value::List(l) = value {
         let mut strings = vec![];
-        for value in &(*l) {
+        for value in (*l).clone() {
             match value {
                 Value::String(string) => {
-                    strings.push((**string).clone());
+                    strings.push((*string).clone());
                 }
                 _ => {
                     error!(Error::own_text(

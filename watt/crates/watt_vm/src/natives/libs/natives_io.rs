@@ -1,5 +1,6 @@
 // imports
 use crate::bytecode::OpcodeValue;
+use crate::memory::gc::Gc;
 use crate::natives::natives;
 use crate::table::Table;
 use crate::values::Value;
@@ -16,7 +17,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "io@println",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             println!("{:?}", vm.pop(&addr));
 
             if should_push {
@@ -31,7 +32,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "io@print",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             print!("{:?}", vm.pop(&addr));
 
             if should_push {
@@ -46,7 +47,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         0,
         "io@flush",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             io::stdout().lock().flush().unwrap();
 
             if should_push {
@@ -61,7 +62,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         0,
         "io@input",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let mut input: String = String::new();
 
             if let Err(e) = io::stdin().read_line(&mut input) {
@@ -73,7 +74,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             }
 
             if should_push {
-                vm.op_push(OpcodeValue::String(input), table)?;
+                vm.op_push(OpcodeValue::String(input))?;
             }
 
             Ok(())

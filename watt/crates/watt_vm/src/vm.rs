@@ -3,34 +3,13 @@ use std::collections::HashMap;
 // imports
 use crate::bytecode::{Chunk, ModuleInfo, Opcode, OpcodeValue};
 use crate::flow::ControlFlow;
-use crate::gc_guard;
-use crate::memory::gc::{GC, GcGuard};
-use crate::memory::memory;
+use crate::memory::gc::Gc;
 use crate::natives::natives;
 use crate::table::Table;
 use crate::values::*;
-use scopeguard::defer;
+use rustc_hash::FxHashMap;
 use watt_common::address::Address;
 use watt_common::{error, errors::Error};
-
-/// Vm settings,
-/// contains gc_threshold, gc_debug
-#[derive(Debug)]
-pub struct VmSettings {
-    gc_threshold: usize,
-    gc_threshold_grow_factor: usize,
-    gc_debug: bool,
-}
-/// Vm settings implementation
-impl VmSettings {
-    pub fn new(gc_threshold: usize, gc_threshold_grow_factor: usize, gc_debug: bool) -> Self {
-        Self {
-            gc_threshold,
-            gc_threshold_grow_factor,
-            gc_debug,
-        }
-    }
-}
 
 /// Virtual machine
 ///
@@ -38,40 +17,32 @@ impl VmSettings {
 ///
 #[derive(Debug)]
 pub struct VM {
-    pub builtins_table: *mut Table,
-    pub natives_table: *mut Table,
-    pub gc: *mut GC,
-    settings: VmSettings,
+    pub builtins_table: Gc<Table>,
+    pub natives_table: Gc<Table>,
     pub stack: Vec<Value>,
     pub modules_info: HashMap<usize, ModuleInfo>,
-    pub modules: HashMap<usize, *mut Module>,
+    pub modules: FxHashMap<usize, Gc<Module>>,
 }
 /// Vm implementation
 #[allow(non_upper_case_globals)]
 #[allow(unused_qualifications)]
 impl VM {
     /// New vm
-    pub unsafe fn new(
-        settings: VmSettings,
-        builtins: Chunk,
-        modules_info: HashMap<usize, ModuleInfo>,
-    ) -> VM {
+    pub unsafe fn new(builtins: Chunk, modules_info: HashMap<usize, ModuleInfo>) -> VM {
         // vm
         let mut vm = VM {
-            builtins_table: memory::alloc_value(Table::for_module()),
-            natives_table: memory::alloc_value(Table::new()),
-            gc: memory::alloc_value(GC::new(settings.gc_debug)),
+            builtins_table: Gc::new(Table::new()),
+            natives_table: Gc::new(Table::new()),
             stack: Vec::new(),
             modules_info,
-            modules: HashMap::new(),
-            settings,
+            modules: FxHashMap::default(),
         };
         // natives
         if let Err(e) = natives::provide_builtins(&mut vm) {
             error!(e)
         }
         // running builtins
-        if let Err(e) = vm.run(&builtins, vm.builtins_table) {
+        if let Err(e) = vm.run(&builtins, vm.builtins_table.clone()) {
             error!(Error::own_text(
                 Address::unknown(),
                 format!("control flow leak: {e:?}"),
@@ -99,59 +70,6 @@ impl VM {
         self.stack.pop().unwrap()
     }
 
-    /// Cleanup vm
-    ///
-    /// Frees all values and
-    /// all tables themselves
-    ///
-    pub unsafe fn cleanup(&mut self) {
-        // cleanup gc values
-        (*self.gc).cleanup();
-        // freeing gc
-        memory::free_value(self.gc);
-        // freeing tables
-        memory::free_value(self.natives_table);
-        memory::free_value(self.builtins_table);
-        // freeing modules
-        self.modules.iter().for_each(|(_, m)| {
-            memory::free_value(*m);
-        });
-    }
-
-    /// Invoke garbage collector
-    pub unsafe fn gc_invoke(&mut self, table: *mut Table) {
-        (*self.gc).collect_garbage(self, table);
-    }
-
-    /// Registers object in gc
-    ///
-    /// if gc objects amount > gc_threshold
-    /// | gc invokes
-    /// | gc_threshold multiplies by 2
-    pub unsafe fn gc_register(&mut self, value: Value, table: *mut Table) {
-        // adding object
-        (*self.gc).add_object(value);
-        // checking gc threshold
-        if (*self.gc).objects_amount() > self.settings.gc_threshold {
-            // calling gc
-            self.gc_invoke(table);
-            // doubling current max gc threshold
-            self.settings.gc_threshold =
-                (*self.gc).objects_amount() * self.settings.gc_threshold_grow_factor;
-        }
-    }
-
-    /// Guard values from being freed by gc,
-    /// by pushing to guard stack
-    pub unsafe fn gc_guard(&mut self, value: Value) {
-        (*self.gc).push_guard(value);
-    }
-
-    /// Unguarding value from being freed by gc
-    pub unsafe fn gc_unguard(&mut self) {
-        (*self.gc).pop_guard();
-    }
-
     /// Opcode: Push value to vm stack
     ///
     /// if value is a reference type except
@@ -162,11 +80,7 @@ impl VM {
     /// safety guaranteed by pushing value to stack
     /// before registering in gc.
     ///
-    pub unsafe fn op_push(
-        &mut self,
-        value: OpcodeValue,
-        table: *mut Table,
-    ) -> Result<(), ControlFlow> {
+    pub unsafe fn op_push(&mut self, value: OpcodeValue) -> Result<(), ControlFlow> {
         // checking value type
         match value {
             // primitives
@@ -182,11 +96,9 @@ impl VM {
             // string
             OpcodeValue::String(string) => {
                 // allocating string
-                let new_string = Value::String(memory::alloc_value(string));
+                let new_string = Value::String(Gc::new(string));
                 // pushing string value to stack
                 self.push(new_string);
-                // registering string value in gc. .
-                self.gc_register(new_string, table);
             }
             // raw
             OpcodeValue::Raw(raw) => {
@@ -200,8 +112,6 @@ impl VM {
                     | Value::Any(_) => {
                         // push
                         self.push(raw);
-                        // then register
-                        self.gc_register(raw, table);
                     }
                     _ => {
                         // push
@@ -214,24 +124,17 @@ impl VM {
     }
 
     /// Opcode: Binary operation
-    unsafe fn op_binary(
-        &mut self,
-        address: &Address,
-        op: &str,
-        table: *mut Table,
-    ) -> Result<(), ControlFlow> {
+    unsafe fn op_binary(&mut self, address: &Address, op: &str) -> Result<(), ControlFlow> {
         // operands
         let operand_a = self.pop(address);
         let operand_b = self.pop(address);
 
         // error generators
-        let invalid_op_error = || {
-            error!(Error::own_text(
-                address.clone(),
-                format!("could not use '{op}' with {operand_a:?} and {operand_b:?}"),
-                "check your code."
-            ));
-        };
+        let invalid_op_error = Error::own_text(
+            address.clone(),
+            format!("could not use '{op}' with {operand_a:?} and {operand_b:?}"),
+            "check your code.",
+        );
         let division_error = || {
             error!(Error::new(
                 address.clone(),
@@ -244,7 +147,7 @@ impl VM {
         let concat = |mut string: String, a, b| {
             string.push_str(a);
             string.push_str(b);
-            Value::String(memory::alloc_value(string))
+            Value::String(Gc::new(string))
         };
 
         // binary operators
@@ -258,12 +161,11 @@ impl VM {
                         self.push(Value::Float(a + (b as f64)));
                     }
                     Value::String(b) => {
-                        let string = concat(String::with_capacity((*b).len()), &a.to_string(), &*b);
+                        let string = concat(String::with_capacity(b.len()), &a.to_string(), &*b);
                         self.push(string);
-                        self.gc_register(string, table);
                     }
                     _ => {
-                        invalid_op_error();
+                        error!(invalid_op_error);
                     }
                 },
                 Value::Int(a) => match operand_b {
@@ -274,43 +176,35 @@ impl VM {
                         self.push(Value::Int(a + b));
                     }
                     Value::String(b) => {
-                        let string = concat(String::with_capacity((*b).len()), &a.to_string(), &*b);
+                        let string = concat(String::with_capacity(b.len()), &a.to_string(), &*b);
                         self.push(string);
-                        self.gc_register(string, table);
                     }
                     _ => {
-                        invalid_op_error();
+                        error!(invalid_op_error);
                     }
                 },
                 Value::String(a) => match operand_b {
                     Value::String(b) => {
-                        let string =
-                            concat(String::with_capacity((*a).len() + (*b).len()), &*a, &*b);
+                        let string = concat(String::with_capacity(a.len() + b.len()), &*a, &*b);
                         self.push(string);
-                        self.gc_register(string, table);
                     }
                     _ => {
-                        let string = concat(
-                            String::with_capacity((*a).len()),
-                            &*a,
-                            &operand_b.to_string(),
-                        );
+                        let string =
+                            concat(String::with_capacity(a.len()), &*a, &operand_b.to_string());
                         self.push(string);
-                        self.gc_register(string, table);
                     }
                 },
                 _ => {
-                    if let Value::String(b) = operand_b {
+                    if let Value::String(b) = &operand_b {
                         let string = concat(
-                            String::with_capacity((*b).len()),
+                            String::with_capacity(b.len()),
                             &operand_a.to_string(),
                             &operand_b.to_string(),
                         );
 
                         self.push(string);
-                        self.gc_register(string, table);
                     } else {
-                        invalid_op_error();
+                        error!(invalid_op_error);
                     }
                 }
             },
@@ -323,7 +217,7 @@ impl VM {
                         self.push(Value::Float(a - (b as f64)));
                     }
                     _ => {
-                        invalid_op_error();
+                        error!(invalid_op_error);
                     }
                 },
                 Value::Int(a) => match operand_b {
@@ -334,11 +228,11 @@ impl VM {
                         self.push(Value::Int(a - b));
                     }
                     _ => {
-                        invalid_op_error();
+                        error!(invalid_op_error);
                     }
                 },
                 _ => {
-                    invalid_op_error();
+                    error!(invalid_op_error);
                 }
             },
             "*" => match operand_a {
@@ -350,7 +244,7 @@ impl VM {
                         self.push(Value::Float(a * (b as f64)));
                     }
                     _ => {
-                        invalid_op_error();
+                        error!(invalid_op_error);
                     }
                 },
                 Value::Int(a) => match operand_b {
@@ -361,11 +255,11 @@ impl VM {
                         self.push(Value::Int(a * b));
                     }
                     _ => {
-                        invalid_op_error();
+                        error!(invalid_op_error);
                     }
                 },
                 _ => {
-                    invalid_op_error();
+                    error!(invalid_op_error);
                 }
             },
             "/" => {
@@ -373,23 +267,23 @@ impl VM {
                     Value::Float(a) => {
                         match operand_b {
                             Value::Float(b) => {
-                                // проверка на деление на 0
+                                // checking division by zero
                                 if b == 0f64 {
                                     division_error();
                                 }
-                                // деление
+                                // dividing
                                 self.push(Value::Float(a / b));
                             }
                             Value::Int(b) => {
-                                // проверка на деление на 0
+                                // checking division by zero
                                 if b == 0 {
                                     division_error();
                                 }
-                                // деление
+                                // dividing
                                 self.push(Value::Float(a / (b as f64)));
                             }
                             _ => {
-                                invalid_op_error();
+                                error!(invalid_op_error);
                             }
                         }
                     }
@@ -416,12 +310,12 @@ impl VM {
                                 }
                             }
                             _ => {
-                                invalid_op_error();
+                                error!(invalid_op_error);
                             }
                         }
                     }
                     _ => {
-                        invalid_op_error();
+                        error!(invalid_op_error);
                     }
                 }
             }
@@ -434,7 +328,7 @@ impl VM {
                         self.push(Value::Float(a % (b as f64)));
                     }
                     _ => {
-                        invalid_op_error();
+                        error!(invalid_op_error);
                     }
                 },
                 Value::Int(a) => match operand_b {
@@ -445,11 +339,11 @@ impl VM {
                         self.push(Value::Int(a % b));
                     }
                     _ => {
-                        invalid_op_error();
+                        error!(invalid_op_error);
                     }
                 },
                 _ => {
-                    invalid_op_error();
+                    error!(invalid_op_error);
                 }
             },
             "&" => match operand_a {
@@ -458,11 +352,11 @@ impl VM {
                         self.push(Value::Int(a & b));
                     }
                     _ => {
-                        invalid_op_error();
+                        error!(invalid_op_error);
                     }
                 },
                 _ => {
-                    invalid_op_error();
+                    error!(invalid_op_error);
                 }
             },
             "|" => match operand_a {
@@ -471,11 +365,11 @@ impl VM {
                         self.push(Value::Int(a | b));
                     }
                     _ => {
-                        invalid_op_error();
+                        error!(invalid_op_error);
                     }
                 },
                 _ => {
-                    invalid_op_error();
+                    error!(invalid_op_error);
                 }
             },
             "^" => match operand_a {
@@ -484,11 +378,11 @@ impl VM {
                         self.push(Value::Int(a ^ b));
                     }
                     _ => {
-                        invalid_op_error();
+                        error!(invalid_op_error);
                     }
                 },
                 _ => {
-                    invalid_op_error();
+                    error!(invalid_op_error);
                 }
             },
             _ => {
@@ -547,13 +441,14 @@ impl VM {
         let operand_a = self.pop(address);
         let operand_b = self.pop(address);
         // error
-        let invalid_op_error = || {
-            Error::own_text(
-                address.clone(),
-                format!("could not use '{op}' for {operand_a:?} and {operand_b:?}"),
-                "check your code.",
-            )
-        };
+        let invalid_op_error = Error::own_text(
+            address.clone(),
+            format!(
+                "could not use '{op}' for {:?} and {:?}",
+                operand_a, operand_b
+            ),
+            "check your code.",
+        );
         // conditional op
         match op {
             ">" => match operand_a {
@@ -565,7 +460,7 @@ impl VM {
                         self.push(Value::Bool(a > (b as f64)));
                     }
                     _ => {
-                        error!(invalid_op_error());
+                        error!(invalid_op_error);
                     }
                 },
                 Value::Int(a) => match operand_b {
@@ -576,7 +471,7 @@ impl VM {
                         self.push(Value::Bool(a > b));
                     }
                     _ => {
-                        error!(invalid_op_error());
+                        error!(invalid_op_error);
                     }
                 },
                 Value::String(a) => match operand_b {
@@ -584,11 +479,11 @@ impl VM {
                         self.push(Value::Bool(*a > *b));
                     }
                     _ => {
-                        error!(invalid_op_error());
+                        error!(invalid_op_error);
                     }
                 },
                 _ => {
-                    error!(invalid_op_error());
+                    error!(invalid_op_error);
                 }
             },
             "<" => match operand_a {
@@ -600,7 +495,7 @@ impl VM {
                         self.push(Value::Bool(a < (b as f64)));
                     }
                     _ => {
-                        error!(invalid_op_error());
+                        error!(invalid_op_error);
                     }
                 },
                 Value::Int(a) => match operand_b {
@@ -611,7 +506,7 @@ impl VM {
                         self.push(Value::Bool(a < b));
                     }
                     _ => {
-                        error!(invalid_op_error());
+                        error!(invalid_op_error);
                     }
                 },
                 Value::String(a) => match operand_b {
@@ -619,11 +514,11 @@ impl VM {
                         self.push(Value::Bool(*a < *b));
                     }
                     _ => {
-                        error!(invalid_op_error());
+                        error!(invalid_op_error);
                     }
                 },
                 _ => {
-                    error!(invalid_op_error());
+                    error!(invalid_op_error);
                 }
             },
             ">=" => match operand_a {
@@ -635,7 +530,7 @@ impl VM {
                         self.push(Value::Bool(a >= (b as f64)));
                     }
                     _ => {
-                        error!(invalid_op_error());
+                        error!(invalid_op_error);
                     }
                 },
                 Value::Int(a) => match operand_b {
@@ -646,7 +541,7 @@ impl VM {
                         self.push(Value::Bool(a >= b));
                     }
                     _ => {
-                        error!(invalid_op_error());
+                        error!(invalid_op_error);
                     }
                 },
                 Value::String(a) => match operand_b {
@@ -654,11 +549,11 @@ impl VM {
                         self.push(Value::Bool(*a >= *b));
                     }
                     _ => {
-                        error!(invalid_op_error());
+                        error!(invalid_op_error);
                     }
                 },
                 _ => {
-                    error!(invalid_op_error());
+                    error!(invalid_op_error);
                 }
             },
             "<=" => match operand_a {
@@ -670,7 +565,7 @@ impl VM {
                         self.push(Value::Bool(a <= (b as f64)));
                     }
                     _ => {
-                        error!(invalid_op_error());
+                        error!(invalid_op_error);
                     }
                 },
                 Value::Int(a) => match operand_b {
@@ -681,7 +576,7 @@ impl VM {
                         self.push(Value::Bool(a <= b));
                     }
                     _ => {
-                        error!(invalid_op_error());
+                        error!(invalid_op_error);
                     }
                 },
                 Value::String(a) => match operand_b {
@@ -689,11 +584,11 @@ impl VM {
                         self.push(Value::Bool(*a <= *b));
                     }
                     _ => {
-                        error!(invalid_op_error());
+                        error!(invalid_op_error);
                     }
                 },
                 _ => {
-                    error!(invalid_op_error());
+                    error!(invalid_op_error);
                 }
             },
             "==" => match operand_a {
@@ -802,7 +697,7 @@ impl VM {
         a: &Chunk,
         b: &Chunk,
         op: &str,
-        table: *mut Table,
+        table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         // expect bool
         fn expect_bool(value: Value, error: Error) -> bool {
@@ -815,12 +710,12 @@ impl VM {
         }
 
         // running first chunk
-        self.run(a, table)?;
+        self.run(a, table.clone())?;
         let operand_a = self.pop(address);
 
         // operand a
         let a = expect_bool(
-            operand_a,
+            operand_a.clone(),
             Error::own_text(
                 address.clone(),
                 format!("could not use '{op}' with {operand_a:?}"),
@@ -842,7 +737,7 @@ impl VM {
                     let operand_b = self.pop(address);
                     // operand b
                     let b = expect_bool(
-                        operand_b,
+                        operand_b.clone(),
                         Error::own_text(
                             address.clone(),
                             format!("could not use '{op}' for {operand_a:?} and {operand_b:?}"),
@@ -865,7 +760,7 @@ impl VM {
                     let operand_b = self.pop(address);
                     // operand b
                     let b = expect_bool(
-                        operand_b,
+                        operand_b.clone(),
                         Error::own_text(
                             address.clone(),
                             format!("could not use '{op}' for {operand_a:?} and {operand_b:?}"),
@@ -891,19 +786,14 @@ impl VM {
         cond: &Chunk,
         body: &Chunk,
         elif: &Option<Chunk>,
-        root: *mut Table,
+        root: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         // condition table
-        let table = memory::alloc_value(Table::new());
-        (*table).set_root(root);
-
-        // defer condition table free
-        defer! {
-            try_free_table(table);
-        }
+        let mut table = Gc::new(Table::new());
+        table.set_root(root);
 
         // running condition
-        self.run(cond, table)?;
+        self.run(cond, table.clone())?;
         let bool = self.pop(addr);
 
         // checking condition returned true
@@ -930,20 +820,15 @@ impl VM {
         &mut self,
         addr: &Address,
         body: &Chunk,
-        root: *mut Table,
+        root: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         // loop table
-        let table = memory::alloc_value(Table::new());
-        (*table).set_root(root);
-
-        // defer loop table free
-        defer! {
-            try_free_table(table);
-        }
+        let mut table = Gc::new(Table::new());
+        table.set_root(root);
 
         // loop
         loop {
-            if let Err(e) = self.run(body, table) {
+            if let Err(e) = self.run(body, table.clone()) {
                 match e {
                     ControlFlow::Continue => {
                         continue;
@@ -977,30 +862,26 @@ impl VM {
         body: &Chunk,
         params: &[String],
         make_closure: bool,
-        table: *mut Table,
+        mut table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         // allocating function
-        let function = memory::alloc_value(Function::new(
+        let mut function = Gc::new(Function::new(
             name.clone(),
-            memory::alloc_value(body.clone()),
+            Gc::new(body.clone()),
             params.to_owned(),
         ));
 
         // if it's need to make_closure
-        if make_closure && !(*table).is_owner_module {
+        if make_closure {
             // setting closure
-            (*function).closure = table;
+            function.closure = Some(table.clone());
         }
 
         // function value
         let function_value = Value::Fn(function);
 
-        // guarding value in gc and registering it
-        gc_guard!(self.gc, function_value);
-        self.gc_register(function_value, table);
-
         // defining fn by name and full name
-        (*table).define(addr, name, function_value);
+        table.define(addr, name, function_value);
 
         Ok(())
     }
@@ -1017,24 +898,19 @@ impl VM {
         body: &Chunk,
         params: &[String],
         make_closure: bool,
-        table: *mut Table,
+        table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         // allocating function
-        let function = memory::alloc_value(Function::new(
+        let mut function = Gc::new(Function::new(
             "$lambda".to_string(),
-            memory::alloc_value(body.clone()),
+            Gc::new(body.clone()),
             params.to_owned(),
         ));
 
         // if it's need to make_closure
-        if make_closure && !(*table).is_owner_module {
-            // creating closure
-            let closure = memory::alloc_value(Table::new());
-            // copying table
-            (*closure).fields = (*table).fields.clone();
-            (*closure).closure = (*table).closure;
+        if make_closure {
             // setting closure
-            (*function).closure = closure;
+            function.closure = Some(table.clone());
         }
 
         // function value
@@ -1042,9 +918,6 @@ impl VM {
 
         // push function value to stack
         self.push(function_value);
-
-        // register value in gc
-        self.gc_register(function_value, table);
 
         Ok(())
     }
@@ -1054,10 +927,10 @@ impl VM {
     /// Goes through the table fields,
     /// search functions and then binds owner
     /// to them.
-    unsafe fn bind_functions(&mut self, table: *mut Table, owner: FnOwner) {
-        for val in (*table).fields.values() {
-            if let Value::Fn(function) = *val {
-                (*function).owner = Some(owner.clone());
+    unsafe fn bind_functions(&mut self, mut table: Gc<Table>, owner: FnOwner) {
+        for val in table.fields.values_mut() {
+            if let Value::Fn(function) = val {
+                function.owner = Some(owner.clone());
             }
         }
     }
@@ -1078,19 +951,19 @@ impl VM {
         body: &Chunk,
         constructor: &[String],
         impls: &[String], // todo: replace &[String] with &[Opcode]
-        table: *mut Table,
+        mut table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         // allocating type
-        let t = memory::alloc_value(Type::new(
+        let t = Gc::new(Type::new(
             name.clone(),
             constructor.to_owned(),
-            memory::alloc_value(body.clone()),
+            Gc::new(body.clone()),
             impls.to_owned(),
-            table,
+            table.clone(),
         ));
 
         // defining type by name && full name
-        (*table).define(addr, name.as_str(), Value::Type(t));
+        table.define(addr, name.as_str(), Value::Type(t));
         Ok(())
     }
 
@@ -1108,61 +981,51 @@ impl VM {
         addr: &Address,
         name: &String,
         body: &Chunk,
-        table: *mut Table,
+        mut table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         // allocating unit
-        let unit = memory::alloc_value(Unit::new(
+        let mut unit = Gc::new(Unit::new(
             name.clone(),
-            memory::alloc_value(Table::new()),
-            table,
+            Gc::new(Table::new()),
+            table.clone(),
         ));
 
         // unit value
-        let unit_value = Value::Unit(unit);
-
-        // guarding value in gc and registering it
-        gc_guard!(self.gc, unit_value);
-        self.gc_register(unit_value, table);
+        let unit_value = Value::Unit(unit.clone());
 
         // setting root for fields
-        (*(*unit).fields).set_root(table);
-
-        // setting temp parent for fields
-        (*(*unit).fields).parent = table;
+        unit.fields.set_root(table.clone());
 
         // inserting temp self
-        (*(*unit).fields)
+        unit.fields
             .fields
-            .insert("self".to_string(), unit_value);
+            .insert("self".to_string(), unit_value.clone());
 
         // executing body
-        self.run(body, (*unit).fields)?;
+        self.run(body, unit.fields.clone())?;
 
         // deleting temp self
-        (*(*unit).fields).fields.remove("self");
+        unit.fields.fields.remove("self");
 
         // binding function
-        self.bind_functions((*unit).fields, FnOwner::Unit(unit));
+        self.bind_functions(unit.fields.clone(), FnOwner::Unit(unit.clone()));
 
         // calling optional init fn
         let init_fn = "init";
-        if (*(*unit).fields).exists(init_fn) {
-            self.push(unit_value);
+        if unit.fields.exists(init_fn) {
+            self.push(unit_value.clone());
             self.op_call(
                 addr,
                 init_fn,
                 true,
                 false,
                 &Chunk::new(vec![]),
-                (*unit).fields,
+                unit.fields.clone(),
             )?
         }
 
         // defining unit by name and full name
-        (*table).define(addr, name.as_str(), unit_value);
-
-        // deleting temp parent
-        (*(*unit).fields).parent = std::ptr::null_mut();
+        table.define(addr, name.as_str(), unit_value);
 
         Ok(())
     }
@@ -1181,13 +1044,13 @@ impl VM {
         addr: &Address,
         name: &String,
         functions: &[TraitFn],
-        table: *mut Table,
+        mut table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         // allocating trait
-        let _trait = memory::alloc_value(Trait::new(name.clone(), functions.to_owned()));
+        let _trait = Gc::new(Trait::new(name.clone(), functions.to_owned()));
 
         // define trait by name
-        (*table).define(addr, name.as_str(), Value::Trait(_trait));
+        table.define(addr, name.as_str(), Value::Trait(_trait));
 
         Ok(())
     }
@@ -1206,13 +1069,13 @@ impl VM {
         name: &str,
         has_previous: bool,
         value: &Chunk,
-        table: *mut Table,
+        mut table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         // non-previous
         if !has_previous {
-            self.run(value, table)?;
+            self.run(value, table.clone())?;
             let operand = self.pop(addr);
-            (*table).define(addr, name, operand);
+            table.define(addr, name, operand);
         }
         // previous
         else {
@@ -1220,16 +1083,16 @@ impl VM {
 
             match previous {
                 // define in instance
-                Value::Instance(instance) => {
+                Value::Instance(mut instance) => {
                     self.run(value, table)?;
                     let operand = self.pop(addr);
-                    (*(*instance).fields).define(addr, name, operand);
+                    instance.fields.define(addr, name, operand);
                 }
                 // define in unit
-                Value::Unit(unit) => {
+                Value::Unit(mut unit) => {
                     self.run(value, table)?;
                     let operand = self.pop(addr);
-                    (*(*unit).fields).define(addr, name, operand);
+                    unit.fields.define(addr, name, operand);
                 }
                 _ => {
                     error!(Error::own_text(
@@ -1258,13 +1121,13 @@ impl VM {
         name: &str,
         has_previous: bool,
         value: &Chunk,
-        table: *mut Table,
+        mut table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         // non-previous
         if !has_previous {
-            self.run(value, table)?;
+            self.run(value, table.clone())?;
             let operand = self.pop(addr);
-            (*table).set(addr.clone(), name, operand);
+            table.set(addr, name, operand);
         }
         // previous
         else {
@@ -1272,16 +1135,16 @@ impl VM {
 
             match previous {
                 // define in instance
-                Value::Instance(instance) => {
+                Value::Instance(mut instance) => {
                     self.run(value, table)?;
                     let operand = self.pop(addr);
-                    (*(*instance).fields).set_local(addr, name, operand);
+                    instance.fields.set_local(addr, name, operand);
                 }
                 // define in unit
-                Value::Unit(unit) => {
+                Value::Unit(mut unit) => {
                     self.run(value, table)?;
                     let operand = self.pop(addr);
-                    (*(*unit).fields).set_local(addr, name, operand);
+                    unit.fields.set_local(addr, name, operand);
                 }
                 _ => {
                     error!(Error::own_text(
@@ -1310,7 +1173,7 @@ impl VM {
         name: &str,
         has_previous: bool,
         should_push: bool,
-        table: *mut Table,
+        table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         // non-previous
         if !has_previous {
@@ -1318,7 +1181,7 @@ impl VM {
             let value;
 
             // loading variable value from table
-            value = (*table).lookup(addr, name);
+            value = table.lookup(addr, name);
 
             // pushing value
             if should_push {
@@ -1331,21 +1194,21 @@ impl VM {
             match previous {
                 // from instance
                 Value::Instance(instance) => {
-                    let value = (*(*instance).fields).find(addr, name);
+                    let value = instance.fields.find(addr, name);
                     if should_push {
                         self.push(value);
                     }
                 }
                 // from unit
                 Value::Unit(unit) => {
-                    let value = (*(*unit).fields).find(addr, name);
+                    let value = unit.fields.find(addr, name);
                     if should_push {
                         self.push(value);
                     }
                 }
                 // from module
                 Value::Module(module) => {
-                    let value = (*(*module).table).find(addr, name);
+                    let value = module.table.find(addr, name);
                     if should_push {
                         self.push(value);
                     }
@@ -1378,7 +1241,7 @@ impl VM {
         name: &str,
         callable: Value,
         args: &Chunk,
-        table: *mut Table,
+        table: Gc<Table>,
         should_push: bool,
     ) -> Result<(), ControlFlow> {
         /// Pass arguments
@@ -1398,8 +1261,8 @@ impl VM {
             params_amount: usize,
             args: &Chunk,
             params: Vec<String>,
-            table: *mut Table,
-            call_table: *mut Table,
+            table: Gc<Table>,
+            mut call_table: Gc<Table>,
         ) -> Result<(), ControlFlow> {
             // passing args
             let prev_size = vm.stack.len();
@@ -1413,7 +1276,7 @@ impl VM {
                 // args values
                 for param in params.iter().rev() {
                     let operand = vm.pop(addr);
-                    (*call_table).define(addr, param, operand);
+                    call_table.define(addr, param, operand);
                 }
 
                 Ok(())
@@ -1442,7 +1305,7 @@ impl VM {
             name: &str,
             params_amount: usize,
             args: &Chunk,
-            table: *mut Table,
+            table: Gc<Table>,
         ) -> Result<(), ControlFlow> {
             // passing args
             let prev_size = vm.stack.len();
@@ -1468,31 +1331,25 @@ impl VM {
         // checking value is fn
         if let Value::Fn(function) = callable {
             // call table
-            let call_table = memory::alloc_value(Table::new());
+            let mut call_table = Gc::new(Table::new());
 
             // parent and closure tables, to chain call_table
             // with current
-            (*call_table).parent = table;
-            (*call_table).closure = (*function).closure;
-
-            // freeing call table
-            defer! {
-                try_free_table(call_table);
-            }
+            call_table.closure = function.closure.clone();
 
             // root & self
-            match &(*function).owner {
-                Some(owner) => match *owner {
+            match &function.owner {
+                Some(owner) => match owner {
                     FnOwner::Unit(unit) => {
-                        (*call_table).set_root((*unit).fields);
-                        (*call_table).define(addr, "self", Value::Unit(unit));
+                        call_table.set_root(unit.fields.clone());
+                        call_table.define(addr, "self", Value::Unit(unit.clone()));
                     }
                     FnOwner::Instance(instance) => {
-                        (*call_table).set_root((*instance).fields);
-                        (*call_table).define(addr, "self", Value::Instance(instance));
+                        call_table.set_root(instance.fields.clone());
+                        call_table.define(addr, "self", Value::Instance(instance.clone()));
                     }
                     FnOwner::Module(module) => {
-                        (*call_table).set_root((*module).table);
+                        call_table.set_root(module.table.clone());
                     }
                 },
                 None => {}
@@ -1503,15 +1360,15 @@ impl VM {
                 self,
                 addr,
                 name,
-                (*function).params.len(),
+                function.params.len(),
                 args,
-                (*function).params.clone(),
+                function.params.clone(),
                 table,
-                call_table,
+                call_table.clone(),
             )?;
 
             // running body
-            if let Err(e) = self.run(&*(*function).body, call_table) {
+            if let Err(e) = self.run(&function.body, call_table) {
                 return match e {
                     // if return
                     ControlFlow::Return(val) => {
@@ -1531,25 +1388,16 @@ impl VM {
         // checking value is native
         else if let Value::Native(function) = callable {
             // call table
-            let call_table = memory::alloc_value(Table::new());
-
-            // parent and closure tables, to chain call_table
-            // with current
-            (*call_table).parent = table;
-
-            // freeing
-            defer! {
-                try_free_table(call_table);
-            }
+            let mut call_table = Gc::new(Table::new());
 
             // root to globals
-            (*call_table).set_root((*function).defined_in);
+            call_table.set_root(function.defined_in.clone());
 
             // loading arguments to stack
-            load_arguments(self, addr, name, (*function).params_amount, args, table)?;
+            load_arguments(self, addr, name, function.params_amount, args, table)?;
 
             // calling native fn
-            let native = (*function).function;
+            let native = function.function;
             native(self, addr.clone(), should_push, call_table)?;
 
             Ok(())
@@ -1577,33 +1425,32 @@ impl VM {
         has_previous: bool,
         should_push: bool,
         args: &Chunk,
-        table: *mut Table,
+        table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         // non-previous
         if !has_previous {
-            let value = (*table).lookup(addr, name);
+            let value = table.lookup(addr, name);
             self.call(addr, name, value, args, table, should_push)
         }
         // previous
         else {
             // getting previous and guarding
             let previous = self.pop(addr);
-            gc_guard!(self.gc, previous);
             // calling a function
             match previous {
                 // call from instance
                 Value::Instance(instance) => {
-                    let value = (*(*instance).fields).find(addr, name);
+                    let value = instance.fields.find(addr, name);
                     self.call(addr, name, value, args, table, should_push)
                 }
                 // call from unit
                 Value::Unit(unit) => {
-                    let value = (*(*unit).fields).find(addr, name);
+                    let value = unit.fields.find(addr, name);
                     self.call(addr, name, value, args, table, should_push)
                 }
                 // call from module
                 Value::Module(module) => {
-                    let value = (*(*module).table).find(addr, name);
+                    let value = module.table.find(addr, name);
                     self.call(addr, name, value, args, table, should_push)
                 }
                 _ => {
@@ -1623,7 +1470,7 @@ impl VM {
     unsafe fn op_duplicate(&mut self, addr: &Address) -> Result<(), ControlFlow> {
         // duplicating operand
         let operand = self.pop(addr);
-        self.push(operand);
+        self.push(operand.clone());
         self.push(operand);
         Ok(())
     }
@@ -1633,18 +1480,23 @@ impl VM {
     /// adds default implementation if exists,
     /// otherwise raises error
     ///
-    unsafe fn check_traits(&mut self, addr: &Address, instance: *mut Instance, table: *mut Table) {
+    unsafe fn check_traits(
+        &mut self,
+        addr: &Address,
+        mut instance: Gc<Instance>,
+        table: Gc<Table>,
+    ) {
         // type of instance, used to check traits
-        let instance_type = (*instance).t;
+        let instance_type = instance.t.clone();
 
         /// Gets trait by name
         unsafe fn get_trait(
-            traits: *mut Table,
+            traits: Gc<Table>,
             addr: &Address,
             trait_name: &str,
-        ) -> Option<*mut Trait> {
+        ) -> Option<Gc<Trait>> {
             // looking up trait
-            let trait_value = (*traits).lookup(addr, trait_name);
+            let trait_value = traits.lookup(addr, trait_name);
 
             match trait_value {
                 Value::Trait(_trait) => Some(_trait),
@@ -1656,10 +1508,10 @@ impl VM {
 
         /// Gets impl by name
         unsafe fn get_impl(
-            table: *mut Table,
+            table: Gc<Table>,
             addr: &Address,
             impl_name: &str,
-        ) -> Option<*mut Function> {
+        ) -> Option<Gc<Function>> {
             // looking up for impl
             let fn_value = (*table).lookup(addr, impl_name);
 
@@ -1670,19 +1522,19 @@ impl VM {
         }
 
         // checking all traits from a type
-        for trait_name in &(*instance_type).impls {
-            let _trait = get_trait(table, addr, trait_name).unwrap();
+        for trait_name in &instance_type.impls {
+            let _trait = get_trait(table.clone(), addr, trait_name).unwrap();
             // checking all fn-s
-            for function in &(*_trait).functions {
+            for function in &_trait.functions {
                 // if impl exists, checking it
-                if (*(*instance).fields).exists(&function.name) {
+                if instance.fields.exists(&function.name) {
                     // checking impl
-                    let _impl = get_impl((*instance).fields, addr, &function.name);
+                    let _impl = get_impl(instance.fields.clone(), addr, &function.name);
 
                     // if impl exists, checking params amount
                     if _impl.is_some() {
                         let implementation = _impl.unwrap();
-                        if (*implementation).params.len() != function.params_amount {
+                        if implementation.params.len() != function.params_amount {
                             error!(Error::own(
                                 addr.clone(),
                                 format!(
@@ -1694,7 +1546,7 @@ impl VM {
                                 format!(
                                     "expected args {}, got {}",
                                     function.params_amount,
-                                    (*implementation).params.len()
+                                    implementation.params.len()
                                 )
                             ));
                         }
@@ -1716,20 +1568,14 @@ impl VM {
                     if function.default.is_some() {
                         // creating default fn
                         let default_impl = function.default.as_ref().unwrap();
-                        let default_fn = Value::Fn(memory::alloc_value(Function::new(
+                        let default_fn = Value::Fn(Gc::new(Function::new(
                             function.name.clone(),
-                            memory::alloc_value(default_impl.chunk.clone()),
+                            Gc::new(default_impl.chunk.clone()),
                             default_impl.params.clone(),
                         )));
 
-                        // guarding in gc
-                        gc_guard!(self.gc, default_fn);
-
-                        // registering in gc
-                        self.gc_register(default_fn, table);
-
                         // defining fn in fields of instance
-                        (*(*instance).fields).define(addr, &function.name, default_fn);
+                        instance.fields.define(addr, &function.name, default_fn);
                     } else {
                         error!(Error::own(
                             addr.clone(),
@@ -1762,7 +1608,7 @@ impl VM {
         addr: &Address,
         args: &Chunk,
         should_push: bool,
-        table: *mut Table,
+        table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         /// Pass constructor
         ///
@@ -1781,8 +1627,8 @@ impl VM {
             params_amount: usize,
             args: &Chunk,
             params: Vec<String>,
-            table: *mut Table,
-            fields_table: *mut Table,
+            table: Gc<Table>,
+            mut fields_table: Gc<Table>,
         ) -> Result<(), ControlFlow> {
             // passing args
             let prev_size = vm.stack.len();
@@ -1796,7 +1642,7 @@ impl VM {
                 // args values
                 for param in params.iter().rev() {
                     let operand = vm.pop(addr);
-                    (*fields_table).define(addr, param, operand);
+                    fields_table.define(addr, param, operand);
                 }
                 Ok(())
             } else {
@@ -1812,55 +1658,46 @@ impl VM {
         match value {
             Value::Type(t) => {
                 // creating instance
-                let instance =
-                    memory::alloc_value(Instance::new(t, memory::alloc_value(Table::new())));
-                let instance_value = Value::Instance(instance);
-
-                // guarding instance in gc
-                gc_guard!(self.gc, instance_value);
-
-                // registering in gc
-                self.gc_register(Value::Instance(instance), table);
+                let mut instance = Gc::new(Instance::new(t.clone(), Gc::new(Table::new())));
+                let instance_value = Value::Instance(instance.clone());
 
                 // passing constructor
                 pass_constructor(
                     self,
                     addr,
-                    &(*t).name,
-                    (*t).constructor.len(),
+                    &t.name,
+                    t.constructor.len(),
                     args,
-                    (*t).constructor.clone(),
-                    table,
-                    (*instance).fields,
+                    t.constructor.clone(),
+                    table.clone(),
+                    instance.fields.clone(),
                 )?;
 
                 // setting root
-                (*(*instance).fields).set_root((*t).defined_in);
-
-                // setting temp parent
-                (*(*instance).fields).parent = table;
+                instance.fields.set_root(t.defined_in.clone());
 
                 // setting temp self
-                (*(*instance).fields)
+                instance
                     .fields
-                    .insert("self".to_string(), Value::Instance(instance));
+                    .fields
+                    .insert("self".to_string(), instance_value.clone());
 
                 // executing body
-                self.run(&*(*t).body, (*instance).fields)?;
+                self.run(&t.body, instance.fields.clone())?;
 
                 // deleting temp self
-                (*(*instance).fields).fields.remove("self");
+                instance.fields.fields.remove("self");
 
                 // checking traits implementation
-                self.check_traits(addr, instance, (*t).defined_in);
+                self.check_traits(addr, instance.clone(), t.defined_in.clone());
 
                 // binding functions
-                self.bind_functions((*instance).fields, FnOwner::Instance(instance));
+                self.bind_functions(instance.fields.clone(), FnOwner::Instance(instance.clone()));
 
                 // calling optional init fn
                 let init_fn = "init";
-                if (*(*instance).fields).exists(init_fn) {
-                    self.push(instance_value);
+                if instance.fields.exists(init_fn) {
+                    self.push(instance_value.clone());
                     self.op_call(addr, init_fn, true, false, &Chunk::new(vec![]), table)?
                 }
 
@@ -1868,9 +1705,6 @@ impl VM {
                 if should_push {
                     self.push(instance_value);
                 }
-
-                // deleting temp parent
-                (*(*instance).fields).parent = std::ptr::null_mut();
 
                 Ok(())
             }
@@ -1904,7 +1738,7 @@ impl VM {
         &mut self,
         addr: &Address,
         value: &Chunk,
-        table: *mut Table,
+        table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         // running value and returning control flow
         self.run(value, table)?;
@@ -1922,7 +1756,7 @@ impl VM {
     unsafe fn op_native(&mut self, addr: &Address, name: &str) -> Result<(), ControlFlow> {
         // finding native function, provided
         // by `vm/natives/natives.rs` and pushing to stack
-        let value = (*self.natives_table).find(addr, name);
+        let value = self.natives_table.find(addr, name);
         self.push(value);
 
         Ok(())
@@ -1939,11 +1773,11 @@ impl VM {
         &mut self,
         addr: &Address,
         value: &Chunk,
-        table: *mut Table,
+        table: Gc<Table>,
         should_push: bool,
     ) -> Result<(), ControlFlow> {
         // running value
-        self.run(value, table)?;
+        self.run(value, table.clone())?;
         let value = self.pop(addr);
 
         /// Calls is ok
@@ -1952,17 +1786,17 @@ impl VM {
         unsafe fn call_is_ok(
             vm: &mut VM,
             addr: &Address,
-            instance: *mut Instance,
-            table: *mut Table,
+            instance: Gc<Instance>,
+            table: Gc<Table>,
         ) -> Result<bool, ControlFlow> {
             // finding callable
-            let callable = (*(*instance).fields).find(addr, "is_ok");
-            match callable {
+            let callable = instance.fields.find(addr, "is_ok");
+            match callable.clone() {
                 Value::Fn(function) => {
-                    if !(*function).params.is_empty() {
+                    if !function.params.is_empty() {
                         error!(Error::own_text(
                             addr.clone(),
-                            format!("is_ok takes {} params", (*function).params.len()),
+                            format!("is_ok takes {} params", function.params.len()),
                             "is_ok should take 0 params."
                         ));
                     }
@@ -1999,17 +1833,17 @@ impl VM {
         unsafe fn call_unwrap(
             vm: &mut VM,
             addr: &Address,
-            instance: *mut Instance,
-            table: *mut Table,
+            instance: Gc<Instance>,
+            table: Gc<Table>,
         ) -> Result<(), ControlFlow> {
-            let callable = (*(*instance).fields).find(addr, "unwrap");
+            let callable = instance.fields.find(addr, "unwrap");
 
-            match callable {
+            match callable.clone() {
                 Value::Fn(function) => {
-                    if !(*function).params.is_empty() {
+                    if !function.params.is_empty() {
                         error!(Error::own_text(
                             addr.clone(),
-                            format!("unwrap takes {} params", (*function).params.len()),
+                            format!("unwrap takes {} params", function.params.len()),
                             "unwrap should take 0 params."
                         ));
                     }
@@ -2027,18 +1861,18 @@ impl VM {
             Ok(())
         }
 
-        if let Value::Instance(instance) = value {
+        if let Value::Instance(ref instance) = value {
             // calling is ok
-            let is_ok = call_is_ok(self, addr, instance, table)?;
+            let is_ok = call_is_ok(self, addr, instance.clone(), table.clone())?;
 
             // if it's no ok
             if !is_ok {
                 // returning value back
-                return Err(ControlFlow::Return(value));
+                return Err(ControlFlow::Return(value.clone()));
             } else {
                 // calling unwrap
                 if should_push {
-                    call_unwrap(self, addr, instance, table)?;
+                    call_unwrap(self, addr, instance.clone(), table)?;
                 }
             }
         } else {
@@ -2069,9 +1903,9 @@ impl VM {
             // checking trait is implemented
             match trait_value {
                 Value::Trait(_trait) => {
-                    let impls = &(*(*instance).t).impls;
+                    let impls = &instance.t.impls;
 
-                    let name = &(*_trait).name;
+                    let name = &_trait.name;
                     self.push(Value::Bool(impls.contains(name)));
                 }
                 _ => {
@@ -2100,8 +1934,8 @@ impl VM {
     /// local table by name
     ///
     #[allow(unused_variables)]
-    unsafe fn op_delete_local(&self, addr: &Address, name: &String, table: *mut Table) {
-        (*table).fields.remove(name);
+    unsafe fn op_delete_local(&self, addr: &Address, name: &String, mut table: Gc<Table>) {
+        table.fields.remove(name);
     }
 
     /// Opcode: LoadModule
@@ -2112,18 +1946,18 @@ impl VM {
         addr: &Address,
         id: usize,
         variable: &String,
-        table: *mut Table,
+        mut table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         match self.modules.get(&id) {
             Some(module) => {
-                (*table).define(addr, variable, Value::Module(*module));
+                table.define(addr, variable, Value::Module(module.clone()));
                 Ok(())
             }
             None => match self.modules_info.get(&id).cloned() {
                 Some(module_info) => {
                     let module = self.run_module(&module_info.chunk)?;
-                    self.modules.insert(id, module);
-                    (*table).define(addr, variable, Value::Module(module));
+                    self.modules.insert(id, module.clone());
+                    table.define(addr, variable, Value::Module(module));
                     Ok(())
                 }
                 None => {
@@ -2134,33 +1968,33 @@ impl VM {
     }
 
     /// Runs module chunk in new table
-    pub unsafe fn run_module(&mut self, chunk: &Chunk) -> Result<*mut Module, ControlFlow> {
+    pub unsafe fn run_module(&mut self, chunk: &Chunk) -> Result<Gc<Module>, ControlFlow> {
         // creating module table
-        let module_table = memory::alloc_value(Table::for_module());
-        (*module_table).set_root(self.builtins_table);
+        let mut module_table = Gc::new(Table::new());
+        module_table.set_root(self.builtins_table.clone());
         // running chunk
-        self.run(chunk, module_table)?;
+        self.run(chunk, module_table.clone())?;
         // module
-        let module = memory::alloc_value(Module::new(module_table));
+        let module = Gc::new(Module::new(module_table.clone()));
         // binding function
-        self.bind_functions(module_table, FnOwner::Module(module));
+        self.bind_functions(module_table, FnOwner::Module(module.clone()));
         // returning module
         Ok(module)
     }
 
     /// Runs chunk
     #[allow(unused_variables)]
-    pub unsafe fn run(&mut self, chunk: &Chunk, table: *mut Table) -> Result<(), ControlFlow> {
+    pub unsafe fn run(&mut self, chunk: &Chunk, table: Gc<Table>) -> Result<(), ControlFlow> {
         for op in chunk.opcodes() {
             match op {
                 Opcode::Push { addr, value } => {
-                    self.op_push(value.clone(), table)?;
+                    self.op_push(value.clone())?;
                 }
                 Opcode::Pop { addr } => {
                     self.pop(addr);
                 }
                 Opcode::Bin { addr, op } => {
-                    self.op_binary(addr, op, table)?;
+                    self.op_binary(addr, op)?;
                 }
                 Opcode::Neg { addr } => {
                     self.op_negate(addr)?;
@@ -2172,7 +2006,7 @@ impl VM {
                     self.op_conditional(addr, op)?;
                 }
                 Opcode::Logic { addr, a, b, op } => {
-                    self.op_logical(addr, a, b, op, table)?;
+                    self.op_logical(addr, a, b, op, table.clone())?;
                 }
                 Opcode::If {
                     addr,
@@ -2180,10 +2014,10 @@ impl VM {
                     body,
                     elif,
                 } => {
-                    self.op_if(addr, cond, body, elif, table)?;
+                    self.op_if(addr, cond, body, elif, table.clone())?;
                 }
                 Opcode::Loop { addr, body } => {
-                    self.op_loop(addr, body, table)?;
+                    self.op_loop(addr, body, table.clone())?;
                 }
                 Opcode::DefineFn {
                     addr,
@@ -2192,7 +2026,7 @@ impl VM {
                     params,
                     make_closure,
                 } => {
-                    self.op_define_fn(addr, name, body, params, *make_closure, table)?;
+                    self.op_define_fn(addr, name, body, params, *make_closure, table.clone())?;
                 }
                 Opcode::AnonymousFn {
                     addr,
@@ -2200,7 +2034,7 @@ impl VM {
                     params,
                     make_closure,
                 } => {
-                    self.op_anonymous_fn(body, params, *make_closure, table)?;
+                    self.op_anonymous_fn(body, params, *make_closure, table.clone())?;
                 }
                 Opcode::DefineType {
                     addr,
@@ -2209,17 +2043,17 @@ impl VM {
                     constructor,
                     impls,
                 } => {
-                    self.op_define_type(addr, name, body, constructor, impls, table)?;
+                    self.op_define_type(addr, name, body, constructor, impls, table.clone())?;
                 }
                 Opcode::DefineUnit { addr, name, body } => {
-                    self.op_define_unit(addr, name, body, table)?;
+                    self.op_define_unit(addr, name, body, table.clone())?;
                 }
                 Opcode::DefineTrait {
                     addr,
                     name,
                     functions,
                 } => {
-                    self.op_define_trait(addr, name, functions, table)?;
+                    self.op_define_trait(addr, name, functions, table.clone())?;
                 }
                 Opcode::Define {
                     addr,
@@ -2227,7 +2061,7 @@ impl VM {
                     value,
                     has_previous,
                 } => {
-                    self.op_define(addr, name, *has_previous, value, table)?;
+                    self.op_define(addr, name, *has_previous, value, table.clone())?;
                 }
                 Opcode::Set {
                     addr,
@@ -2235,7 +2069,7 @@ impl VM {
                     value,
                     has_previous,
                 } => {
-                    self.op_set(addr, name, *has_previous, value, table)?;
+                    self.op_set(addr, name, *has_previous, value, table.clone())?;
                 }
                 Opcode::Load {
                     addr,
@@ -2243,7 +2077,7 @@ impl VM {
                     has_previous,
                     should_push,
                 } => {
-                    self.op_load(addr, name, *has_previous, *should_push, table)?;
+                    self.op_load(addr, name, *has_previous, *should_push, table.clone())?;
                 }
                 Opcode::Call {
                     addr,
@@ -2252,7 +2086,7 @@ impl VM {
                     should_push,
                     args,
                 } => {
-                    self.op_call(addr, name, *has_previous, *should_push, args, table)?;
+                    self.op_call(addr, name, *has_previous, *should_push, args, table.clone())?;
                 }
                 Opcode::Duplicate { addr } => {
                     self.op_duplicate(addr)?;
@@ -2262,7 +2096,7 @@ impl VM {
                     args,
                     should_push,
                 } => {
-                    self.op_instance(addr, args, *should_push, table)?;
+                    self.op_instance(addr, args, *should_push, table.clone())?;
                 }
                 Opcode::EndLoop {
                     addr,
@@ -2271,7 +2105,7 @@ impl VM {
                     self.op_endloop(addr, *current_iteration)?;
                 }
                 Opcode::Ret { addr, value } => {
-                    self.op_return(addr, value, table)?;
+                    self.op_return(addr, value, table.clone())?;
                 }
                 Opcode::Native { addr, fn_name } => {
                     self.op_native(addr, fn_name)?;
@@ -2281,14 +2115,16 @@ impl VM {
                     value,
                     should_push,
                 } => {
-                    self.op_error_propagation(addr, value, table, *should_push)?;
+                    self.op_error_propagation(addr, value, table.clone(), *should_push)?;
                 }
                 Opcode::Impls { addr } => {
                     self.op_impls(addr)?;
                 }
-                Opcode::DeleteLocal { addr, name } => self.op_delete_local(addr, name, table),
+                Opcode::DeleteLocal { addr, name } => {
+                    self.op_delete_local(addr, name, table.clone())
+                }
                 Opcode::ImportModule { addr, id, variable } => {
-                    self.op_load_module(addr, *id, variable, table)?
+                    self.op_load_module(addr, *id, variable, table.clone())?
                 }
             }
         }
@@ -2299,10 +2135,3 @@ impl VM {
 /// Send & sync for future multi-threading.
 unsafe impl Send for VM {}
 unsafe impl Sync for VM {}
-
-/// Frees table, if table captures equals 0.
-pub unsafe fn try_free_table(table: *mut Table) {
-    if !table.is_null() && (*table).captures == 0 {
-        memory::free_value(table)
-    }
-}

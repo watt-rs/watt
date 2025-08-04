@@ -1,6 +1,6 @@
 // импорты
 use crate::bytecode::OpcodeValue;
-use crate::memory::memory;
+use crate::memory::gc::Gc;
 use crate::natives::natives;
 use crate::table::Table;
 use crate::values::Value;
@@ -17,13 +17,13 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         0,
         "list@make",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             // если надо пушить
             if should_push {
                 // список
-                let list = memory::alloc_value(Vec::<Value>::new());
+                let list = Vec::<Value>::new();
                 // добавляем
-                vm.op_push(OpcodeValue::Raw(Value::List(list)), table)?;
+                vm.op_push(OpcodeValue::Raw(Value::List(Gc::new(list))))?;
             }
             // успех
             Ok(())
@@ -34,14 +34,14 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         2,
         "list@add",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             // значение
             let value = vm.pop(&addr);
             // список
             let list_value = vm.pop(&addr);
             // проверяем
-            if let Value::List(list) = list_value {
-                (*list).push(value);
+            if let Value::List(mut list) = list_value {
+                list.push(value);
             } else {
                 error!(Error::own_text(
                     addr.clone(),
@@ -62,7 +62,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         3,
         "list@set",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             // значение
             let value = vm.pop(&addr);
             // индекс
@@ -70,9 +70,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             // список
             let list_value = vm.pop(&addr);
             // проверяем
-            if let Value::List(list) = list_value {
+            if let Value::List(mut list) = list_value.clone() {
                 if let Value::Int(index) = index_value {
-                    (*list)[index as usize] = value;
+                    list[index as usize] = value;
                 } else {
                     error!(Error::own_text(
                         addr.clone(),
@@ -102,27 +102,27 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         2,
         "list@get",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             // индекс
             let index_value = vm.pop(&addr);
             // список
             let list_value = vm.pop(&addr);
             // проверяем
-            if let Value::List(list) = list_value {
+            if let Value::List(list) = list_value.clone() {
                 if let Value::Int(index) = index_value {
                     // проверка на боунды
-                    if index < 0 || index as usize >= (*list).len() {
+                    if index < 0 || index as usize >= list.len() {
                         error!(Error::own_text(
                             addr.clone(),
-                            format!("index {} out of bounds [0, {}]", index, (*list).len()),
+                            format!("index {} out of bounds [0, {}]", index, list.len()),
                             "check your code"
                         ))
                     }
                     // если надо пушить
                     if should_push {
                         // получение значения
-                        let value = *((*list).get(index as usize).unwrap());
-                        vm.push(value);
+                        let value = list.get(index as usize).unwrap();
+                        vm.push(value.clone());
                     }
                 } else {
                     error!(Error::own_text(
@@ -149,24 +149,24 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         2,
         "list@delete_at",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             // индекс
             let index_value = vm.pop(&addr);
             // список
             let list_value = vm.pop(&addr);
             // проверяем
-            if let Value::List(list) = list_value {
+            if let Value::List(mut list) = list_value.clone() {
                 if let Value::Int(index) = index_value {
                     // проверка на боунды
-                    if index < 0 || index as usize > (*list).len() {
+                    if index < 0 || index as usize > list.len() {
                         error!(Error::own_text(
                             addr.clone(),
-                            format!("index {} out of bounds [0, {}]", index, (*list).len()),
+                            format!("index {} out of bounds [0, {}]", index, list.len()),
                             "check your code"
                         ))
                     }
                     // удаляем
-                    (*list).remove(index as usize);
+                    list.remove(index as usize);
                     // если надо пушить
                     if should_push {
                         vm.push(Value::Null)
@@ -196,16 +196,16 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         2,
         "list@delete",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             // индекс
             let value = vm.pop(&addr);
             // список
             let list_value = vm.pop(&addr);
             // проверяем
-            if let Value::List(list) = list_value {
-                for (index, element) in (*list).iter().enumerate() {
+            if let Value::List(mut list) = list_value {
+                for (index, element) in list.iter().enumerate() {
                     if *element == value {
-                        (*list).remove(index);
+                        list.remove(index);
                         return Ok(());
                     }
                 }
@@ -225,7 +225,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         2,
         "list@index_of",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             // индекс
             let value = vm.pop(&addr);
             // список
@@ -234,7 +234,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             if let Value::List(list) = list_value {
                 // если надо пушить
                 if should_push {
-                    let position = (*list).iter().position(|v| *v == value);
+                    let position = list.iter().position(|v| *v == value);
                     vm.push(Value::Int(position.unwrap_or(0) as i64))
                 }
             } else {
@@ -253,14 +253,14 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "list@length",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             // список
             let list_value = vm.pop(&addr);
             // проверяем
             if let Value::List(list) = list_value {
                 // если надо пушить
                 if should_push {
-                    vm.push(Value::Int((*list).len() as i64));
+                    vm.push(Value::Int(list.len() as i64));
                 }
             } else {
                 error!(Error::own_text(

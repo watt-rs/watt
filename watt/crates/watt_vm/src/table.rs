@@ -1,8 +1,7 @@
 // imports
-use crate::memory::memory;
+use crate::memory::gc::Gc;
 use crate::values::Value;
 use rustc_hash::FxHashMap;
-use std::collections::HashSet;
 use watt_common::address::Address;
 use watt_common::{error, errors::Error};
 
@@ -12,31 +11,14 @@ use watt_common::{error, errors::Error};
 /// find variables, define variables,
 /// delete variables, ...
 ///
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Table {
     /// this table fields list
     pub fields: FxHashMap<String, Value>,
-    ///
-    /// root table, previous lexical table
-    /// for example:
-    /// ```
-    /// if a { // table one
-    ///   if b { // table two, root: table one
-    ///   }
-    /// }
-    /// ```
-    ///
-    pub root: *mut Table,
-    /// parent table, previous chunk run table
-    pub parent: *mut Table,
+    /// root table
+    pub root: Option<Gc<Table>>,
     /// closure table
-    pub closure: *mut Table,
-    /// captures amount
-    pub captures: usize,
-    /// is it a modular
-    /// true, if it's a global table,
-    /// or a module table
-    pub is_owner_module: bool,
+    pub closure: Option<Gc<Table>>,
 }
 /// Table implementation
 impl Table {
@@ -44,26 +26,11 @@ impl Table {
     pub fn new() -> Table {
         Table {
             fields: FxHashMap::default(),
-            root: std::ptr::null_mut(),
-            parent: std::ptr::null_mut(),
-            closure: std::ptr::null_mut(),
-            captures: 0,
-            is_owner_module: false,
+            root: None,
+            closure: None,
         }
     }
-    
-    /// New table for module
-    pub fn for_module() -> Table {
-        Table {
-            fields: FxHashMap::default(),
-            root: std::ptr::null_mut(),
-            parent: std::ptr::null_mut(),
-            closure: std::ptr::null_mut(),
-            captures: 0,
-            is_owner_module: true,
-        }
-    }
-    
+
     /// Checks variable exists in fields
     /// or closure
     ///
@@ -71,7 +38,10 @@ impl Table {
         if self.fields.contains_key(name) {
             true
         } else {
-            !self.closure.is_null() && (*self.closure).exists(name)
+            match &self.closure {
+                Some(closure) => closure.exists(name),
+                None => false,
+            }
         }
     }
 
@@ -83,9 +53,14 @@ impl Table {
     pub unsafe fn find(&self, address: &Address, name: &str) -> Value {
         if self.exists(name) {
             if self.fields.contains_key(name) {
-                self.fields[name]
+                self.fields[name].clone()
             } else {
-                (*self.closure).find(address, name)
+                match &self.closure {
+                    Some(closure) => closure.find(address, name),
+                    None => panic!(
+                        "closure is None, but field {name} is exists. report this error to the devloper"
+                    ),
+                }
             }
         } else {
             error!(Error::own_text(
@@ -116,13 +91,17 @@ impl Table {
     ///
     /// raises error if not defined
     ///
-    pub unsafe fn set(&mut self, address: Address, name: &str, value: Value) {
+    pub unsafe fn set(&mut self, address: &Address, name: &str, value: Value) {
         if self.fields.contains_key(name) {
             self.fields.insert(name.to_string(), value);
-        } else if !self.root.is_null() && (*self.root).has(name) {
-            (*self.root).set(address, name, value);
-        } else if !self.closure.is_null() && (*self.closure).exists(name) {
-            (*self.closure).set(address, name, value);
+        } else if let Some(ref mut root) = self.root
+            && root.has(name)
+        {
+            root.set(address, name, value);
+        } else if let Some(ref mut closure) = self.closure
+            && closure.has(name)
+        {
+            closure.set(address, name, value);
         } else {
             error!(Error::own_text(
                 address.clone(),
@@ -148,11 +127,11 @@ impl Table {
     }
 
     /// Checks variable exists in fields, closures or roots
-    pub unsafe fn has(&mut self, name: &str) -> bool {
+    pub unsafe fn has(&self, name: &str) -> bool {
         if self.exists(name) {
             true
-        } else if !self.root.is_null() {
-            (*self.root).has(name)
+        } else if let Some(ref root) = self.root {
+            root.has(name)
         } else {
             false
         }
@@ -163,13 +142,17 @@ impl Table {
     ///
     /// raises error if not exists
     ///
-    pub unsafe fn lookup(&mut self, address: &Address, name: &str) -> Value {
+    pub unsafe fn lookup(&self, address: &Address, name: &str) -> Value {
         if self.fields.contains_key(name) {
-            self.fields[name]
-        } else if !self.root.is_null() && (*self.root).has(name) {
-            (*self.root).lookup(address, name)
-        } else if !self.closure.is_null() && (*self.closure).exists(name) {
-            (*self.closure).find(address, name)
+            self.fields[name].clone()
+        } else if let Some(ref root) = self.root
+            && root.has(name)
+        {
+            root.lookup(address, name)
+        } else if let Some(ref closure) = self.closure
+            && closure.has(name)
+        {
+            closure.find(address, name)
         } else {
             error!(Error::own_text(
                 address.clone(),
@@ -184,76 +167,18 @@ impl Table {
     /// if root already exists, set root to root, and if root's root is already
     /// exists, set root to root's root, ...
     ///
-    pub unsafe fn set_root(&mut self, root: *mut Table) {
-        if self.root.is_null() {
-            self.root = root
-        } else {
-            (*self.root).set_root(root);
+    pub unsafe fn set_root(&mut self, new_root: Gc<Table>) {
+        match &mut self.root {
+            Some(root) => root.set_root(new_root.clone()),
+            None => self.root = Some(new_root),
         }
     }
 
     /// Deletes last root from roots chain
-    #[allow(unused)]
     pub unsafe fn del_root(&mut self) {
-        if !self.root.is_null() {
-            if (*self.root).root.is_null() {
-                self.root = std::ptr::null_mut();
-            } else {
-                (*self.root).del_root()
-            }
-        }
-    }
-
-    /// Frees all field values
-    pub unsafe fn free_fields(&self) {
-        // to free list
-        let to_free: HashSet<&Value> = self.fields.values().collect();
-
-        // freeing
-        for val in to_free {
-            match *val {
-                Value::Fn(f) => {
-                    if !f.is_null() {
-                        memory::free_value(f);
-                    }
-                }
-                Value::Instance(i) => {
-                    if !i.is_null() {
-                        memory::free_value(i);
-                    }
-                }
-                Value::String(s) => {
-                    if !s.is_null() {
-                        memory::free_const_value(s);
-                    }
-                }
-                Value::Native(n) => {
-                    if !n.is_null() {
-                        memory::free_value(n);
-                    }
-                }
-                Value::Unit(u) => {
-                    if !u.is_null() {
-                        memory::free_value(u);
-                    }
-                }
-                Value::List(l) => {
-                    if !l.is_null() {
-                        memory::free_value(l);
-                    }
-                }
-                Value::Type(t) => {
-                    if !t.is_null() {
-                        memory::free_value(t);
-                    }
-                }
-                Value::Trait(t) => {
-                    if !t.is_null() {
-                        memory::free_value(t);
-                    }
-                }
-                _ => {}
-            }
+        match &mut self.root {
+            Some(root) => root.del_root(),
+            None => self.root = None,
         }
     }
 
@@ -268,24 +193,16 @@ impl Table {
             spaces = indent * 2
         );
         println!("{space:spaces$}> root: ", space = " ", spaces = indent * 2);
-        if !self.root.is_null() {
-            (*self.root).print(indent + 1);
+        if let Some(ref root) = self.root {
+            root.print(indent + 1);
         }
         println!(
             "{space:spaces$}> parent: ",
             space = " ",
             spaces = indent * 2
         );
-        if !self.parent.is_null() {
-            (*self.parent).print(indent + 1);
-        }
-        println!(
-            "{space:spaces$}> closure: ",
-            space = " ",
-            spaces = indent * 2
-        );
-        if !self.closure.is_null() {
-            (*self.closure).print(indent + 1);
+        if let Some(ref closure) = self.closure {
+            closure.print(indent + 1);
         }
     }
 }

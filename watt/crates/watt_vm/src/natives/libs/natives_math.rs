@@ -1,3 +1,4 @@
+use crate::memory::gc::Gc;
 // imports
 use crate::natives::natives;
 use crate::table::Table;
@@ -14,7 +15,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "math@sin",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let value = vm.pop(&addr);
 
             if should_push {
@@ -39,7 +40,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "math@cos",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let value = vm.pop(&addr);
 
             if should_push {
@@ -64,7 +65,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "math@asin",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let value = vm.pop(&addr);
 
             if should_push {
@@ -89,7 +90,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "math@acos",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let value = vm.pop(&addr);
 
             if should_push {
@@ -114,7 +115,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "math@atan",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let value = vm.pop(&addr);
 
             if should_push {
@@ -139,7 +140,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "math@tan",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let value = vm.pop(&addr);
 
             if should_push {
@@ -164,7 +165,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "math@ctg",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let value = vm.pop(&addr);
 
             if should_push {
@@ -189,7 +190,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "math@tanh",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let value = vm.pop(&addr);
 
             if should_push {

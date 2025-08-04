@@ -1,11 +1,13 @@
 // imports
 use crate::bytecode::OpcodeValue;
+use crate::memory::gc::Gc;
 use crate::memory::memory::{self};
 use crate::natives::natives;
 use crate::natives::utils;
 use crate::table::Table;
 use crate::values::Value;
 use crate::vm::VM;
+use std::ops::Deref;
 use std::process::Command;
 use sysinfo::System;
 use watt_common::address::Address;
@@ -19,13 +21,13 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "system@getenv",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             if !should_push {
                 return Ok(());
             }
 
-            let env_key = &*utils::expect_string(&addr, vm.pop(&addr));
-            let value = match std::env::vars().find(|x| &x.0 == env_key) {
+            let env_key = utils::expect_string(&addr, vm.pop(&addr));
+            let value = match std::env::vars().find(|x| &x.0 == env_key.deref()) {
                 Some((key, value)) => value,
                 None => {
                     vm.push(Value::Null);
@@ -33,7 +35,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 }
             };
 
-            vm.op_push(OpcodeValue::String(value), table)?;
+            vm.op_push(OpcodeValue::String(value))?;
 
             Ok(())
         },
@@ -43,11 +45,11 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         2,
         "system@setenv",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
-            let env_value = &*utils::expect_string(&addr, vm.pop(&addr));
-            let env_key = &*utils::expect_string(&addr, vm.pop(&addr));
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
+            let env_value = utils::expect_string(&addr, vm.pop(&addr));
+            let env_key = utils::expect_string(&addr, vm.pop(&addr));
 
-            std::env::set_var(env_key, env_value);
+            std::env::set_var(env_key.deref(), env_value.deref());
 
             Ok(())
         },
@@ -57,7 +59,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         0,
         "system@getcwd",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             if !should_push {
                 return Ok(());
             }
@@ -80,7 +82,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                 }
             };
 
-            vm.op_push(OpcodeValue::String(cwd), table)?;
+            vm.op_push(OpcodeValue::String(cwd))?;
             Ok(())
         },
     );
@@ -89,7 +91,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         0,
         "system@getargs",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             if !should_push {
                 return Ok(());
             }
@@ -98,24 +100,15 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
             let args: Vec<Value> = std::env::args()
                 .skip(1)
                 .map(|x| {
-                    let string = Value::String(memory::alloc_value(x));
-
-                    vm.gc_guard(string);
-                    vm.gc_register(string, table);
-
+                    let string = Value::String(Gc::new(x));
                     string
                 })
                 .collect();
 
-            // unguarding strings
-            for _ in 0..args.len() {
-                vm.gc_unguard();
-            }
-
             // safety of strings will not be erased
             // guaranteed by list marking if gc will invoke.
-            let raw_list = Value::List(memory::alloc_value(args));
-            vm.op_push(OpcodeValue::Raw(raw_list), table)?;
+            let raw_list = Value::List(Gc::new(args));
+            vm.op_push(OpcodeValue::Raw(raw_list))?;
 
             Ok(())
         },
@@ -125,7 +118,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         0,
         "system@memory_total",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             if !should_push {
                 return Ok(());
             }
@@ -144,7 +137,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         0,
         "system@memory_used",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             if !should_push {
                 return Ok(());
             }
@@ -164,7 +157,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         0,
         "system@cpu_count",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             if !should_push {
                 return Ok(());
             }
@@ -183,7 +176,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         0,
         "system@this_process_id",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             vm.push(Value::Int(std::process::id() as _));
             Ok(())
         },
@@ -193,7 +186,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "system@this_process_terminate",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let code = utils::expect_int(&addr, vm.pop(&addr));
             std::process::exit(code as _);
         },
@@ -204,7 +197,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "system@process_spawn_shell",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             if !should_push {
                 error!(Error::new(
                     addr.clone(),
@@ -226,10 +219,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
 
             match descriptor.spawn() {
                 Ok(child) => {
-                    vm.op_push(
-                        OpcodeValue::Raw(Value::Any(memory::alloc_value(child))),
-                        table,
-                    )?;
+                    vm.op_push(OpcodeValue::Raw(Value::Any(Gc::new(memory::alloc_value(
+                        child,
+                    )))))?;
                 }
                 Err(_e) => {
                     vm.push(Value::Null);
@@ -244,7 +236,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "system@process_wait",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let child = utils::expect_any(&addr, vm.pop(&addr), None);
             let child: Option<&mut std::process::Child> = (*child).downcast_mut();
 
@@ -280,7 +272,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "system@process_terminate",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let child = utils::expect_any(&addr, vm.pop(&addr), None);
             let child: Option<&mut std::process::Child> = (*child).downcast_mut();
 
@@ -309,7 +301,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "system@process_id",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let child = utils::expect_any(&addr, vm.pop(&addr), None);
             let child: Option<&mut std::process::Child> = (*child).downcast_mut();
 
@@ -336,9 +328,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         0,
         "system@get_osname",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             if should_push {
-                vm.op_push(OpcodeValue::String(std::env::consts::OS.to_string()), table)?;
+                vm.op_push(OpcodeValue::String(std::env::consts::OS.to_string()))?;
             }
 
             Ok(())

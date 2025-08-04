@@ -147,9 +147,13 @@ if text.is_err() {
 }
 */
 import 'std.io' as io
-import 'std.time' as time
-
-_time := time.now()
-if _time impls Display {
-    io.println(_time)
+fn factorial(n) {
+    f := 1
+    r := 1
+    while f <= n {
+        r *= f
+        f += 1
+    }
+    return r
 }
+io.println(factorial(15))

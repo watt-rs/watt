@@ -15,11 +15,3 @@ pub fn free_value<T: ?Sized>(ptr: *mut T) {
         drop(Box::from_raw(ptr));
     }
 }
-
-/// Frees const ptr value using box
-pub fn free_const_value<T>(ptr: *const T) {
-    if ptr.is_null() {
-        return;
-    }
-    free_value(ptr as *mut T);
-}

@@ -1,9 +1,10 @@
 // imports
 use crate::bytecode::Chunk;
 use crate::flow::ControlFlow;
-use crate::memory::memory;
+use crate::memory::gc::Gc;
 use crate::table::Table;
-use crate::vm::{VM, try_free_table};
+use crate::vm::VM;
+use std::any::Any;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use watt_common::address::Address;
@@ -16,20 +17,12 @@ use watt_common::address::Address;
 #[derive(Clone, Debug)]
 #[allow(unused)]
 pub struct Module {
-    pub table: *mut Table,
+    pub table: Gc<Table>,
 }
 /// Unit implementation
 impl Module {
-    pub fn new(table: *mut Table) -> Module {
+    pub fn new(table: Gc<Table>) -> Module {
         Module { table }
-    }
-}
-/// Unit drop implementation
-impl Drop for Module {
-    fn drop(&mut self) {
-        unsafe {
-            try_free_table(self.table);
-        }
     }
 }
 
@@ -42,9 +35,9 @@ impl Drop for Module {
 pub struct Type {
     pub name: String,
     pub constructor: Vec<String>,
-    pub body: *const Chunk,
+    pub body: Gc<Chunk>,
     pub impls: Vec<String>,
-    pub defined_in: *mut Table,
+    pub defined_in: Gc<Table>,
 }
 /// Type implementation
 impl Type {
@@ -52,9 +45,9 @@ impl Type {
     pub fn new(
         name: String,
         constructor: Vec<String>,
-        body: *const Chunk,
+        body: Gc<Chunk>,
         impls: Vec<String>,
-        defined_in: *mut Table,
+        defined_in: Gc<Table>,
     ) -> Type {
         Type {
             name,
@@ -63,12 +56,6 @@ impl Type {
             impls,
             defined_in,
         }
-    }
-}
-/// Type drop implementation
-impl Drop for Type {
-    fn drop(&mut self) {
-        memory::free_const_value(self.body);
     }
 }
 
@@ -81,22 +68,14 @@ impl Drop for Type {
 #[allow(unused)]
 pub struct Instance {
     /// type, instance related to
-    pub t: *mut Type,
+    pub t: Gc<Type>,
     /// instance fields table
-    pub fields: *mut Table,
+    pub fields: Gc<Table>,
 }
 /// Instance implementation
 impl Instance {
-    pub fn new(t: *mut Type, fields: *mut Table) -> Instance {
+    pub fn new(t: Gc<Type>, fields: Gc<Table>) -> Instance {
         Instance { t, fields }
-    }
-}
-/// Instance drop implementation
-impl Drop for Instance {
-    fn drop(&mut self) {
-        unsafe {
-            try_free_table(self.fields);
-        }
     }
 }
 
@@ -109,24 +88,16 @@ impl Drop for Instance {
 #[allow(unused)]
 pub struct Unit {
     pub name: String,
-    pub fields: *mut Table,
-    pub defined_in: *mut Table,
+    pub fields: Gc<Table>,
+    pub defined_in: Gc<Table>,
 }
 /// Unit implementation
 impl Unit {
-    pub fn new(name: String, fields: *mut Table, defined_in: *mut Table) -> Unit {
+    pub fn new(name: String, fields: Gc<Table>, defined_in: Gc<Table>) -> Unit {
         Unit {
             name,
             fields,
             defined_in,
-        }
-    }
-}
-/// Unit drop implementation
-impl Drop for Unit {
-    fn drop(&mut self) {
-        unsafe {
-            try_free_table(self.fields);
         }
     }
 }
@@ -207,9 +178,9 @@ impl Drop for Trait {
 ///
 #[derive(Clone, Debug)]
 pub enum FnOwner {
-    Unit(*mut Unit),
-    Instance(*mut Instance),
-    Module(*mut Module),
+    Unit(Gc<Unit>),
+    Instance(Gc<Instance>),
+    Module(Gc<Module>),
 }
 
 /// Function
@@ -222,34 +193,22 @@ pub enum FnOwner {
 #[allow(unused)]
 pub struct Function {
     pub name: String,
-    pub body: *const Chunk,
+    pub body: Gc<Chunk>,
     pub params: Vec<String>,
     pub owner: Option<FnOwner>,
-    pub closure: *mut Table,
+    pub closure: Option<Gc<Table>>,
 }
 /// Function implementation
 impl Function {
     /// New function
-    pub fn new(name: String, body: *const Chunk, params: Vec<String>) -> Function {
+    pub fn new(name: String, body: Gc<Chunk>, params: Vec<String>) -> Function {
         Function {
             name,
             body,
             params,
             owner: None,
-            closure: std::ptr::null_mut(),
+            closure: None,
         }
-    }
-}
-/// Function drop implementation
-impl Drop for Function {
-    fn drop(&mut self) {
-        unsafe {
-            if !self.closure.is_null() {
-                (*self.closure).captures -= 1;
-                try_free_table(self.closure);
-            }
-        }
-        memory::free_const_value(self.body);
     }
 }
 
@@ -263,8 +222,8 @@ impl Drop for Function {
 pub struct Native {
     pub name: String,
     pub params_amount: usize,
-    pub function: fn(&mut VM, Address, bool, *mut Table) -> Result<(), ControlFlow>,
-    pub defined_in: *mut Table,
+    pub function: fn(&mut VM, Address, bool, Gc<Table>) -> Result<(), ControlFlow>,
+    pub defined_in: Gc<Table>,
 }
 /// Native implementation
 impl Native {
@@ -272,8 +231,8 @@ impl Native {
     pub fn new(
         name: String,
         params_amount: usize,
-        function: fn(&mut VM, Address, bool, *mut Table) -> Result<(), ControlFlow>,
-        defined_in: *mut Table,
+        function: fn(&mut VM, Address, bool, Gc<Table>) -> Result<(), ControlFlow>,
+        defined_in: Gc<Table>,
     ) -> Native {
         Native {
             name,
@@ -285,70 +244,68 @@ impl Native {
 }
 
 /// Value
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum Value {
     Float(f64),
     Int(i64),
-    String(*const String),
+    String(Gc<String>),
     Bool(bool),
-    Type(*mut Type),
-    Fn(*mut Function),
-    Native(*mut Native),
-    Instance(*mut Instance),
-    Unit(*mut Unit),
-    Trait(*mut Trait),
-    List(*mut Vec<Value>),
-    Any(*mut dyn std::any::Any),
-    Module(*mut Module),
+    Type(Gc<Type>),
+    Fn(Gc<Function>),
+    Native(Gc<Native>),
+    Instance(Gc<Instance>),
+    Unit(Gc<Unit>),
+    Trait(Gc<Trait>),
+    List(Gc<Vec<Value>>),
+    Any(Gc<*mut dyn Any>),
+    Module(Gc<Module>),
     Null,
 }
 /// Debug implementation for value
 impl Debug for Value {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        unsafe {
-            match self {
-                Value::String(s) => {
-                    write!(fmt, "{}", **s)
-                }
-                Value::Instance(i) => {
-                    write!(fmt, "Instance{:?}", *i)
-                }
-                Value::Trait(t) => {
-                    write!(fmt, "Trait{:?}", *t)
-                }
-                Value::Fn(f) => {
-                    write!(fmt, "Fn{:?}", (**f).name)
-                }
-                Value::Native(n) => {
-                    write!(fmt, "Native{:?}", *n)
-                }
-                Value::Unit(n) => {
-                    write!(fmt, "Unit{:?}", *n)
-                }
-                Value::Null => {
-                    write!(fmt, "Null")
-                }
-                Value::Bool(b) => {
-                    write!(fmt, "{}", *b)
-                }
-                Value::Type(t) => {
-                    write!(fmt, "Type{:?}", *t)
-                }
-                Value::Int(i) => {
-                    write!(fmt, "{}", *i)
-                }
-                Value::Float(fl) => {
-                    write!(fmt, "{}", *fl)
-                }
-                Value::List(l) => {
-                    write!(fmt, "List{:?}", *l)
-                }
-                Value::Any(a) => {
-                    write!(fmt, "Any{:?}", *a)
-                }
-                Value::Module(m) => {
-                    write!(fmt, "Module{:?}", *m)
-                }
+        match self {
+            Value::String(s) => {
+                write!(fmt, "{}", **s)
+            }
+            Value::Instance(i) => {
+                write!(fmt, "Instance{:?}", *i)
+            }
+            Value::Trait(t) => {
+                write!(fmt, "Trait{:?}", *t)
+            }
+            Value::Fn(f) => {
+                write!(fmt, "Fn{:?}", (**f).name)
+            }
+            Value::Native(n) => {
+                write!(fmt, "Native{:?}", *n)
+            }
+            Value::Unit(n) => {
+                write!(fmt, "Unit{:?}", *n)
+            }
+            Value::Null => {
+                write!(fmt, "Null")
+            }
+            Value::Bool(b) => {
+                write!(fmt, "{}", *b)
+            }
+            Value::Type(t) => {
+                write!(fmt, "Type{:?}", *t)
+            }
+            Value::Int(i) => {
+                write!(fmt, "{}", *i)
+            }
+            Value::Float(fl) => {
+                write!(fmt, "{}", *fl)
+            }
+            Value::List(l) => {
+                write!(fmt, "List{:?}", *l)
+            }
+            Value::Any(a) => {
+                write!(fmt, "Any{:?}", *a)
+            }
+            Value::Module(m) => {
+                write!(fmt, "Module{:?}", *m)
             }
         }
     }
@@ -357,9 +314,9 @@ impl Debug for Value {
 impl Display for Value {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Value::Instance(i) => unsafe {
+            Value::Instance(i) => {
                 write!(fmt, "Instance{:?} of {:?}", *i, (*(**i).t).name)
-            },
+            }
             _ => write!(fmt, "{self:?}"),
         }
     }
@@ -376,19 +333,19 @@ impl Display for Value {
 #[allow(unused_unsafe)]
 impl PartialEq for Value {
     fn eq(&self, other: &Value) -> bool {
-        match (*self, *other) {
-            (Value::Instance(a), Value::Instance(b)) => unsafe { a == b },
-            (Value::Fn(a), Value::Fn(b)) => unsafe { a == b },
-            (Value::Native(a), Value::Native(b)) => unsafe { a == b },
-            (Value::Bool(a), Value::Bool(b)) => unsafe { a == b },
-            (Value::Type(a), Value::Type(b)) => unsafe { a == b },
-            (Value::String(a), Value::String(b)) => unsafe { a == b },
+        match (self.clone(), other.clone()) {
+            (Value::Instance(a), Value::Instance(b)) => a == b,
+            (Value::Fn(a), Value::Fn(b)) => a == b,
+            (Value::Native(a), Value::Native(b)) => a == b,
+            (Value::Bool(a), Value::Bool(b)) => a == b,
+            (Value::Type(a), Value::Type(b)) => a == b,
+            (Value::String(a), Value::String(b)) => a == b,
             (Value::Int(a), Value::Int(b)) => a == b,
             (Value::Float(a), Value::Float(b)) => a == b,
-            (Value::Unit(a), Value::Unit(b)) => unsafe { a == b },
-            (Value::Trait(a), Value::Trait(b)) => unsafe { a == b },
-            (Value::List(a), Value::List(b)) => unsafe { a == b },
-            (Value::Any(a), Value::Any(b)) => unsafe { std::ptr::addr_eq(a, b) },
+            (Value::Unit(a), Value::Unit(b)) => a == b,
+            (Value::Trait(a), Value::Trait(b)) => a == b,
+            (Value::List(a), Value::List(b)) => a == b,
+            (Value::Any(a), Value::Any(b)) => a == b,
             _ => false,
         }
     }
@@ -398,24 +355,24 @@ impl Eq for Value {}
 /// Hash implementation for value
 impl Hash for Value {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        match *self {
+        match self.clone() {
             Value::Instance(a) => {
-                (a as usize).hash(state);
+                a.hash(state);
             }
             Value::Fn(a) => {
-                (a as usize).hash(state);
+                a.hash(state);
             }
             Value::Native(a) => {
-                (a as usize).hash(state);
+                a.hash(state);
             }
             Value::Bool(a) => {
                 a.hash(state);
             }
             Value::Type(a) => {
-                (a as usize).hash(state);
+                a.hash(state);
             }
             Value::String(a) => {
-                (a as usize).hash(state);
+                a.hash(state);
             }
             Value::Int(a) => {
                 a.hash(state);
@@ -424,19 +381,18 @@ impl Hash for Value {
                 a.to_bits().hash(state);
             }
             Value::Unit(a) => {
-                (a as usize).hash(state);
+                a.hash(state);
             }
             Value::Trait(a) => {
-                (a as usize).hash(state);
+                a.hash(state);
             }
             Value::List(a) => {
-                (a as usize).hash(state);
+                a.hash(state);
             }
             Value::Any(a) => {
-                let any_ptr = a as *const () as usize;
-                any_ptr.hash(state);
+                a.hash(state);
             }
-            Value::Module(m) => (m as usize).hash(state),
+            Value::Module(a) => a.hash(state),
             Value::Null => {
                 0.hash(state);
             }

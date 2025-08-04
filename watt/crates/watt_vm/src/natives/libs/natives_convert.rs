@@ -1,5 +1,6 @@
 // imports
 use crate::bytecode::OpcodeValue;
+use crate::memory::gc::Gc;
 use crate::natives::natives;
 use crate::table::Table;
 use crate::values::Value;
@@ -16,7 +17,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "convert@to_int",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let value = vm.pop(&addr);
 
             match value {
@@ -31,7 +32,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     }
                 }
                 Value::String(s) => {
-                    let result = (*s).parse::<i64>();
+                    let result = s.parse::<i64>();
                     match result {
                         Ok(i) => {
                             if should_push {
@@ -77,7 +78,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "convert@to_float",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let value = vm.pop(&addr);
 
             match value {
@@ -138,11 +139,11 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "convert@to_string",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let value = vm.pop(&addr);
 
             if should_push {
-                vm.op_push(OpcodeValue::String(format!("{value:?}")), table)?;
+                vm.op_push(OpcodeValue::String(format!("{value:?}")))?;
             }
 
             Ok(())
@@ -153,7 +154,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "convert@to_bool",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let value = vm.pop(&addr);
 
             match value {

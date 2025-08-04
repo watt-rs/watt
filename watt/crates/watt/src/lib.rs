@@ -13,8 +13,7 @@ use watt_gen::generator::{BytecodeGenerator, GeneratorResult};
 use watt_lex::{lexer::Lexer, tokens::Token};
 use watt_parse::parser::Parser;
 use watt_vm::{
-    memory::memory,
-    vm::{VM, VmSettings},
+    vm::{VM},
 };
 
 /// Reading file
@@ -128,9 +127,6 @@ pub unsafe fn run(
     // run compiled opcodes chunk with vm
     run_vm(
         compiled,
-        gc_threshold.unwrap_or(200),
-        gc_threshold_grow_factor.unwrap_or(2),
-        gc_debug,
         runtime_bench,
     );
 }
@@ -251,9 +247,6 @@ pub unsafe fn compile(ast: Node, opcodes_debug: bool, bench: bool) -> GeneratorR
 #[allow(unused_qualifications)]
 unsafe fn run_vm(
     bytecode: GeneratorResult,
-    gc_threshold: usize,
-    gc_threshold_grow_factor: usize,
-    gc_debug: bool,
     bench: bool,
 ) {
     // benchmark
@@ -261,19 +254,18 @@ unsafe fn run_vm(
 
     // creating vm and running
     let mut vm = VM::new(
-        VmSettings::new(gc_threshold, gc_threshold_grow_factor, gc_debug),
         bytecode.builtins,
         bytecode.modules,
     );
 
     // handling errors
     match vm.run_module(&bytecode.main) {
-        Ok(module) => memory::free_value(module),
         Err(err) => error!(Error::own_text(
             Address::unknown(),
             format!("control flow leak: {err:?}"),
             "report this error to the developer."
         )),
+        _ => {}
     }
 
     // benchmark end
@@ -284,7 +276,4 @@ unsafe fn run_vm(
             duration as f64 / 1_000_000f64
         );
     }
-
-    // cleanup
-    vm.cleanup();
 }

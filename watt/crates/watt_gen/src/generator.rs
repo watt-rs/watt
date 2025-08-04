@@ -36,7 +36,6 @@ impl<'import_key> BytecodeGenerator<'import_key> {
             resolved: HashMap::new(),
             libraries: HashMap::from([
                 ("std.io", PathBuf::from("./libs/std/std_io.wt")),
-                ("std.gc", PathBuf::from("./libs/std/std_gc.wt")),
                 ("std.errors", PathBuf::from("./libs/std/std_errors.wt")),
                 ("std.convert", PathBuf::from("./libs/std/std_convert.wt")),
                 ("std.time", PathBuf::from("./libs/std/std_time.wt")),

@@ -1,344 +1,124 @@
-// imports
 use crate::memory::memory;
-use crate::table::Table;
-use crate::values::{FnOwner, Module, Value};
-use crate::vm::VM;
-use rustc_hash::FxHashSet;
-use std::borrow::Cow;
-use std::collections::HashMap;
+use std::{
+    fmt::Debug,
+    hash::{Hash, Hasher},
+    ops::{Deref, DerefMut},
+    ptr::NonNull,
+};
 
-/// Garbage collector
-///
-/// * `objects`: contains all ever allocated values, what alive.
-/// * `marked`: contains all marked values during collect_garbage.
-/// * `marked_tables`: contains all marked tables during collect_garbage.
-/// * `guard`: contains all guarded from garbage collection objects.
-/// * `debug`: enable/disable debug messages
-///
+/// Garbage collectable value
 #[derive(Debug)]
-pub struct GC {
-    objects: FxHashSet<Value>,
-    marked: FxHashSet<Value>,
-    marked_tables: FxHashSet<*mut Table>,
-    guard: Vec<Value>,
-    debug: bool,
+struct GcInner<T: ?Sized> {
+    ref_count: usize,
+    value: *mut T,
 }
 
-/// Mark & sweep garbage collector implementation
-impl GC {
-    /// New gc
-    pub fn new(debug: bool) -> GC {
-        GC {
-            objects: FxHashSet::default(),
-            marked: FxHashSet::default(),
-            marked_tables: FxHashSet::default(),
-            guard: Vec::new(),
-            debug,
-        }
-    }
+/// Garbage collectable value
+/// based on refcounter mechanism
+#[derive(Debug)]
+pub struct Gc<T> {
+    inner: NonNull<GcInner<T>>,
+}
 
-    /// Prints message by calling
-    /// closure, if debug is enabled
-    fn log<F: FnOnce() -> Cow<'static, str>>(&self, message: F) {
-        if self.debug {
-            println!("{}", message());
-        }
-    }
-
-    /// Resets `marked` and `marked_tables` after garbage collection
-    fn reset(&mut self) {
-        self.marked.clear();
-        self.marked_tables.clear();
-    }
-
-    /// Marks value
-    ///
-    /// Mark will be affected only on the
-    /// reference types except Type && Trait
-    ///
-    #[allow(unused_parens)]
-    pub fn mark_value(&mut self, value: Value) {
-        // if value is already marked, skip
-        if self.marked.contains(&value) {
-            return;
-        }
-        // logging marking value
-        self.log(|| Cow::Owned(format!("gc :: mark :: value = {value:?}")));
-        // marking reference types
-        match value {
-            Value::Instance(instance) => unsafe {
-                self.mark_table((*instance).fields);
-                self.marked.insert(value);
-            },
-            Value::Fn(f) => unsafe {
-                self.marked.insert(value);
-                self.mark_table((*f).closure);
-                if (*f).owner.is_some() {
-                    match (*f).owner.clone().unwrap() {
-                        FnOwner::Unit(unit) => {
-                            self.mark_value(Value::Unit(unit));
-                        }
-                        FnOwner::Instance(unit) => {
-                            self.mark_value(Value::Instance(unit));
-                        }
-                        _ => {}
-                    }
-                }
-            },
-            Value::Unit(unit) => unsafe {
-                self.mark_table((*unit).fields);
-                self.marked.insert(value);
-            },
-            Value::Native(_) => {
-                self.marked.insert(value);
-            }
-            Value::String(_) => {
-                self.marked.insert(value);
-            }
-            Value::List(list) => unsafe {
-                for value in &*list {
-                    self.mark_value(*value);
-                }
-                self.marked.insert(value);
-            },
-            Value::Any(_) => {
-                self.marked.insert(value);
-            }
-            _ => {}
-        }
-    }
-
-    /// Marks module
-    unsafe fn mark_modules(&mut self, modules: &HashMap<usize, *mut Module>) {
-        // marking modules
-        for module in modules.values() {
-            self.mark_table((**module).table);
-        }
-    }
-
-    /// Marks table
-    /// if it's not already marked
-    ///
-    /// Marks values inside
-    ///
-    unsafe fn mark_table(&mut self, table: *mut Table) {
-        // checking pointer is not null
-        if table.is_null() {
-            return;
-        }
-        // if table is already marked, skip
-        if self.marked_tables.contains(&table) {
-            return;
-        }
-        // adding to marked list
-        self.marked_tables.insert(table);
-        // logging marked table
-        self.log(|| Cow::Owned(format!("gc :: mark :: table = {table:?}")));
-        // marking table values
-        for val in (*table).fields.values() {
-            self.mark_value(*val);
-        }
-        // marking table closure
-        if !(*table).closure.is_null() {
-            self.mark_table((*table).closure);
-        }
-        // marking table root
-        if !(*table).root.is_null() {
-            self.mark_table((*table).root);
-        }
-        // marking table parent
-        if !(*table).parent.is_null() {
-            self.mark_table((*table).parent);
-        }
-    }
-
-    /// Sweeps up trash
-    /// Freeing unmarked objects during mark phase
-    ///
-    fn sweep(&mut self) {
-        // logging sweep is running
-        self.log(|| Cow::Borrowed("gc :: sweep :: running"));
-        // finding unmarked objects
-        let mut to_free = vec![];
-        self.objects.retain(|value| {
-            if self.marked.contains(value) {
-                true
-            } else {
-                to_free.push(*value);
-                false
-            }
+/// Garbage collectable value implementation
+impl<T> Gc<T> {
+    /// New gc value, allocates value in heap
+    pub fn new(value: T) -> Self {
+        let value_ptr = memory::alloc_value(value);
+        let gc_inner_ptr = memory::alloc_value(GcInner {
+            value: value_ptr,
+            ref_count: 1,
         });
-        // freeing this objects
-        for value in to_free {
-            self.free_value(value);
+        match NonNull::new(gc_inner_ptr) {
+            Some(gc_inner_non_null) => Gc {
+                inner: gc_inner_non_null,
+            },
+            None => panic!("NonNull::new returned Option::None."),
         }
     }
 
-    /// Adding object to allocated list
-    /// Necessary for all reference type
-    /// values except Type && Trait
-    ///
-    pub fn add_object(&mut self, value: Value) {
-        match value {
-            Value::Instance(_)
-            | Value::Fn(_)
-            | Value::Native(_)
-            | Value::String(_)
-            | Value::Unit(_)
-            | Value::List(_)
-            | Value::Any(_) => {
-                if !self.objects.contains(&value) {
-                    self.objects.insert(value);
-                }
-            }
-            _ => {}
+    /// New gc value from raw ptr
+    pub(crate) fn from_raw(raw: *mut T) -> Gc<T> {
+        let gc_inner_ptr = memory::alloc_value(GcInner {
+            value: raw,
+            ref_count: 1,
+        });
+        match NonNull::new(gc_inner_ptr) {
+            Some(gc_inner_non_null) => Gc {
+                inner: gc_inner_non_null,
+            },
+            None => panic!("NonNull::new returned Option::None."),
         }
     }
 
-    /// Freeing value
-    fn free_value(&self, value: Value) {
-        // logging value is freeing
-        self.log(|| Cow::Owned(format!("gc :: free :: value = {value:?}")));
-        // free
-        match value {
-            Value::Fn(f) => {
-                if !f.is_null() {
-                    memory::free_value(f);
-                }
-            }
-            Value::Instance(i) => {
-                if !i.is_null() {
-                    memory::free_value(i);
-                }
-            }
-            Value::String(s) => {
-                if !s.is_null() {
-                    memory::free_const_value(s);
-                }
-            }
-            Value::Native(n) => {
-                if !n.is_null() {
-                    memory::free_value(n);
-                }
-            }
-            Value::Unit(u) => {
-                if !u.is_null() {
-                    memory::free_value(u);
-                }
-            }
-            Value::List(l) => {
-                if !l.is_null() {
-                    memory::free_value(l);
-                }
-            }
-            Value::Any(a) => {
-                if !a.is_null() {
-                    memory::free_value(a);
-                }
-            }
-            _ => {
-                println!("unexpected gc value = {value:?}.");
-            }
+    /// As raw
+    pub fn raw(&self) -> *mut T {
+        unsafe { self.inner.as_ref().value }
+    }
+
+    /// Strong count
+    pub fn strong_count(&self) -> usize {
+        unsafe { (*self.inner.as_ptr()).ref_count }
+    }
+
+    /// Clone ref
+    pub fn clone_ref(&self) -> Self {
+        unsafe {
+            let inner = self.inner.as_ptr();
+            (*inner).ref_count += 1;
         }
+        Self { inner: self.inner }
     }
-
-    /// Push value to guard stack
-    /// Protects the value from being freed during
-    /// sweep phase
-    ///
-    pub fn push_guard(&mut self, value: Value) {
-        self.guard.push(value);
-    }
-
-    /// Pop value from the guard stack
-    pub fn pop_guard(&mut self) {
-        self.guard.pop();
-    }
-
-    /// Collect garbage
-    /// Collects unused values
-    ///
-    /// Has medium runtime cost
-    ///
-    pub unsafe fn collect_garbage(&mut self, vm: &mut VM, table: *mut Table) {
-        // logging gc is triggered
-        self.log(|| Cow::Borrowed("gc :: triggered"));
-
-        // mark phase
-        // > stack
-        for val in &vm.stack {
-            self.mark_value(*val)
-        }
-        // > natives
-        self.mark_table(vm.natives_table);
-        // > modules
-        self.mark_modules(&vm.modules);
-        // > table
-        self.mark_table(table);
-        // > guard
-        for value in self.guard.clone() {
-            self.mark_value(value);
-        }
-
-        // sweep phase
-        self.sweep();
-
-        // reset gc mark vectors
-        self.reset();
-
-        // log gc ended
-        self.log(|| Cow::Borrowed("gc :: end"));
-    }
-
-    /// Allocated values amount
-    pub fn objects_amount(&mut self) -> usize {
-        self.objects.len()
-    }
-
-    /// Full garbage collector cleanup
-    /// Freeing all allocated values
-    pub fn cleanup(&mut self) {
-        // log gc is cleaning up
-        self.log(|| Cow::Owned(format!("gc :: cleanup :: {:?}", self.objects.len())));
-
-        // freeing objects
-        for value in &self.objects {
-            self.free_value(*value);
-        }
+}
+/// Clone implementation
+impl<T> Clone for Gc<T> {
+    fn clone(&self) -> Gc<T> {
+        self.clone_ref()
     }
 }
 
-/// Garbage collector guard
-///
-/// A RAII style struct around
-/// garbage collector's push_guard,
-/// pop_guard
-///
-pub struct GcGuard {
-    gc: *mut GC,
-}
-/// Garbage collector guard implementation
-impl GcGuard {
-    /// New garbage collector guard
-    pub unsafe fn new(gc: *mut GC, value: Value) -> Self {
-        (*gc).push_guard(value);
-        GcGuard { gc }
-    }
-}
-/// Drop of garabage collector guard
-impl Drop for GcGuard {
+/// Drop implementation
+impl<T> Drop for Gc<T> {
     fn drop(&mut self) {
         unsafe {
-            (*self.gc).pop_guard();
+            let inner = self.inner.as_ptr();
+            (*inner).ref_count -= 1;
+            if (*inner).ref_count == 0 {
+                memory::free_value((*inner).value);
+                memory::free_value(inner);
+            }
         }
     }
 }
 
-/// Garbage collector guard
-/// RAII style macros
-#[macro_export]
-macro_rules! gc_guard {
-    ($gc:expr, $value:expr) => {
-        let _guard = GcGuard::new($gc, $value);
-    };
+/// Deref implementation
+impl<T> Deref for Gc<T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        unsafe { &*self.raw() }
+    }
+}
+
+/// DerefMut implementation
+impl<T> DerefMut for Gc<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        unsafe { &mut *self.raw() }
+    }
+}
+
+/// Partialeq implementation
+impl<T> PartialEq for Gc<T> {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self.inner.as_ptr(), other.inner.as_ptr())
+    }
+}
+
+/// Eq implementation
+impl<T> Eq for Gc<T> {}
+
+/// Hash implementation
+impl<T> Hash for Gc<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.raw().hash(state);
+    }
 }

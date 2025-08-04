@@ -7,7 +7,7 @@
 // modules
 pub mod bytecode;
 pub(crate) mod flow;
-pub mod memory;
+pub(crate) mod memory;
 pub(crate) mod natives;
 pub(crate) mod table;
 pub mod values;

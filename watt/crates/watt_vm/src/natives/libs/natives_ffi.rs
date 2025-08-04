@@ -1,5 +1,6 @@
 // imports
 use crate::bytecode::OpcodeValue;
+use crate::memory::gc::Gc;
 use crate::memory::memory;
 use crate::natives::natives;
 use crate::natives::utils;
@@ -204,11 +205,13 @@ impl FFIValue {
     /// Creates ptr FFIValue from Value
     pub fn ptr(address: &Address, value: Value) -> Self {
         match value {
-            Value::Any(a) => FFIValue {
-                ptr: a as *const c_void,
+            Value::Any(a) => unsafe {
+                FFIValue {
+                    ptr: (*a.raw()) as *const c_void,
+                }
             },
             Value::String(s) => FFIValue {
-                ptr: s as *const c_void,
+                ptr: s.raw() as *const c_void,
             },
             _ => {
                 error!(Error::own_text(
@@ -390,14 +393,7 @@ impl FFILibrary {
     }
 
     /// Call function from cache
-    pub unsafe fn call_fn(
-        &mut self,
-        vm: &mut VM,
-        table: *mut Table,
-        addr: Address,
-        name: String,
-        args: *mut Vec<Value>,
-    ) -> Value {
+    pub unsafe fn call_fn(&mut self, addr: Address, name: String, args: Gc<Vec<Value>>) -> Value {
         // loading fn
         let func = self
             .fns
@@ -423,7 +419,7 @@ impl FFILibrary {
         // converting arguments
         let mut ffi_args: Vec<FFIValue> = Vec::with_capacity(func.sign.len());
         for (index, param) in func.sign.iter().enumerate() {
-            let arg = (*args)[index];
+            let arg = args[index].clone();
             match param {
                 FFIType::I8 => ffi_args.push(FFIValue::i8(&addr, arg)),
                 FFIType::U8 => ffi_args.push(FFIValue::u8(&addr, arg)),
@@ -499,18 +495,13 @@ impl FFILibrary {
             }
             FFIType::Pointer => {
                 let result = func.cif.call::<*mut c_void>(func.ptr, &call_args);
-                let value = Value::Any(result);
-                vm.gc_guard(value);
-                vm.gc_register(value, table);
-                vm.gc_unguard();
+                let any_ptr: *mut dyn std::any::Any = result as *mut dyn std::any::Any;
+                let value = Value::Any(Gc::new(any_ptr));
                 value
             }
             FFIType::String => {
                 let result = func.cif.call::<*mut c_void>(func.ptr, &call_args);
-                let value = Value::String(result as *const String);
-                vm.gc_guard(value);
-                vm.gc_register(value, table);
-                vm.gc_unguard();
+                let value = Value::String(Gc::from_raw(result as *mut String));
                 value
             }
             FFIType::Isize => {
@@ -537,7 +528,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         1,
         "ffi@load",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let name = utils::expect_cloned_string(&addr, vm.pop(&addr));
             let path = utils::expect_cloned_string(&addr, vm.pop(&addr));
 
@@ -551,12 +542,9 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
                     ));
                 }
                 let unwrapped_lib = lib.unwrap();
-                vm.op_push(
-                    OpcodeValue::Raw(Value::Any(memory::alloc_value(FFILibrary::new(
-                        unwrapped_lib,
-                    )))),
-                    table,
-                )?;
+                vm.op_push(OpcodeValue::Raw(Value::Any(Gc::new(memory::alloc_value(
+                    FFILibrary::new(unwrapped_lib),
+                )))))?;
             }
 
             Ok(())
@@ -567,7 +555,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         4,
         "ffi@load_fn",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let out = utils::expect_string(&addr, vm.pop(&addr));
             let params = utils::expect_string_list(&addr, vm.pop(&addr));
             let name = utils::expect_string(&addr, vm.pop(&addr));
@@ -601,15 +589,15 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Err
         built_in_address.clone(),
         3,
         "ffi@call_fn",
-        |vm: &mut VM, addr: Address, should_push: bool, table: *mut Table| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let args = utils::expect_list(&addr, vm.pop(&addr));
             let name = utils::expect_string(&addr, vm.pop(&addr));
             let lib = utils::expect_any(&addr, vm.pop(&addr), None);
 
             if let Some(library) = (*lib).downcast_mut::<FFILibrary>() {
-                let result = library.call_fn(vm, table, addr, (*name).clone(), args);
+                let result = library.call_fn(addr, (*name).clone(), args);
                 if should_push {
-                    vm.op_push(OpcodeValue::Raw(result), table)?;
+                    vm.op_push(OpcodeValue::Raw(result))?;
                 }
             } else {
                 error!(Error::own_text(
