@@ -1,7 +1,9 @@
 // imports
 use crate::bytecode::Chunk;
 use crate::flow::ControlFlow;
+use crate::mark;
 use crate::memory::gc::Gc;
+use crate::memory::tracer::{Trace, Tracer};
 use crate::table::Table;
 use crate::vm::VM;
 use std::any::Any;
@@ -19,10 +21,16 @@ use watt_common::address::Address;
 pub struct Module {
     pub table: Gc<Table>,
 }
-/// Unit implementation
+/// Module implementation
 impl Module {
     pub fn new(table: Gc<Table>) -> Module {
         Module { table }
+    }
+}
+/// Trace implementation for module
+impl Trace for Module {
+    unsafe fn trace(&self, self_ptr: *mut dyn Trace, tracer: &mut Tracer) {
+        mark!(tracer, self_ptr, &self.table);
     }
 }
 
@@ -58,6 +66,13 @@ impl Type {
         }
     }
 }
+/// Trace implementation for type
+impl Trace for Type {
+    unsafe fn trace(&self, self_ptr: *mut dyn Trace, tracer: &mut Tracer) {
+        mark!(tracer, self_ptr, &self.body);
+        mark!(tracer, self_ptr, &self.defined_in);
+    }
+}
 
 /// Instance structure
 ///
@@ -78,6 +93,13 @@ impl Instance {
         Instance { t, fields }
     }
 }
+/// Trace implementation for instance
+impl Trace for Instance {
+    unsafe fn trace(&self, self_ptr: *mut dyn Trace, tracer: &mut Tracer) {
+        mark!(tracer, self_ptr, &self.t);
+        mark!(tracer, self_ptr, &self.fields);
+    }
+}
 
 /// Unit structure
 ///
@@ -89,16 +111,17 @@ impl Instance {
 pub struct Unit {
     pub name: String,
     pub fields: Gc<Table>,
-    pub defined_in: Gc<Table>,
 }
 /// Unit implementation
 impl Unit {
-    pub fn new(name: String, fields: Gc<Table>, defined_in: Gc<Table>) -> Unit {
-        Unit {
-            name,
-            fields,
-            defined_in,
-        }
+    pub fn new(name: String, fields: Gc<Table>) -> Unit {
+        Unit { name, fields }
+    }
+}
+/// Trace implementation for unit
+impl Trace for Unit {
+    unsafe fn trace(&self, self_ptr: *mut dyn Trace, tracer: &mut Tracer) {
+        mark!(tracer, self_ptr, &self.fields);
     }
 }
 
@@ -162,6 +185,10 @@ impl Trait {
         Trait { name, functions }
     }
 }
+/// Trace implementation for trace
+impl Trace for Trait {
+    unsafe fn trace(&self, _: *mut dyn Trace, _: &mut Tracer) {}
+}
 /// Trait drop implementation
 impl Drop for Trait {
     fn drop(&mut self) {
@@ -182,6 +209,16 @@ pub enum FnOwner {
     Instance(Gc<Instance>),
     Module(Gc<Module>),
 }
+/// Trace implementation for fn owner
+impl Trace for FnOwner {
+    unsafe fn trace(&self, self_ptr: *mut dyn Trace, tracer: &mut Tracer) {
+        match self {
+            FnOwner::Unit(unit) => mark!(tracer, self_ptr, unit),
+            FnOwner::Instance(instance) => mark!(tracer, self_ptr, instance),
+            FnOwner::Module(module) => mark!(tracer, self_ptr, module),
+        }
+    }
+}
 
 /// Function
 ///
@@ -195,7 +232,7 @@ pub struct Function {
     pub name: String,
     pub body: Gc<Chunk>,
     pub params: Vec<String>,
-    pub owner: Option<FnOwner>,
+    pub owner: Option<Gc<FnOwner>>,
     pub closure: Option<Gc<Table>>,
 }
 /// Function implementation
@@ -208,6 +245,18 @@ impl Function {
             params,
             owner: None,
             closure: None,
+        }
+    }
+}
+/// Trace implementation for function
+impl Trace for Function {
+    unsafe fn trace(&self, self_ptr: *mut dyn Trace, tracer: &mut Tracer) {
+        mark!(tracer, self_ptr, &self.body);
+        if let Some(owner) = &self.owner {
+            mark!(tracer, self_ptr, &owner);
+        }
+        if let Some(closure) = &self.closure {
+            mark!(tracer, self_ptr, &closure);
         }
     }
 }
@@ -240,6 +289,12 @@ impl Native {
             function,
             defined_in,
         }
+    }
+}
+/// Trace implementation for native
+impl Trace for Native {
+    unsafe fn trace(&self, self_ptr: *mut dyn Trace, tracer: &mut Tracer) {
+        mark!(tracer, self_ptr, &self.defined_in);
     }
 }
 

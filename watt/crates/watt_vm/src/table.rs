@@ -1,5 +1,7 @@
+use crate::mark;
 // imports
 use crate::memory::gc::Gc;
+use crate::memory::tracer::{Trace, Tracer};
 use crate::values::Value;
 use rustc_hash::FxHashMap;
 use watt_common::address::Address;
@@ -21,12 +23,6 @@ pub struct Table {
     pub closure: Option<Gc<Table>>,
 }
 /// Table implementation
-impl Default for Table {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Table {
     /// New table
     pub fn new() -> Table {
@@ -209,6 +205,18 @@ impl Table {
         );
         if let Some(ref closure) = self.closure {
             closure.print(indent + 1);
+        }
+    }
+}
+
+/// Trace implementation for table
+impl Trace for Table {
+    unsafe fn trace(&self, self_ptr: *mut dyn Trace, tracer: &mut Tracer) {
+        if let Some(closure) = &self.closure {
+            mark!(tracer, self_ptr, &closure);
+        }
+        if let Some(root) = &self.root {
+            mark!(tracer, self_ptr, &root);
         }
     }
 }

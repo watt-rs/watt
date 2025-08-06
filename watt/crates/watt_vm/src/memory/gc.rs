@@ -1,4 +1,8 @@
-use crate::memory::memory;
+/// Imports
+use crate::memory::{
+    memory,
+    tracer::{Trace, Tracer},
+};
 use std::{
     fmt::Debug,
     hash::{Hash, Hasher},
@@ -70,6 +74,7 @@ impl<T> Gc<T> {
         Self { inner: self.inner }
     }
 }
+
 /// Clone implementation
 impl<T> Clone for Gc<T> {
     fn clone(&self) -> Gc<T> {

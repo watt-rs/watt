@@ -12,9 +12,7 @@ use watt_common::{address::Address, error, errors::Error};
 use watt_gen::generator::{BytecodeGenerator, GeneratorResult};
 use watt_lex::{lexer::Lexer, tokens::Token};
 use watt_parse::parser::Parser;
-use watt_vm::{
-    vm::{VM},
-};
+use watt_vm::vm::VM;
 
 /// Reading file
 ///
@@ -120,10 +118,7 @@ pub unsafe fn run(
     let compiled = compile(analyzed, opcodes_debug, compile_bench);
 
     // run compiled opcodes chunk with vm
-    run_vm(
-        compiled,
-        runtime_bench,
-    );
+    run_vm(compiled, runtime_bench);
 }
 
 /// Crashes program with text
@@ -240,25 +235,21 @@ pub unsafe fn compile(ast: Node, opcodes_debug: bool, bench: bool) -> GeneratorR
 /// * gc_threshold: garbage collector threshold
 /// * gc_threshold_grow_factor: garbage collector threshold grow factor
 #[allow(unused_qualifications)]
-unsafe fn run_vm(
-    bytecode: GeneratorResult,
-    bench: bool,
-) {
+unsafe fn run_vm(bytecode: GeneratorResult, bench: bool) {
     // benchmark
     let start = std::time::Instant::now();
 
     // creating vm and running
-    let mut vm = VM::new(
-        bytecode.builtins,
-        bytecode.modules,
-    );
+    let mut vm = VM::new(bytecode.builtins, bytecode.modules);
 
     // handling errors
-    if let Err(err) = vm.run_module(&bytecode.main) { error!(Error::own_text(
-        Address::unknown(),
-        format!("control flow leak: {err:?}"),
-        "report this error to the developer."
-    )) }
+    if let Err(err) = vm.run_module(&bytecode.main) {
+        error!(Error::own_text(
+            Address::unknown(),
+            format!("control flow leak: {err:?}"),
+            "report this error to the developer."
+        ))
+    }
 
     // benchmark end
     if bench {

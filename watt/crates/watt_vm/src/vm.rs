@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::ops::Deref;
 
 // imports
 use crate::bytecode::{Chunk, ModuleInfo, Opcode, OpcodeValue};
@@ -443,9 +444,7 @@ impl VM {
         // error
         let invalid_op_error = Error::own_text(
             address.clone(),
-            format!(
-                "could not use '{op}' for {operand_a:?} and {operand_b:?}"
-            ),
+            format!("could not use '{op}' for {operand_a:?} and {operand_b:?}"),
             "check your code.",
         );
         // conditional op
@@ -926,7 +925,7 @@ impl VM {
     /// Goes through the table fields,
     /// search functions and then binds owner
     /// to them.
-    unsafe fn bind_functions(&mut self, mut table: Gc<Table>, owner: FnOwner) {
+    unsafe fn bind_functions(&mut self, mut table: Gc<Table>, owner: Gc<FnOwner>) {
         for val in table.fields.values_mut() {
             if let Value::Fn(function) = val {
                 function.owner = Some(owner.clone());
@@ -983,11 +982,7 @@ impl VM {
         mut table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         // allocating unit
-        let mut unit = Gc::new(Unit::new(
-            name.clone(),
-            Gc::new(Table::new()),
-            table.clone(),
-        ));
+        let mut unit = Gc::new(Unit::new(name.clone(), Gc::new(Table::new())));
 
         // unit value
         let unit_value = Value::Unit(unit.clone());
@@ -1007,7 +1002,7 @@ impl VM {
         unit.fields.fields.remove("self");
 
         // binding function
-        self.bind_functions(unit.fields.clone(), FnOwner::Unit(unit.clone()));
+        self.bind_functions(unit.fields.clone(), Gc::new(FnOwner::Unit(unit.clone())));
 
         // calling optional init fn
         let init_fn = "init";
@@ -1176,9 +1171,6 @@ impl VM {
     ) -> Result<(), ControlFlow> {
         // non-previous
         if !has_previous {
-            // value
-            
-
             // loading variable value from table
             let value = table.lookup(addr, name);
 
@@ -1337,19 +1329,21 @@ impl VM {
             call_table.closure = function.closure.clone();
 
             // root & self
-            if let Some(owner) = &function.owner { match owner {
-                FnOwner::Unit(unit) => {
-                    call_table.set_root(unit.fields.clone());
-                    call_table.define(addr, "self", Value::Unit(unit.clone()));
+            if let Some(owner) = &function.owner {
+                match (*owner).deref() {
+                    FnOwner::Unit(unit) => {
+                        call_table.set_root(unit.fields.clone());
+                        call_table.define(addr, "self", Value::Unit(unit.clone()));
+                    }
+                    FnOwner::Instance(instance) => {
+                        call_table.set_root(instance.fields.clone());
+                        call_table.define(addr, "self", Value::Instance(instance.clone()));
+                    }
+                    FnOwner::Module(module) => {
+                        call_table.set_root(module.table.clone());
+                    }
                 }
-                FnOwner::Instance(instance) => {
-                    call_table.set_root(instance.fields.clone());
-                    call_table.define(addr, "self", Value::Instance(instance.clone()));
-                }
-                FnOwner::Module(module) => {
-                    call_table.set_root(module.table.clone());
-                }
-            } }
+            }
 
             // passing args
             pass_arguments(
@@ -1535,9 +1529,7 @@ impl VM {
                                 addr.clone(),
                                 format!(
                                     "type {} impls {}, but fn {} has wrong impl.",
-                                    instance_type.name,
-                                    trait_name,
-                                    function.name
+                                    instance_type.name, trait_name, function.name
                                 ),
                                 format!(
                                     "expected args {}, got {}",
@@ -1688,7 +1680,10 @@ impl VM {
                 self.check_traits(addr, instance.clone(), t.defined_in.clone());
 
                 // binding functions
-                self.bind_functions(instance.fields.clone(), FnOwner::Instance(instance.clone()));
+                self.bind_functions(
+                    instance.fields.clone(),
+                    Gc::new(FnOwner::Instance(instance.clone())),
+                );
 
                 // calling optional init fn
                 let init_fn = "init";
@@ -1973,7 +1968,7 @@ impl VM {
         // module
         let module = Gc::new(Module::new(module_table.clone()));
         // binding function
-        self.bind_functions(module_table, FnOwner::Module(module.clone()));
+        self.bind_functions(module_table, Gc::new(FnOwner::Module(module.clone())));
         // returning module
         Ok(module)
     }

@@ -1,7 +1,10 @@
 use std::path::PathBuf;
 
 // imports
-use crate::values::{TraitFn, Value};
+use crate::{
+    memory::tracer::{Trace, Tracer},
+    values::{TraitFn, Value},
+};
 use watt_common::address::Address;
 
 /// Module info
@@ -36,6 +39,10 @@ impl Chunk {
     pub fn opcodes(&self) -> &Vec<Opcode> {
         &self.opcodes
     }
+}
+/// Trace implementation for chunk
+impl Trace for Chunk {
+    unsafe fn trace(&self, _: *mut dyn Trace, _: &mut Tracer) {}
 }
 
 /// Opcode value
