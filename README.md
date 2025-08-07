@@ -1,5 +1,5 @@
 <p align="center">
-  <p>⛽ Oil</p>
+  <h3 align="center">⛽ Oil</h3>
   <p align="center"><i>A lightweight, expressive scripting language powered by VoltVM ⚡🍹</i>
 </p>
 
