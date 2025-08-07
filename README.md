@@ -1,6 +1,6 @@
 <p align="center">
-  <h3 align="center">⛽ Oil</h3>
-  <p align="center"><i>A lightweight, expressive scripting language powered by VoltVM ⚡🍹</i>
+  <h2 align="center">⛽ Oil.</h2>
+  <p align="center"><i>A lightweight, expressive fuel-powered language 🛢️.</i>
 </p>
 
 🧴 Oil is dynamically-typed programming language, designed to assist developers.
