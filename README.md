@@ -3,7 +3,7 @@
   <p align="center"><i>A lightweight, expressive fuel-powered language 🛢️.</i>
 </p>
 
-🧴 Oil is dynamically-typed programming language, designed to assist developers.
+🧴 Oil is dynamically-typed programming language for fuel vm, designed to assist developers.
 
 ```oil
 use io
