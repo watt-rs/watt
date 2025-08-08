@@ -1,179 +1,74 @@
-/// Imports
+// imports
 use crate::bytecode::{Chunk, ModuleInfo, Opcode, OpcodeValue};
-use crate::call_stack::environment::Environment;
-use crate::call_stack::frame::CallFrame;
 use crate::flow::ControlFlow;
 use crate::memory::gc::Gc;
-use crate::{gc_cleanup, gc_unfreeze};
-use crate::{gc_freeze, guard, natives::natives, root, unguard, values::*};
+use crate::natives::natives;
+use crate::table::Table;
+use crate::values::*;
 use oil_common::address::Address;
 use oil_common::{error, errors::Error};
 use rustc_hash::FxHashMap;
-use scopeguard::defer;
+use std::collections::HashMap;
+use std::ops::Deref;
 
 /// Virtual machine
 ///
 /// Vm that runs opcodes 🤔
 ///
 #[derive(Debug)]
-pub struct VirtualMachine {
-    pub builtins_table: Gc<Environment>,
-    pub natives_table: Gc<Environment>,
-    pub operand_stack: Vec<Value>,
-    pub modules_info: FxHashMap<usize, ModuleInfo>,
+pub struct VM {
+    pub builtins_table: Gc<Table>,
+    pub natives_table: Gc<Table>,
+    pub stack: Vec<Value>,
+    pub modules_info: HashMap<usize, ModuleInfo>,
     pub modules: FxHashMap<usize, Gc<Module>>,
-    pub call_stack: Vec<Gc<CallFrame>>,
-    pub module_stack: Vec<Gc<Module>>,
 }
-
 /// Vm implementation
+#[allow(non_upper_case_globals)]
+#[allow(unused_qualifications)]
 #[allow(unsafe_op_in_unsafe_fn)]
-impl VirtualMachine {
+impl VM {
     /// New vm
-    pub unsafe fn new(
-        builtins: Chunk,
-        modules_info: FxHashMap<usize, ModuleInfo>,
-    ) -> VirtualMachine {
+    pub unsafe fn new(builtins: Chunk, modules_info: HashMap<usize, ModuleInfo>) -> VM {
         // vm
-        let mut vm = VirtualMachine {
-            builtins_table: Gc::new(Environment::new()),
-            natives_table: Gc::new(Environment::new()),
-            operand_stack: Vec::new(),
+        let mut vm = VM {
+            builtins_table: Gc::new(Table::new()),
+            natives_table: Gc::new(Table::new()),
+            stack: Vec::new(),
             modules_info,
             modules: FxHashMap::default(),
-            call_stack: Vec::new(),
-            module_stack: Vec::new(),
         };
-        root!(vm.natives_table);
-        // freezing gc
-        gc_freeze!();
         // natives
         if let Err(e) = natives::provide_natives(&mut vm) {
             error!(e)
         }
         // running builtins
-        vm.push_frame();
-        // pushing environment
-        vm.peek_frame().push(Gc::new(Environment::new()));
-        if let Err(e) = vm.run(&builtins) {
+        if let Err(e) = vm.run(&builtins, vm.builtins_table.clone()) {
             error!(Error::own_text(
                 Address::unknown(),
                 format!("control flow leak: {e:?}"),
                 "report this error to the developer."
             ));
         }
-        vm.builtins_table = vm.pop_frame().pop();
-        root!(vm.builtins_table);
-        // unfreezing gc
-        gc_unfreeze!();
-        // returning vm
+        // returns vm
         vm
     }
 
-    /// Cleanups vm
-    pub fn cleanup(&mut self) {
-        gc_cleanup!()
-    }
-
-    /// Pushes frame to vm call stack
-    pub fn push_frame(&mut self) {
-        let frame = Gc::new(CallFrame::new());
-        guard!(frame);
-        self.call_stack.push(frame);
-        self.peek_frame().push(Gc::new(Environment::new()));
-    }
-
-    /// Pushes frame with closure to vm call stack
-    pub fn push_frame_with_closure(&mut self, environment: Gc<Environment>) {
-        let frame = Gc::new(CallFrame::with_closure(environment));
-        guard!(frame);
-        self.call_stack.push(frame);
-        self.peek_frame().push(Gc::new(Environment::new()));
-    }
-
-    /// Pops frame from vm call stack
-    pub fn pop_frame(&mut self) -> Gc<CallFrame> {
-        match self.call_stack.pop() {
-            Some(frame) => {
-                unguard!(frame);
-                frame
-            }
-            None => panic!("call stack is empty. report this error to the developer."),
-        }
-    }
-
-    /// Peeks vm frame
-    pub fn peek_frame(&self) -> Gc<CallFrame> {
-        match self.call_stack.last() {
-            Some(frame) => frame.clone(),
-            None => panic!("call stack is empty. report this error to the developer."),
-        }
-    }
-
-    /// Pushes module to vm module stack
-    pub fn push_module(&mut self, module: Gc<Module>) {
-        guard!(module);
-        self.module_stack.push(module);
-    }
-
-    /// Pops module from vm module stack
-    pub fn pop_module(&mut self) -> Gc<Module> {
-        match self.module_stack.pop() {
-            Some(moudle) => {
-                unguard!(moudle);
-                moudle
-            }
-            None => panic!("call stack is empty. report this error to the developer."),
-        }
-    }
-
-    /// Peeks vm module
-    pub fn peek_module(&self) -> Gc<Module> {
-        match self.module_stack.last() {
-            Some(module) => module.clone(),
-            None => panic!("call stack is empty. report this error to the developer."),
-        }
-    }
-
-    /// Pushes value to vm stack
+    /// Push value to vm stack
     pub unsafe fn push(&mut self, value: Value) {
-        self.operand_stack.push(value);
+        self.stack.push(value);
     }
 
-    /// Popes value from vm stack
+    /// Pop value from vm stack
     pub fn pop(&mut self, address: &Address) -> Value {
-        if self.operand_stack.is_empty() {
+        if self.stack.is_empty() {
             error!(Error::new(
                 address.clone(),
                 "stack underflow.",
                 "check your code."
             ));
         }
-        self.operand_stack.pop().unwrap()
-    }
-
-    /// Defines variable in last environment, in last frame
-    pub fn define_variable(&mut self, address: &Address, name: &str, value: Value) {
-        self.peek_frame().define(address, name, value);
-    }
-
-    /// Stores variable in last environment, in last frame
-    pub fn store_variable(&mut self, address: &Address, name: &str, value: Value) {
-        self.peek_frame().store(address, name, value);
-    }
-
-    /// Loads variable from last environment, in last frame
-    pub fn load_variable(&self, address: &Address, name: &str) -> Value {
-        if self.peek_frame().is_exists(name) {
-            self.peek_frame().load(address, name)
-        } else {
-            self.builtins_table.load(address, name)
-        }
-    }
-
-    /// Deletes variable in last environment, in last frame
-    pub fn delete_variable(&mut self, address: &Address, name: &str) {
-        self.peek_frame().delete(address, name);
+        self.stack.pop().unwrap()
     }
 
     /// Opcode: Push value to vm stack
@@ -307,6 +202,7 @@ impl VirtualMachine {
                             &operand_a.to_string(),
                             &operand_b.to_string(),
                         );
+
                         self.push(string);
                     } else {
                         error!(invalid_op_error);
@@ -799,6 +695,7 @@ impl VirtualMachine {
         a: &Chunk,
         b: &Chunk,
         op: &str,
+        table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         // expect bool
         fn expect_bool(value: Value, error: Error) -> bool {
@@ -811,7 +708,7 @@ impl VirtualMachine {
         }
 
         // running first chunk
-        self.run(a)?;
+        self.run(a, table.clone())?;
         let operand_a = self.pop(address);
 
         // operand a
@@ -834,7 +731,7 @@ impl VirtualMachine {
                 // if operand_a pushed true
                 else {
                     // evaluating second chunk
-                    self.run(b)?;
+                    self.run(b, table)?;
                     let operand_b = self.pop(address);
                     // operand b
                     let b = expect_bool(
@@ -857,7 +754,7 @@ impl VirtualMachine {
                 // if operand_a pushed true
                 else {
                     // evaluating second chunk
-                    self.run(b)?;
+                    self.run(b, table)?;
                     let operand_b = self.pop(address);
                     // operand b
                     let b = expect_bool(
@@ -887,28 +784,22 @@ impl VirtualMachine {
         cond: &Chunk,
         body: &Chunk,
         elif: &Option<Chunk>,
+        root: Gc<Table>,
     ) -> Result<(), ControlFlow> {
-        // getting frame
-        let mut call_frame = self.peek_frame();
-
-        // pushing environment
-        call_frame.push(Gc::new(Environment::new()));
-
-        // popping environment
-        defer! {
-            call_frame.pop();
-        }
+        // condition table
+        let mut table = Gc::new(Table::new());
+        table.set_root(root);
 
         // running condition
-        self.run(cond)?;
+        self.run(cond, table.clone())?;
         let bool = self.pop(addr);
 
         // checking condition returned true
         if let Value::Bool(b) = bool {
             if b {
-                self.run(body)?
+                self.run(body, table)?
             } else if let Option::Some(else_if) = elif {
-                self.run(else_if)?
+                self.run(else_if, table)?
             }
         } else {
             error!(Error::own_text(
@@ -923,21 +814,19 @@ impl VirtualMachine {
 
     /// Opcode: Loop
     #[allow(unused_variables)]
-    unsafe fn op_loop(&mut self, addr: &Address, body: &Chunk) -> Result<(), ControlFlow> {
-        // getting frame
-        let mut call_frame = self.peek_frame();
-
-        // pushing environment
-        call_frame.push(Gc::new(Environment::new()));
-
-        // popping environment
-        defer! {
-            call_frame.pop();
-        }
+    unsafe fn op_loop(
+        &mut self,
+        addr: &Address,
+        body: &Chunk,
+        root: Gc<Table>,
+    ) -> Result<(), ControlFlow> {
+        // loop table
+        let mut table = Gc::new(Table::new());
+        table.set_root(root);
 
         // loop
         loop {
-            if let Err(e) = self.run(body) {
+            if let Err(e) = self.run(body, table.clone()) {
                 match e {
                     ControlFlow::Continue => {
                         continue;
@@ -970,21 +859,27 @@ impl VirtualMachine {
         name: &String,
         body: &Chunk,
         params: &[String],
+        make_closure: bool,
+        mut table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         // allocating function
-        let function = Gc::new(Function::new(
+        let mut function = Gc::new(Function::new(
             name.clone(),
             Gc::new(body.clone()),
             params.to_owned(),
-            self.peek_module(),
-            self.peek_frame().peek(),
         ));
+
+        // if it's need to make_closure
+        if make_closure {
+            // setting closure
+            function.closure = Some(table.clone());
+        }
 
         // function value
         let function_value = Value::Fn(function);
 
         // defining fn by name and full name
-        self.define_variable(addr, name, function_value);
+        table.define(addr, name, function_value);
 
         Ok(())
     }
@@ -1000,15 +895,21 @@ impl VirtualMachine {
         &mut self,
         body: &Chunk,
         params: &[String],
+        make_closure: bool,
+        table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         // allocating function
-        let function = Gc::new(Function::new(
+        let mut function = Gc::new(Function::new(
             "$lambda".to_string(),
             Gc::new(body.clone()),
             params.to_owned(),
-            self.peek_module(),
-            self.peek_frame().peek(),
         ));
+
+        // if it's need to make_closure
+        if make_closure {
+            // setting closure
+            function.closure = Some(table.clone());
+        }
 
         // function value
         let function_value = Value::Fn(function);
@@ -1024,8 +925,8 @@ impl VirtualMachine {
     /// Goes through the table fields,
     /// search functions and then binds owner
     /// to them.
-    unsafe fn bind_functions(&mut self, mut environment: Gc<Environment>, owner: Gc<FnOwner>) {
-        for val in environment.variables.values_mut() {
+    unsafe fn bind_functions(&mut self, mut table: Gc<Table>, owner: Gc<FnOwner>) {
+        for val in table.fields.values_mut() {
             if let Value::Fn(function) = val {
                 function.owner = Some(owner.clone());
             }
@@ -1047,19 +948,20 @@ impl VirtualMachine {
         name: &String,
         body: &Chunk,
         constructor: &[String],
-        _impls: &[Chunk],
+        impls: &[String], // todo: replace &[String] with &[Opcode]
+        mut table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         // allocating type
         let t = Gc::new(Type::new(
             name.clone(),
             constructor.to_owned(),
             Gc::new(body.clone()),
-            vec![], // todo: impls.to_owned(),
-            self.peek_module(),
+            impls.to_owned(),
+            table.clone(),
         ));
 
-        // defining type by name
-        self.define_variable(addr, name.as_str(), Value::Type(t));
+        // defining type by name && full name
+        table.define(addr, name.as_str(), Value::Type(t));
         Ok(())
     }
 
@@ -1077,53 +979,47 @@ impl VirtualMachine {
         addr: &Address,
         name: &String,
         body: &Chunk,
+        mut table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
-        // pushing frame
-        self.push_frame();
-
-        // executing body
-        self.run(body)?;
-
-        // popping environment
-        let environment = self.pop_frame().pop();
-
         // allocating unit
-        let unit = Gc::new(Unit::new(name.clone(), environment, self.peek_module()));
-
-        // guarding
-        guard!(unit);
+        let mut unit = Gc::new(Unit::new(name.clone(), Gc::new(Table::new())));
 
         // unit value
         let unit_value = Value::Unit(unit.clone());
 
+        // setting root for fields
+        unit.fields.set_root(table.clone());
+
+        // inserting temp self
+        unit.fields
+            .fields
+            .insert("self".to_string(), unit_value.clone());
+
+        // executing body
+        self.run(body, unit.fields.clone())?;
+
+        // deleting temp self
+        unit.fields.fields.remove("self");
+
         // binding function
-        self.bind_functions(
-            unit.environment.clone(),
-            Gc::new(FnOwner::Unit(unit.clone())),
-        );
+        self.bind_functions(unit.fields.clone(), Gc::new(FnOwner::Unit(unit.clone())));
 
         // calling optional init fn
         let init_fn = "init";
-        if unit.environment.is_exists(init_fn) {
-            // pushing frame
-            self.push_frame();
-            // calling `init`
+        if unit.fields.exists(init_fn) {
             self.push(unit_value.clone());
-            if let Err(e) = self.op_call(addr, init_fn, true, false, &Chunk::new(vec![])) {
-                panic!(
-                    "`init` fn returned a {:?}. report error to the developer",
-                    e
-                )
-            }
-            // popping frame
-            self.pop_frame();
+            self.op_call(
+                addr,
+                init_fn,
+                true,
+                false,
+                &Chunk::new(vec![]),
+                unit.fields.clone(),
+            )?
         }
 
-        // unguard
-        unguard!(unit);
-
         // defining unit by name and full name
-        self.define_variable(addr, name.as_str(), unit_value);
+        table.define(addr, name.as_str(), unit_value);
 
         Ok(())
     }
@@ -1142,16 +1038,13 @@ impl VirtualMachine {
         addr: &Address,
         name: &String,
         functions: &[TraitFn],
+        mut table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         // allocating trait
-        let _trait = Gc::new(Trait::new(
-            name.clone(),
-            functions.to_owned(),
-            self.peek_module(),
-        ));
+        let _trait = Gc::new(Trait::new(name.clone(), functions.to_owned()));
 
         // define trait by name
-        self.define_variable(addr, name.as_str(), Value::Trait(_trait));
+        table.define(addr, name.as_str(), Value::Trait(_trait));
 
         Ok(())
     }
@@ -1169,13 +1062,14 @@ impl VirtualMachine {
         addr: &Address,
         name: &str,
         has_previous: bool,
+        value: &Chunk,
+        mut table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
-        // operand
-        let operand = self.pop(addr);
         // non-previous
         if !has_previous {
-            // store in stack
-            self.define_variable(addr, name, operand);
+            self.run(value, table.clone())?;
+            let operand = self.pop(addr);
+            table.define(addr, name, operand);
         }
         // previous
         else {
@@ -1184,11 +1078,15 @@ impl VirtualMachine {
             match previous {
                 // define in instance
                 Value::Instance(mut instance) => {
-                    instance.environment.define(addr, name, operand);
+                    self.run(value, table)?;
+                    let operand = self.pop(addr);
+                    instance.fields.define(addr, name, operand);
                 }
                 // define in unit
                 Value::Unit(mut unit) => {
-                    unit.environment.define(addr, name, operand);
+                    self.run(value, table)?;
+                    let operand = self.pop(addr);
+                    unit.fields.define(addr, name, operand);
                 }
                 _ => {
                     error!(Error::own_text(
@@ -1203,47 +1101,49 @@ impl VirtualMachine {
         Ok(())
     }
 
-    /// Opcode: Store
+    /// Opcode: Set
     ///
-    /// stores value in local table
+    /// sets value in local table
     /// or, if `has_previous` pops
     /// value (instance/unit, otherwise raises error)
     /// from stack and then sets given
     /// value in it by name
     ///
-    unsafe fn op_store(
+    unsafe fn op_set(
         &mut self,
         addr: &Address,
         name: &str,
         has_previous: bool,
+        value: &Chunk,
+        mut table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
-        // operand
-        let operand = self.pop(addr);
         // non-previous
         if !has_previous {
-            // store in stack
-            self.store_variable(addr, name, operand);
+            self.run(value, table.clone())?;
+            let operand = self.pop(addr);
+            table.set(addr, name, operand);
         }
         // previous
         else {
             let previous = self.pop(addr);
+
             match previous {
-                // store in instance
+                // define in instance
                 Value::Instance(mut instance) => {
-                    instance.environment.store(addr, name, operand);
+                    self.run(value, table)?;
+                    let operand = self.pop(addr);
+                    instance.fields.set_local(addr, name, operand);
                 }
-                // store in unit
+                // define in unit
                 Value::Unit(mut unit) => {
-                    unit.environment.store(addr, name, operand);
-                }
-                // store in module
-                Value::Module(mut module) => {
-                    module.environment.store(addr, name, operand);
+                    self.run(value, table)?;
+                    let operand = self.pop(addr);
+                    unit.fields.set_local(addr, name, operand);
                 }
                 _ => {
                     error!(Error::own_text(
                         addr.clone(),
-                        format!("could not store variable in {previous:?}."),
+                        format!("could not set variable in {previous:?}."),
                         "you can set variable in unit or instance."
                     ))
                 }
@@ -1267,11 +1167,12 @@ impl VirtualMachine {
         name: &str,
         has_previous: bool,
         should_push: bool,
+        table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         // non-previous
         if !has_previous {
-            // loading variable value from stack
-            let value = self.load_variable(addr, name);
+            // loading variable value from table
+            let value = table.lookup(addr, name);
 
             // pushing value
             if should_push {
@@ -1284,21 +1185,21 @@ impl VirtualMachine {
             match previous {
                 // from instance
                 Value::Instance(instance) => {
-                    let value = instance.environment.load(addr, name);
+                    let value = instance.fields.find(addr, name);
                     if should_push {
                         self.push(value);
                     }
                 }
                 // from unit
                 Value::Unit(unit) => {
-                    let value = unit.environment.load(addr, name);
+                    let value = unit.fields.find(addr, name);
                     if should_push {
                         self.push(value);
                     }
                 }
                 // from module
                 Value::Module(module) => {
-                    let value = module.environment.load(addr, name);
+                    let value = module.table.find(addr, name);
                     if should_push {
                         self.push(value);
                     }
@@ -1331,8 +1232,57 @@ impl VirtualMachine {
         name: &str,
         callable: Value,
         args: &Chunk,
+        table: Gc<Table>,
         should_push: bool,
     ) -> Result<(), ControlFlow> {
+        /// Pass arguments
+        ///
+        /// * `params_amount`: expected params amount
+        /// * `args`: args chunk
+        /// * `params`: params vector, used
+        ///   to set variables with params names
+        ///   to args
+        /// * `table`: table, where fn called
+        /// * `call_table`: call table
+        ///
+        unsafe fn pass_arguments(
+            vm: &mut VM,
+            addr: &Address,
+            name: &str,
+            params_amount: usize,
+            args: &Chunk,
+            params: Vec<String>,
+            table: Gc<Table>,
+            mut call_table: Gc<Table>,
+        ) -> Result<(), ControlFlow> {
+            // passing args
+            let prev_size = vm.stack.len();
+            vm.run(args, table)?;
+            let new_size = vm.stack.len();
+            let passed_amount = new_size - prev_size;
+
+            // ensuring args && params amount are equal
+            if passed_amount == params_amount {
+                // defining params variables with
+                // args values
+                for param in params.iter().rev() {
+                    let operand = vm.pop(addr);
+                    call_table.define(addr, param, operand);
+                }
+
+                Ok(())
+            } else {
+                error!(Error::own(
+                    addr.clone(),
+                    format!(
+                        "invalid args amount: {} to call: {}. stack: {:?}",
+                        passed_amount, name, vm.stack
+                    ),
+                    format!("expected {params_amount} arguments.")
+                ));
+            }
+        }
+
         /// Just loads arguments to stack
         ///
         /// * `params_amount`: expected params amount
@@ -1341,16 +1291,17 @@ impl VirtualMachine {
         /// * `call_table`: call table
         ///
         unsafe fn load_arguments(
-            vm: &mut VirtualMachine,
+            vm: &mut VM,
             addr: &Address,
             name: &str,
             params_amount: usize,
             args: &Chunk,
+            table: Gc<Table>,
         ) -> Result<(), ControlFlow> {
             // passing args
-            let prev_size = vm.operand_stack.len();
-            vm.run(args)?;
-            let new_size = vm.operand_stack.len();
+            let prev_size = vm.stack.len();
+            vm.run(args, table)?;
+            let new_size = vm.stack.len();
             let passed_amount = new_size - prev_size;
 
             // ensuring args && params amount are equal
@@ -1361,7 +1312,7 @@ impl VirtualMachine {
                     addr.clone(),
                     format!(
                         "invalid args amount: {} to call: {}. stack: {:?}",
-                        passed_amount, name, vm.operand_stack
+                        passed_amount, name, vm.stack
                     ),
                     format!("expected {params_amount} arguments.")
                 ));
@@ -1370,44 +1321,50 @@ impl VirtualMachine {
 
         // checking value is fn
         if let Value::Fn(function) = callable {
-            // loading arguments
-            load_arguments(self, addr, name, function.params.len(), args)?;
+            // call table
+            let mut call_table = Gc::new(Table::new());
 
-            // pushing frame
-            self.push_frame_with_closure(function.closure.clone());
+            // parent and closure tables, to chain call_table
+            // with current
+            call_table.closure = function.closure.clone();
 
-            // owner
+            // root & self
             if let Some(owner) = &function.owner {
-                match (**owner).clone() {
+                match (*owner).deref() {
                     FnOwner::Unit(unit) => {
-                        self.define_variable(addr, "self", Value::Unit(unit.clone()));
+                        call_table.set_root(unit.fields.clone());
+                        call_table.define(addr, "self", Value::Unit(unit.clone()));
                     }
                     FnOwner::Instance(instance) => {
-                        self.define_variable(addr, "self", Value::Instance(instance.clone()));
+                        call_table.set_root(instance.fields.clone());
+                        call_table.define(addr, "self", Value::Instance(instance.clone()));
+                    }
+                    FnOwner::Module(module) => {
+                        call_table.set_root(module.table.clone());
                     }
                 }
             }
 
-            // defining params variables with
-            // args values
-            for param in function.params.iter().rev() {
-                let operand = self.pop(addr);
-                self.define_variable(addr, param, operand);
-            }
+            // passing args
+            pass_arguments(
+                self,
+                addr,
+                name,
+                function.params.len(),
+                args,
+                function.params.clone(),
+                table,
+                call_table.clone(),
+            )?;
 
             // running body
-            if let Err(e) = self.run(&function.body) {
+            if let Err(e) = self.run(&function.body, call_table) {
                 return match e {
                     // if return
                     ControlFlow::Return(val) => {
-                        // if should push, pushing
                         if should_push {
                             self.push(val);
                         }
-
-                        // popping frame
-                        self.pop_frame();
-
                         Ok(())
                     }
                     // otherwise, panic
@@ -1420,26 +1377,18 @@ impl VirtualMachine {
         }
         // checking value is native
         else if let Value::Native(function) = callable {
-            // loading arguments
-            load_arguments(self, addr, name, function.params_amount, args)?;
+            // call table
+            let mut call_table = Gc::new(Table::new());
 
-            // pushing frame
-            self.push_frame();
+            // root to globals
+            call_table.set_root(function.defined_in.clone());
+
+            // loading arguments to stack
+            load_arguments(self, addr, name, function.params_amount, args, table)?;
 
             // calling native fn
             let native = function.function;
-            let result = native(self, addr.clone(), should_push);
-
-            // error capturing
-            if let Err(e) = result {
-                panic!(
-                    "native function caused control flow leak `{:?}`. report this error to the developer.",
-                    e
-                )
-            }
-
-            // popping frame
-            self.pop_frame();
+            native(self, addr.clone(), should_push, call_table)?;
 
             Ok(())
         } else {
@@ -1466,11 +1415,12 @@ impl VirtualMachine {
         has_previous: bool,
         should_push: bool,
         args: &Chunk,
+        table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         // non-previous
         if !has_previous {
-            let value = self.load_variable(addr, name);
-            self.call(addr, name, value, args, should_push)
+            let value = table.lookup(addr, name);
+            self.call(addr, name, value, args, table, should_push)
         }
         // previous
         else {
@@ -1480,39 +1430,18 @@ impl VirtualMachine {
             match previous {
                 // call from instance
                 Value::Instance(instance) => {
-                    // guarding
-                    guard!(instance);
-                    // calling
-                    let value = instance.environment.load(addr, name);
-                    let result = self.call(addr, name, value, args, should_push);
-                    // unguarding
-                    unguard!(instance);
-                    // returning result
-                    result
+                    let value = instance.fields.find(addr, name);
+                    self.call(addr, name, value, args, table, should_push)
                 }
                 // call from unit
                 Value::Unit(unit) => {
-                    // guarding
-                    guard!(unit);
-                    // calling
-                    let value = unit.environment.load(addr, name);
-                    let result = self.call(addr, name, value, args, should_push);
-                    // unguarding
-                    unguard!(unit);
-                    // returning result
-                    result
+                    let value = unit.fields.find(addr, name);
+                    self.call(addr, name, value, args, table, should_push)
                 }
                 // call from module
                 Value::Module(module) => {
-                    // guarding
-                    guard!(module);
-                    // calling
-                    let value = module.environment.load(addr, name);
-                    let result = self.call(addr, name, value, args, should_push);
-                    // unguarding
-                    unguard!(module);
-                    // returning result
-                    result
+                    let value = module.table.find(addr, name);
+                    self.call(addr, name, value, args, table, should_push)
                 }
                 _ => {
                     error!(Error::own_text(
@@ -1541,22 +1470,23 @@ impl VirtualMachine {
     /// adds default implementation if exists,
     /// otherwise raises error
     ///
-    /*
     unsafe fn check_traits(
         &mut self,
         addr: &Address,
         mut instance: Gc<Instance>,
+        table: Gc<Table>,
     ) {
         // type of instance, used to check traits
         let instance_type = instance.oil_type.clone();
 
         /// Gets trait by name
         unsafe fn get_trait(
+            traits: Gc<Table>,
             addr: &Address,
             trait_name: &str,
         ) -> Option<Gc<Trait>> {
             // looking up trait
-            let trait_value = self.load_variable(addr, trait_name);
+            let trait_value = traits.lookup(addr, trait_name);
 
             match trait_value {
                 Value::Trait(_trait) => Some(_trait),
@@ -1651,7 +1581,6 @@ impl VirtualMachine {
             }
         }
     }
-    */
 
     /// Opcode: Instance
     /// creates instance `safely`
@@ -1667,8 +1596,9 @@ impl VirtualMachine {
         addr: &Address,
         args: &Chunk,
         should_push: bool,
+        table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
-        /// Just loads constructor args to stack
+        /// Pass constructor
         ///
         /// * `params_amount`: expected params amount
         /// * `args`: args chunk
@@ -1678,21 +1608,30 @@ impl VirtualMachine {
         /// * `table`: table, where instance created
         /// * `fields_table`: call table
         ///
-        unsafe fn load_constructor(
-            vm: &mut VirtualMachine,
+        unsafe fn pass_constructor(
+            vm: &mut VM,
             addr: &Address,
             name: &str,
             params_amount: usize,
             args: &Chunk,
+            params: Vec<String>,
+            table: Gc<Table>,
+            mut fields_table: Gc<Table>,
         ) -> Result<(), ControlFlow> {
             // passing args
-            let prev_size = vm.operand_stack.len();
-            vm.run(args)?;
-            let new_size = vm.operand_stack.len();
+            let prev_size = vm.stack.len();
+            vm.run(args, table)?;
+            let new_size = vm.stack.len();
             let passed_amount = new_size - prev_size;
 
             // ensuring args && params amount are equal
             if passed_amount == params_amount {
+                // defining params variables with
+                // args values
+                for param in params.iter().rev() {
+                    let operand = vm.pop(addr);
+                    fields_table.define(addr, param, operand);
+                }
                 Ok(())
             } else {
                 error!(Error::own(
@@ -1702,62 +1641,56 @@ impl VirtualMachine {
                 ));
             }
         }
-
         // getting a type
         let value = self.pop(addr);
         match value {
-            Value::Type(oil_type) => {
-                // loading constructor
-                load_constructor(self, addr, &oil_type.name, oil_type.constructor.len(), args)?;
-
-                // pushing frame
-                self.push_frame();
-
-                // defining params variables with
-                // args values
-                for param in oil_type.constructor.iter().rev() {
-                    let operand = self.pop(addr);
-                    self.define_variable(addr, param, operand);
-                }
-
-                // executing body
-                self.run(&oil_type.body)?;
-
-                // popping environment
-                let environment = self.pop_frame().pop();
-
+            Value::Type(t) => {
                 // creating instance
-                let instance = Gc::new(Instance::new(oil_type.clone(), environment));
+                let mut instance = Gc::new(Instance::new(t.clone(), Gc::new(Table::new())));
                 let instance_value = Value::Instance(instance.clone());
 
-                // guard
-                guard!(instance);
+                // passing constructor
+                pass_constructor(
+                    self,
+                    addr,
+                    &t.name,
+                    t.constructor.len(),
+                    args,
+                    t.constructor.clone(),
+                    table.clone(),
+                    instance.fields.clone(),
+                )?;
 
-                // binding function
+                // setting root
+                instance.fields.set_root(t.defined_in.clone());
+
+                // setting temp self
+                instance
+                    .fields
+                    .fields
+                    .insert("self".to_string(), instance_value.clone());
+
+                // executing body
+                self.run(&t.body, instance.fields.clone())?;
+
+                // deleting temp self
+                instance.fields.fields.remove("self");
+
+                // checking traits implementation
+                self.check_traits(addr, instance.clone(), t.defined_in.clone());
+
+                // binding functions
                 self.bind_functions(
-                    instance.environment.clone(),
+                    instance.fields.clone(),
                     Gc::new(FnOwner::Instance(instance.clone())),
                 );
 
                 // calling optional init fn
                 let init_fn = "init";
-                if instance.environment.is_exists(init_fn) {
-                    // pushing frame
-                    self.push_frame();
-                    // calling `init`
+                if instance.fields.exists(init_fn) {
                     self.push(instance_value.clone());
-                    if let Err(e) = self.op_call(addr, init_fn, true, false, &Chunk::new(vec![])) {
-                        panic!(
-                            "`init` fn returned a {:?}. report error to the developer",
-                            e
-                        )
-                    }
-                    // popping frame
-                    self.pop_frame();
+                    self.op_call(addr, init_fn, true, false, &Chunk::new(vec![]), table)?
                 }
-
-                // unguard
-                unguard!(instance);
 
                 // pushing instance
                 if should_push {
@@ -1792,9 +1725,16 @@ impl VirtualMachine {
     }
 
     /// Opcode: Return
-    unsafe fn op_return(&mut self, addr: &Address) -> Result<(), ControlFlow> {
+    unsafe fn op_return(
+        &mut self,
+        addr: &Address,
+        value: &Chunk,
+        table: Gc<Table>,
+    ) -> Result<(), ControlFlow> {
         // running value and returning control flow
+        self.run(value, table)?;
         let value = self.pop(addr);
+
         Err(ControlFlow::Return(value))
     }
 
@@ -1807,7 +1747,7 @@ impl VirtualMachine {
     unsafe fn op_native(&mut self, addr: &Address, name: &str) -> Result<(), ControlFlow> {
         // finding native function, provided
         // by `vm/natives/natives.rs` and pushing to stack
-        let value = self.natives_table.load(addr, name);
+        let value = self.natives_table.find(addr, name);
         self.push(value);
 
         Ok(())
@@ -1823,18 +1763,25 @@ impl VirtualMachine {
     unsafe fn op_error_propagation(
         &mut self,
         addr: &Address,
+        value: &Chunk,
+        table: Gc<Table>,
         should_push: bool,
     ) -> Result<(), ControlFlow> {
+        // running value
+        self.run(value, table.clone())?;
+        let value = self.pop(addr);
+
         /// Calls is ok
         /// from an instance
         ///
         unsafe fn call_is_ok(
-            vm: &mut VirtualMachine,
+            vm: &mut VM,
             addr: &Address,
             instance: Gc<Instance>,
+            table: Gc<Table>,
         ) -> Result<bool, ControlFlow> {
             // finding callable
-            let callable = instance.environment.load(addr, "is_ok");
+            let callable = instance.fields.find(addr, "is_ok");
             match callable.clone() {
                 Value::Fn(function) => {
                     if !function.params.is_empty() {
@@ -1855,7 +1802,7 @@ impl VirtualMachine {
             }
 
             // calling
-            vm.call(addr, "is_ok", callable, &Chunk::new(vec![]), true)?;
+            vm.call(addr, "is_ok", callable, &Chunk::new(vec![]), table, true)?;
 
             // matching result
             let result = vm.pop(addr);
@@ -1875,11 +1822,13 @@ impl VirtualMachine {
         /// from an instance
         ///
         unsafe fn call_unwrap(
-            vm: &mut VirtualMachine,
+            vm: &mut VM,
             addr: &Address,
             instance: Gc<Instance>,
+            table: Gc<Table>,
         ) -> Result<(), ControlFlow> {
-            let callable = instance.environment.load(addr, "unwrap");
+            let callable = instance.fields.find(addr, "unwrap");
+
             match callable.clone() {
                 Value::Fn(function) => {
                     if !function.params.is_empty() {
@@ -1899,14 +1848,13 @@ impl VirtualMachine {
                 }
             }
 
-            vm.call(addr, "unwrap", callable, &Chunk::new(vec![]), true)?;
+            vm.call(addr, "unwrap", callable, &Chunk::new(vec![]), table, true)?;
             Ok(())
         }
 
-        let value = self.pop(addr);
         if let Value::Instance(ref instance) = value {
             // calling is ok
-            let is_ok = call_is_ok(self, addr, instance.clone())?;
+            let is_ok = call_is_ok(self, addr, instance.clone(), table.clone())?;
 
             // if it's no ok
             if !is_ok {
@@ -1915,7 +1863,7 @@ impl VirtualMachine {
             } else {
                 // calling unwrap
                 if should_push {
-                    call_unwrap(self, addr, instance.clone())?;
+                    call_unwrap(self, addr, instance.clone(), table)?;
                 }
             }
         } else {
@@ -1935,7 +1883,6 @@ impl VirtualMachine {
     /// `trait`, named `trait_name`
     ///
     /// todo
-    /*
     unsafe fn op_impls(&mut self, addr: &Address) -> Result<(), ControlFlow> {
         // getting trait
         let trait_value = self.pop(addr);
@@ -1947,7 +1894,7 @@ impl VirtualMachine {
             // checking trait is implemented
             match trait_value {
                 Value::Trait(_trait) => {
-                    let impls = &instance.oil_type.impls;
+                    let impls = &instance.t.impls;
 
                     let name = &_trait.name;
                     self.push(Value::Bool(impls.contains(name)));
@@ -1971,16 +1918,15 @@ impl VirtualMachine {
         // успех
         Ok(())
     }
-    */
 
     /// Opcode: DeleteLocal
     ///
     /// Deletes a variable from
-    /// last environment by name
+    /// local table by name
     ///
     #[allow(unused_variables)]
-    unsafe fn op_delete_local(&mut self, addr: &Address, name: &String) {
-        self.delete_variable(addr, name);
+    unsafe fn op_delete_local(&self, addr: &Address, name: &String, mut table: Gc<Table>) {
+        table.fields.remove(name);
     }
 
     /// Opcode: LoadModule
@@ -1991,17 +1937,18 @@ impl VirtualMachine {
         addr: &Address,
         id: usize,
         variable: &String,
+        mut table: Gc<Table>,
     ) -> Result<(), ControlFlow> {
         match self.modules.get(&id) {
             Some(module) => {
-                self.define_variable(addr, variable, Value::Module(module.clone()));
+                table.define(addr, variable, Value::Module(module.clone()));
                 Ok(())
             }
             None => match self.modules_info.get(&id).cloned() {
                 Some(module_info) => {
                     let module = self.run_module(&module_info.chunk)?;
                     self.modules.insert(id, module.clone());
-                    self.define_variable(addr, variable, Value::Module(module));
+                    table.define(addr, variable, Value::Module(module));
                     Ok(())
                 }
                 None => {
@@ -2013,28 +1960,22 @@ impl VirtualMachine {
 
     /// Runs module chunk in new table
     pub unsafe fn run_module(&mut self, chunk: &Chunk) -> Result<Gc<Module>, ControlFlow> {
-        // pushing frame
-        self.push_frame();
-        // pushing environment
-        self.peek_frame().push(Gc::new(Environment::new()));
-        // pushing module
-        self.push_module(Gc::new(Module::new(self.peek_frame().peek())));
+        // creating module table
+        let mut module_table = Gc::new(Table::new());
+        module_table.set_root(self.builtins_table.clone());
         // running chunk
-        if let Err(e) = self.run(chunk) {
-            panic!(
-                "module chunk caused control flow leak `{:?}`. report this error to the developer.",
-                e
-            )
-        }
-        // popping frmae
-        self.pop_frame().pop();
+        self.run(chunk, module_table.clone())?;
+        // module
+        let module = Gc::new(Module::new(module_table.clone()));
+        // binding function
+        self.bind_functions(module_table, Gc::new(FnOwner::Module(module.clone())));
         // returning module
-        Ok(self.pop_module())
+        Ok(module)
     }
 
     /// Runs chunk
     #[allow(unused_variables)]
-    pub unsafe fn run(&mut self, chunk: &Chunk) -> Result<(), ControlFlow> {
+    pub unsafe fn run(&mut self, chunk: &Chunk, table: Gc<Table>) -> Result<(), ControlFlow> {
         for op in chunk.opcodes() {
             match op {
                 Opcode::Push { addr, value } => {
@@ -2056,7 +1997,7 @@ impl VirtualMachine {
                     self.op_conditional(addr, op)?;
                 }
                 Opcode::Logic { addr, a, b, op } => {
-                    self.op_logical(addr, a, b, op)?;
+                    self.op_logical(addr, a, b, op, table.clone())?;
                 }
                 Opcode::If {
                     addr,
@@ -2064,10 +2005,10 @@ impl VirtualMachine {
                     body,
                     elif,
                 } => {
-                    self.op_if(addr, cond, body, elif)?;
+                    self.op_if(addr, cond, body, elif, table.clone())?;
                 }
                 Opcode::Loop { addr, body } => {
-                    self.op_loop(addr, body)?;
+                    self.op_loop(addr, body, table.clone())?;
                 }
                 Opcode::DefineFn {
                     addr,
@@ -2075,10 +2016,14 @@ impl VirtualMachine {
                     body,
                     params,
                 } => {
-                    self.op_define_fn(addr, name, body, params)?;
+                    self.op_define_fn(addr, name, body, params, table.clone())?;
                 }
-                Opcode::AnonymousFn { addr, body, params } => {
-                    self.op_anonymous_fn(body, params)?;
+                Opcode::AnonymousFn {
+                    addr,
+                    body,
+                    params,
+                } => {
+                    self.op_anonymous_fn(body, params, table.clone())?;
                 }
                 Opcode::DefineType {
                     addr,
@@ -2087,31 +2032,33 @@ impl VirtualMachine {
                     constructor,
                     impls,
                 } => {
-                    self.op_define_type(addr, name, body, constructor, impls)?;
+                    self.op_define_type(addr, name, body, constructor, impls, table.clone())?;
                 }
                 Opcode::DefineUnit { addr, name, body } => {
-                    self.op_define_unit(addr, name, body)?;
+                    self.op_define_unit(addr, name, body, table.clone())?;
                 }
                 Opcode::DefineTrait {
                     addr,
                     name,
                     functions,
                 } => {
-                    self.op_define_trait(addr, name, functions)?;
+                    self.op_define_trait(addr, name, functions, table.clone())?;
                 }
                 Opcode::Define {
                     addr,
                     name,
+                    value,
                     has_previous,
                 } => {
-                    self.op_define(addr, name, *has_previous)?;
+                    self.op_define(addr, name, *has_previous, value, table.clone())?;
                 }
-                Opcode::Store {
+                Opcode::Set {
                     addr,
                     name,
+                    value,
                     has_previous,
                 } => {
-                    self.op_store(addr, name, *has_previous)?;
+                    self.op_set(addr, name, *has_previous, value, table.clone())?;
                 }
                 Opcode::Load {
                     addr,
@@ -2119,7 +2066,7 @@ impl VirtualMachine {
                     has_previous,
                     should_push,
                 } => {
-                    self.op_load(addr, name, *has_previous, *should_push)?;
+                    self.op_load(addr, name, *has_previous, *should_push, table.clone())?;
                 }
                 Opcode::Call {
                     addr,
@@ -2128,7 +2075,7 @@ impl VirtualMachine {
                     should_push,
                     args,
                 } => {
-                    self.op_call(addr, name, *has_previous, *should_push, args)?;
+                    self.op_call(addr, name, *has_previous, *should_push, args, table.clone())?;
                 }
                 Opcode::Duplicate { addr } => {
                     self.op_duplicate(addr)?;
@@ -2138,7 +2085,7 @@ impl VirtualMachine {
                     args,
                     should_push,
                 } => {
-                    self.op_instance(addr, args, *should_push)?;
+                    self.op_instance(addr, args, *should_push, table.clone())?;
                 }
                 Opcode::EndLoop {
                     addr,
@@ -2146,21 +2093,27 @@ impl VirtualMachine {
                 } => {
                     self.op_endloop(addr, *current_iteration)?;
                 }
-                Opcode::Ret { addr } => {
-                    self.op_return(addr)?;
+                Opcode::Ret { addr, value } => {
+                    self.op_return(addr, value, table.clone())?;
                 }
                 Opcode::Native { addr, fn_name } => {
                     self.op_native(addr, fn_name)?;
                 }
-                Opcode::ErrorPropagation { addr, should_push } => {
-                    self.op_error_propagation(addr, *should_push)?;
+                Opcode::ErrorPropagation {
+                    addr,
+                    value,
+                    should_push,
+                } => {
+                    self.op_error_propagation(addr, value, table.clone(), *should_push)?;
                 }
                 Opcode::Impls { addr } => {
-                    // self.op_impls(addr)?;
+                    self.op_impls(addr)?;
                 }
-                Opcode::DeleteLocal { addr, name } => self.op_delete_local(addr, name),
+                Opcode::DeleteLocal { addr, name } => {
+                    self.op_delete_local(addr, name, table.clone())
+                }
                 Opcode::ImportModule { addr, id, variable } => {
-                    self.op_load_module(addr, *id, variable)?
+                    self.op_load_module(addr, *id, variable, table.clone())?
                 }
             }
         }
@@ -2169,5 +2122,5 @@ impl VirtualMachine {
 }
 
 /// Send & sync for future multi-threading.
-unsafe impl Send for VirtualMachine {}
-unsafe impl Sync for VirtualMachine {}
+unsafe impl Send for VM {}
+unsafe impl Sync for VM {}

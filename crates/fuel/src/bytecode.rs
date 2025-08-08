@@ -41,7 +41,7 @@ impl Chunk {
 }
 /// Trace implementation for chunk
 impl Trace for Chunk {
-    unsafe fn trace(&self, _: &mut Tracer) {}
+    unsafe fn trace(&self, _: *mut dyn Trace, _: &mut Tracer) {}
 }
 
 /// Opcode value

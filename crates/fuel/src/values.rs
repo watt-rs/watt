@@ -1,11 +1,11 @@
 // imports
 use crate::bytecode::Chunk;
-use crate::call_stack::environment::Environment;
 use crate::flow::ControlFlow;
 use crate::mark;
 use crate::memory::gc::Gc;
 use crate::memory::trace::{Trace, Tracer};
-use crate::vm::VirtualMachine;
+use crate::table::Table;
+use crate::vm::VM;
 use oil_common::address::Address;
 use std::any::Any;
 use std::fmt::{Debug, Display, Formatter};
@@ -19,20 +19,18 @@ use std::hash::{Hash, Hasher};
 #[derive(Clone, Debug)]
 #[allow(unused)]
 pub struct Module {
-    /// Module environment
-    pub environment: Gc<Environment>,
+    pub table: Gc<Table>,
 }
 /// Module implementation
 impl Module {
-    /// Creates mew module
-    pub fn new(environment: Gc<Environment>) -> Module {
-        Module { environment }
+    pub fn new(table: Gc<Table>) -> Module {
+        Module { table }
     }
 }
 /// Trace implementation for module
 impl Trace for Module {
-    unsafe fn trace(&self, tracer: &mut Tracer) {
-        mark!(tracer, &self.environment);
+    unsafe fn trace(&self, self_ptr: *mut dyn Trace, tracer: &mut Tracer) {
+        mark!(tracer, self_ptr, &self.table);
     }
 }
 
@@ -43,41 +41,36 @@ impl Trace for Module {
 ///
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Type {
-    /// Type name
     pub name: String,
-    /// Type constructor
     pub constructor: Vec<String>,
-    /// Body chunk
     pub body: Gc<Chunk>,
-    /// Traits
-    pub impls: Vec<Gc<Trait>>,
-    /// Module environment, where type is defined
-    pub module: Gc<Module>,
+    pub impls: Vec<String>,
+    pub defined_in: Gc<Table>,
 }
 /// Type implementation
 impl Type {
-    /// Creates new type
+    /// New type
     pub fn new(
         name: String,
         constructor: Vec<String>,
         body: Gc<Chunk>,
-        impls: Vec<Gc<Trait>>,
-        module: Gc<Module>,
+        impls: Vec<String>,
+        defined_in: Gc<Table>,
     ) -> Type {
         Type {
             name,
             constructor,
             body,
             impls,
-            module,
+            defined_in,
         }
     }
 }
 /// Trace implementation for type
 impl Trace for Type {
-    unsafe fn trace(&self, tracer: &mut Tracer) {
-        mark!(tracer, &self.body);
-        mark!(tracer, &self.module);
+    unsafe fn trace(&self, self_ptr: *mut dyn Trace, tracer: &mut Tracer) {
+        mark!(tracer, self_ptr, &self.body);
+        mark!(tracer, self_ptr, &self.defined_in);
     }
 }
 
@@ -89,26 +82,22 @@ impl Trace for Type {
 #[derive(Clone, Debug)]
 #[allow(unused)]
 pub struct Instance {
-    /// Type, instance related to
+    /// type, instance related to
     pub oil_type: Gc<Type>,
-    /// Instance fields
-    pub environment: Gc<Environment>,
+    /// instance fields table
+    pub fields: Gc<Table>,
 }
 /// Instance implementation
 impl Instance {
-    /// Creates new instance
-    pub fn new(oil_type: Gc<Type>, environment: Gc<Environment>) -> Instance {
-        Instance {
-            oil_type,
-            environment,
-        }
+    pub fn new(oil_type: Gc<Type>, fields: Gc<Table>) -> Instance {
+        Instance { oil_type, fields }
     }
 }
 /// Trace implementation for instance
 impl Trace for Instance {
-    unsafe fn trace(&self, tracer: &mut Tracer) {
-        mark!(tracer, &self.oil_type);
-        mark!(tracer, &self.environment);
+    unsafe fn trace(&self, self_ptr: *mut dyn Trace, tracer: &mut Tracer) {
+        mark!(tracer, self_ptr, &self.oil_type);
+        mark!(tracer, self_ptr, &self.fields);
     }
 }
 
@@ -120,43 +109,31 @@ impl Trace for Instance {
 #[derive(Clone, Debug)]
 #[allow(unused)]
 pub struct Unit {
-    /// Unit name
     pub name: String,
-    /// Unit fields
-    pub environment: Gc<Environment>,
-    /// Module environment, where unit is defined
-    pub module: Gc<Module>,
+    pub fields: Gc<Table>,
 }
 /// Unit implementation
 impl Unit {
-    /// Creates new unit
-    pub fn new(name: String, environment: Gc<Environment>, module: Gc<Module>) -> Unit {
-        Unit {
-            name,
-            environment,
-            module,
-        }
+    pub fn new(name: String, fields: Gc<Table>) -> Unit {
+        Unit { name, fields }
     }
 }
 /// Trace implementation for unit
 impl Trace for Unit {
-    unsafe fn trace(&self, tracer: &mut Tracer) {
-        mark!(tracer, &self.environment);
-        mark!(tracer, &self.module);
+    unsafe fn trace(&self, self_ptr: *mut dyn Trace, tracer: &mut Tracer) {
+        mark!(tracer, self_ptr, &self.fields);
     }
 }
 
 /// Default trait fn realisation
 #[derive(Clone, Debug)]
 pub struct DefaultTraitFn {
-    /// Parameters
     pub params: Vec<String>,
-    /// Chunk
     pub chunk: Chunk,
 }
 /// Default trait fn implementation
 impl DefaultTraitFn {
-    /// Creates new default trait fn
+    /// New default trait fn
     pub fn new(params: Vec<String>, chunk: Chunk) -> DefaultTraitFn {
         DefaultTraitFn { params, chunk }
     }
@@ -169,16 +146,13 @@ impl DefaultTraitFn {
 ///
 #[derive(Clone, Debug)]
 pub struct TraitFn {
-    /// Name of trait fn
     pub name: String,
-    /// Parameters amount
     pub params_amount: usize,
-    /// Default implementation
     pub default: Option<DefaultTraitFn>,
 }
 /// Trait function implementation
 impl TraitFn {
-    /// Creates new trait fn
+    /// New trait fn
     pub fn new(name: String, params_amount: usize, default: Option<DefaultTraitFn>) -> TraitFn {
         TraitFn {
             name,
@@ -202,29 +176,18 @@ impl TraitFn {
 #[derive(Clone, Debug)]
 #[allow(unused)]
 pub struct Trait {
-    /// Trait name
     pub name: String,
-    /// Trait functions
     pub functions: Vec<TraitFn>,
-    /// Module environment, where trait is defined
-    pub module: Gc<Module>,
 }
 /// Trait implementation
 impl Trait {
-    /// Creates new trait
-    pub fn new(name: String, functions: Vec<TraitFn>, module: Gc<Module>) -> Trait {
-        Trait {
-            name,
-            functions,
-            module,
-        }
+    pub fn new(name: String, functions: Vec<TraitFn>) -> Trait {
+        Trait { name, functions }
     }
 }
 /// Trace implementation for trace
 impl Trace for Trait {
-    unsafe fn trace(&self, tracer: &mut Tracer) {
-        mark!(tracer, self.module)
-    }
+    unsafe fn trace(&self, _: *mut dyn Trace, _: &mut Tracer) {}
 }
 /// Trait drop implementation
 impl Drop for Trait {
@@ -244,13 +207,15 @@ impl Drop for Trait {
 pub enum FnOwner {
     Unit(Gc<Unit>),
     Instance(Gc<Instance>),
+    Module(Gc<Module>),
 }
 /// Trace implementation for fn owner
 impl Trace for FnOwner {
-    unsafe fn trace(&self, tracer: &mut Tracer) {
+    unsafe fn trace(&self, self_ptr: *mut dyn Trace, tracer: &mut Tracer) {
         match self {
-            FnOwner::Unit(unit) => mark!(tracer, unit),
-            FnOwner::Instance(instance) => mark!(tracer, instance),
+            FnOwner::Unit(unit) => mark!(tracer, self_ptr, unit),
+            FnOwner::Instance(instance) => mark!(tracer, self_ptr, instance),
+            FnOwner::Module(module) => mark!(tracer, self_ptr, module),
         }
     }
 }
@@ -264,47 +229,34 @@ impl Trace for FnOwner {
 #[derive(Clone, Debug)]
 #[allow(unused)]
 pub struct Function {
-    /// Function name
     pub name: String,
-    /// Body chunk
     pub body: Gc<Chunk>,
-    /// Parameters
     pub params: Vec<String>,
-    /// Function owner `unit`/`instance`
     pub owner: Option<Gc<FnOwner>>,
-    /// Function closure
-    pub closure: Gc<Environment>,
-    /// Module environment, where function is defined
-    pub module: Gc<Module>,
+    pub closure: Option<Gc<Table>>,
 }
 /// Function implementation
 impl Function {
     /// New function
-    pub fn new(
-        name: String,
-        body: Gc<Chunk>,
-        params: Vec<String>,
-        module: Gc<Module>,
-        closure: Gc<Environment>,
-    ) -> Function {
+    pub fn new(name: String, body: Gc<Chunk>, params: Vec<String>) -> Function {
         Function {
             name,
             body,
             params,
             owner: None,
-            closure,
-            module,
+            closure: None,
         }
     }
 }
 /// Trace implementation for function
 impl Trace for Function {
-    unsafe fn trace(&self, tracer: &mut Tracer) {
-        mark!(tracer, &self.body);
-        mark!(tracer, &self.module);
-        mark!(tracer, &self.closure);
+    unsafe fn trace(&self, self_ptr: *mut dyn Trace, tracer: &mut Tracer) {
+        mark!(tracer, self_ptr, &self.body);
         if let Some(owner) = &self.owner {
-            mark!(tracer, &owner);
+            mark!(tracer, self_ptr, &owner);
+        }
+        if let Some(closure) = &self.closure {
+            mark!(tracer, self_ptr, &closure);
         }
     }
 }
@@ -317,12 +269,10 @@ impl Trace for Function {
 #[derive(Clone, Debug)]
 #[allow(unused)]
 pub struct Native {
-    /// Native name
     pub name: String,
-    /// Parameters amount
     pub params_amount: usize,
-    /// Function
-    pub function: fn(&mut VirtualMachine, Address, bool) -> Result<(), ControlFlow>,
+    pub function: fn(&mut VM, Address, bool, Gc<Table>) -> Result<(), ControlFlow>,
+    pub defined_in: Gc<Table>,
 }
 /// Native implementation
 impl Native {
@@ -330,18 +280,20 @@ impl Native {
     pub fn new(
         name: String,
         params_amount: usize,
-        function: fn(&mut VirtualMachine, Address, bool) -> Result<(), ControlFlow>,
+        function: fn(&mut VM, Address, bool, Gc<Table>) -> Result<(), ControlFlow>,
+        defined_in: Gc<Table>,
     ) -> Native {
         Native {
             name,
             params_amount,
             function,
+            defined_in,
         }
     }
 }
 /// Trace implementation for native
 impl Trace for Native {
-    unsafe fn trace(&self, _: &mut Tracer) {}
+    unsafe fn trace(&self, _: *mut dyn Trace, _: &mut Tracer) {}
 }
 
 /// Value

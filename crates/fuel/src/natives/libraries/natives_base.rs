@@ -1,23 +1,25 @@
 /// Imports
 use crate::bytecode::OpcodeValue;
+use crate::memory::gc::Gc;
 use crate::natives::natives;
 use crate::natives::utils;
+use crate::table::Table;
 use crate::values::Value;
-use crate::vm::VirtualMachine;
+use crate::vm::VM;
 use oil_common::address::Address;
 use oil_common::{error, errors::Error};
 
 /// Provides
 #[allow(unused_variables)]
 #[allow(unsafe_op_in_unsafe_fn)]
-pub unsafe fn provide(built_in_address: &Address, vm: &mut VirtualMachine) -> Result<(), Error> {
+pub unsafe fn provide(built_in_address: &Address, vm: &mut VM) -> Result<(), Error> {
     // panic
     natives::provide(
         vm,
         built_in_address.clone(),
         2,
         "base@panic",
-        |vm: &mut VirtualMachine, addr: Address, should_push: bool| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             // hint and error texts
             let hint = utils::expect_cloned_string(&addr, vm.pop(&addr));
             let error = utils::expect_cloned_string(&addr, vm.pop(&addr));
@@ -30,7 +32,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VirtualMachine) -> Re
         built_in_address.clone(),
         1,
         "base@typeof",
-        |vm: &mut VirtualMachine, addr: Address, should_push: bool| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let value = vm.pop(&addr);
 
             if !should_push {
@@ -87,7 +89,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VirtualMachine) -> Re
         built_in_address.clone(),
         1,
         "base@full_typeof",
-        |vm: &mut VirtualMachine, addr: Address, should_push: bool| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let value = vm.pop(&addr);
 
             if !should_push {
@@ -149,7 +151,7 @@ pub unsafe fn provide(built_in_address: &Address, vm: &mut VirtualMachine) -> Re
         built_in_address.clone(),
         1,
         "base@is_instance",
-        |vm: &mut VirtualMachine, addr: Address, should_push: bool| {
+        |vm: &mut VM, addr: Address, should_push: bool, table: Gc<Table>| {
             let value = vm.pop(&addr);
 
             if !should_push {

@@ -251,9 +251,6 @@ unsafe fn run_vm(bytecode: GeneratorResult, bench: bool) {
         ))
     }
 
-    // clenaup
-    vm.cleanup();
-
     // benchmark end
     if bench {
         let duration = start.elapsed().as_nanos();
