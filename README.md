@@ -14,16 +14,21 @@ io.println("Hello, Oil!")
 use std/io as io
 
 type Juice(multiplier: i16) {
+
   let multiplier: i16 = multiplier
   let juice: i16 = 0
-  fn apply(amount: i16): void {
+
+  fn apply(amount: i16) {
     self.juice += (self.multiplier * amount)
   }
+
 }
 
 fn main() {
   let juice: Juice = new Juice(3)
   juice.apply(10)
+
   io.println(juice.juice)
 }
+
 ```
