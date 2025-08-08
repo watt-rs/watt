@@ -25,18 +25,23 @@ impl<'file_path> Parser<'file_path> {
 
     /// Block statement parsing
     fn block(&mut self) -> Node {
+        // parsing statement before reaching
+        // end of file, or a `}`
         let mut nodes: Vec<Node> = Vec::new();
         while !self.is_at_end() && !self.check(TokenKind::Rbrace) {
             nodes.push(self.statement());
         }
+
         Node::Block { body: nodes }
     }
 
-    /// Arguments parsing `( Node, Node, n )`
+    /// Arguments parsing `($expr, $expr, n...)`
     fn args(&mut self) -> Vec<Node> {
+        // result list
         let mut nodes: Vec<Node> = Vec::new();
-        self.consume(TokenKind::Lparen);
 
+        // `(Node, Node, n...)`
+        self.consume(TokenKind::Lparen);
         if !self.check(TokenKind::Rparen) {
             nodes.push(self.expr());
             while !self.is_at_end() && self.check(TokenKind::Comma) {
@@ -49,105 +54,105 @@ impl<'file_path> Parser<'file_path> {
         nodes
     }
 
-    /// Parameters parsing `( Token, Token, n )`
-    fn params(&mut self) -> Vec<Token> {
-        let mut nodes: Vec<Token> = Vec::new();
-        self.consume(TokenKind::Lparen);
+    /// Symbol path parsing
+    fn symbol_path(&mut self) -> SymbolPath {
+        // creating new segments list
+        let mut segments_list = Vec::new();
 
+        // start token, used to create span
+        let start = self.peek().address.clone();
+
+        // first `id`
+        segments_list.push(SymbolPathSegment {
+            identifier: self.consume(TokenKind::Id).value.clone(),
+        });
+
+        // while path separator exists, parsing new segment
+        while self.check(TokenKind::PathSeparator) {
+            self.consume(TokenKind::PathSeparator);
+            segments_list.push(SymbolPathSegment {
+                identifier: self.consume(TokenKind::Id).value.clone(),
+            });
+        }
+
+        // end token, used to create span
+        let end = self.previous().address.clone();
+
+        SymbolPath::new(
+            Address::span(
+                start.line,
+                start.span.start..end.span.end,
+                start.file.unwrap(),
+            ),
+            segments_list,
+        )
+    }
+
+    /// Single parameter parsing
+    fn parameter(&mut self) -> Parameter {
+        // `$name: $typ`
+        let name = self.consume(TokenKind::Id).clone();
+        self.consume(TokenKind::Colon);
+        let typ = self.symbol_path();
+
+        Parameter { name, typ }
+    }
+
+    /// Parameters parsing `($name: $type, $name: $type, n )`
+    fn parameters(&mut self) -> Vec<Parameter> {
+        // result list
+        let mut params: Vec<Parameter> = Vec::new();
+
+        // `($name: $type, $name: $type, n )`
+        self.consume(TokenKind::Lparen);
         if !self.check(TokenKind::Rparen) {
-            nodes.push(self.consume(TokenKind::Id).clone());
+            params.push(self.parameter());
+
             while !self.is_at_end() && self.check(TokenKind::Comma) {
                 self.consume(TokenKind::Comma);
-                nodes.push(self.consume(TokenKind::Id).clone());
+                params.push(self.parameter());
             }
         }
         self.consume(TokenKind::Rparen);
 
-        nodes
+        params
     }
 
-    /// Parses type chained name `a.b.c.d...`
-    fn type_path(&mut self) -> Node {
-        let id = self.consume(TokenKind::Id).clone();
-        let mut expr = Node::Get {
-            previous: None,
-            name: id,
-            should_push: true,
-        };
-        while self.check(TokenKind::Dot) {
-            self.consume(TokenKind::Dot);
-            let id = self.consume(TokenKind::Id).clone();
-            expr = Node::Get {
-                previous: Some(Box::new(expr)),
-                name: id,
-                should_push: true,
-            }
-        }
-        expr
-    }
-
-    /// Object creation expr
-    fn object_creation_expr(&mut self) -> Node {
-        let location = self.consume(TokenKind::New).clone();
-
-        let expr = self.type_path();
-        let args = self.args();
-
-        Node::Instance {
-            location,
-            expr: Box::new(expr),
-            constructor: args,
-            should_push: true,
-        }
-    }
-
-    /// Access expr part
+    /// Access part
     fn access_part(&mut self, previous: Option<Box<Node>>) -> Node {
+        // if identifier is found
         if self.check(TokenKind::Id) {
+            // new indetifier
             let identifier = self.consume(TokenKind::Id).clone();
             // call value with `( args )`
             if self.check(TokenKind::Lparen) {
                 let args = self.args();
-                return if self.check(TokenKind::Question) {
-                    self.consume(TokenKind::Question);
-                    Node::ErrorPropagation {
-                        location: identifier.clone(),
-                        value: Box::new(Node::Call {
-                            previous,
-                            name: identifier,
-                            args,
-                            should_push: true,
-                        }),
-                        should_push: true,
-                    }
-                } else {
-                    Node::Call {
-                        previous,
-                        name: identifier,
-                        args,
-                        should_push: true,
-                    }
-                };
+                Node::Call {
+                    previous,
+                    name: identifier,
+                    args,
+                }
             }
             // get variable value
             else {
                 return Node::Get {
                     previous,
                     name: identifier,
-                    should_push: true,
                 };
             }
         }
-        // object creation
+        // if not, raising an error
         else {
-            self.object_creation_expr()
+            let tk = self.peek();
+            error!(Error::own_hint(
+                tk.address.clone(),
+                "expected an `identifier` as access.",
+                format!("found a `{:?}` token", tk)
+            ))
         }
     }
 
     /// Access parsing
-    /// if is_expr should_push will be true
-    /// else should_push will be false
-    ///
     fn access(&mut self, is_expr: bool) -> Node {
         // left
         let start_address = self.peek().address.clone();
@@ -232,7 +237,6 @@ impl<'file_path> Parser<'file_path> {
                         let variable = Node::Get {
                             previous: previous.clone(),
                             name: name.clone(),
-                            should_push: true,
                         };
                         return Node::Assign {
                             previous,
@@ -255,94 +259,57 @@ impl<'file_path> Parser<'file_path> {
             }
         }
 
-        // should_push
-        left = set_should_push(left, is_expr);
         // returning
         left
     }
 
-    /// Access expr parsing
-    fn access_expr(&mut self) -> Node {
-        self.access(true)
-    }
-
-    /// Access statement parsing
-    fn access_stmt(&mut self) -> Node {
-        self.access(false)
-    }
-
     /// Let statement parsing
     fn let_stmt(&mut self) -> Node {
+        // `let $id`
         self.consume(TokenKind::Let);
         let name = self.consume(TokenKind::Id).clone();
+
+        // type
+        let typ;
+
+        // if specified
+        if self.check(TokenKind::Colon) {
+            // `: $type`
+            self.consume(TokenKind::Colon);
+            // setting type to specified
+            typ = Option::Some(self.symbol_path());
+        }
+        // else
+        else {
+            // setting type to None
+            typ = Option::None
+        }
+
+        // `= $value`
         self.consume(TokenKind::Assign);
         let value = self.expr();
+
         return Node::Define {
             name,
+            typ,
             value: Box::new(value),
         };
     }
 
     /// Grouping expr `( expr )`
     fn grouping_expr(&mut self) -> Node {
+        // `($expr)`
         self.consume(TokenKind::Lparen);
         let expr = self.expr();
         self.consume(TokenKind::Rparen);
+
         expr
-    }
-
-    /// Anonymous fn parsing
-    fn anonymous_fn_expr(&mut self) -> Node {
-        let location = self.consume(TokenKind::Fn).clone();
-
-        // params
-        let mut params: Vec<Token> = Vec::new();
-        if self.check(TokenKind::Lparen) {
-            params = self.params();
-        }
-
-        // body
-        self.consume(TokenKind::Lbrace);
-        let body = self.block();
-        self.consume(TokenKind::Rbrace);
-
-        Node::AnFnDeclaration {
-            location,
-            params,
-            body: Box::new(body),
-        }
-    }
-
-    /// Lambda expr parsing
-    fn lambda_fn_expr(&mut self) -> Node {
-        let location = self.consume(TokenKind::Lambda).clone();
-
-        // params
-        let mut params: Vec<Token> = Vec::new();
-        if self.check(TokenKind::Lparen) {
-            params = self.params();
-        }
-
-        // ->
-        self.consume(TokenKind::Arrow);
-
-        // body
-        let body = self.expr();
-
-        Node::AnFnDeclaration {
-            location: location.clone(),
-            params,
-            body: Box::new(Node::Ret {
-                location,
-                value: Box::new(body),
-            }),
-        }
     }
 
     /// Primary expr parsing
     fn primary_expr(&mut self) -> Node {
         match self.peek().tk_type {
-            TokenKind::Id | TokenKind::New => self.access_expr(),
+            TokenKind::Id | TokenKind::New => self.access(true),
             TokenKind::Number => Node::Number {
                 value: self.consume(TokenKind::Number).clone(),
             },
@@ -353,14 +320,6 @@ impl<'file_path> Parser<'file_path> {
                 value: self.consume(TokenKind::Bool).clone(),
             },
             TokenKind::Lparen => self.grouping_expr(),
-            TokenKind::Lbrace => self.map_expr(),
-            TokenKind::Lbracket => self.list_expr(),
-            TokenKind::Null => Node::Null {
-                location: self.consume(TokenKind::Null).clone(),
-            },
-            TokenKind::Fn => self.anonymous_fn_expr(),
-            TokenKind::Lambda => self.lambda_fn_expr(),
-            TokenKind::Match => self.match_expr(),
             _ => error!(Error::own_text(
                 self.peek().address.clone(),
                 format!(
@@ -370,175 +329,6 @@ impl<'file_path> Parser<'file_path> {
                 ),
                 "check your code.",
             )),
-        }
-    }
-
-    /// Match expr parsing
-    fn match_expr(&mut self) -> Node {
-        let location = self.consume(TokenKind::Match).clone();
-        // matchable
-        let matchable = self.expr();
-
-        // cases
-        let mut cases = vec![];
-        let default;
-
-        /// Makes lambda from body
-        fn make_lambda(location: Token, body: Node) -> Node {
-            Node::Block {
-                body: vec![
-                    Node::Define {
-                        name: Token::new(
-                            TokenKind::Id,
-                            "@match_lambda".to_string(),
-                            location.address.clone(),
-                        ),
-                        value: Box::new(Node::AnFnDeclaration {
-                            location: location.clone(),
-                            params: vec![],
-                            body: Box::new(body),
-                        }),
-                    },
-                    Node::Call {
-                        previous: None,
-                        name: Token::new(
-                            TokenKind::Id,
-                            "@match_lambda".to_string(),
-                            location.address.clone(),
-                        ),
-                        args: vec![],
-                        should_push: true,
-                    },
-                ],
-            }
-        }
-
-        // cases body
-        self.consume(TokenKind::Lbrace);
-        while self.check(TokenKind::Case) {
-            self.consume(TokenKind::Case);
-            let value = self.expr();
-
-            // one line
-            if self.check(TokenKind::Arrow) {
-                self.consume(TokenKind::Arrow);
-                cases.push(MatchCase::new(Box::new(value), Box::new(self.expr())));
-            }
-            // multi line
-            else if self.check(TokenKind::Lbrace) {
-                self.consume(TokenKind::Lbrace);
-                let body = self.block();
-                self.consume(TokenKind::Rbrace);
-                cases.push(MatchCase::new(
-                    Box::new(value),
-                    Box::new(make_lambda(location.clone(), body)),
-                ));
-            } else {
-                error!(Error::new(
-                    location.address.clone(),
-                    "expected arrow or brace after case value",
-                    "check your code",
-                ));
-            }
-        }
-        // default case
-        self.consume(TokenKind::Default);
-
-        // one line
-        if self.check(TokenKind::Arrow) {
-            self.consume(TokenKind::Arrow);
-            default = Box::new(self.expr());
-        }
-        // multi line
-        else if self.check(TokenKind::Lbrace) {
-            self.consume(TokenKind::Lbrace);
-            let body = self.block();
-            self.consume(TokenKind::Rbrace);
-            default = Box::new(make_lambda(location.clone(), body))
-        } else {
-            error!(Error::new(
-                location.address.clone(),
-                "expected arrow or brace after case value",
-                "check your code",
-            ));
-        }
-        self.consume(TokenKind::Rbrace);
-
-        Node::Match {
-            location,
-            matchable: Box::new(matchable),
-            cases,
-            default,
-        }
-    }
-
-    /// List expr `[]` parsing
-    fn list_expr(&mut self) -> Node {
-        let location = self.consume(TokenKind::Lbracket).clone();
-
-        if self.check(TokenKind::Rbracket) {
-            self.consume(TokenKind::Rbracket);
-            Node::List {
-                location,
-                values: Vec::new(),
-            }
-        } else {
-            let mut nodes: Vec<Node> = vec![self.expr()];
-
-            while self.check(TokenKind::Comma) {
-                self.consume(TokenKind::Comma);
-                nodes.push(self.expr());
-            }
-
-            self.consume(TokenKind::Rbracket);
-
-            Node::List {
-                location,
-                values: nodes,
-            }
-        }
-    }
-
-    /// Key value pair `{key: value}` parsing
-    fn key_value_expr(&mut self) -> (Node, Node) {
-        // key
-        let l = self.expr();
-        // :
-        self.consume(TokenKind::Colon);
-        // value
-        let r = self.expr();
-
-        (l, r)
-    }
-
-    /// Map expr `{pair, n}` parsing
-    fn map_expr(&mut self) -> Node {
-        let location = self.consume(TokenKind::Lbrace).clone();
-
-        if self.check(TokenKind::Rbrace) {
-            self.consume(TokenKind::Rbrace);
-            Node::Map {
-                location,
-                values: Vec::new(),
-            }
-        } else {
-            let mut nodes: Vec<(Node, Node)> = Vec::new();
-            let key = self.key_value_expr();
-
-            nodes.push((key.0, key.1));
-
-            while self.check(TokenKind::Comma) {
-                self.consume(TokenKind::Comma);
-                let key = self.key_value_expr();
-                nodes.push((key.0, key.1));
-            }
-
-            self.consume(TokenKind::Rbrace);
-
-            Node::Map {
-                location,
-                values: nodes,
-            }
         }
     }
 
@@ -615,26 +405,9 @@ impl<'file_path> Parser<'file_path> {
         left
     }
 
-    /// Impls expr `a impls b` parsing
-    fn impls_expr(&mut self) -> Node {
-        let mut left = self.range_expr();
-
-        if self.check(TokenKind::Impls) {
-            let location = self.consume(TokenKind::Impls).clone();
-            let expr = self.type_path();
-            left = Node::Impls {
-                location,
-                value: Box::new(left),
-                expr: Box::new(expr),
-            }
-        }
-
-        left
-    }
-
     /// Compare operations `<`, `>`, `<=`, `>=` parsing
     fn compare_expr(&mut self) -> Node {
-        let mut left = self.impls_expr();
+        let mut left = self.range_expr();
 
         if self.check(TokenKind::Greater)
             || self.check(TokenKind::Less)
@@ -642,7 +415,7 @@ impl<'file_path> Parser<'file_path> {
             || self.check(TokenKind::GreaterEq)
         {
             let op = self.advance().clone();
-            let right = self.impls_expr();
+            let right = self.range_expr();
             left = Node::Cond {
                 left: Box::new(left),
                 right: Box::new(right),
@@ -708,63 +481,36 @@ impl<'file_path> Parser<'file_path> {
     fn return_stmt(&mut self) -> Node {
         let location = self.consume(TokenKind::Ret).clone();
         let value = Box::new(self.expr());
-        Node::Ret { location, value }
-    }
-
-    /// Single use parsing
-    ///
-    /// ✔️ With: uses `symbols_prefix:symbol_name` as name
-    /// ❌ With: uses `symbol_name` as  name
-    fn single_use(&mut self) -> Import {
-        let id = self.consume(TokenKind::Id).clone();
-        let mut path = String::from(id.value.clone());
-        while self.check(TokenKind::Slash) {
-            self.consume(TokenKind::Slash);
-            path.push('/');
-            path.push_str(&self.consume(TokenKind::Id).value);
-        }
-        self.consume(TokenKind::As);
-        let variable = self.consume(TokenKind::Id).clone();
-        Import::new(
-            Address::span(
-                id.address.line,
-                id.address.span.start..variable.address.span.end,
-                id.address.file.unwrap(),
-            ),
-            path,
-            variable.value,
-        )
+        Node::Return { location, value }
     }
 
     /// Use statement `use ...` | `use (..., ..., n)` parsing
     fn use_stmt(&mut self) -> Node {
-        let location = self.consume(TokenKind::Use).clone();
-        let mut imports = Vec::new();
+        self.consume(TokenKind::Use);
 
-        // ( use, use, n )
-        if self.check(TokenKind::Lparen) {
-            self.consume(TokenKind::Lparen);
-            imports.push(self.single_use());
-            while self.check(TokenKind::Comma) {
-                self.consume(TokenKind::Comma);
-                imports.push(self.single_use());
-            }
-        }
-        // single import
-        else {
-            imports.push(self.single_use());
+        // `path::to::module`
+        let path = self.symbol_path();
+        let name;
+        // `as $id`
+        if self.check(TokenKind::As) {
+            self.consume(TokenKind::As);
+            name = Option::Some(self.consume(TokenKind::Id).clone());
+        } else {
+            name = Option::None;
         }
 
-        Node::Import { location, imports }
+        Node::Use { path, name }
     }
 
     /// While statement parsing
     fn while_stmt(&mut self) -> Node {
         let location = self.consume(TokenKind::While).clone();
         let logical = self.expr();
+
         self.consume(TokenKind::Lbrace);
         let body = self.block();
         self.consume(TokenKind::Rbrace);
+
         Node::While {
             location,
             logical: Box::new(logical),
@@ -775,9 +521,11 @@ impl<'file_path> Parser<'file_path> {
     /// Else parsing
     fn else_stmt(&mut self) -> Node {
         let location = self.consume(TokenKind::Else).clone();
+
         self.consume(TokenKind::Lbrace);
         let body = self.block();
         self.consume(TokenKind::Rbrace);
+
         Node::If {
             location: location.clone(),
             logical: Box::new(Node::Bool {
@@ -792,9 +540,12 @@ impl<'file_path> Parser<'file_path> {
     fn elif_stmt(&mut self) -> Node {
         let location = self.consume(TokenKind::Elif).clone();
         let logical = self.expr();
+
         self.consume(TokenKind::Lbrace);
         let body = self.block();
         self.consume(TokenKind::Rbrace);
+
+        // if elif / else is passed
         if self.check(TokenKind::Elif) {
             Node::If {
                 location,
@@ -823,9 +574,12 @@ impl<'file_path> Parser<'file_path> {
     fn if_stmt(&mut self) -> Node {
         let location = self.consume(TokenKind::If).clone();
         let logical = self.expr();
+
         self.consume(TokenKind::Lbrace);
         let body = self.block();
         self.consume(TokenKind::Rbrace);
+
+        // if elif / else is passed
         if self.check(TokenKind::Elif) {
             Node::If {
                 location,
@@ -850,79 +604,21 @@ impl<'file_path> Parser<'file_path> {
         }
     }
 
-    /// Match statement parsing
-    fn match_stmt(&mut self) -> Node {
-        let location = self.consume(TokenKind::Match).clone();
-        // matchable
-        let matchable = self.expr();
-        // cases
-        let mut cases = vec![];
-        let default;
-        // body
-        self.consume(TokenKind::Lbrace);
-        while self.check(TokenKind::Case) {
-            self.consume(TokenKind::Case);
-            let value = self.expr();
-            // one line
-            if self.check(TokenKind::Arrow) {
-                self.consume(TokenKind::Arrow);
-                cases.push(MatchCase::new(Box::new(value), Box::new(self.statement())))
-            }
-            // multi line
-            else if self.check(TokenKind::Lbrace) {
-                self.consume(TokenKind::Lbrace);
-                let body = self.block();
-                self.consume(TokenKind::Rbrace);
-                cases.push(MatchCase::new(Box::new(value), Box::new(body)))
-            } else {
-                error!(Error::new(
-                    location.address.clone(),
-                    "expected arrow or brace after case value",
-                    "check your code",
-                ));
-            }
-        }
-        // default
-        self.consume(TokenKind::Default);
-        // one line
-        if self.check(TokenKind::Arrow) {
-            self.consume(TokenKind::Arrow);
-            default = Box::new(self.statement());
-        }
-        // multi line
-        else if self.check(TokenKind::Lbrace) {
-            self.consume(TokenKind::Lbrace);
-            let body = self.block();
-            self.consume(TokenKind::Rbrace);
-            default = Box::new(body);
-        } else {
-            error!(Error::new(
-                location.address.clone(),
-                "expected arrow or brace after case value",
-                "check your code",
-            ));
-        }
-        self.consume(TokenKind::Rbrace);
-
-        Node::Match {
-            location,
-            matchable: Box::new(matchable),
-            cases,
-            default,
-        }
-    }
-
     /// For statement parsing
     fn for_stmt(&mut self) -> Node {
+        // `for i in $expr`
         self.consume(TokenKind::For);
         let name = self.consume(TokenKind::Id).clone();
         self.consume(TokenKind::In);
         let value = self.expr();
+
+        // body
         self.consume(TokenKind::Lbrace);
         let body = self.block();
         self.consume(TokenKind::Rbrace);
+
         Node::For {
-            variable_name: name,
+            variable: name,
             iterable: Box::new(value),
             body: Box::new(body),
         }
@@ -932,13 +628,25 @@ impl<'file_path> Parser<'file_path> {
     fn function_stmt(&mut self) -> Node {
         self.consume(TokenKind::Fn);
 
-        // fn name
+        // function name
         let name = self.consume(TokenKind::Id).clone();
 
         // params
-        let mut params: Vec<Token> = Vec::new();
+        let mut params: Vec<Parameter> = Vec::new();
         if self.check(TokenKind::Lparen) {
-            params = self.params();
+            params = self.parameters();
+        }
+
+        // return type
+        let typ;
+        // if type specified
+        if self.check(TokenKind::Colon) {
+            // `: $type`
+            typ = Some(self.symbol_path());
+        }
+        // else
+        else {
+            typ = None
         }
 
         // body
@@ -950,6 +658,7 @@ impl<'file_path> Parser<'file_path> {
             name,
             params,
             body: Box::new(body),
+            typ,
         }
     }
 
@@ -961,34 +670,28 @@ impl<'file_path> Parser<'file_path> {
         let name = self.consume(TokenKind::Id).clone();
 
         // params
-        let mut constructor: Vec<Token> = Vec::new();
+        let mut constructor: Vec<Parameter> = Vec::new();
         if self.check(TokenKind::Lparen) {
-            constructor = self.params();
+            constructor = self.parameters();
         }
 
-        // traits
-        let mut impls: Vec<Token> = Vec::new();
-        if self.check(TokenKind::Impl) {
-            // impls by comma
-            self.consume(TokenKind::Impl);
-            impls.push(self.consume(TokenKind::Id).clone());
-            while !self.is_at_end() && self.check(TokenKind::Comma) {
-                self.consume(TokenKind::Comma);
-                impls.push(self.consume(TokenKind::Id).clone());
-            }
-        }
-        // body
-        let mut body = Vec::new();
+        // type contents
+        let mut functions = Vec::new();
+        let mut fields = Vec::new();
+
+        // body parsing
         if self.check(TokenKind::Lbrace) {
             self.consume(TokenKind::Lbrace);
             while !self.is_at_end() && !self.check(TokenKind::Rbrace) {
                 let location = self.peek().clone();
-                let mut node = self.statement();
-                match node {
-                    Node::FnDeclaration {
-                        name, params, body, ..
-                    } => node = Node::FnDeclaration { name, params, body },
-                    Node::Native { .. } | Node::Define { .. } => {}
+                let node = self.statement();
+                match &node {
+                    Node::FnDeclaration { .. } => {
+                        functions.push(node);
+                    }
+                    Node::Define { .. } => {
+                        fields.push(node);
+                    }
                     _ => {
                         error!(Error::own_text(
                             location.address,
@@ -1000,120 +703,16 @@ impl<'file_path> Parser<'file_path> {
                         ));
                     }
                 }
-                body.push(node);
             }
             self.consume(TokenKind::Rbrace);
         }
 
-        Node::Type {
+        Node::TypeDeclaration {
             name,
             constructor,
-            body: Box::new(Node::Block { body }),
-            impls,
+            functions,
+            fields,
         }
-    }
-
-    /// Trait declaration parsing
-    fn trait_stmt(&mut self) -> Node {
-        self.consume(TokenKind::Trait);
-
-        // trait name
-        let name = self.consume(TokenKind::Id).clone();
-        // functions
-        let mut functions: Vec<TraitNodeFn> = Vec::new();
-        self.consume(TokenKind::Lbrace);
-        while !self.is_at_end() && !self.check(TokenKind::Rbrace) {
-            let location = self.peek().address.clone();
-
-            if self.check(TokenKind::Fn) {
-                self.consume(TokenKind::Fn);
-
-                // function name
-                let name = self.consume(TokenKind::Id).clone();
-
-                // params
-                let mut params: Vec<Token> = Vec::new();
-                if self.check(TokenKind::Lparen) {
-                    params = self.params();
-                }
-
-                // optional body
-                if self.check(TokenKind::Lbrace) {
-                    self.consume(TokenKind::Lbrace);
-                    let body = self.block();
-                    self.consume(TokenKind::Rbrace);
-
-                    functions.push(TraitNodeFn::new(name, params, Option::Some(Box::new(body))))
-                } else {
-                    functions.push(TraitNodeFn::new(name, params, Option::None))
-                }
-            } else {
-                error!(Error::new(
-                    location,
-                    "only fn-s can be declared in trait.",
-                    "you can create this declaration: 'fn meow(cat)'",
-                ))
-            }
-        }
-
-        self.consume(TokenKind::Rbrace);
-
-        Node::Trait { name, functions }
-    }
-
-    /// Unit declaration parsing
-    fn unit_stmt(&mut self) -> Node {
-        self.consume(TokenKind::Unit);
-
-        // unit name
-        let name = self.consume(TokenKind::Id).clone();
-
-        // unit body
-        let mut body = Vec::new();
-        if self.check(TokenKind::Lbrace) {
-            self.consume(TokenKind::Lbrace);
-            while !self.is_at_end() && !self.check(TokenKind::Rbrace) {
-                let location = self.peek().clone();
-                let mut node = self.statement();
-                match node {
-                    Node::FnDeclaration {
-                        name, params, body, ..
-                    } => node = Node::FnDeclaration { name, params, body },
-                    Node::Native { .. } | Node::Define { .. } => {}
-                    _ => {
-                        error!(Error::own_text(
-                            location.address,
-                            format!(
-                                "invalid node for unit: {:?}:{:?}",
-                                location.tk_type, location.value
-                            ),
-                            "check your code.",
-                        ));
-                    }
-                }
-                body.push(node);
-            }
-            self.consume(TokenKind::Rbrace);
-        }
-
-        Node::Unit {
-            name,
-            body: Box::new(Node::Block { body }),
-        }
-    }
-
-    /// Native fn declaration parsing
-    fn native_stmt(&mut self) -> Node {
-        self.consume(TokenKind::Native);
-
-        // definition name
-        let name = self.consume(TokenKind::Id).clone();
-        // ->
-        self.consume(TokenKind::Arrow);
-        // native fn internal name
-        let fn_name = self.consume(TokenKind::Text).clone();
-
-        Node::Native { name, fn_name }
     }
 
     /// Statement parsing
@@ -1121,19 +720,15 @@ impl<'file_path> Parser<'file_path> {
         let tk = self.peek();
         match tk.tk_type {
             TokenKind::Type => self.type_stmt(),
-            TokenKind::Unit => self.unit_stmt(),
             TokenKind::If => self.if_stmt(),
-            TokenKind::New | TokenKind::Id => self.access_stmt(),
-            TokenKind::Match => self.match_stmt(),
+            TokenKind::New | TokenKind::Id => self.access(false),
             TokenKind::Continue => self.continue_stmt(),
             TokenKind::Break => self.break_stmt(),
             TokenKind::Ret => self.return_stmt(),
             TokenKind::Fn => self.function_stmt(),
-            TokenKind::Native => self.native_stmt(),
             TokenKind::Use => self.use_stmt(),
             TokenKind::For => self.for_stmt(),
             TokenKind::While => self.while_stmt(),
-            TokenKind::Trait => self.trait_stmt(),
             TokenKind::Let => self.let_stmt(),
             _ => error!(Error::own_text(
                 tk.address.clone(),

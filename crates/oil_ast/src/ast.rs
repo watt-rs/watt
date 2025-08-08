@@ -1,7 +1,48 @@
+use oil_common::address::Address;
 /// Imports
 use oil_lex::tokens::Token;
 
-/// AST node
+/// Symbol path segment
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct SymbolPathSegment {
+    pub identifier: String,
+}
+
+/// Symbol path
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct SymbolPath {
+    address: Address,
+    segments: Vec<SymbolPathSegment>,
+}
+
+/// Implementation
+impl SymbolPath {
+    /// Creates new symbol path
+    pub fn new(address: Address, segments: Vec<SymbolPathSegment>) -> Self {
+        Self { address, segments }
+    }
+    /// Pushes segment
+    pub fn push(&mut self, segment: SymbolPathSegment) {
+        self.segments.push(segment);
+    }
+}
+
+/// Parameter
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct Parameter {
+    pub name: Token,
+    pub typ: SymbolPath,
+}
+
+/// Parameter implementation
+impl Parameter {
+    /// Creates new parameter
+    pub fn new(name: Token, typ: SymbolPath) -> Self {
+        Self { name, typ }
+    }
+}
+
+/// Ast node
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 #[allow(dead_code)]
 pub enum Node {
@@ -40,7 +81,7 @@ pub enum Node {
     Define {
         name: Token,
         value: Box<Node>,
-        typ: Option<Token>,
+        typ: Option<SymbolPath>,
     },
     Assign {
         previous: Option<Box<Node>>,
@@ -58,15 +99,9 @@ pub enum Node {
     },
     FnDeclaration {
         name: Token,
-        params: Vec<Token>,
+        params: Vec<Parameter>,
         body: Box<Node>,
-        typ: Option<Token>,
-    },
-    AnFnDeclaration {
-        location: Token,
-        params: Vec<Token>,
-        body: Box<Node>,
-        typ: Option<Token>,
+        typ: Option<SymbolPath>,
     },
     Break {
         location: Token,
@@ -75,8 +110,8 @@ pub enum Node {
         location: Token,
     },
     Use {
-        path: Token,
-        name: Token,
+        path: SymbolPath,
+        name: Option<Token>,
     },
     Cond {
         left: Box<Node>,
@@ -88,29 +123,15 @@ pub enum Node {
         right: Box<Node>,
         op: Token,
     },
-    Match {
-        location: Token,
-        matchable: Box<Node>,
-        cases: Vec<MatchCase>,
-        default: Box<Node>,
-    },
-    NewInstance {
-        location: Token,
-        typ: Token,
-        constructor: Vec<Node>,
-        should_push: bool,
-    },
     Return {
         location: Token,
         value: Box<Node>,
     },
-    Null {
-        location: Token,
-    },
     TypeDeclaration {
         name: Token,
-        constructor: Vec<Token>,
+        constructor: Vec<Parameter>,
         fields: Vec<Node>,
+        functions: Vec<Node>,
     },
     For {
         iterable: Box<Node>,
@@ -122,20 +143,4 @@ pub enum Node {
         from: Box<Node>,
         to: Box<Node>,
     },
-}
-
-/// Match statement case
-/// Represents pattern value, body
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct MatchCase {
-    pub value: Box<Node>,
-    pub body: Box<Node>,
-}
-
-/// Match case implementation
-impl MatchCase {
-    /// New match case
-    pub fn new(value: Box<Node>, body: Box<Node>) -> MatchCase {
-        MatchCase { value, body }
-    }
 }

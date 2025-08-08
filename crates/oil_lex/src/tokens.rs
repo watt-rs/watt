@@ -5,65 +5,63 @@ use oil_common::address::Address;
 #[derive(Debug, Clone, Eq, PartialEq, Copy, Hash)]
 #[allow(dead_code)]
 pub enum TokenKind {
-    Let,        // let
-    Fn,         // fn
-    Plus,       // +
-    Minus,      // -
-    Star,       // *
-    Slash,      // /
-    Percent,    // %
-    Caret,      // ^
-    Or,         // || | or
-    And,        // && | and
-    BitwiseOr,  // |
-    BitwiseAnd, // &
-    AddAssign,  // +=
-    SubAssign,  // -=
-    MulAssign,  // *-
-    DivAssign,  // /=
-    AndEq,      // &=
-    OrEq,       // |=
-    XorEq,      // ^=
-    Lparen,     // (
-    Rparen,     // )
-    Lbrace,     // {
-    Rbrace,     // }
-    Eq,         // ==
-    NotEq,      // !=
-    Text,       // 'text'
-    Number,     // 1234567890.0123456789
-    Assign,     // =
-    Id,         // variable id
-    Comma,      // ,
-    Ret,        // return
-    If,         // if
-    Bool,       // bool
-    While,      // while
-    Type,       // type
-    New,        // new
-    Dot,        // dot
-    Greater,    // >
-    Less,       // <
-    GreaterEq,  // >=
-    LessEq,     // <=
-    Elif,       // elif
-    Else,       // else
-    Use,        // use
-    Break,      // break
-    Match,      // match
-    Case,       // case
-    Default,    // default
-    Lbracket,   // [
-    Rbracket,   // ]
-    Colon,      // colon :
-    For,        // for
-    Bang,       // !
-    In,         // in
-    Continue,   // continue
-    Unit,       // unit
-    Native,     // native
-    Range,      // ..
-    As,         // as
+    Let,           // let
+    Fn,            // fn
+    Plus,          // +
+    Minus,         // -
+    Star,          // *
+    Slash,         // /
+    Percent,       // %
+    Caret,         // ^
+    Or,            // || | or
+    And,           // && | and
+    BitwiseOr,     // |
+    BitwiseAnd,    // &
+    AddAssign,     // +=
+    SubAssign,     // -=
+    MulAssign,     // *-
+    DivAssign,     // /=
+    AndEq,         // &=
+    OrEq,          // |=
+    XorEq,         // ^=
+    Lparen,        // (
+    Rparen,        // )
+    Lbrace,        // {
+    Rbrace,        // }
+    Eq,            // ==
+    NotEq,         // !=
+    Text,          // 'text'
+    Number,        // 1234567890.0123456789
+    Assign,        // =
+    Id,            // variable id
+    Comma,         // ,
+    Ret,           // return
+    If,            // if
+    Bool,          // bool
+    While,         // while
+    Type,          // type
+    New,           // new
+    Dot,           // dot
+    Greater,       // >
+    Less,          // <
+    GreaterEq,     // >=
+    LessEq,        // <=
+    Elif,          // elif
+    Else,          // else
+    Use,           // use
+    Break,         // break
+    Lbracket,      // [
+    Rbracket,      // ]
+    Colon,         // :
+    PathSeparator, // ::
+    For,           // for
+    Bang,          // !
+    In,            // in
+    Continue,      // continue
+    Unit,          // unit
+    Native,        // native
+    Range,         // ..
+    As,            // as
 }
 
 /// Token structure

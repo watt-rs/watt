@@ -34,9 +34,6 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
             ("or", TokenKind::Or),
             ("type", TokenKind::Type),
             ("new", TokenKind::New),
-            ("match", TokenKind::Match),
-            ("case", TokenKind::Case),
-            ("default", TokenKind::Default),
             ("while", TokenKind::While),
             ("for", TokenKind::For),
             ("in", TokenKind::In),
@@ -158,7 +155,13 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
                         self.add_tk(TokenKind::Dot, ".");
                     }
                 }
-                ':' => self.add_tk(TokenKind::Colon, ":"),
+                ':' => {
+                    if self.is_match(':') {
+                        self.add_tk(TokenKind::PathSeparator, "::");
+                    } else {
+                        self.add_tk(TokenKind::Colon, ":")
+                    }
+                }
                 '<' => {
                     if self.is_match('=') {
                         self.add_tk(TokenKind::LessEq, "<=");
@@ -213,7 +216,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
                         self.tokens.push(tk);
                     }
                     // identifier
-                    else if self.is_id(ch) {
+                    else if self.is_letter(ch) {
                         let token = self.scan_id_or_keyword(ch);
                         self.tokens.push(token);
                     }
@@ -466,12 +469,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
     }
 
     /// Returns true if character is id.
-    ///
-    /// Character is id, if:
-    /// - char is letter
-    /// - char is digit
-    /// - char is colon and next char is id
     fn is_id(&self, ch: char) -> bool {
-        self.is_letter(ch) || self.is_digit(ch) || (ch == ':' && self.is_id(self.cursor.next()))
+        self.is_letter(ch) || self.is_digit(ch)
     }
 }
