@@ -1,6 +1,7 @@
+use crate::memory::TRACER;
 //// Imports
 use crate::memory::{memory, trace::Trace};
-use crate::{gc_check, guard, unguard};
+use crate::{alloc, gc_check, guard, unguard};
 use std::{
     fmt::Debug,
     hash::{Hash, Hasher},
@@ -19,7 +20,7 @@ impl<T: Trace + 'static> Gc<T> {
     /// New gc value, allocates value in heap
     pub fn new(value: T) -> Self {
         // creating ptr
-        let value_ptr = memory::alloc_value(value);
+        let value_ptr = alloc!(value);
         let result = match NonNull::new(value_ptr) {
             Some(value_ptr_non_null) => Gc {
                 inner: value_ptr_non_null,
@@ -32,7 +33,7 @@ impl<T: Trace + 'static> Gc<T> {
         gc_check!();
         // unguarding in gc
         unguard!(result);
-
+        // returning result
         result
     }
 

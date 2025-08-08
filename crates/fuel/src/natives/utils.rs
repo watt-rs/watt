@@ -1,5 +1,5 @@
-use crate::memory::gc::Gc;
 //// Imports
+use crate::memory::gc::Gc;
 use crate::values::{Function, Instance, Native, Trait, Type, Unit, Value};
 use oil_common::address::Address;
 use oil_common::{error, errors::Error};

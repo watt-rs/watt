@@ -147,6 +147,14 @@ impl Tracer {
             self.settings.threshold = self.heap.len() * self.settings.threshold_grow_factor as usize
         }
     }
+
+    /// Cleanups gc heap.
+    pub unsafe fn cleanup(&mut self) {
+        // freeing gc
+        for ptr in &self.heap {
+            memory::free_value(*ptr);
+        }
+    }
 }
 
 /// Macro to simply mark `Gc<T>`
@@ -241,5 +249,24 @@ macro_rules! gc_freeze {
 macro_rules! gc_unfreeze {
     () => {
         unsafe { (*crate::memory::TRACER.tracer).freezed(false) }
+    };
+}
+
+/// Cleanup macro
+#[macro_export]
+macro_rules! gc_cleanup {
+    () => {
+        unsafe {
+            (*crate::memory::TRACER.tracer).cleanup();
+            crate::memory::memory::free_value(crate::memory::TRACER.tracer);
+        }
+    };
+}
+
+/// Allocates memory
+#[macro_export]
+macro_rules! alloc {
+    ($value:expr) => {
+        unsafe { (*crate::memory::TRACER.tracer).alloc($value) }
     };
 }

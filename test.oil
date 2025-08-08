@@ -1,5 +1,6 @@
 use std/io as io
 
+/*
 type Juice(multiplier) {
   let juice = 0
   fn apply(amount) {
@@ -10,3 +11,4 @@ type Juice(multiplier) {
 let juice = new Juice(3)
 juice.apply(10)
 io.println(juice.juice)
+*/

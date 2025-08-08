@@ -4,6 +4,7 @@ use crate::call_stack::environment::Environment;
 use crate::call_stack::frame::CallFrame;
 use crate::flow::ControlFlow;
 use crate::memory::gc::Gc;
+use crate::{gc_cleanup, gc_unfreeze};
 use crate::{gc_freeze, guard, natives::natives, root, unguard, values::*};
 use oil_common::address::Address;
 use oil_common::{error, errors::Error};
@@ -64,9 +65,14 @@ impl VirtualMachine {
         vm.builtins_table = vm.pop_frame().pop();
         root!(vm.builtins_table);
         // unfreezing gc
-        gc_freeze!();
+        gc_unfreeze!();
         // returning vm
         vm
+    }
+
+    /// Cleanups vm
+    pub fn cleanup(&mut self) {
+        gc_cleanup!()
     }
 
     /// Pushes frame to vm call stack

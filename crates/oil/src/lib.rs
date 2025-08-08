@@ -5,14 +5,14 @@
 #![allow(dangerous_implicit_autorefs)]
 
 // imports
-use std::{fs, path::PathBuf};
+use fuel::vm::VirtualMachine;
 use oil_analyze::analyzer::Analyzer;
 use oil_ast::ast::Node;
 use oil_common::{address::Address, error, errors::Error};
 use oil_gen::generator::{BytecodeGenerator, GeneratorResult};
 use oil_lex::{lexer::Lexer, tokens::Token};
 use oil_parse::parser::Parser;
-use fuel::vm::VirtualMachine;
+use std::{fs, path::PathBuf};
 
 /// Reading file
 ///
@@ -250,6 +250,9 @@ unsafe fn run_vm(bytecode: GeneratorResult, bench: bool) {
             "report this error to the developer."
         ))
     }
+
+    // clenaup
+    vm.cleanup();
 
     // benchmark end
     if bench {
