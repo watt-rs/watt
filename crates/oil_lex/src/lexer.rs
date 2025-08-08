@@ -37,20 +37,14 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
             ("match", TokenKind::Match),
             ("case", TokenKind::Case),
             ("default", TokenKind::Default),
-            ("lambda", TokenKind::Lambda),
             ("while", TokenKind::While),
-            ("unit", TokenKind::Unit),
             ("for", TokenKind::For),
             ("in", TokenKind::In),
             ("continue", TokenKind::Continue),
             ("true", TokenKind::Bool),
             ("false", TokenKind::Bool),
-            ("null", TokenKind::Null),
             ("return", TokenKind::Ret),
-            ("trait", TokenKind::Trait),
-            ("impl", TokenKind::Impl),
             ("native", TokenKind::Native),
-            ("impls", TokenKind::Impls),
             ("as", TokenKind::As),
             ("let", TokenKind::Let),
             ("use", TokenKind::Use),
@@ -107,8 +101,6 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
                 '-' => {
                     if self.is_match('=') {
                         self.add_tk(TokenKind::SubAssign, "-=");
-                    } else if self.is_match('>') {
-                        self.add_tk(TokenKind::Arrow, "->");
                     } else {
                         self.add_tk(TokenKind::Minus, "-");
                     }
@@ -166,7 +158,6 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
                         self.add_tk(TokenKind::Dot, ".");
                     }
                 }
-                '?' => self.add_tk(TokenKind::Question, "?"),
                 ':' => self.add_tk(TokenKind::Colon, ":"),
                 '<' => {
                     if self.is_match('=') {

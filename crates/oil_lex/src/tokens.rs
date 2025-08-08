@@ -28,7 +28,6 @@ pub enum TokenKind {
     Rparen,     // )
     Lbrace,     // {
     Rbrace,     // }
-    Lambda,     // lambda
     Eq,         // ==
     NotEq,      // !=
     Text,       // 'text'
@@ -47,7 +46,6 @@ pub enum TokenKind {
     Less,       // <
     GreaterEq,  // >=
     LessEq,     // <=
-    Null,       // null
     Elif,       // elif
     Else,       // else
     Use,        // use
@@ -62,13 +60,8 @@ pub enum TokenKind {
     Bang,       // !
     In,         // in
     Continue,   // continue
-    Arrow,      // ->
     Unit,       // unit
     Native,     // native
-    Trait,      // trait
-    Impl,       // impl
-    Question,   // ?
-    Impls,      // impls
     Range,      // ..
     As,         // as
 }

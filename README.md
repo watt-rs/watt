@@ -3,7 +3,7 @@
   <p align="center"><i>A lightweight, expressive fuel-powered language 🛢️.</i>
 </p>
 
-🧴 Oil is statically-typed, compiled, programming language, designed to assist developers.
+🧴 Oil is statically-typed, type-safe, compiled programming language, designed to assist developers.
 
 ```oil
 use std/io as io
@@ -28,7 +28,7 @@ type Juice(multiplier: i16) {
 }
 
 fn main() {
-  let juice: Juice = new Juice(3)
+  let juice: Juice = Juice(3)
   juice.apply(10)
 
   io.println(juice.juice)
