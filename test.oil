@@ -1,18 +1,5 @@
-use std/io as io
-
-/*
-type Juice(multiplier) {
-  let juice = 0
-  fn apply(amount) {
-    self.juice += (self.multiplier * amount)
-  }
-}
-
-let juice = new Juice(3)
-juice.apply(10)
-io.println(juice.juice)
-*/
-fn fib(n) {
+use std::io as io
+fn fib(n: i16): i16 {
     if n <= 1 {
         return n
     } else {

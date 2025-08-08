@@ -4,5 +4,6 @@ members = [
     "crates/oil_parse",
     "crates/oil_ast",
     "crates/oil_common",
+    "crates/oil",
 ]
 resolver = "3"

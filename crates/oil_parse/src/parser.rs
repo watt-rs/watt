@@ -276,7 +276,6 @@ impl<'file_path> Parser<'file_path> {
         if self.check(TokenKind::Colon) {
             // `: $type`
             self.consume(TokenKind::Colon);
-            // setting type to specified
             typ = Option::Some(self.symbol_path());
         }
         // else
@@ -625,7 +624,7 @@ impl<'file_path> Parser<'file_path> {
     }
 
     /// Fn declaration parsing
-    fn function_stmt(&mut self) -> Node {
+    fn fn_declaration(&mut self) -> Node {
         self.consume(TokenKind::Fn);
 
         // function name
@@ -642,6 +641,7 @@ impl<'file_path> Parser<'file_path> {
         // if type specified
         if self.check(TokenKind::Colon) {
             // `: $type`
+            self.consume(TokenKind::Colon);
             typ = Some(self.symbol_path());
         }
         // else
@@ -663,7 +663,7 @@ impl<'file_path> Parser<'file_path> {
     }
 
     /// Type declaration parsing
-    fn type_stmt(&mut self) -> Node {
+    fn type_declaration(&mut self) -> Node {
         self.consume(TokenKind::Type);
 
         // type name
@@ -719,13 +719,13 @@ impl<'file_path> Parser<'file_path> {
     fn statement(&mut self) -> Node {
         let tk = self.peek();
         match tk.tk_type {
-            TokenKind::Type => self.type_stmt(),
+            TokenKind::Type => self.type_declaration(),
             TokenKind::If => self.if_stmt(),
             TokenKind::New | TokenKind::Id => self.access(false),
             TokenKind::Continue => self.continue_stmt(),
             TokenKind::Break => self.break_stmt(),
             TokenKind::Ret => self.return_stmt(),
-            TokenKind::Fn => self.function_stmt(),
+            TokenKind::Fn => self.fn_declaration(),
             TokenKind::Use => self.use_stmt(),
             TokenKind::For => self.for_stmt(),
             TokenKind::While => self.while_stmt(),
