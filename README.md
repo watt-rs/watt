@@ -7,7 +7,10 @@
 
 ```oil
 use std/io as io
-io.println("Hello, Oil!")
+
+fn main() {
+  io.println("Hello, Oil!")
+}
 ```
 
 ```oil
