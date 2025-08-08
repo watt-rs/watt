@@ -60,7 +60,7 @@ pub enum ParseError {
     UnexpectedAssignmentOperator { unexpected: TokenKind },
     #[error("invalid \"{op}\" operation.")]
     #[diagnostic(
-        code(parse::invalid_assign_operation),
+        code(parse::invalid_compound_operation),
         help("this operation can be used, only after identifier.")
     )]
     InvalidCompoundOperation {
@@ -71,7 +71,7 @@ pub enum ParseError {
         op: &'static str,
     },
     #[error("unexpected \"{unexpected}\" as expression.")]
-    #[diagnostic(code(parse::invalid_assign_operation))]
+    #[diagnostic(code(parse::unexpected_expression_token))]
     UnexpectedExpressionToken {
         #[source_code]
         src: NamedSource<String>,
@@ -80,7 +80,7 @@ pub enum ParseError {
         unexpected: String,
     },
     #[error("unexpected node in type body.")]
-    #[diagnostic(code(parse::invalid_assign_operation))]
+    #[diagnostic(code(parse::unexpected_node_in_type_body))]
     UnexpectedNodeInTypeBody {
         #[source_code]
         src: NamedSource<String>,
@@ -91,7 +91,7 @@ pub enum ParseError {
     },
     #[error("unexpected \"{unexpected}\" as statement.")]
     #[diagnostic(
-        code(parse::invalid_assign_operation),
+        code(parse::unexpected_statement_token),
         help("this operation can be used, only after identifier.")
     )]
     UnexpectedStatementToken {
