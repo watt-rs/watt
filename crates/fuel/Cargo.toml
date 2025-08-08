@@ -1,0 +1,19 @@
+[package]
+name = "fuel"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+oil_common = { path = "../oil_common" }
+scopeguard = "1.2.0"
+chrono = "0.4.41"
+sysinfo = { version = "0.36.0", features = ["windows"] }
+base64 = "0.22.1"
+sha2 = "0.11.0-rc.0"
+md-5 = "0.11.0-rc.0"
+hex = "0.4.3"
+rustc-hash = "2.1.1"
+libloading = "0.8.8"
+libffi = "4.1.1"
+minreq = { version = "2.14.0", features = ["https"] }
+lazy_static = "1.5.0"

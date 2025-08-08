@@ -6,20 +6,21 @@
 🧴 Oil is dynamically-typed programming language for fuel vm, designed to assist developers.
 
 ```oil
-use io
+use std/io as io
 io.println("Hello, Oil!")
 ```
 
 ```oil
-use io
+use std/io as io
 
-type Juice(juice) {
+type Juice(multiplier) {
+  let juice = 0
   fn apply(amount) {
-    self.juice += amount
+    self.juice += (self.multiplier * amount)
   }
 }
 
-let juice = new Juice(100)
+let juice = new Juice(3)
 juice.apply(10)
 io.println(juice.juice)
 ```

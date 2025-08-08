@@ -1,0 +1,13 @@
+[package]
+name = "oil_gen"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+fuel = { path = "../fuel" }
+oil_ast = { path = "../oil_ast" }
+oil_lex = { path = "../oil_lex" }
+oil_parse = { path = "../oil_parse" }
+oil_common = { path = "../oil_common" }
+oil_analyze = { path = "../oil_analyze" }
+rustc-hash = "2.1.1"

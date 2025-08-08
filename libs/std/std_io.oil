@@ -1,0 +1,36 @@
+/*
+ Library: io.
+ | implementation of: println, print и input
+ | can be found in
+ | > crate::vm::natives::libs::natives_io
+ */
+
+/*
+ Print natives
+*/
+native __println -> 'io@println'
+native __print -> 'io@print'
+
+/*
+ Formatted println text and '\n' to terminal
+*/
+fn println(a) {
+     __println(a)
+}
+
+/*
+ Prints text to terminal
+*/
+fn print(a) {
+    __print(a.to_string())
+}
+
+/*
+ Flushes buffered data to terminal
+*/
+native flush -> 'io@flush'
+
+/*
+ Gets input from terminal
+*/
+native input -> 'io@input'
