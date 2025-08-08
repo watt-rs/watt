@@ -1,8 +1,0 @@
-[package]
-name = "oil_cli"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-oil = { path = "../oil" }
-clap = "4.5.40"
