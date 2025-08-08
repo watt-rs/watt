@@ -20,7 +20,9 @@ type Juice(multiplier: i16) {
   }
 }
 
-let juice: Juice = new Juice(3)
-juice.apply(10)
-io.println(juice.juice)
+fn main() {
+  let juice: Juice = new Juice(3)
+  juice.apply(10)
+  io.println(juice.juice)
+}
 ```
