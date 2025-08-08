@@ -1,16 +1,18 @@
 //// Imports
 use crate::cursor::Cursor;
+use crate::errors::LexError;
 use crate::tokens::*;
-use oil_common::{address::Address, error, errors::Error};
+use miette::NamedSource;
+use oil_common::address::Address;
+use oil_common::bail;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 /// Lexer structure
 pub struct Lexer<'file_path, 'cursor> {
-    line: u64,
-    column: u16,
     cursor: Cursor<'cursor>,
     file_path: &'file_path PathBuf,
+    named_source: &'file_path NamedSource<String>,
     tokens: Vec<Token>,
     keywords: HashMap<&'static str, TokenKind>,
 }
@@ -22,7 +24,11 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
     /// * `code`: source code represented as `&'cursor [char]`
     /// * `file_path`: source file path
     ///
-    pub fn new(code: &'cursor [char], file_path: &'file_path PathBuf) -> Self {
+    pub fn new(
+        code: &'cursor [char],
+        file_path: &'file_path PathBuf,
+        named_source: &'file_path NamedSource<String>,
+    ) -> Self {
         // Keywords list
         let keywords_map = HashMap::from([
             ("fn", TokenKind::Fn),
@@ -48,10 +54,9 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         ]);
         // Lexer
         Lexer {
-            line: 1,
-            column: 0,
             cursor: Cursor::new(code),
             file_path,
+            named_source,
             tokens: vec![],
             keywords: keywords_map,
         }
@@ -59,10 +64,9 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
 
     /// Converts source code represented as `&'cursor [char]`
     /// To a `Vec<Token>` - tokens list.
-    #[allow(clippy::nonminimal_bool)]
     pub fn lex(mut self) -> Vec<Token> {
         if !self.tokens.is_empty() {
-            panic!("tokens len already > 0. report this error to the developer.")
+            bail!(LexError::TokensListsNotEmpty);
         }
         while !self.cursor.is_at_end() {
             let ch = self.advance();
@@ -120,7 +124,6 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
                         while !self.is_match('\n') && !self.cursor.is_at_end() {
                             self.advance();
                         }
-                        self.new_line();
                     }
                     // multi-line comment
                     else if self.is_match('*') {
@@ -128,7 +131,6 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
                             && !self.cursor.is_at_end()
                         {
                             if self.is_match('\n') {
-                                self.new_line();
                                 continue;
                             }
                             self.advance();
@@ -194,7 +196,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
                 '\t' => {}
                 '\0' => {}
                 ' ' => {}
-                '\n' => self.new_line(),
+                '\n' => {}
                 '\'' => {
                     let tk = self.scan_string();
                     self.tokens.push(tk)
@@ -222,11 +224,11 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
                     }
                     // unexpected
                     else {
-                        error!(Error::own(
-                            Address::new(self.line, self.column, self.file_path.clone(),),
-                            format!("unexpected char: {ch}"),
-                            format!("delete char: {ch}"),
-                        ));
+                        bail!(LexError::UnexpectedCharacter {
+                            src: self.named_source.clone(),
+                            span: self.cursor.current.into(),
+                            ch
+                        })
                     }
                 }
             }
@@ -236,9 +238,10 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
 
     /// Scans string. Implies quote is already ate. East ending quote.
     fn scan_string(&mut self) -> Token {
+        // Start of span
+        let span_start = self.cursor.current;
         // String text
         let mut text: String = String::new();
-        let span_start = self.column;
 
         while self.cursor.peek() != '\'' {
             let ch = self.advance();
@@ -250,21 +253,20 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
             }
 
             if self.cursor.is_at_end() || self.is_match('\n') {
-                error!(Error::new(
-                    Address::new(self.line, self.column, self.file_path.clone(),),
-                    "unclosed string quotes.",
-                    "did you forget ' symbol?",
-                ));
+                bail!(LexError::UnclosedStringQuotes {
+                    src: self.named_source.clone(),
+                    span: (span_start..self.cursor.current).into(),
+                })
             }
         }
 
         self.advance();
-        let span_end = self.column;
+        let span_end = self.cursor.current;
 
         Token {
             tk_type: TokenKind::Text,
             value: text,
-            address: Address::span(self.line, span_start..span_end, self.file_path.clone()),
+            address: Address::span(span_start..span_end, self.file_path.clone()),
         }
     }
 
@@ -275,7 +277,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
     ///
     fn scan_number(&mut self, start: char) -> Token {
         // Start of span
-        let span_start = self.column;
+        let span_start = self.cursor.current - 1;
         // Number text
         let mut text: String = String::from(start);
         // If number is float
@@ -286,15 +288,15 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
                 if self.cursor.next() == '.' {
                     break;
                 }
+                text.push(self.advance());
                 if is_float {
-                    error!(Error::new(
-                        Address::new(self.line, self.column, self.file_path.clone(),),
-                        "couldn't parse number with two dots",
-                        "check your code.",
-                    ));
+                    bail!(LexError::InvalidNumber {
+                        src: self.named_source.clone(),
+                        span: (span_start..self.cursor.current + 1).into(),
+                        number: text
+                    })
                 }
                 is_float = true;
-                text.push(self.advance());
 
                 continue;
             }
@@ -304,19 +306,19 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
             }
         }
 
-        let span_end = self.column;
+        let span_end = self.cursor.current;
 
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::span(self.line, span_start..span_end, self.file_path.clone()),
+            address: Address::span(span_start..span_end, self.file_path.clone()),
         }
     }
 
     /// Scans hexadecimal numbers `0x{pattern}`
     fn scan_hexadecimal_number(&mut self) -> Token {
         // Start of span
-        let span_start = self.column;
+        let span_start = self.cursor.current - 1;
         // Skip 'x'
         self.advance();
         // Number text
@@ -329,19 +331,19 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
             }
         }
 
-        let span_end = self.column;
+        let span_end = self.cursor.current;
 
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::span(self.line, span_start..span_end, self.file_path.clone()),
+            address: Address::span(span_start..span_end, self.file_path.clone()),
         }
     }
 
     /// Scans octal numbers `0o{pattern}`
     fn scan_octal_number(&mut self) -> Token {
         // Start of span
-        let span_start = self.column;
+        let span_start = self.cursor.current - 1;
         // Skip 'o'
         self.advance();
         // Number text
@@ -354,19 +356,19 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
             }
         }
 
-        let span_end = self.column;
+        let span_end = self.cursor.current;
 
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::span(self.line, span_start..span_end, self.file_path.clone()),
+            address: Address::span(span_start..span_end, self.file_path.clone()),
         }
     }
 
     /// Scans binary numbers `0b{pattern}`
     fn scan_binary_number(&mut self) -> Token {
         // Start of span
-        let span_start = self.column;
+        let span_start = self.cursor.current - 1;
         // Skip 'b'
         self.advance();
         // Number text
@@ -379,12 +381,12 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
             }
         }
 
-        let span_end = self.column;
+        let span_end = self.cursor.current;
 
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::span(self.line, span_start..span_end, self.file_path.clone()),
+            address: Address::span(span_start..span_end, self.file_path.clone()),
         }
     }
 
@@ -397,7 +399,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
     ///
     fn scan_id_or_keyword(&mut self, start: char) -> Token {
         // Start of span
-        let span_start = self.column;
+        let span_start = self.cursor.current - 1;
         // Id/keyword text
         let mut text: String = String::from(start);
 
@@ -414,19 +416,13 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
             .cloned()
             .unwrap_or(TokenKind::Id);
 
-        let span_end = self.column;
+        let span_end = self.cursor.current;
 
         Token {
             tk_type,
             value: text,
-            address: Address::span(self.line, span_start..span_end, self.file_path.clone()),
+            address: Address::span(span_start..span_end, self.file_path.clone()),
         }
-    }
-
-    /// Adds 1 to `line` and resets to zero `column`
-    fn new_line(&mut self) {
-        self.line += 1;
-        self.column = 0;
     }
 
     /// Eats character from cursor and returns it,
@@ -434,7 +430,6 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
     fn advance(&mut self) -> char {
         let ch: char = self.cursor.char_at(0);
         self.cursor.current += 1;
-        self.column += 1;
         ch
     }
 
@@ -454,7 +449,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         self.tokens.push(Token::new(
             tk_type,
             tk_value.to_string(),
-            Address::new(self.line, self.column, self.file_path.clone()),
+            Address::new(self.cursor.current, self.file_path.clone()),
         ));
     }
 

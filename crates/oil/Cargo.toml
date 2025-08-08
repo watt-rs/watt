@@ -8,3 +8,4 @@ clap = "4.5.1"
 oil_lex = { path = "../oil_lex" }
 oil_parse = { path = "../oil_parse" }
 oil_common = { path = "../oil_common" }
+miette = { version = "7.6.0", features = ["fancy"] }

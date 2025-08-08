@@ -1,6 +1,6 @@
 /// Lexer cursor
 pub struct Cursor<'cursor> {
-    code: &'cursor [char],
+    pub(crate) code: &'cursor [char],
     pub(crate) current: usize,
 }
 

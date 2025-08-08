@@ -5,3 +5,5 @@ edition = "2024"
 
 [dependencies]
 oil_common = { path = "../oil_common" }
+thiserror = "2.0.12"
+miette = { version = "7.6.0", features = ["fancy"] }

@@ -1,24 +1,27 @@
 /// Imports
-use std::{fs, path::PathBuf};
-
-use oil_common::colors;
+use miette::NamedSource;
 use oil_lex::lexer::Lexer;
 use oil_parse::parser::Parser;
+use std::{fs, path::PathBuf};
 
 /// Runs code
 #[allow(unused_variables)]
 pub fn run(path: PathBuf, lex_debug: bool, parse_debug: bool) {
+    // code
+    let code = fs::read_to_string(&path).unwrap();
+    let code_chars: Vec<char> = code.chars().collect();
+    // named source
+    let named_source = NamedSource::<String>::new("test", code);
     // lex
-    let code: Vec<char> = fs::read_to_string(&path).unwrap().chars().collect();
-    let lexer = Lexer::new(&code, &path);
+    let lexer = Lexer::new(&code_chars, &path, &named_source);
     let tokens = lexer.lex();
     // result
-    println!("{}tokens:{}", colors::CyanColor, colors::WhiteColor);
-    println!("{}{:?}", colors::GreenColor, tokens);
+    println!("tokens:");
+    println!("{:?}", tokens);
     // parse
-    let mut parser = Parser::new(tokens, &path);
+    let mut parser = Parser::new(tokens, &named_source);
     let ast = parser.parse();
     // result
-    println!("{}ast:{}", colors::CyanColor, colors::WhiteColor);
-    println!("{}{:#?}", colors::GreenColor, ast);
+    println!("ast:");
+    println!("{:?}", ast);
 }

@@ -1,9 +1,13 @@
 use std::io as io
+type Juice {
+    while true {
+    }
+}
 fn fib(n: i16): i16 {
     if n <= 1 {
         return n
     } else {
-        return fib(n - 1) + fib(n - 2)
+        return fib(n - 1.3) + fib(n - 2)
     }
 }
 io.println(fib(15))

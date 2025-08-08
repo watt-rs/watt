@@ -1,25 +1,26 @@
 /// Imports
+use crate::errors::ParseError;
+use miette::NamedSource;
 use oil_ast::ast::*;
 use oil_common::address::Address;
-use oil_common::{error, errors::Error};
+use oil_common::bail;
 use oil_lex::tokens::{Token, TokenKind};
-use std::path::PathBuf;
 
 /// Parser structure
 pub struct Parser<'file_path> {
     tokens: Vec<Token>,
     current: u128,
-    file_path: &'file_path PathBuf,
+    named_source: &'file_path NamedSource<String>,
 }
 /// Parser implementation
 #[allow(unused_qualifications)]
 impl<'file_path> Parser<'file_path> {
     /// New parser
-    pub fn new(tokens: Vec<Token>, file_path: &'file_path PathBuf) -> Self {
+    pub fn new(tokens: Vec<Token>, named_source: &'file_path NamedSource<String>) -> Self {
         Parser {
             tokens,
             current: 0,
-            file_path,
+            named_source,
         }
     }
 
@@ -79,11 +80,7 @@ impl<'file_path> Parser<'file_path> {
         let end = self.previous().address.clone();
 
         SymbolPath::new(
-            Address::span(
-                start.line,
-                start.span.start..end.span.end,
-                start.file.unwrap(),
-            ),
+            Address::span(start.span.start..end.span.end, start.file.unwrap()),
             segments_list,
         )
     }
@@ -143,12 +140,12 @@ impl<'file_path> Parser<'file_path> {
         }
         // if not, raising an error
         else {
-            let tk = self.peek();
-            error!(Error::own_hint(
-                tk.address.clone(),
-                "expected an `identifier` as access.",
-                format!("found a `{:?}` token", tk)
-            ))
+            let tk = self.peek().clone();
+            bail!(ParseError::ExpectedIdAsAccess {
+                src: self.named_source.clone(),
+                span: tk.address.span.into(),
+                unexpected: tk.value
+            });
         }
     }
 
@@ -169,7 +166,6 @@ impl<'file_path> Parser<'file_path> {
 
         // address of full access
         let address = Address::span(
-            start_address.line,
             start_address.span.start..end_address.span.end - 1,
             start_address.file.unwrap(),
         );
@@ -183,12 +179,12 @@ impl<'file_path> Parser<'file_path> {
                 || self.check(TokenKind::MulAssign)
                 || self.check(TokenKind::DivAssign)
             {
-                let tk = self.advance();
-                error!(Error::own(
-                    address,
-                    format!("can not use operation `{:?}` in expression.", tk.value),
-                    format!("`{:?}` acceptable only in statements.", tk.value)
-                ))
+                let tk = self.advance().clone();
+                bail!(ParseError::InvalidOperationInExpr {
+                    src: self.named_source.clone(),
+                    span: tk.address.span.into(),
+                    unexpected: tk.value
+                })
             }
         }
         // else, if statement
@@ -206,11 +202,10 @@ impl<'file_path> Parser<'file_path> {
                         };
                     }
                     _ => {
-                        error!(Error::own_text(
-                            address,
-                            format!("can not use operation `=` after `{:?}`.", left),
-                            "you can use `=` only after id.."
-                        ))
+                        bail!(ParseError::InvalidAssignOperation {
+                            src: self.named_source.clone(),
+                            span: address.span.into()
+                        })
                     }
                 }
             }
@@ -227,9 +222,7 @@ impl<'file_path> Parser<'file_path> {
                     TokenKind::SubAssign => ("-", TokenKind::Minus),
                     TokenKind::MulAssign => ("*", TokenKind::Star),
                     TokenKind::DivAssign => ("/", TokenKind::Slash),
-                    kind => panic!(
-                        "unexpected assignment operator `{kind:?}`. report this error to the developer."
-                    ),
+                    kind => bail!(ParseError::UnexpectedAssignmentOperator { unexpected: kind }),
                 };
 
                 match left {
@@ -249,11 +242,11 @@ impl<'file_path> Parser<'file_path> {
                         };
                     }
                     _ => {
-                        error!(Error::own(
-                            address,
-                            format!("can not use operation `{:?}` after `{:?}`.", op, left),
-                            format!("you can use `{:?}` only after id.", op)
-                        ))
+                        bail!(ParseError::InvalidCompoundOperation {
+                            src: self.named_source.clone(),
+                            span: address.span.into(),
+                            op
+                        })
                     }
                 };
             }
@@ -319,15 +312,14 @@ impl<'file_path> Parser<'file_path> {
                 value: self.consume(TokenKind::Bool).clone(),
             },
             TokenKind::Lparen => self.grouping_expr(),
-            _ => error!(Error::own_text(
-                self.peek().address.clone(),
-                format!(
-                    "invalid token. {:?}:{:?}",
-                    self.peek().tk_type,
-                    self.peek().value
-                ),
-                "check your code.",
-            )),
+            _ => {
+                let token = self.peek().clone();
+                bail!(ParseError::UnexpectedExpressionToken {
+                    src: self.named_source.clone(),
+                    span: token.address.span.into(),
+                    unexpected: token.value
+                });
+            }
         }
     }
 
@@ -664,7 +656,8 @@ impl<'file_path> Parser<'file_path> {
 
     /// Type declaration parsing
     fn type_declaration(&mut self) -> Node {
-        self.consume(TokenKind::Type);
+        // variable is used to create type span in bails.
+        let type_tk = self.consume(TokenKind::Type).clone();
 
         // type name
         let name = self.consume(TokenKind::Id).clone();
@@ -693,14 +686,12 @@ impl<'file_path> Parser<'file_path> {
                         fields.push(node);
                     }
                     _ => {
-                        error!(Error::own_text(
-                            location.address,
-                            format!(
-                                "invalid node for type: {:?}:{:?}",
-                                location.tk_type, location.value
-                            ),
-                            "check your code.",
-                        ));
+                        let end = self.peek().clone();
+                        bail!(ParseError::UnexpectedNodeInTypeBody {
+                            src: self.named_source.clone(),
+                            type_span: (type_tk.address.span.start..name.address.span.end).into(),
+                            span: (location.address.span.start..(end.address.span.end - 1)).into(),
+                        })
                     }
                 }
             }
@@ -717,8 +708,7 @@ impl<'file_path> Parser<'file_path> {
 
     /// Statement parsing
     fn statement(&mut self) -> Node {
-        let tk = self.peek();
-        match tk.tk_type {
+        match self.peek().tk_type {
             TokenKind::Type => self.type_declaration(),
             TokenKind::If => self.if_stmt(),
             TokenKind::New | TokenKind::Id => self.access(false),
@@ -730,11 +720,14 @@ impl<'file_path> Parser<'file_path> {
             TokenKind::For => self.for_stmt(),
             TokenKind::While => self.while_stmt(),
             TokenKind::Let => self.let_stmt(),
-            _ => error!(Error::own_text(
-                tk.address.clone(),
-                format!("unexpected stmt token: {:?}:{}", tk.tk_type, tk.value),
-                "check your code.",
-            )),
+            _ => {
+                let token = self.peek().clone();
+                bail!(ParseError::UnexpectedStatementToken {
+                    src: self.named_source.clone(),
+                    span: token.address.span.into(),
+                    unexpected: token.value,
+                });
+            }
         }
     }
 
@@ -754,11 +747,7 @@ impl<'file_path> Parser<'file_path> {
                 self.current += 1;
                 tk
             }
-            None => error!(Error::new(
-                Address::new(0, 0, self.file_path.clone()),
-                "unexpected eof",
-                "check your code.",
-            )),
+            None => bail!(ParseError::UnexpectedEof),
         }
     }
 
@@ -771,21 +760,15 @@ impl<'file_path> Parser<'file_path> {
                 if tk.tk_type == tk_type {
                     tk
                 } else {
-                    error!(Error::own_text(
-                        tk.address.clone(),
-                        format!(
-                            "unexpected token: '{:?}:{}', expected: '{tk_type:?}'",
-                            tk.tk_type, tk.value
-                        ),
-                        "check your code.",
-                    ))
+                    bail!(ParseError::UnexpectedToken {
+                        src: self.named_source.clone(),
+                        span: tk.address.clone().span.into(),
+                        unexpected: tk.value.clone(),
+                        expected: tk_type
+                    })
                 }
             }
-            None => error!(Error::new(
-                Address::new(0, 0, self.file_path.clone()),
-                "unexpected eof",
-                "check your code.",
-            )),
+            None => bail!(ParseError::UnexpectedEof),
         }
     }
 
@@ -801,11 +784,7 @@ impl<'file_path> Parser<'file_path> {
     fn peek(&self) -> &Token {
         match self.tokens.get(self.current as usize) {
             Some(tk) => tk,
-            None => error!(Error::new(
-                Address::new(0, 0, self.file_path.clone()),
-                "unexpected eof",
-                "check your code.",
-            )),
+            None => bail!(ParseError::UnexpectedEof),
         }
     }
 
@@ -813,11 +792,7 @@ impl<'file_path> Parser<'file_path> {
     fn previous(&self) -> &Token {
         match self.tokens.get((self.current - 1) as usize) {
             Some(tk) => tk,
-            None => error!(Error::new(
-                Address::new(0, 0, self.file_path.clone()),
-                "unexpected eof",
-                "check your code.",
-            )),
+            None => bail!(ParseError::UnexpectedEof),
         }
     }
 
