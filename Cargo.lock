@@ -262,6 +262,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "oil_dep_tree"
+version = "0.1.0"
+
+[[package]]
 name = "oil_gen"
 version = "0.1.0"
 
@@ -286,12 +290,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "oil_prelude"
+version = "0.1.0"
+
+[[package]]
 name = "oil_typed_ir"
 version = "0.1.0"
 
 [[package]]
 name = "oil_untyped_ir"
 version = "0.1.0"
+dependencies = [
+ "oil_ast",
+ "oil_common",
+]
 
 [[package]]
 name = "once_cell_polyfill"

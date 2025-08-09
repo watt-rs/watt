@@ -76,8 +76,8 @@ impl<'file_path> Parser<'file_path> {
         nodes
     }
 
-    /// Symbol path parsing
-    fn symbol_path(&mut self) -> SymbolPath {
+    /// Depednecy path parsing
+    fn dependency_path(&mut self) -> DependencyPath {
         // creating new segments list
         let mut segments_list = Vec::new();
 
@@ -85,14 +85,14 @@ impl<'file_path> Parser<'file_path> {
         let start = self.peek().address.clone();
 
         // first `id`
-        segments_list.push(SymbolPathSegment {
+        segments_list.push(DependencyPathSegment {
             identifier: self.consume(TokenKind::Id).value.clone(),
         });
 
         // while path separator exists, parsing new segment
-        while self.check(TokenKind::PathSeparator) {
-            self.consume(TokenKind::PathSeparator);
-            segments_list.push(SymbolPathSegment {
+        while self.check(TokenKind::Slash) {
+            self.consume(TokenKind::Slash);
+            segments_list.push(DependencyPathSegment {
                 identifier: self.consume(TokenKind::Id).value.clone(),
             });
         }
@@ -100,10 +100,31 @@ impl<'file_path> Parser<'file_path> {
         // end token, used to create span
         let end = self.previous().address.clone();
 
-        SymbolPath::new(
+        DependencyPath::new(
             Address::span(start.span.start..end.span.end, start.file.unwrap()),
             segments_list,
         )
+    }
+
+    /// Type annotation parsing
+    fn type_annotation(&mut self) -> TypePath {
+        // fisrt id
+        let first_id = self.consume(TokenKind::Id).value.clone();
+        // if dot found
+        if self.check(TokenKind::Dot) {
+            // consuming dot
+            self.consume(TokenKind::Dot);
+            // module type path
+            TypePath::Module {
+                module: first_id,
+                name: self.consume(TokenKind::Id).value.clone(),
+            }
+        }
+        // else
+        else {
+            // local type path
+            TypePath::Local(first_id)
+        }
     }
 
     /// Single parameter parsing
@@ -111,7 +132,7 @@ impl<'file_path> Parser<'file_path> {
         // `$name: $typ`
         let name = self.consume(TokenKind::Id).clone();
         self.consume(TokenKind::Colon);
-        let typ = self.symbol_path();
+        let typ = self.type_annotation();
 
         Parameter { name, typ }
     }
@@ -290,7 +311,7 @@ impl<'file_path> Parser<'file_path> {
         if self.check(TokenKind::Colon) {
             // `: $type`
             self.consume(TokenKind::Colon);
-            typ = Option::Some(self.symbol_path());
+            typ = Option::Some(self.type_annotation());
         }
         // else
         else {
@@ -501,8 +522,8 @@ impl<'file_path> Parser<'file_path> {
     fn use_declaration(&mut self) -> Node {
         self.consume(TokenKind::Use);
 
-        // `path::to::module`
-        let path = self.symbol_path();
+        // `path/to/module`
+        let path = self.dependency_path();
         let name;
         // `as $id`
         if self.check(TokenKind::As) {
@@ -656,7 +677,7 @@ impl<'file_path> Parser<'file_path> {
         if self.check(TokenKind::Colon) {
             // `: $type`
             self.consume(TokenKind::Colon);
-            typ = Some(self.symbol_path());
+            typ = Some(self.type_annotation());
         }
         // else
         else {

@@ -6,7 +6,7 @@
 🧴 Oil is statically-typed, type-safe, compiled programming language, designed to assist developers.
 
 ```oil
-use std::io as io
+use std/io as io
 
 fn main() {
   io.println("Hello, Oil!")
@@ -14,7 +14,7 @@ fn main() {
 ```
 
 ```oil
-use std::io as io
+use std/io as io
 
 type Juice(multiplier: i16) {
   let multiplier: i16 = multiplier

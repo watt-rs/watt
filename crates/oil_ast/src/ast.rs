@@ -2,42 +2,49 @@ use oil_common::address::Address;
 /// Imports
 use oil_lex::tokens::Token;
 
-/// Symbol path segment
+/// Dependency path segment
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct SymbolPathSegment {
+pub struct DependencyPathSegment {
     pub identifier: String,
 }
 
-/// Symbol path
+/// Dependency path
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct SymbolPath {
+pub struct DependencyPath {
     address: Address,
-    segments: Vec<SymbolPathSegment>,
+    segments: Vec<DependencyPathSegment>,
 }
 
 /// Implementation
-impl SymbolPath {
+impl DependencyPath {
     /// Creates new symbol path
-    pub fn new(address: Address, segments: Vec<SymbolPathSegment>) -> Self {
+    pub fn new(address: Address, segments: Vec<DependencyPathSegment>) -> Self {
         Self { address, segments }
     }
     /// Pushes segment
-    pub fn push(&mut self, segment: SymbolPathSegment) {
+    pub fn push(&mut self, segment: DependencyPathSegment) {
         self.segments.push(segment);
     }
+}
+
+/// Type path
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum TypePath {
+    Local(String),
+    Module { module: String, name: String },
 }
 
 /// Parameter
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Parameter {
     pub name: Token,
-    pub typ: SymbolPath,
+    pub typ: TypePath,
 }
 
 /// Parameter implementation
 impl Parameter {
     /// Creates new parameter
-    pub fn new(name: Token, typ: SymbolPath) -> Self {
+    pub fn new(name: Token, typ: TypePath) -> Self {
         Self { name, typ }
     }
 }
@@ -90,7 +97,7 @@ pub enum Node {
         publicity: Publicity,
         name: Token,
         value: Box<Node>,
-        typ: Option<SymbolPath>,
+        typ: Option<TypePath>,
     },
     Assign {
         previous: Option<Box<Node>>,
@@ -100,6 +107,9 @@ pub enum Node {
     Get {
         previous: Option<Box<Node>>,
         name: Token,
+    },
+    Module {
+        path: TypePath,
     },
     Call {
         previous: Option<Box<Node>>,
@@ -111,7 +121,7 @@ pub enum Node {
         publicity: Publicity,
         params: Vec<Parameter>,
         body: Box<Node>,
-        typ: Option<SymbolPath>,
+        typ: Option<TypePath>,
     },
     Break {
         location: Token,
@@ -120,7 +130,7 @@ pub enum Node {
         location: Token,
     },
     Use {
-        path: SymbolPath,
+        path: DependencyPath,
         name: Option<Token>,
     },
     Cond {
