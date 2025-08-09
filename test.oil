@@ -1,13 +1,19 @@
 use std::io as io
-type Juice {
-    while true {
-    }
+
+type Juice(multiplier: i16) {
+
+  let multiplier: i16 = multiplier
+  pub let juice: i16 = 0
+
+  pub fn apply(amount: i16) {
+    self.juice += (self.multiplier * amount)
+  }
+
 }
-fn fib(n: i16): i16 {
-    if n <= 1 {
-        return n
-    } else {
-        return fib(n - 1.3) + fib(n - 2)
-    }
+
+fn main() {
+  let juice: Juice = Juice(3)
+  juice.apply(10)
+
+  io.println(juice.juice)
 }
-io.println(fib(15))

@@ -14,14 +14,14 @@ fn main() {
 ```
 
 ```oil
-use std::io
+use std::io as io
 
 type Juice(multiplier: i16) {
 
   let multiplier: i16 = multiplier
-  let juice: i16 = 0
+  pub let juice: i16 = 0
 
-  fn apply(amount: i16) {
+  pub fn apply(amount: i16) {
     self.juice += (self.multiplier * amount)
   }
 

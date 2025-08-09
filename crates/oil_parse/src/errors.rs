@@ -90,14 +90,23 @@ pub enum ParseError {
         span: SourceSpan,
     },
     #[error("unexpected \"{unexpected}\" as statement.")]
-    #[diagnostic(
-        code(parse::unexpected_statement_token),
-        help("this operation can be used, only after identifier.")
-    )]
+    #[diagnostic(code(parse::unexpected_statement_token))]
     UnexpectedStatementToken {
         #[source_code]
         src: NamedSource<String>,
         #[label("this can not be represented as statement.")]
+        span: SourceSpan,
+        unexpected: String,
+    },
+    #[error("unexpected \"{unexpected}\" as declaration.")]
+    #[diagnostic(
+        code(parse::unexpected_statement_token),
+        help("only \"type\", \"let\", and \"fn\" is declarations.")
+    )]
+    UnexpectedDeclarationToken {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("this can not be represented as declaration.")]
         span: SourceSpan,
         unexpected: String,
     },

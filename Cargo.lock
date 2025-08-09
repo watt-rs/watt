@@ -242,6 +242,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "oil_analyze"
+version = "0.1.0"
+
+[[package]]
 name = "oil_ast"
 version = "0.1.0"
 dependencies = [
@@ -256,6 +260,10 @@ dependencies = [
  "miette",
  "owo-colors",
 ]
+
+[[package]]
+name = "oil_gen"
+version = "0.1.0"
 
 [[package]]
 name = "oil_lex"
@@ -276,6 +284,14 @@ dependencies = [
  "oil_lex",
  "thiserror",
 ]
+
+[[package]]
+name = "oil_typed_ir"
+version = "0.1.0"
+
+[[package]]
+name = "oil_untyped_ir"
+version = "0.1.0"
 
 [[package]]
 name = "once_cell_polyfill"

@@ -62,6 +62,7 @@ pub enum TokenKind {
     Native,        // native
     Range,         // ..
     As,            // as
+    Pub,           // pub
 }
 
 /// Token structure

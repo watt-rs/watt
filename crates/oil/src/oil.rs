@@ -17,11 +17,11 @@ pub fn run(path: PathBuf, lex_debug: bool, parse_debug: bool) {
     let tokens = lexer.lex();
     // result
     println!("tokens:");
-    println!("{:?}", tokens);
+    println!("{:#?}", tokens);
     // parse
     let mut parser = Parser::new(tokens, &named_source);
     let ast = parser.parse();
     // result
     println!("ast:");
-    println!("{:?}", ast);
+    println!("{:#?}", ast);
 }

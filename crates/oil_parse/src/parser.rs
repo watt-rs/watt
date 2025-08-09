@@ -24,12 +24,33 @@ impl<'file_path> Parser<'file_path> {
         }
     }
 
+    /// Parsing all declarations
+    pub fn parse(&mut self) -> Node {
+        // parsing declaration before reaching
+        // end of file
+        let mut nodes: Vec<Node> = Vec::new();
+        while !self.is_at_end() {
+            match self.peek().tk_type {
+                TokenKind::Pub => {
+                    self.consume(TokenKind::Pub);
+                    nodes.push(self.declaration(Publicity::Public))
+                }
+                TokenKind::Use => {
+                    nodes.push(self.use_declaration());
+                }
+                _ => nodes.push(self.declaration(Publicity::Private)),
+            }
+        }
+
+        Node::Block { body: nodes }
+    }
+
     /// Block statement parsing
     fn block(&mut self) -> Node {
         // parsing statement before reaching
         // end of file, or a `}`
         let mut nodes: Vec<Node> = Vec::new();
-        while !self.is_at_end() && !self.check(TokenKind::Rbrace) {
+        while !self.check(TokenKind::Rbrace) {
             nodes.push(self.statement());
         }
 
@@ -45,7 +66,7 @@ impl<'file_path> Parser<'file_path> {
         self.consume(TokenKind::Lparen);
         if !self.check(TokenKind::Rparen) {
             nodes.push(self.expr());
-            while !self.is_at_end() && self.check(TokenKind::Comma) {
+            while self.check(TokenKind::Comma) {
                 self.consume(TokenKind::Comma);
                 nodes.push(self.expr());
             }
@@ -105,7 +126,7 @@ impl<'file_path> Parser<'file_path> {
         if !self.check(TokenKind::Rparen) {
             params.push(self.parameter());
 
-            while !self.is_at_end() && self.check(TokenKind::Comma) {
+            while self.check(TokenKind::Comma) {
                 self.consume(TokenKind::Comma);
                 params.push(self.parameter());
             }
@@ -256,8 +277,8 @@ impl<'file_path> Parser<'file_path> {
         left
     }
 
-    /// Let statement parsing
-    fn let_stmt(&mut self) -> Node {
+    /// Let declaration parsing
+    fn let_declaration(&mut self, publicity: Publicity) -> Node {
         // `let $id`
         self.consume(TokenKind::Let);
         let name = self.consume(TokenKind::Id).clone();
@@ -282,6 +303,7 @@ impl<'file_path> Parser<'file_path> {
         let value = self.expr();
 
         return Node::Define {
+            publicity,
             name,
             typ,
             value: Box::new(value),
@@ -475,8 +497,8 @@ impl<'file_path> Parser<'file_path> {
         Node::Return { location, value }
     }
 
-    /// Use statement `use ...` | `use (..., ..., n)` parsing
-    fn use_stmt(&mut self) -> Node {
+    /// Use declaration `use ...` | `use (..., ..., n)` parsing
+    fn use_declaration(&mut self) -> Node {
         self.consume(TokenKind::Use);
 
         // `path::to::module`
@@ -616,7 +638,7 @@ impl<'file_path> Parser<'file_path> {
     }
 
     /// Fn declaration parsing
-    fn fn_declaration(&mut self) -> Node {
+    fn fn_declaration(&mut self, publicity: Publicity) -> Node {
         self.consume(TokenKind::Fn);
 
         // function name
@@ -647,6 +669,7 @@ impl<'file_path> Parser<'file_path> {
         self.consume(TokenKind::Rbrace);
 
         Node::FnDeclaration {
+            publicity,
             name,
             params,
             body: Box::new(body),
@@ -655,7 +678,7 @@ impl<'file_path> Parser<'file_path> {
     }
 
     /// Type declaration parsing
-    fn type_declaration(&mut self) -> Node {
+    fn type_declaration(&mut self, publicity: Publicity) -> Node {
         // variable is used to create type span in bails.
         let type_tk = self.consume(TokenKind::Type).clone();
 
@@ -675,15 +698,29 @@ impl<'file_path> Parser<'file_path> {
         // body parsing
         if self.check(TokenKind::Lbrace) {
             self.consume(TokenKind::Lbrace);
-            while !self.is_at_end() && !self.check(TokenKind::Rbrace) {
+            while !self.check(TokenKind::Rbrace) {
                 let location = self.peek().clone();
-                let node = self.statement();
-                match &node {
-                    Node::FnDeclaration { .. } => {
-                        functions.push(node);
-                    }
-                    Node::Define { .. } => {
-                        fields.push(node);
+                match self.peek().tk_type {
+                    TokenKind::Fn => functions.push(self.fn_declaration(Publicity::Private)),
+                    TokenKind::Let => fields.push(self.let_declaration(Publicity::Private)),
+                    TokenKind::Pub => {
+                        // pub
+                        self.consume(TokenKind::Pub);
+                        // let or fn declaration
+                        match self.peek().tk_type {
+                            TokenKind::Fn => functions.push(self.fn_declaration(Publicity::Public)),
+                            TokenKind::Let => fields.push(self.let_declaration(Publicity::Public)),
+                            _ => {
+                                let end = self.peek().clone();
+                                bail!(ParseError::UnexpectedNodeInTypeBody {
+                                    src: self.named_source.clone(),
+                                    type_span: (type_tk.address.span.start..name.address.span.end)
+                                        .into(),
+                                    span: (location.address.span.start..(end.address.span.end - 1))
+                                        .into(),
+                                })
+                            }
+                        }
                     }
                     _ => {
                         let end = self.peek().clone();
@@ -699,6 +736,7 @@ impl<'file_path> Parser<'file_path> {
         }
 
         Node::TypeDeclaration {
+            publicity,
             name,
             constructor,
             functions,
@@ -706,20 +744,35 @@ impl<'file_path> Parser<'file_path> {
         }
     }
 
+    /// Declaration parsing
+    fn declaration(&mut self, publicity: Publicity) -> Node {
+        match self.peek().tk_type {
+            TokenKind::Type => self.type_declaration(publicity),
+            TokenKind::Fn => self.fn_declaration(publicity),
+            TokenKind::Let => self.let_declaration(publicity),
+            _ => {
+                let token = self.peek().clone();
+                bail!(ParseError::UnexpectedDeclarationToken {
+                    src: self.named_source.clone(),
+                    span: token.address.span.into(),
+                    unexpected: token.value
+                })
+            }
+        }
+    }
+
     /// Statement parsing
     fn statement(&mut self) -> Node {
         match self.peek().tk_type {
-            TokenKind::Type => self.type_declaration(),
             TokenKind::If => self.if_stmt(),
             TokenKind::New | TokenKind::Id => self.access(false),
             TokenKind::Continue => self.continue_stmt(),
             TokenKind::Break => self.break_stmt(),
             TokenKind::Ret => self.return_stmt(),
-            TokenKind::Fn => self.fn_declaration(),
-            TokenKind::Use => self.use_stmt(),
             TokenKind::For => self.for_stmt(),
             TokenKind::While => self.while_stmt(),
-            TokenKind::Let => self.let_stmt(),
+            TokenKind::Let => self.let_declaration(Publicity::None),
+            TokenKind::Fn => self.fn_declaration(Publicity::None),
             _ => {
                 let token = self.peek().clone();
                 bail!(ParseError::UnexpectedStatementToken {
@@ -729,11 +782,6 @@ impl<'file_path> Parser<'file_path> {
                 });
             }
         }
-    }
-
-    /// Parsing block
-    pub fn parse(&mut self) -> Node {
-        self.block()
     }
 
     /*

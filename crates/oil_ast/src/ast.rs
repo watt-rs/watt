@@ -42,6 +42,14 @@ impl Parameter {
     }
 }
 
+/// Publicity
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum Publicity {
+    Public,
+    Private,
+    None,
+}
+
 /// Ast node
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 #[allow(dead_code)]
@@ -79,6 +87,7 @@ pub enum Node {
         body: Box<Node>,
     },
     Define {
+        publicity: Publicity,
         name: Token,
         value: Box<Node>,
         typ: Option<SymbolPath>,
@@ -99,6 +108,7 @@ pub enum Node {
     },
     FnDeclaration {
         name: Token,
+        publicity: Publicity,
         params: Vec<Parameter>,
         body: Box<Node>,
         typ: Option<SymbolPath>,
@@ -129,6 +139,7 @@ pub enum Node {
     },
     TypeDeclaration {
         name: Token,
+        publicity: Publicity,
         constructor: Vec<Parameter>,
         fields: Vec<Node>,
         functions: Vec<Node>,
