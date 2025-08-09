@@ -40,7 +40,6 @@ pub enum TokenKind {
     Bool,          // bool
     While,         // while
     Type,          // type
-    New,           // new
     Dot,           // dot
     Greater,       // >
     Less,          // <
@@ -59,7 +58,6 @@ pub enum TokenKind {
     In,            // in
     Continue,      // continue
     Unit,          // unit
-    Native,        // native
     Range,         // ..
     As,            // as
     Pub,           // pub

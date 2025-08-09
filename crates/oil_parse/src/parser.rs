@@ -323,7 +323,7 @@ impl<'file_path> Parser<'file_path> {
     /// Primary expr parsing
     fn primary_expr(&mut self) -> Node {
         match self.peek().tk_type {
-            TokenKind::Id | TokenKind::New => self.access(true),
+            TokenKind::Id => self.access(true),
             TokenKind::Number => Node::Number {
                 value: self.consume(TokenKind::Number).clone(),
             },
@@ -765,7 +765,7 @@ impl<'file_path> Parser<'file_path> {
     fn statement(&mut self) -> Node {
         match self.peek().tk_type {
             TokenKind::If => self.if_stmt(),
-            TokenKind::New | TokenKind::Id => self.access(false),
+            TokenKind::Id => self.access(false),
             TokenKind::Continue => self.continue_stmt(),
             TokenKind::Break => self.break_stmt(),
             TokenKind::Ret => self.return_stmt(),
