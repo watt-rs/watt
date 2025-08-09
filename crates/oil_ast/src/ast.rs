@@ -108,9 +108,6 @@ pub enum Node {
         previous: Option<Box<Node>>,
         name: Token,
     },
-    Module {
-        path: TypePath,
-    },
     Call {
         previous: Option<Box<Node>>,
         name: Token,
