@@ -1,3 +1,4 @@
+use ecow::EcoString;
 /// Imports
 use miette::{Diagnostic, NamedSource, SourceSpan};
 use oil_lex::tokens::TokenKind;
@@ -13,7 +14,7 @@ pub enum ParseError {
         src: NamedSource<String>,
         #[label("this token is unexpected.")]
         span: SourceSpan,
-        unexpected: String,
+        unexpected: EcoString,
         expected: TokenKind,
     },
     #[error("unexpected end of file.")]
@@ -26,7 +27,7 @@ pub enum ParseError {
         src: NamedSource<String>,
         #[label("this token is unexpected.")]
         span: SourceSpan,
-        unexpected: String,
+        unexpected: EcoString,
     },
     #[error("invalid operation in expression.")]
     #[diagnostic(
@@ -38,7 +39,7 @@ pub enum ParseError {
         src: NamedSource<String>,
         #[label("this in unacceptable in expressions.")]
         span: SourceSpan,
-        unexpected: String,
+        unexpected: EcoString,
     },
     #[error("invalid \"=\" operation.")]
     #[diagnostic(
@@ -77,7 +78,7 @@ pub enum ParseError {
         src: NamedSource<String>,
         #[label("this can not be represented as expression.")]
         span: SourceSpan,
-        unexpected: String,
+        unexpected: EcoString,
     },
     #[error("unexpected node in type body.")]
     #[diagnostic(code(parse::unexpected_node_in_type_body))]
@@ -96,7 +97,7 @@ pub enum ParseError {
         src: NamedSource<String>,
         #[label("this can not be represented as statement.")]
         span: SourceSpan,
-        unexpected: String,
+        unexpected: EcoString,
     },
     #[error("unexpected \"{unexpected}\" as declaration.")]
     #[diagnostic(
@@ -108,6 +109,6 @@ pub enum ParseError {
         src: NamedSource<String>,
         #[label("this can not be represented as declaration.")]
         span: SourceSpan,
-        unexpected: String,
+        unexpected: EcoString,
     },
 }

@@ -2,6 +2,7 @@
 use crate::cursor::Cursor;
 use crate::errors::LexError;
 use crate::tokens::*;
+use ecow::EcoString;
 use miette::NamedSource;
 use oil_common::address::Address;
 use oil_common::bail;
@@ -242,7 +243,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         // Start of span
         let span_start = self.cursor.current;
         // String text
-        let mut text: String = String::new();
+        let mut text: EcoString = EcoString::new();
 
         while self.cursor.peek() != '\'' {
             let ch = self.advance();
@@ -280,7 +281,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         // Start of span
         let span_start = self.cursor.current - 1;
         // Number text
-        let mut text: String = String::from(start);
+        let mut text: EcoString = EcoString::from(start);
         // If number is float
         let mut is_float: bool = false;
 
@@ -323,7 +324,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         // Skip 'x'
         self.advance();
         // Number text
-        let mut text: String = String::from("0x");
+        let mut text: EcoString = EcoString::from("0x");
 
         while self.cursor.peek().is_ascii_hexdigit() {
             text.push(self.advance());
@@ -348,7 +349,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         // Skip 'o'
         self.advance();
         // Number text
-        let mut text: String = String::from("0o");
+        let mut text: EcoString = EcoString::from("0o");
 
         while self.cursor.peek().is_digit(8) {
             text.push(self.advance());
@@ -373,7 +374,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         // Skip 'b'
         self.advance();
         // Number text
-        let mut text: String = String::from("0b");
+        let mut text: EcoString = EcoString::from("0b");
 
         while self.cursor.peek().is_digit(2) {
             text.push(self.advance());
@@ -402,7 +403,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         // Start of span
         let span_start = self.cursor.current - 1;
         // Id/keyword text
-        let mut text: String = String::from(start);
+        let mut text: EcoString = EcoString::from(start);
 
         while self.is_id(self.cursor.peek()) {
             text.push(self.advance());
@@ -449,7 +450,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
     fn add_tk(&mut self, tk_type: TokenKind, tk_value: &str) {
         self.tokens.push(Token::new(
             tk_type,
-            tk_value.to_string(),
+            tk_value.into(),
             Address::new(self.cursor.current, self.file_path.clone()),
         ));
     }

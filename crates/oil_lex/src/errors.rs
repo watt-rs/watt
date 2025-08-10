@@ -1,3 +1,4 @@
+use ecow::EcoString;
 /// Imports
 use miette::{Diagnostic, NamedSource, SourceSpan};
 use thiserror::Error;
@@ -29,7 +30,7 @@ pub enum LexError {
         src: NamedSource<String>,
         #[label("this number isn't valid.")]
         span: SourceSpan,
-        number: String,
+        number: EcoString,
     },
     #[error("tokens len isn't empty.")]
     #[diagnostic(

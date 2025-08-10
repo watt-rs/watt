@@ -1,10 +1,10 @@
 /// Imports
 use crate::{
-    errors::UntypedIrError,
-    untyped_ir::{
-        BinaryOperator, Dependency, IrParameter, UnaryOperator, UntypedBlock, UntypedDeclaration,
-        UntypedExpression, UntypedFunction, UntypedModule, UntypedStatement, UntypedType,
-        UntypedVariable,
+    untyped_ir::errors::UntypedIrError,
+    untyped_ir::untyped_ir::{
+        BinaryOperator, Dependency, UnaryOperator, UntypedBlock, UntypedDeclaration,
+        UntypedExpression, UntypedFunction, UntypedIrParameter, UntypedModule, UntypedStatement,
+        UntypedType, UntypedVariable,
     },
 };
 use miette::NamedSource;
@@ -38,7 +38,7 @@ pub fn node_to_ir_declaration(source: &NamedSource<String>, node: Node) -> Untyp
             name: name.value,
             params: params
                 .into_iter()
-                .map(|param| IrParameter {
+                .map(|param| UntypedIrParameter {
                     name: param.name.value,
                     typ: param.typ,
                 })
@@ -58,7 +58,7 @@ pub fn node_to_ir_declaration(source: &NamedSource<String>, node: Node) -> Untyp
             name: name.value,
             constructor: constructor
                 .into_iter()
-                .map(|param| IrParameter {
+                .map(|param| UntypedIrParameter {
                     name: param.name.value,
                     typ: param.typ,
                 })
@@ -97,7 +97,7 @@ pub fn node_to_ir_declaration(source: &NamedSource<String>, node: Node) -> Untyp
                         typ,
                         params: params
                             .into_iter()
-                            .map(|param| IrParameter {
+                            .map(|param| UntypedIrParameter {
                                 name: param.name.value,
                                 typ: param.typ,
                             })
@@ -410,7 +410,7 @@ pub fn node_to_ir_statement(source: &NamedSource<String>, node: Node) -> Untyped
             name: name.value,
             params: params
                 .into_iter()
-                .map(|param| IrParameter {
+                .map(|param| UntypedIrParameter {
                     name: param.name.value,
                     typ: param.typ,
                 })

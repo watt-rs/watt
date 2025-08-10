@@ -1,11 +1,12 @@
-use oil_common::address::Address;
 /// Imports
+use ecow::EcoString;
+use oil_common::address::Address;
 use oil_lex::tokens::Token;
 
 /// Dependency path segment
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct DependencyPathSegment {
-    pub identifier: String,
+    pub identifier: EcoString,
 }
 
 /// Dependency path
@@ -30,8 +31,8 @@ impl DependencyPath {
 /// Type path
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum TypePath {
-    Local(String),
-    Module { module: String, name: String },
+    Local(EcoString),
+    Module { module: EcoString, name: EcoString },
 }
 
 /// Parameter

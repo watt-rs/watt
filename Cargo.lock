@@ -137,6 +137,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
 
 [[package]]
+name = "ecow"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "78e4f79b296fbaab6ce2e22d52cb4c7f010fe0ebe7a32e34fa25885fd797bd02"
+
+[[package]]
 name = "errno"
 version = "0.3.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -236,20 +242,30 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "miette",
+ "oil_analyze",
  "oil_common",
  "oil_lex",
  "oil_parse",
- "oil_untyped_ir",
 ]
 
 [[package]]
 name = "oil_analyze"
 version = "0.1.0"
+dependencies = [
+ "ecow",
+ "miette",
+ "oil_ast",
+ "oil_common",
+ "oil_lex",
+ "oil_parse",
+ "thiserror",
+]
 
 [[package]]
 name = "oil_ast"
 version = "0.1.0"
 dependencies = [
+ "ecow",
  "oil_common",
  "oil_lex",
 ]
@@ -263,10 +279,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "oil_dep_tree"
-version = "0.1.0"
-
-[[package]]
 name = "oil_gen"
 version = "0.1.0"
 
@@ -274,6 +286,7 @@ version = "0.1.0"
 name = "oil_lex"
 version = "0.1.0"
 dependencies = [
+ "ecow",
  "miette",
  "oil_common",
  "thiserror",
@@ -283,25 +296,7 @@ dependencies = [
 name = "oil_parse"
 version = "0.1.0"
 dependencies = [
- "miette",
- "oil_ast",
- "oil_common",
- "oil_lex",
- "thiserror",
-]
-
-[[package]]
-name = "oil_prelude"
-version = "0.1.0"
-
-[[package]]
-name = "oil_typed_ir"
-version = "0.1.0"
-
-[[package]]
-name = "oil_untyped_ir"
-version = "0.1.0"
-dependencies = [
+ "ecow",
  "miette",
  "oil_ast",
  "oil_common",

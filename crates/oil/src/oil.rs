@@ -1,8 +1,8 @@
 /// Imports
 use miette::NamedSource;
+use oil_analyze::untyped_ir;
 use oil_lex::lexer::Lexer;
 use oil_parse::parser::Parser;
-use oil_untyped_ir::lowering;
 use std::{fs, path::PathBuf};
 
 /// Runs code
@@ -26,7 +26,7 @@ pub fn run(path: PathBuf, lex_debug: bool, parse_debug: bool) {
     println!("ast:");
     println!("{:#?}", tree);
     // untyped ir
-    let untyped_ir = lowering::tree_to_ir(&named_source, tree);
+    let untyped_ir = untyped_ir::lowering::tree_to_ir(&named_source, tree);
     // result
     println!("untyped ir:");
     println!("{:#?}", untyped_ir);

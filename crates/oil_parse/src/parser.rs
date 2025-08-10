@@ -279,7 +279,7 @@ impl<'file_path> Parser<'file_path> {
                             value: Box::new(Node::Bin {
                                 left: Box::new(variable),
                                 right: Box::new(self.expr()),
-                                op: Token::new(op_kind, op.to_string(), address),
+                                op: Token::new(op_kind, op.into(), address),
                             }),
                         };
                     }
@@ -577,7 +577,7 @@ impl<'file_path> Parser<'file_path> {
         Node::If {
             location: location.clone(),
             logical: Box::new(Node::Bool {
-                value: Token::new(TokenKind::Bool, "true".to_string(), location.address),
+                value: Token::new(TokenKind::Bool, "true".into(), location.address),
             }),
             body: Box::new(body),
             elseif: None,

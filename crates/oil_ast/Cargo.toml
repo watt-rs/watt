@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 oil_lex = { path = "../oil_lex" }
 oil_common = { path = "../oil_common" }
+ecow = "0.2.6"

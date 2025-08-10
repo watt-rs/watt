@@ -1,11 +1,12 @@
+use ecow::EcoString;
 /// Imports
 use oil_ast::ast::{DependencyPath, Publicity, TypePath};
 use oil_common::address::Address;
 
 /// Ir Parameter
 #[derive(Debug)]
-pub struct IrParameter {
-    pub name: String,
+pub struct UntypedIrParameter {
+    pub name: EcoString,
     pub typ: TypePath,
 }
 
@@ -25,14 +26,14 @@ pub enum UntypedStatement {
     },
     Define {
         location: Address,
-        name: String,
+        name: EcoString,
         value: UntypedExpression,
         typ: Option<TypePath>,
     },
     Assign {
         location: Address,
         base: Option<UntypedExpression>,
-        name: String,
+        name: EcoString,
         value: UntypedExpression,
     },
     Get {
@@ -43,13 +44,13 @@ pub enum UntypedStatement {
     Call {
         location: Address,
         base: Option<UntypedExpression>,
-        name: String,
+        name: EcoString,
         args: Vec<UntypedExpression>,
     },
     Fn {
         location: Address,
-        name: String,
-        params: Vec<IrParameter>,
+        name: EcoString,
+        params: Vec<UntypedIrParameter>,
         body: UntypedBlock,
         typ: Option<TypePath>,
     },
@@ -62,7 +63,7 @@ pub enum UntypedStatement {
     For {
         location: Address,
         iterable: UntypedExpression,
-        variable: String,
+        variable: EcoString,
         body: UntypedBlock,
     },
     Return {
@@ -84,11 +85,11 @@ pub enum UntypedExpression {
     },
     String {
         location: Address,
-        value: String,
+        value: EcoString,
     },
     Bool {
         location: Address,
-        value: String,
+        value: EcoString,
     },
     Bin {
         location: Address,
@@ -104,12 +105,12 @@ pub enum UntypedExpression {
     Get {
         location: Address,
         base: Option<Box<UntypedExpression>>,
-        name: String,
+        name: EcoString,
     },
     Call {
         location: Address,
         base: Option<Box<UntypedExpression>>,
-        name: String,
+        name: EcoString,
         args: Vec<UntypedExpression>,
     },
     Range {
@@ -157,9 +158,9 @@ pub struct UntypedBlock {
 #[derive(Debug)]
 pub struct UntypedFunction {
     pub location: Address,
-    pub name: String,
+    pub name: EcoString,
     pub publicity: Publicity,
-    pub params: Vec<IrParameter>,
+    pub params: Vec<UntypedIrParameter>,
     pub body: UntypedBlock,
     pub typ: Option<TypePath>,
 }
@@ -168,7 +169,7 @@ pub struct UntypedFunction {
 #[derive(Debug)]
 pub struct UntypedVariable {
     pub location: Address,
-    pub name: String,
+    pub name: EcoString,
     pub publicity: Publicity,
     pub typ: Option<TypePath>,
     pub value: UntypedExpression,
@@ -178,9 +179,9 @@ pub struct UntypedVariable {
 #[derive(Debug)]
 pub struct UntypedType {
     pub location: Address,
-    pub name: String,
+    pub name: EcoString,
     pub publicity: Publicity,
-    pub constructor: Vec<IrParameter>,
+    pub constructor: Vec<UntypedIrParameter>,
     pub fields: Vec<UntypedVariable>,
     pub functions: Vec<UntypedFunction>,
 }
@@ -197,7 +198,7 @@ pub enum UntypedDeclaration {
 #[derive(Debug)]
 pub struct Dependency {
     pub location: Address,
-    pub name: Option<String>,
+    pub name: Option<EcoString>,
     pub path: DependencyPath,
 }
 

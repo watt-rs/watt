@@ -4,3 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+oil_lex = { path = "../oil_lex" }
+oil_parse = { path = "../oil_parse" }
+oil_ast = { path = "../oil_ast" }
+oil_common = { path = "../oil_common" }
+thiserror = "2.0.12"
+miette = { version = "7.6.0", features = ["fancy"] }
+ecow = "0.2.6"

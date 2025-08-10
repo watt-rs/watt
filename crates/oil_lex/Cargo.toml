@@ -7,3 +7,4 @@ edition = "2024"
 oil_common = { path = "../oil_common" }
 thiserror = "2.0.12"
 miette = { version = "7.6.0", features = ["fancy"] }
+ecow = "0.2.6"

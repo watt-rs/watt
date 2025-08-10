@@ -5,7 +5,7 @@ members = [
     "crates/oil_common",
     "crates/oil_parse",
     "crates/oil",
-    "crates/oil_untyped_ir",
-    "crates/oil_typed_ir", "crates/oil_analyze", "crates/oil_gen", "crates/oil_dep_tree", "crates/oil_prelude",
+    "crates/oil_analyze",
+    "crates/oil_gen",
 ]
 resolver = "3"

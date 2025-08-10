@@ -1,3 +1,4 @@
+use ecow::EcoString;
 //// Imports
 use oil_common::address::Address;
 
@@ -67,14 +68,14 @@ pub enum TokenKind {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Token {
     pub tk_type: TokenKind,
-    pub value: String,
+    pub value: EcoString,
     pub address: Address,
 }
 
 /// Token implementation
 impl Token {
     /// Creates token from tk_type, value, address
-    pub fn new(tk_type: TokenKind, value: String, address: Address) -> Token {
+    pub fn new(tk_type: TokenKind, value: EcoString, address: Address) -> Token {
         Token {
             tk_type,
             value,
