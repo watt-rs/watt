@@ -25,7 +25,7 @@ impl<'file_path> Parser<'file_path> {
     }
 
     /// Parsing all declarations
-    pub fn parse(&mut self) -> Node {
+    pub fn parse(&mut self) -> Tree {
         // parsing declaration before reaching
         // end of file
         let mut nodes: Vec<Node> = Vec::new();
@@ -42,7 +42,7 @@ impl<'file_path> Parser<'file_path> {
             }
         }
 
-        Node::Block { body: nodes }
+        Tree { body: nodes }
     }
 
     /// Block statement parsing
@@ -520,6 +520,10 @@ impl<'file_path> Parser<'file_path> {
 
     /// Use declaration `use ...` | `use (..., ..., n)` parsing
     fn use_declaration(&mut self) -> Node {
+        // start of span `use ... as ...`
+        let span_start = self.peek().clone();
+
+        // `use` keyword
         self.consume(TokenKind::Use);
 
         // `path/to/module`
@@ -533,7 +537,17 @@ impl<'file_path> Parser<'file_path> {
             name = Option::None;
         }
 
-        Node::Use { path, name }
+        // end of span `use ... as ...`
+        let span_end = self.previous().clone();
+
+        Node::Use {
+            location: Address::span(
+                span_start.address.span.start..span_end.address.span.end,
+                span_start.address.file.unwrap(),
+            ),
+            path,
+            name,
+        }
     }
 
     /// While statement parsing

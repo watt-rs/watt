@@ -36,8 +36,6 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
             ("if", TokenKind::If),
             ("elif", TokenKind::Elif),
             ("else", TokenKind::Else),
-            ("and", TokenKind::And),
-            ("or", TokenKind::Or),
             ("type", TokenKind::Type),
             ("while", TokenKind::While),
             ("for", TokenKind::For),
@@ -80,6 +78,8 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
                 '&' => {
                     if self.is_match('=') {
                         self.add_tk(TokenKind::AndEq, "&=");
+                    } else if self.is_match('&') {
+                        self.add_tk(TokenKind::And, "&&");
                     } else {
                         self.add_tk(TokenKind::BitwiseAnd, "&");
                     }
@@ -87,6 +87,8 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
                 '|' => {
                     if self.is_match('=') {
                         self.add_tk(TokenKind::OrEq, "|=");
+                    } else if self.is_match('|') {
+                        self.add_tk(TokenKind::Or, "||");
                     } else {
                         self.add_tk(TokenKind::BitwiseOr, "|");
                     }

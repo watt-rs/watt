@@ -2,6 +2,7 @@
 use miette::NamedSource;
 use oil_lex::lexer::Lexer;
 use oil_parse::parser::Parser;
+use oil_untyped_ir::lowering;
 use std::{fs, path::PathBuf};
 
 /// Runs code
@@ -20,8 +21,13 @@ pub fn run(path: PathBuf, lex_debug: bool, parse_debug: bool) {
     println!("{:#?}", tokens);
     // parse
     let mut parser = Parser::new(tokens, &named_source);
-    let ast = parser.parse();
+    let tree = parser.parse();
     // result
     println!("ast:");
-    println!("{:#?}", ast);
+    println!("{:#?}", tree);
+    // untyped ir
+    let untyped_ir = lowering::tree_to_ir(&named_source, tree);
+    // result
+    println!("untyped ir:");
+    println!("{:#?}", untyped_ir);
 }

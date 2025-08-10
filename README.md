@@ -16,11 +16,11 @@ fn main() {
 ```oil
 use std/io as io
 
-type Juice(multiplier: i16) {
-  let multiplier: i16 = multiplier
-  pub let juice: i16 = 0
+type Juice(multiplier: int) {
+  let multiplier: int = multiplier
+  pub let juice: int = 0
 
-  pub fn apply(amount: i16) {
+  pub fn apply(amount: int) {
     self.juice += (self.multiplier * amount)
   }
 }

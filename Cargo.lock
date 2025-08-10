@@ -239,6 +239,7 @@ dependencies = [
  "oil_common",
  "oil_lex",
  "oil_parse",
+ "oil_untyped_ir",
 ]
 
 [[package]]
@@ -301,8 +302,11 @@ version = "0.1.0"
 name = "oil_untyped_ir"
 version = "0.1.0"
 dependencies = [
+ "miette",
  "oil_ast",
  "oil_common",
+ "oil_lex",
+ "thiserror",
 ]
 
 [[package]]

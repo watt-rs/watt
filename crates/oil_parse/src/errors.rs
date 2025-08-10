@@ -100,7 +100,7 @@ pub enum ParseError {
     },
     #[error("unexpected \"{unexpected}\" as declaration.")]
     #[diagnostic(
-        code(parse::unexpected_statement_token),
+        code(parse::unexpected_declaration_token),
         help("only \"type\", \"let\", and \"fn\" is declarations.")
     )]
     UnexpectedDeclarationToken {

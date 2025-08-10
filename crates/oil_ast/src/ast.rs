@@ -127,6 +127,7 @@ pub enum Node {
         location: Token,
     },
     Use {
+        location: Address,
         path: DependencyPath,
         name: Option<Token>,
     },
@@ -161,4 +162,10 @@ pub enum Node {
         from: Box<Node>,
         to: Box<Node>,
     },
+}
+
+/// Ast tree
+#[derive(Debug)]
+pub struct Tree {
+    pub body: Vec<Node>,
 }
