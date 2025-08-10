@@ -100,10 +100,7 @@ impl<'file_path> Parser<'file_path> {
         // end token, used to create span
         let end = self.previous().address.clone();
 
-        DependencyPath::new(
-            Address::span(start.span.start..end.span.end, start.file.unwrap()),
-            segments_list,
-        )
+        DependencyPath::new(Address::span(start.span.start..end.span.end), segments_list)
     }
 
     /// Type annotation parsing
@@ -207,10 +204,7 @@ impl<'file_path> Parser<'file_path> {
         let end_address = self.previous().address.clone();
 
         // address of full access
-        let address = Address::span(
-            start_address.span.start..end_address.span.end - 1,
-            start_address.file.unwrap(),
-        );
+        let address = Address::span(start_address.span.start..end_address.span.end - 1);
 
         // if is epxression
         if is_expr {
@@ -541,10 +535,7 @@ impl<'file_path> Parser<'file_path> {
         let span_end = self.previous().clone();
 
         Node::Use {
-            location: Address::span(
-                span_start.address.span.start..span_end.address.span.end,
-                span_start.address.file.unwrap(),
-            ),
+            location: Address::span(span_start.address.span.start..span_end.address.span.end),
             path,
             name,
         }

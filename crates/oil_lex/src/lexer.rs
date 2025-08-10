@@ -7,12 +7,10 @@ use miette::NamedSource;
 use oil_common::address::Address;
 use oil_common::bail;
 use std::collections::HashMap;
-use std::path::PathBuf;
 
 /// Lexer structure
 pub struct Lexer<'file_path, 'cursor> {
     cursor: Cursor<'cursor>,
-    file_path: &'file_path PathBuf,
     named_source: &'file_path NamedSource<String>,
     tokens: Vec<Token>,
     keywords: HashMap<&'static str, TokenKind>,
@@ -25,11 +23,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
     /// * `code`: source code represented as `&'cursor [char]`
     /// * `file_path`: source file path
     ///
-    pub fn new(
-        code: &'cursor [char],
-        file_path: &'file_path PathBuf,
-        named_source: &'file_path NamedSource<String>,
-    ) -> Self {
+    pub fn new(code: &'cursor [char], named_source: &'file_path NamedSource<String>) -> Self {
         // Keywords list
         let keywords_map = HashMap::from([
             ("fn", TokenKind::Fn),
@@ -53,7 +47,6 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         // Lexer
         Lexer {
             cursor: Cursor::new(code),
-            file_path,
             named_source,
             tokens: vec![],
             keywords: keywords_map,
@@ -268,7 +261,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         Token {
             tk_type: TokenKind::Text,
             value: text,
-            address: Address::span(span_start..span_end, self.file_path.clone()),
+            address: Address::span(span_start..span_end),
         }
     }
 
@@ -313,7 +306,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::span(span_start..span_end, self.file_path.clone()),
+            address: Address::span(span_start..span_end),
         }
     }
 
@@ -338,7 +331,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::span(span_start..span_end, self.file_path.clone()),
+            address: Address::span(span_start..span_end),
         }
     }
 
@@ -363,7 +356,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::span(span_start..span_end, self.file_path.clone()),
+            address: Address::span(span_start..span_end),
         }
     }
 
@@ -388,7 +381,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::span(span_start..span_end, self.file_path.clone()),
+            address: Address::span(span_start..span_end),
         }
     }
 
@@ -423,7 +416,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         Token {
             tk_type,
             value: text,
-            address: Address::span(span_start..span_end, self.file_path.clone()),
+            address: Address::span(span_start..span_end),
         }
     }
 
@@ -451,7 +444,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
         self.tokens.push(Token::new(
             tk_type,
             tk_value.into(),
-            Address::new(self.cursor.current, self.file_path.clone()),
+            Address::new(self.cursor.current),
         ));
     }
 

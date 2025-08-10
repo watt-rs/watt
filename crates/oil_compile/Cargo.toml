@@ -1,14 +1,14 @@
 [package]
-name = "oil_analyze"
+name = "oil_compile"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 oil_lex = { path = "../oil_lex" }
 oil_parse = { path = "../oil_parse" }
-oil_ast = { path = "../oil_ast" }
 oil_common = { path = "../oil_common" }
-thiserror = "2.0.12"
+oil_analyze = { path = "../oil_analyze" }
 miette = { version = "7.6.0", features = ["fancy"] }
 ecow = "0.2.6"
-petgraph = "0.8.2"
+camino = "1.1.10"
+thiserror = "2.0.12"
