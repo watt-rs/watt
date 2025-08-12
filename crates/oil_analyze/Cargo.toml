@@ -12,3 +12,4 @@ thiserror = "2.0.12"
 miette = { version = "7.6.0", features = ["fancy"] }
 ecow = "0.2.6"
 petgraph = "0.8.2"
+camino = "1.1.10"

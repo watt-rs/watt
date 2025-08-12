@@ -7,6 +7,7 @@ use crate::{
         UntypedType, UntypedVariable,
     },
 };
+use camino::Utf8PathBuf;
 use miette::NamedSource;
 use oil_ast::ast::{Node, Tree};
 use oil_common::bail;

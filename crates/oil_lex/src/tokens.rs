@@ -1,5 +1,5 @@
-use ecow::EcoString;
 //// Imports
+use ecow::EcoString;
 use oil_common::address::Address;
 
 /// Token kind

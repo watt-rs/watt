@@ -12,3 +12,6 @@ miette = { version = "7.6.0", features = ["fancy"] }
 ecow = "0.2.6"
 camino = "1.1.10"
 thiserror = "2.0.12"
+log = "0.4.27"
+walkdir = "2.5.0"
+pretty_env_logger = "0.4"

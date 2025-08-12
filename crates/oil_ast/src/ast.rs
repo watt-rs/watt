@@ -13,7 +13,7 @@ pub struct DependencyPathSegment {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct DependencyPath {
     address: Address,
-    segments: Vec<DependencyPathSegment>,
+    pub segments: Vec<DependencyPathSegment>,
 }
 
 /// Implementation

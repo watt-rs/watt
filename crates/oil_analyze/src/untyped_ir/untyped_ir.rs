@@ -1,3 +1,4 @@
+use camino::Utf8PathBuf;
 use ecow::EcoString;
 /// Imports
 use oil_ast::ast::{DependencyPath, Publicity, TypePath};
