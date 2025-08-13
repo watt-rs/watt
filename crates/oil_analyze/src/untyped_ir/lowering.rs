@@ -7,7 +7,6 @@ use crate::{
         UntypedType, UntypedVariable,
     },
 };
-use camino::Utf8PathBuf;
 use miette::NamedSource;
 use oil_ast::ast::{Node, Tree};
 use oil_common::bail;
@@ -460,7 +459,7 @@ pub fn tree_to_ir(source: &NamedSource<String>, tree: Tree) -> UntypedModule {
             } => module.dependencies.push(Dependency {
                 location,
                 name: name.map(|n| n.value),
-                path,
+                path: path.module,
             }),
             declaration => module
                 .definitions

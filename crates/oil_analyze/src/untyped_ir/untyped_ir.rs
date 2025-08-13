@@ -1,7 +1,6 @@
-use camino::Utf8PathBuf;
-use ecow::EcoString;
 /// Imports
-use oil_ast::ast::{DependencyPath, Publicity, TypePath};
+use ecow::EcoString;
+use oil_ast::ast::{Publicity, TypePath};
 use oil_common::address::Address;
 
 /// Ir Parameter
@@ -200,7 +199,7 @@ pub enum UntypedDeclaration {
 pub struct Dependency {
     pub location: Address,
     pub name: Option<EcoString>,
-    pub path: DependencyPath,
+    pub path: EcoString,
 }
 
 /// Untyped module

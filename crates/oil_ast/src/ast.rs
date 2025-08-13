@@ -3,29 +3,11 @@ use ecow::EcoString;
 use oil_common::address::Address;
 use oil_lex::tokens::Token;
 
-/// Dependency path segment
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct DependencyPathSegment {
-    pub identifier: EcoString,
-}
-
 /// Dependency path
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct DependencyPath {
-    address: Address,
-    pub segments: Vec<DependencyPathSegment>,
-}
-
-/// Implementation
-impl DependencyPath {
-    /// Creates new symbol path
-    pub fn new(address: Address, segments: Vec<DependencyPathSegment>) -> Self {
-        Self { address, segments }
-    }
-    /// Pushes segment
-    pub fn push(&mut self, segment: DependencyPathSegment) {
-        self.segments.push(segment);
-    }
+    pub address: Address,
+    pub module: EcoString,
 }
 
 /// Type path

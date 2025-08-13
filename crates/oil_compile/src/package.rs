@@ -5,12 +5,12 @@ use crate::{
 };
 use camino::Utf8PathBuf;
 use ecow::EcoString;
-use log::{info, log};
+use log::info;
 use miette::NamedSource;
-use oil_analyze::untyped_ir::{self, untyped_ir::{Dependency, UntypedModule}};
+use oil_analyze::untyped_ir::{self, untyped_ir::UntypedModule};
 use oil_lex::lexer::Lexer;
 use oil_parse::parser::Parser;
-use std::{collections::HashMap, fs};
+use std::collections::HashMap;
 
 /// Package config
 pub struct PackageConfig {
@@ -72,6 +72,11 @@ impl<'project_compiler> PackageCompiler<'project_compiler> {
         io::collect_sources(&self.path)
     }
 
+    /// Toposorts dependencies graph
+    fn toposort(map: HashMap<&EcoString, Vec<EcoString>>) {
+        todo!()
+    }
+
     /// Compiles package
     pub fn compile(&mut self) {
         // Initializing logging
@@ -79,7 +84,7 @@ impl<'project_compiler> PackageCompiler<'project_compiler> {
         info!("compiling package: {}", self.path);
 
         // Collecting sources
-        let modules = HashMap::new();
+        let mut modules = HashMap::new();
         for source in self.collect_sources() {
             let module_name = io::module_name(&self.path, &source);
             let module = self.load_module(&module_name, &source);
@@ -89,8 +94,15 @@ impl<'project_compiler> PackageCompiler<'project_compiler> {
 
         // Building dependencies tree
         info!("building dependencies tree...");
-        let dependencies: HashMap<EcoString, Vec<Dependency>> = HashMap::new();
-        modules.iter().for_each(|(n,m)| dependencies.insert(n, m.dependencies));
-        info!("found dependencies {}", deps);
+        let mut dep_tree: HashMap<&EcoString, Vec<EcoString>> = HashMap::new();
+        modules.iter().for_each(|(n, m)| {
+            dep_tree.insert(n, m.dependencies.iter().map(|d| d.path.clone()).collect());
+        });
+        info!("found dependencies {:#?}", dep_tree);
+        info!("performing dependencies toposort...");
+
+        // Performing toposort
+        // let sorted = self.toposort(dep_tree);
+        // info!("performed toposort {:#?}", sorted);
     }
 }

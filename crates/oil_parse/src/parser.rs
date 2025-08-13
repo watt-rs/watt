@@ -1,5 +1,6 @@
 /// Imports
 use crate::errors::ParseError;
+use ecow::EcoString;
 use miette::NamedSource;
 use oil_ast::ast::*;
 use oil_common::address::Address;
@@ -78,29 +79,28 @@ impl<'file_path> Parser<'file_path> {
 
     /// Depednecy path parsing
     fn dependency_path(&mut self) -> DependencyPath {
-        // creating new segments list
-        let mut segments_list = Vec::new();
-
+        // module name string
+        let mut module = EcoString::new();
         // start token, used to create span
-        let start = self.peek().address.clone();
+        let start = self.peek().clone();
 
         // first `id`
-        segments_list.push(DependencyPathSegment {
-            identifier: self.consume(TokenKind::Id).value.clone(),
-        });
+        module.push_str(&self.consume(TokenKind::Id).value.clone());
 
         // while path separator exists, parsing new segment
         while self.check(TokenKind::Slash) {
             self.consume(TokenKind::Slash);
-            segments_list.push(DependencyPathSegment {
-                identifier: self.consume(TokenKind::Id).value.clone(),
-            });
+            module.push('/');
+            module.push_str(&self.consume(TokenKind::Id).value.clone());
         }
 
         // end token, used to create span
-        let end = self.previous().address.clone();
+        let end = self.previous().clone();
 
-        DependencyPath::new(Address::span(start.span.start..end.span.end), segments_list)
+        DependencyPath {
+            address: Address::span(start.address.span.start..end.address.span.end),
+            module,
+        }
     }
 
     /// Type annotation parsing

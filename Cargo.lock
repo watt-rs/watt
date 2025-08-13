@@ -396,6 +396,7 @@ dependencies = [
  "oil_common",
  "oil_lex",
  "oil_parse",
+ "petgraph",
  "pretty_env_logger",
  "thiserror",
  "walkdir",
