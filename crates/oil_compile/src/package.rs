@@ -94,9 +94,9 @@ impl<'project_compiler> PackageCompiler<'project_compiler> {
 
         // Building dependencies tree
         info!("building dependencies tree...");
-        let mut dep_tree: HashMap<&EcoString, Vec<EcoString>> = HashMap::new();
+        let mut dep_tree: HashMap<&EcoString, Vec<&EcoString>> = HashMap::new();
         modules.iter().for_each(|(n, m)| {
-            dep_tree.insert(n, m.dependencies.iter().map(|d| d.path.clone()).collect());
+            dep_tree.insert(n, m.dependencies.iter().map(|d| &d.path).collect());
         });
         info!("found dependencies {:#?}", dep_tree);
         info!("performing dependencies toposort...");
