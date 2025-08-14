@@ -1,12 +1,12 @@
 /// Imports
+use crate::analyze::{analyze::Typ, errors::AnalyzeError};
 use ecow::EcoString;
 use miette::NamedSource;
 use oil_common::{address::Address, bail};
 use std::collections::HashMap;
-use crate::analyze::{analyze::Typ, errors::AnalyzeError};
 
 /// Variables environment
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Environment {
     variables: HashMap<EcoString, Typ>,
 }
@@ -57,7 +57,7 @@ impl Environment {
 
     /// Lookups variable
     pub fn lookup(
-        &mut self,
+        &self,
         named_source: &NamedSource<String>,
         address: &Address,
         name: EcoString,
@@ -73,7 +73,7 @@ impl Environment {
     }
 
     /// Checks variable existence
-    pub fn exists(&mut self, name: EcoString) -> bool {
+    pub fn exists(&self, name: EcoString) -> bool {
         self.variables.contains_key(&name)
     }
 }

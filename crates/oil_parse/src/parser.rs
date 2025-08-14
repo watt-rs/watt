@@ -106,21 +106,25 @@ impl<'file_path> Parser<'file_path> {
     /// Type annotation parsing
     fn type_annotation(&mut self) -> TypePath {
         // fisrt id
-        let first_id = self.consume(TokenKind::Id).value.clone();
+        let first_id = self.consume(TokenKind::Id).clone();
         // if dot found
         if self.check(TokenKind::Dot) {
             // consuming dot
             self.consume(TokenKind::Dot);
             // module type path
             TypePath::Module {
-                module: first_id,
+                location: first_id.address,
+                module: first_id.value,
                 name: self.consume(TokenKind::Id).value.clone(),
             }
         }
         // else
         else {
             // local type path
-            TypePath::Local(first_id)
+            TypePath::Local {
+                location: first_id.address,
+                name: first_id.value,
+            }
         }
     }
 

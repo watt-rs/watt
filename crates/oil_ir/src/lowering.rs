@@ -6,7 +6,8 @@ use oil_common::bail;
 use crate::{
     errors::IrError,
     ir::{
-        IrBinaryOp, IrBlock, IrDeclaration, IrDependency, IrExpression, IrFunction, IrModule, IrParameter, IrStatement, IrType, IrUnaryOp, IrVariable
+        IrBinaryOp, IrBlock, IrDeclaration, IrDependency, IrExpression, IrFunction, IrModule,
+        IrParameter, IrStatement, IrType, IrUnaryOp, IrVariable,
     },
 };
 
@@ -38,6 +39,7 @@ pub fn node_to_ir_declaration(source: &NamedSource<String>, node: Node) -> IrDec
             params: params
                 .into_iter()
                 .map(|param| IrParameter {
+                    location: param.name.address,
                     name: param.name.value,
                     typ: param.typ,
                 })
@@ -58,6 +60,7 @@ pub fn node_to_ir_declaration(source: &NamedSource<String>, node: Node) -> IrDec
             constructor: constructor
                 .into_iter()
                 .map(|param| IrParameter {
+                    location: param.name.address,
                     name: param.name.value,
                     typ: param.typ,
                 })
@@ -97,6 +100,7 @@ pub fn node_to_ir_declaration(source: &NamedSource<String>, node: Node) -> IrDec
                         params: params
                             .into_iter()
                             .map(|param| IrParameter {
+                                location: param.name.address,
                                 name: param.name.value,
                                 typ: param.typ,
                             })
@@ -410,6 +414,7 @@ pub fn node_to_ir_statement(source: &NamedSource<String>, node: Node) -> IrState
             params: params
                 .into_iter()
                 .map(|param| IrParameter {
+                    location: param.name.address,
                     name: param.name.value,
                     typ: param.typ,
                 })

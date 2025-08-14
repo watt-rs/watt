@@ -1,10 +1,8 @@
-use ecow::EcoString;
 /// Imports
+use crate::analyze::analyze::Typ;
 use miette::{Diagnostic, NamedSource, SourceSpan};
 use oil_ir::ir::{IrBinaryOp, IrUnaryOp};
 use thiserror::Error;
-
-use crate::analyze::analyze::Typ;
 
 /// Analyze error
 #[derive(Debug, Error, Diagnostic)]
@@ -51,5 +49,48 @@ pub enum AnalyzeError {
         span: SourceSpan,
         t: Typ,
         op: IrUnaryOp,
+    },
+    #[error("could not access field of type {t:?}.")]
+    #[diagnostic(code(analyze::invalid_field_access))]
+    InvalidFieldAccess {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("this is incorrect.")]
+        span: SourceSpan,
+        t: Typ,
+    },
+    #[error("environments stack is empty. it`s a bug!")]
+    #[diagnostic(
+        code(analyze::environments_stack_is_empty),
+        help("please, file an issue on github."),
+        url("https://github.com/oillanguage/oil")
+    )]
+    EnvironmentsStackIsEmpty,
+    #[error("could not call {t:?}.")]
+    #[diagnostic(code(analyze::could_not_call))]
+    CouldNotCall {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("this is incorrect.")]
+        span: SourceSpan,
+        t: Typ,
+    },
+    #[error("wrong type path.")]
+    #[diagnostic(code(analyze::wrong_type_path))]
+    WrongTypePath {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("this is incorrect.")]
+        span: SourceSpan,
+    },
+    #[error("invalid arguments.")]
+    #[diagnostic(code(analyze::invalid_args))]
+    InvalidArgs {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("parameters described here.")]
+        params_span: SourceSpan,
+        #[label("invalid arguments.")]
+        span: SourceSpan,
     },
 }

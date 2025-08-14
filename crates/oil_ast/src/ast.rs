@@ -14,8 +14,15 @@ pub struct DependencyPath {
 /// Type path
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum TypePath {
-    Local(EcoString),
-    Module { module: EcoString, name: EcoString },
+    Local {
+        location: Address,
+        name: EcoString,
+    },
+    Module {
+        location: Address,
+        module: EcoString,
+        name: EcoString,
+    },
 }
 
 /// Parameter

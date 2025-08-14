@@ -377,6 +377,7 @@ dependencies = [
  "ecow",
  "log",
  "miette",
+ "oil_ast",
  "oil_common",
  "oil_ir",
  "oil_lex",

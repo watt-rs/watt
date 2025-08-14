@@ -4,14 +4,16 @@ use crate::{
     project::ProjectCompiler,
 };
 use ecow::EcoString;
+use miette::NamedSource;
+use oil_ast::ast::TypePath;
 use oil_common::{address::Address, bail};
 use oil_ir::ir::{
-    IrBinaryOp, IrDeclaration, IrExpression, IrFunction, IrModule, IrParameter, IrStatement,
-    IrUnaryOp,
+    IrBinaryOp, IrDeclaration, IrExpression, IrModule, IrParameter, IrStatement, IrUnaryOp,
 };
+use std::{collections::HashMap, rc::Rc};
 
-/// Prelude types
-#[derive(Debug, Clone)]
+/// Prelude type
+#[derive(Debug, Clone, PartialEq)]
 pub enum PreludeType {
     Int,
     Float,
@@ -20,19 +22,40 @@ pub enum PreludeType {
 }
 
 /// Custom type
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Type {
+    pub location: Address,
     pub name: EcoString,
-    pub params: Vec<IrParameter>,
+    pub params: Vec<Typ>,
+    pub env: Environment,
+}
+
+/// Function
+#[derive(Debug, Clone, PartialEq)]
+pub struct Function {
+    pub location: Address,
+    pub name: EcoString,
+    pub params: Vec<Typ>,
+    pub env: Environment,
+    pub ret: Typ,
+}
+
+/// Module
+#[derive(Debug, Clone, PartialEq)]
+pub struct Module {
+    pub source: NamedSource<String>,
+    pub name: EcoString,
     pub env: Environment,
 }
 
 /// Typ
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Typ {
     Prelude(PreludeType),
-    CustomType(Type),
-    Function(IrFunction),
+    InstanceOf(Rc<Type>),
+    Type(Rc<Type>),
+    Function(Rc<Function>),
+    Module(Rc<Module>),
 }
 
 /// Module analyzer
@@ -55,7 +78,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
 
     /// Infers binary
     fn infer_binary(
-        &mut self,
+        &self,
         location: Address,
         op: IrBinaryOp,
         left: IrExpression,
@@ -173,7 +196,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     }
 
     /// Infers unary
-    fn infer_unary(&mut self, location: Address, op: IrUnaryOp, value: IrExpression) -> Typ {
+    fn infer_unary(&self, location: Address, op: IrUnaryOp, value: IrExpression) -> Typ {
         // Inferred value `Typ`
         let inferred_value = self.infer_expr(value);
 
@@ -217,8 +240,137 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         }
     }
 
+    /// Infers get
+    fn infer_get(&self, location: Address, base: Option<IrExpression>, name: EcoString) -> Typ {
+        match base {
+            Some(base) => {
+                let base_inferred = self.infer_expr(base);
+                match base_inferred {
+                    Typ::InstanceOf(instance) => {
+                        return instance.env.lookup(&self.module.source, &location, name);
+                    }
+                    Typ::Module(module) => {
+                        return module.env.lookup(&self.module.source, &location, name);
+                    }
+                    _ => bail!(AnalyzeError::InvalidFieldAccess {
+                        src: self.module.source.clone(),
+                        span: location.span.into(),
+                        t: base_inferred
+                    }),
+                }
+            }
+            None => match self.environments_stack.last() {
+                Some(env) => env.lookup(&self.module.source, &location, name),
+                None => bail!(AnalyzeError::EnvironmentsStackIsEmpty),
+            },
+        }
+    }
+
+    /// Infers type path
+    fn infer_type_path(&self, path: TypePath) -> Typ {
+        match path {
+            TypePath::Local { location, name } => match name.as_str() {
+                "int" => Typ::Prelude(PreludeType::Int),
+                "float" => Typ::Prelude(PreludeType::Float),
+                "bool" => Typ::Prelude(PreludeType::Bool),
+                "string" => Typ::Prelude(PreludeType::String),
+                _ => self.infer_get(location, None, name),
+            },
+            TypePath::Module {
+                location,
+                module,
+                name,
+            } => {
+                let module_inferred = self.infer_get(location.clone(), None, module);
+                match module_inferred {
+                    Typ::Module(module) => module.env.lookup(&self.module.source, &location, name),
+                    _ => bail!(AnalyzeError::WrongTypePath {
+                        src: self.module.source.clone(),
+                        span: location.span.into()
+                    }),
+                }
+            }
+        }
+    }
+
+    /// Checks args
+    fn check_args(&self, params: &Vec<Typ>, args: Vec<IrExpression>) -> bool {
+        let args = args
+            .iter()
+            .map(|e| self.infer_expr(e.clone()))
+            .collect::<Vec<Typ>>();
+        return params == &args;
+    }
+
+    /// Infers call
+    fn infer_call(
+        &self,
+        location: Address,
+        args_location: Address,
+        base: Option<IrExpression>,
+        name: EcoString,
+        args: Vec<IrExpression>,
+    ) -> Typ {
+        match base {
+            Some(base) => {
+                let base_inferred = self.infer_expr(base);
+                match base_inferred {
+                    Typ::InstanceOf(instance) => {
+                        let arguments = args
+                            .iter()
+                            .map(|a| self.infer_expr(a.clone()))
+                            .collect::<Vec<Typ>>();
+                        let function_typ =
+                            instance.env.lookup(&self.module.source, &location, name);
+                        match function_typ {
+                            Typ::Type(type_) => {
+                                if !self.check_args(&type_.params, args) {
+                                    {
+                                        let report:miette::Report = (AnalyzeError::InvalidArgs {
+                                            src:self.module.source,params_span:type_.location.span.into(),span:args_location.span.into(),
+                                        }).into();
+                                        eprintln!("{report:?}");
+                                        std::process::exit(1);
+                                    }
+                                }
+                                Typ::InstanceOf(type_)
+                            }
+                            Typ::Function(function) => {
+                                if !self.check_args(&function.params, args) {
+                                    bail!(AnalyzeError::InvalidArgs {
+                                        src: self.module.source,
+                                        params_span: function.location.span.into(),
+                                        span: args_location.span.into(),
+                                    })
+                                }
+                                function.ret
+                            }
+                            _ => bail!(AnalyzeError::CouldNotCall {
+                                src: self.module.source,
+                                span: location.span.into(),
+                                t: function_typ
+                            }),
+                        }
+                    }
+                    Typ::Module(module) => {
+                        return module.env.lookup(&self.module.source, &location, name);
+                    }
+                    _ => bail!(AnalyzeError::InvalidFieldAccess {
+                        src: self.module.source.clone(),
+                        span: location.span.into(),
+                        t: base_inferred
+                    }),
+                }
+            }
+            None => match self.environments_stack.last() {
+                Some(env) => env.lookup(&self.module.source, &location, name),
+                None => bail!(AnalyzeError::EnvironmentsStackIsEmpty),
+            },
+        }
+    }
+
     /// Infers expression
-    fn infer_expr(&mut self, expr: IrExpression) -> Typ {
+    fn infer_expr(&self, expr: IrExpression) -> Typ {
         match expr {
             IrExpression::Float { .. } => Typ::Prelude(PreludeType::Float),
             IrExpression::Int { .. } => Typ::Prelude(PreludeType::Int),
@@ -239,13 +391,14 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 location,
                 base,
                 name,
-            } => self.infer_get(location, base, op, *value),
+            } => self.infer_get(location, base.map(|base| *base), name),
             IrExpression::Call {
                 location,
+                args_location,
                 base,
                 name,
                 args,
-            } => self.infer_call_expr(location, base, op, *value),
+            } => self.infer_call(location, args_location, base.map(|base| *base), name, args),
             IrExpression::Range { location, from, to } => todo!(),
         }
     }

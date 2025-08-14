@@ -8,6 +8,7 @@ oil_lex = { path = "../oil_lex" }
 oil_parse = { path = "../oil_parse" }
 oil_common = { path = "../oil_common" }
 oil_ir = { path = "../oil_ir" }
+oil_ast = { path = "../oil_ast" }
 miette = { version = "7.6.0", features = ["fancy"] }
 ecow = "0.2.6"
 camino = "1.1.10"

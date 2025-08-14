@@ -5,14 +5,15 @@ use oil_ast::ast::{Publicity, TypePath};
 use oil_common::address::Address;
 
 /// Ir parameter
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IrParameter {
+    pub location: Address,
     pub name: EcoString,
     pub typ: TypePath,
 }
 
 /// Ir statement
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum IrStatement {
     If {
         location: Address,
@@ -74,7 +75,7 @@ pub enum IrStatement {
 }
 
 /// Ir Expression
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum IrExpression {
     Float {
         location: Address,
@@ -122,7 +123,7 @@ pub enum IrExpression {
 }
 
 /// Binary operator
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum IrBinaryOp {
     Add,
     Sub,
@@ -143,20 +144,20 @@ pub enum IrBinaryOp {
 }
 
 /// Unary operator
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum IrUnaryOp {
     Negate,
     Bang,
 }
 
 /// Ir block
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct IrBlock {
     pub nodes: Vec<IrStatement>,
 }
 
 /// Ir function
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct IrFunction {
     pub location: Address,
     pub name: EcoString,
@@ -167,7 +168,7 @@ pub struct IrFunction {
 }
 
 /// Ir variable
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct IrVariable {
     pub location: Address,
     pub name: EcoString,
@@ -177,7 +178,7 @@ pub struct IrVariable {
 }
 
 /// Ir type
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct IrType {
     pub location: Address,
     pub name: EcoString,
@@ -188,7 +189,7 @@ pub struct IrType {
 }
 
 /// Ir declaration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum IrDeclaration {
     Function(IrFunction),
     Variable(IrVariable),
@@ -196,7 +197,7 @@ pub enum IrDeclaration {
 }
 
 /// Ir dependency
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct IrDependency {
     pub location: Address,
     pub name: Option<EcoString>,
@@ -204,7 +205,7 @@ pub struct IrDependency {
 }
 
 /// Ir module
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct IrModule {
     pub definitions: Vec<IrDeclaration>,
     pub dependencies: Vec<IrDependency>,
