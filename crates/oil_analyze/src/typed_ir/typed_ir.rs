@@ -1,5 +1,5 @@
 /// Imports
-use crate::{analyse::Type, untyped_ir::untyped_ir::{BinaryOperator, UnaryOperator}};
+use crate::{analyse::Type, untyped_ir::untyped_ir::{BinaryOperator, Dependency, UnaryOperator}};
 use ecow::EcoString;
 use oil_ast::ast::Publicity;
 use oil_common::address::Address;
@@ -169,17 +169,9 @@ pub enum TypedDeclaration {
     Type(TypedType),
 }
 
-/// Dependency
+/// Typed module
 #[derive(Debug)]
-pub struct Dependency {
-    pub location: Address,
-    pub name: Option<EcoString>,
-    pub path: EcoString,
-}
-
-/// Untyped module
-#[derive(Debug)]
-pub struct UntypedModule {
+pub struct TypedModule {
     pub definitions: Vec<TypedDeclaration>,
     pub dependencies: Vec<Dependency>,
 }
