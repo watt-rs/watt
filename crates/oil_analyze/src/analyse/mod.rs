@@ -1,2 +1,1 @@
-#[derive(Debug)]
-pub struct Type {}
+pub mod analyse;

@@ -1,5 +1,8 @@
 /// Imports
-use crate::{analyse::Type, untyped_ir::untyped_ir::{BinaryOperator, Dependency, UnaryOperator}};
+use crate::{
+    analyse::analyse::Typ,
+    untyped_ir::untyped_ir::{BinaryOperator, UnaryOperator},
+};
 use ecow::EcoString;
 use oil_ast::ast::Publicity;
 use oil_common::address::Address;
@@ -8,7 +11,7 @@ use oil_common::address::Address;
 #[derive(Debug)]
 pub struct TypedParameter {
     pub name: EcoString,
-    pub typ: Type,
+    pub typ: Typ,
 }
 
 /// Typed statement
@@ -29,7 +32,7 @@ pub enum TypedStatement {
         location: Address,
         name: EcoString,
         value: TypedExpression,
-        typ: Type,
+        typ: Typ,
     },
     Assign {
         location: Address,
@@ -53,7 +56,7 @@ pub enum TypedStatement {
         name: EcoString,
         params: Vec<TypedParameter>,
         body: TypedBlock,
-        typ: Type,
+        typ: Typ,
     },
     Break {
         location: Address,
@@ -87,39 +90,39 @@ pub enum TypedLiteral {
 pub enum TypedExpression {
     Literal {
         literal: TypedLiteral,
-        result: Type,
+        result: Typ,
     },
     Bin {
         location: Address,
         left: Box<TypedExpression>,
         right: Box<TypedExpression>,
         op: BinaryOperator,
-        result: Type,
+        result: Typ,
     },
     Unary {
         location: Address,
         value: Box<TypedExpression>,
         op: UnaryOperator,
-        result: Type,
+        result: Typ,
     },
     Get {
         location: Address,
         base: Option<Box<TypedExpression>>,
         name: EcoString,
-        result: Type,
+        result: Typ,
     },
     Call {
         location: Address,
         base: Option<Box<TypedExpression>>,
         name: EcoString,
         args: Vec<TypedExpression>,
-        result: Type,
+        result: Typ,
     },
     Range {
         location: Address,
         from: Box<TypedExpression>,
         to: Box<TypedExpression>,
-        result: Type,
+        result: Typ,
     },
 }
 
@@ -137,7 +140,7 @@ pub struct TypedFunction {
     pub publicity: Publicity,
     pub params: Vec<TypedParameter>,
     pub body: TypedBlock,
-    pub typ: Type,
+    pub typ: Typ,
 }
 
 /// Typed variable
@@ -146,7 +149,7 @@ pub struct TypedVariable {
     pub location: Address,
     pub name: EcoString,
     pub publicity: Publicity,
-    pub typ: Type,
+    pub typ: Typ,
     pub value: TypedExpression,
 }
 
