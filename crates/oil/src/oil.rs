@@ -12,7 +12,7 @@ pub fn run(path: Utf8PathBuf, lex_debug: bool, parse_debug: bool) {
     let mut compiler = PackageCompiler::new(
         &mut project_compiler,
         PackageConfig {
-            main: "main.oil".into(),
+            main: "main".into(),
             version: "0.0.1".into(),
         },
         Utf8PathBuf::from("/home/vyacheslav/oil/tmp/"),

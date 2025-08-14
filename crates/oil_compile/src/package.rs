@@ -1,5 +1,6 @@
 /// Imports
 use crate::{
+    errors::CompileError,
     io::io::{self, OilFile},
     project::ProjectCompiler,
 };
@@ -8,9 +9,11 @@ use ecow::EcoString;
 use log::info;
 use miette::NamedSource;
 use oil_analyze::untyped_ir::{self, untyped_ir::UntypedModule};
+use oil_common::bail;
 use oil_lex::lexer::Lexer;
 use oil_parse::parser::Parser;
-use std::collections::HashMap;
+use petgraph::{Direction, prelude::DiGraphMap};
+use std::collections::{HashMap, HashSet};
 
 /// Package config
 pub struct PackageConfig {
@@ -72,9 +75,82 @@ impl<'project_compiler> PackageCompiler<'project_compiler> {
         io::collect_sources(&self.path)
     }
 
+    /// Finds cycle in a graph
+    fn find_cycle<'dep>(
+        origin: &'dep EcoString,
+        parent: &'dep EcoString,
+        graph: &petgraph::prelude::DiGraphMap<&'dep EcoString, ()>,
+        path: &mut Vec<&'dep EcoString>,
+        done: &mut HashSet<&'dep EcoString>,
+    ) -> bool {
+        done.insert(parent);
+        for node in graph.neighbors_directed(parent, Direction::Outgoing) {
+            if node == origin {
+                path.push(node);
+                return true;
+            }
+            if done.contains(&node) {
+                continue;
+            }
+            if Self::find_cycle(origin, node, graph, path, done) {
+                path.push(node);
+                return true;
+            }
+        }
+        false
+    }
+
     /// Toposorts dependencies graph
-    fn toposort(map: HashMap<&EcoString, Vec<EcoString>>) {
-        todo!()
+    fn toposort<'s>(&self, deps: HashMap<&'s EcoString, Vec<&'s EcoString>>) -> Vec<&'s EcoString> {
+        // Creating graph for toposorting
+        let mut deps_graph: DiGraphMap<&EcoString, ()> =
+            petgraph::prelude::DiGraphMap::with_capacity(deps.len(), deps.len() * 5);
+
+        // Adding nodes
+        for key in deps.keys() {
+            deps_graph.add_node(key);
+        }
+        for values in deps.values() {
+            for v in values {
+                deps_graph.add_node(v);
+            }
+        }
+
+        // Adding edges
+        for (key, values) in &deps {
+            for dep in values {
+                deps_graph.add_edge(key, dep, ());
+            }
+        }
+
+        // Performing toposort
+        match petgraph::algo::toposort(&deps_graph, None) {
+            Ok(order) => order.into_iter().rev().collect(),
+            Err(e) => {
+                // Origin node
+                let origin = e.node_id();
+                // Cycle path
+                let mut path = Vec::new();
+                // Finding cycle
+                if Self::find_cycle(origin, origin, &deps_graph, &mut path, &mut HashSet::new()) {
+                    path.reverse();
+                    bail!(CompileError::FoundImportCycle {
+                        a: match path.get(0) {
+                            Some(some) => (*some).clone(),
+                            None =>
+                                bail!(CompileError::CyclePathHasWrongLength { len: path.len() }),
+                        },
+                        b: match path.get(1) {
+                            Some(some) => (*some).clone(),
+                            None =>
+                                bail!(CompileError::CyclePathHasWrongLength { len: path.len() }),
+                        }
+                    })
+                } else {
+                    bail!(CompileError::FailedToFindImportCycle)
+                }
+            }
+        }
     }
 
     /// Compiles package
@@ -99,10 +175,18 @@ impl<'project_compiler> PackageCompiler<'project_compiler> {
             dep_tree.insert(n, m.dependencies.iter().map(|d| &d.path).collect());
         });
         info!("found dependencies {:#?}", dep_tree);
-        info!("performing dependencies toposort...");
 
         // Performing toposort
-        // let sorted = self.toposort(dep_tree);
-        // info!("performed toposort {:#?}", sorted);
+        let sorted = self.toposort(dep_tree);
+        info!("performed toposort {:#?}", sorted);
+
+        // Getting main
+        let main_module = match modules.iter().find(|(k, _)| **k == self.config.main) {
+            Some(some) => some,
+            None => bail!(CompileError::NoMainModuleFound {
+                main: self.config.main.clone()
+            }),
+        };
+        info!("found main module: {}", self.config.main)
     }
 }
