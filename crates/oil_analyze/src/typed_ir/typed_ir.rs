@@ -173,5 +173,4 @@ pub enum TypedDeclaration {
 #[derive(Debug)]
 pub struct TypedModule {
     pub definitions: Vec<TypedDeclaration>,
-    pub dependencies: Vec<Dependency>,
 }
