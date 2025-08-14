@@ -8,8 +8,8 @@ use camino::Utf8PathBuf;
 use ecow::EcoString;
 use log::info;
 use miette::NamedSource;
-use oil_analyze::untyped_ir::{self, untyped_ir::UntypedModule};
 use oil_common::bail;
+use oil_ir::{ir::IrModule, lowering};
 use oil_lex::lexer::Lexer;
 use oil_parse::parser::Parser;
 use petgraph::{Direction, prelude::DiGraphMap};
@@ -53,7 +53,7 @@ impl<'project_compiler> PackageCompiler<'project_compiler> {
     }
 
     /// Loads module
-    fn load_module(&mut self, module_name: &EcoString, file: &OilFile) -> UntypedModule {
+    fn load_module(&mut self, module_name: &EcoString, file: &OilFile) -> IrModule {
         // Reading code
         let code = file.read();
         let code_chars: Vec<char> = code.chars().collect();
@@ -66,7 +66,7 @@ impl<'project_compiler> PackageCompiler<'project_compiler> {
         let mut parser = Parser::new(tokens, &named_source);
         let tree = parser.parse();
         // Untyped ir
-        let untyped_ir = untyped_ir::lowering::tree_to_ir(&named_source, tree);
+        let untyped_ir = lowering::tree_to_ir(named_source, tree);
         return untyped_ir;
     }
 
@@ -179,5 +179,11 @@ impl<'project_compiler> PackageCompiler<'project_compiler> {
         // Performing toposort
         let sorted = self.toposort(dep_tree);
         info!("performed toposort {:#?}", sorted);
+
+        // Performing analyze
+        info!("analyzing modules...");
+        for module in sorted {
+            todo!()
+        }
     }
 }

@@ -1,25 +1,24 @@
 /// Imports
-use crate::{
-    untyped_ir::errors::UntypedIrError,
-    untyped_ir::untyped_ir::{
-        BinaryOperator, Dependency, UnaryOperator, UntypedBlock, UntypedDeclaration,
-        UntypedExpression, UntypedFunction, UntypedParameter, UntypedModule, UntypedStatement,
-        UntypedType, UntypedVariable,
-    },
-};
 use miette::NamedSource;
 use oil_ast::ast::{Node, Tree};
 use oil_common::bail;
 
+use crate::{
+    errors::IrError,
+    ir::{
+        IrBinaryOp, IrBlock, IrDeclaration, IrDependency, IrExpression, IrFunction, IrModule, IrParameter, IrStatement, IrType, IrUnaryOp, IrVariable
+    },
+};
+
 /// Node to ir declaration
-pub fn node_to_ir_declaration(source: &NamedSource<String>, node: Node) -> UntypedDeclaration {
+pub fn node_to_ir_declaration(source: &NamedSource<String>, node: Node) -> IrDeclaration {
     match node {
         Node::Define {
             publicity,
             name,
             value,
             typ,
-        } => UntypedDeclaration::Variable(UntypedVariable {
+        } => IrDeclaration::Variable(IrVariable {
             location: name.address,
             publicity,
             name: name.value,
@@ -32,13 +31,13 @@ pub fn node_to_ir_declaration(source: &NamedSource<String>, node: Node) -> Untyp
             params,
             body,
             typ,
-        } => UntypedDeclaration::Function(UntypedFunction {
+        } => IrDeclaration::Function(IrFunction {
             location: name.address,
             publicity,
             name: name.value,
             params: params
                 .into_iter()
-                .map(|param| UntypedParameter {
+                .map(|param| IrParameter {
                     name: param.name.value,
                     typ: param.typ,
                 })
@@ -52,13 +51,13 @@ pub fn node_to_ir_declaration(source: &NamedSource<String>, node: Node) -> Untyp
             constructor,
             fields,
             functions,
-        } => UntypedDeclaration::Type(UntypedType {
+        } => IrDeclaration::Type(IrType {
             location: name.address,
             publicity,
             name: name.value,
             constructor: constructor
                 .into_iter()
-                .map(|param| UntypedParameter {
+                .map(|param| IrParameter {
                     name: param.name.value,
                     typ: param.typ,
                 })
@@ -71,14 +70,14 @@ pub fn node_to_ir_declaration(source: &NamedSource<String>, node: Node) -> Untyp
                         name,
                         value,
                         typ,
-                    } => UntypedVariable {
+                    } => IrVariable {
                         location: name.address,
                         name: name.value,
                         publicity,
                         typ,
                         value: node_to_ir_expression(source, *value),
                     },
-                    unexpected => bail!(UntypedIrError::UnexpectedNodeInTypebody { unexpected }),
+                    unexpected => bail!(IrError::UnexpectedNodeInTypebody { unexpected }),
                 })
                 .collect(),
             functions: functions
@@ -90,136 +89,136 @@ pub fn node_to_ir_declaration(source: &NamedSource<String>, node: Node) -> Untyp
                         typ,
                         params,
                         body,
-                    } => UntypedFunction {
+                    } => IrFunction {
                         location: name.address,
                         name: name.value,
                         publicity,
                         typ,
                         params: params
                             .into_iter()
-                            .map(|param| UntypedParameter {
+                            .map(|param| IrParameter {
                                 name: param.name.value,
                                 typ: param.typ,
                             })
                             .collect(),
                         body: node_to_ir_block(source, *body),
                     },
-                    unexpected => bail!(UntypedIrError::UnexpectedNodeInTypebody { unexpected }),
+                    unexpected => bail!(IrError::UnexpectedNodeInTypebody { unexpected }),
                 })
                 .collect(),
         }),
-        unexpected => bail!(UntypedIrError::UnexpectedDeclarationNode { unexpected }),
+        unexpected => bail!(IrError::UnexpectedDeclarationNode { unexpected }),
     }
 }
 
 /// Node to ir block
-pub fn node_to_ir_block(source: &NamedSource<String>, node: Node) -> UntypedBlock {
+pub fn node_to_ir_block(source: &NamedSource<String>, node: Node) -> IrBlock {
     match node {
-        Node::Block { body } => UntypedBlock {
+        Node::Block { body } => IrBlock {
             nodes: body
                 .into_iter()
                 .map(|n| node_to_ir_statement(source, n))
                 .collect(),
         },
-        unexpected => bail!(UntypedIrError::UnexpectedBlockNode { unexpected }),
+        unexpected => bail!(IrError::UnexpectedBlockNode { unexpected }),
     }
 }
 
 /// Node to ir expression
-pub fn node_to_ir_expression(source: &NamedSource<String>, node: Node) -> UntypedExpression {
+pub fn node_to_ir_expression(source: &NamedSource<String>, node: Node) -> IrExpression {
     match node {
         Node::Number { value } => {
             if value.value.contains('.') {
                 match str::parse::<f64>(&value.value) {
-                    Ok(ok) => UntypedExpression::Float {
+                    Ok(ok) => IrExpression::Float {
                         location: value.address,
                         value: ok,
                     },
-                    Err(_) => bail!(UntypedIrError::FailedToParseF64 {
+                    Err(_) => bail!(IrError::FailedToParseF64 {
                         src: source.clone(),
                         span: value.address.span.into()
                     }),
                 }
             } else {
                 match str::parse::<i64>(&value.value) {
-                    Ok(ok) => UntypedExpression::Int {
+                    Ok(ok) => IrExpression::Int {
                         location: value.address,
                         value: ok,
                     },
-                    Err(_) => bail!(UntypedIrError::FailedToParseI64 {
+                    Err(_) => bail!(IrError::FailedToParseI64 {
                         src: source.clone(),
                         span: value.address.span.into()
                     }),
                 }
             }
         }
-        Node::String { value } => UntypedExpression::String {
+        Node::String { value } => IrExpression::String {
             location: value.address,
             value: value.value,
         },
-        Node::Bool { value } => UntypedExpression::Bool {
+        Node::Bool { value } => IrExpression::Bool {
             location: value.address,
             value: value.value,
         },
         Node::Bin { left, right, op } => match op.value.as_str() {
-            "+" => UntypedExpression::Bin {
+            "+" => IrExpression::Bin {
                 location: op.address,
                 left: Box::new(node_to_ir_expression(source, *left)),
                 right: Box::new(node_to_ir_expression(source, *right)),
-                op: BinaryOperator::Add,
+                op: IrBinaryOp::Add,
             },
-            "-" => UntypedExpression::Bin {
+            "-" => IrExpression::Bin {
                 location: op.address,
                 left: Box::new(node_to_ir_expression(source, *left)),
                 right: Box::new(node_to_ir_expression(source, *right)),
-                op: BinaryOperator::Sub,
+                op: IrBinaryOp::Sub,
             },
-            "*" => UntypedExpression::Bin {
+            "*" => IrExpression::Bin {
                 location: op.address,
                 left: Box::new(node_to_ir_expression(source, *left)),
                 right: Box::new(node_to_ir_expression(source, *right)),
-                op: BinaryOperator::Mul,
+                op: IrBinaryOp::Mul,
             },
-            "/" => UntypedExpression::Bin {
+            "/" => IrExpression::Bin {
                 location: op.address,
                 left: Box::new(node_to_ir_expression(source, *left)),
                 right: Box::new(node_to_ir_expression(source, *right)),
-                op: BinaryOperator::Div,
+                op: IrBinaryOp::Div,
             },
-            "%" => UntypedExpression::Bin {
+            "%" => IrExpression::Bin {
                 location: op.address,
                 left: Box::new(node_to_ir_expression(source, *left)),
                 right: Box::new(node_to_ir_expression(source, *right)),
-                op: BinaryOperator::Div,
+                op: IrBinaryOp::Div,
             },
-            _ => bail!(UntypedIrError::UnknownOp {
+            _ => bail!(IrError::UnknownOp {
                 src: source.clone(),
                 span: op.address.span.into()
             }),
         },
         Node::Unary { value, op } => match op.value.as_str() {
-            "-" => UntypedExpression::Unary {
+            "-" => IrExpression::Unary {
                 location: op.address.clone(),
                 value: Box::new(node_to_ir_expression(source, *value)),
-                op: UnaryOperator::Negate,
+                op: IrUnaryOp::Negate,
             },
-            "!" => UntypedExpression::Unary {
+            "!" => IrExpression::Unary {
                 location: op.address.clone(),
                 value: Box::new(node_to_ir_expression(source, *value)),
-                op: UnaryOperator::Bang,
+                op: IrUnaryOp::Bang,
             },
-            _ => bail!(UntypedIrError::UnknownOp {
+            _ => bail!(IrError::UnknownOp {
                 src: source.clone(),
                 span: op.address.span.into()
             }),
         },
         Node::Get { previous, name } => match previous {
-            Some(some) => UntypedExpression::Get {
+            Some(some) => IrExpression::Get {
                 location: name.address.clone(),
                 base: Some(Box::new(node_to_ir_expression(source, *some))),
                 name: name.value,
             },
-            None => UntypedExpression::Get {
+            None => IrExpression::Get {
                 location: name.address.clone(),
                 base: None,
                 name: name.value,
@@ -230,7 +229,7 @@ pub fn node_to_ir_expression(source: &NamedSource<String>, node: Node) -> Untype
             name,
             args,
         } => match previous {
-            Some(base) => UntypedExpression::Call {
+            Some(base) => IrExpression::Call {
                 base: Some(Box::new(node_to_ir_expression(source, *base))),
                 location: name.address,
                 name: name.value,
@@ -239,7 +238,7 @@ pub fn node_to_ir_expression(source: &NamedSource<String>, node: Node) -> Untype
                     .map(|arg| node_to_ir_expression(source, arg))
                     .collect(),
             },
-            None => UntypedExpression::Call {
+            None => IrExpression::Call {
                 base: None,
                 location: name.address,
                 name: name.value,
@@ -250,76 +249,76 @@ pub fn node_to_ir_expression(source: &NamedSource<String>, node: Node) -> Untype
             },
         },
         Node::Cond { left, right, op } => match op.value.as_str() {
-            ">" => UntypedExpression::Bin {
+            ">" => IrExpression::Bin {
                 location: op.address,
                 left: Box::new(node_to_ir_expression(source, *left)),
                 right: Box::new(node_to_ir_expression(source, *right)),
-                op: BinaryOperator::Gt,
+                op: IrBinaryOp::Gt,
             },
-            "<" => UntypedExpression::Bin {
+            "<" => IrExpression::Bin {
                 location: op.address,
                 left: Box::new(node_to_ir_expression(source, *left)),
                 right: Box::new(node_to_ir_expression(source, *right)),
-                op: BinaryOperator::Lt,
+                op: IrBinaryOp::Lt,
             },
-            "==" => UntypedExpression::Bin {
+            "==" => IrExpression::Bin {
                 location: op.address,
                 left: Box::new(node_to_ir_expression(source, *left)),
                 right: Box::new(node_to_ir_expression(source, *right)),
-                op: BinaryOperator::Eq,
+                op: IrBinaryOp::Eq,
             },
-            "!=" => UntypedExpression::Bin {
+            "!=" => IrExpression::Bin {
                 location: op.address,
                 left: Box::new(node_to_ir_expression(source, *left)),
                 right: Box::new(node_to_ir_expression(source, *right)),
-                op: BinaryOperator::Neq,
+                op: IrBinaryOp::Neq,
             },
-            ">=" => UntypedExpression::Bin {
+            ">=" => IrExpression::Bin {
                 location: op.address,
                 left: Box::new(node_to_ir_expression(source, *left)),
                 right: Box::new(node_to_ir_expression(source, *right)),
-                op: BinaryOperator::Ge,
+                op: IrBinaryOp::Ge,
             },
-            "<=" => UntypedExpression::Bin {
+            "<=" => IrExpression::Bin {
                 location: op.address,
                 left: Box::new(node_to_ir_expression(source, *left)),
                 right: Box::new(node_to_ir_expression(source, *right)),
-                op: BinaryOperator::Le,
+                op: IrBinaryOp::Le,
             },
-            _ => bail!(UntypedIrError::UnknownOp {
+            _ => bail!(IrError::UnknownOp {
                 src: source.clone(),
                 span: op.address.span.into()
             }),
         },
         Node::Logical { left, right, op } => match op.value.as_str() {
-            "&&" => UntypedExpression::Bin {
+            "&&" => IrExpression::Bin {
                 location: op.address,
                 left: Box::new(node_to_ir_expression(source, *left)),
                 right: Box::new(node_to_ir_expression(source, *right)),
-                op: BinaryOperator::And,
+                op: IrBinaryOp::And,
             },
-            "||" => UntypedExpression::Bin {
+            "||" => IrExpression::Bin {
                 location: op.address,
                 left: Box::new(node_to_ir_expression(source, *left)),
                 right: Box::new(node_to_ir_expression(source, *right)),
-                op: BinaryOperator::Or,
+                op: IrBinaryOp::Or,
             },
-            _ => bail!(UntypedIrError::UnknownOp {
+            _ => bail!(IrError::UnknownOp {
                 src: source.clone(),
                 span: op.address.span.into()
             }),
         },
-        Node::Range { location, from, to } => UntypedExpression::Range {
+        Node::Range { location, from, to } => IrExpression::Range {
             location: location.address,
             from: Box::new(node_to_ir_expression(source, *from)),
             to: Box::new(node_to_ir_expression(source, *to)),
         },
-        unexpected => bail!(UntypedIrError::UnexpectedExpressionNode { unexpected }),
+        unexpected => bail!(IrError::UnexpectedExpressionNode { unexpected }),
     }
 }
 
 /// Node to ir statement
-pub fn node_to_ir_statement(source: &NamedSource<String>, node: Node) -> UntypedStatement {
+pub fn node_to_ir_statement(source: &NamedSource<String>, node: Node) -> IrStatement {
     match node {
         Node::If {
             location,
@@ -327,13 +326,13 @@ pub fn node_to_ir_statement(source: &NamedSource<String>, node: Node) -> Untyped
             body,
             elseif,
         } => match elseif {
-            Some(elseif) => UntypedStatement::If {
+            Some(elseif) => IrStatement::If {
                 location: location.address,
                 logical: node_to_ir_expression(source, *logical),
                 body: node_to_ir_block(source, *body),
                 elseif: Some(Box::new(node_to_ir_statement(source, *elseif))),
             },
-            None => UntypedStatement::If {
+            None => IrStatement::If {
                 location: location.address,
                 logical: node_to_ir_expression(source, *logical),
                 body: node_to_ir_block(source, *body),
@@ -344,14 +343,14 @@ pub fn node_to_ir_statement(source: &NamedSource<String>, node: Node) -> Untyped
             location,
             logical,
             body,
-        } => UntypedStatement::While {
+        } => IrStatement::While {
             location: location.address,
             logical: node_to_ir_expression(source, *logical),
             body: node_to_ir_block(source, *body),
         },
         Node::Define {
             name, value, typ, ..
-        } => UntypedStatement::Define {
+        } => IrStatement::Define {
             location: name.address,
             name: name.value,
             value: node_to_ir_expression(source, *value),
@@ -362,13 +361,13 @@ pub fn node_to_ir_statement(source: &NamedSource<String>, node: Node) -> Untyped
             name,
             value,
         } => match previous {
-            Some(base) => UntypedStatement::Assign {
+            Some(base) => IrStatement::Assign {
                 base: Some(node_to_ir_expression(source, *base)),
                 location: name.address,
                 name: name.value,
                 value: node_to_ir_expression(source, *value),
             },
-            None => UntypedStatement::Assign {
+            None => IrStatement::Assign {
                 base: None,
                 location: name.address,
                 name: name.value,
@@ -380,7 +379,7 @@ pub fn node_to_ir_statement(source: &NamedSource<String>, node: Node) -> Untyped
             name,
             args,
         } => match previous {
-            Some(base) => UntypedStatement::Call {
+            Some(base) => IrStatement::Call {
                 base: Some(node_to_ir_expression(source, *base)),
                 location: name.address,
                 name: name.value,
@@ -389,7 +388,7 @@ pub fn node_to_ir_statement(source: &NamedSource<String>, node: Node) -> Untyped
                     .map(|arg| node_to_ir_expression(source, arg))
                     .collect(),
             },
-            None => UntypedStatement::Call {
+            None => IrStatement::Call {
                 base: None,
                 location: name.address,
                 name: name.value,
@@ -405,12 +404,12 @@ pub fn node_to_ir_statement(source: &NamedSource<String>, node: Node) -> Untyped
             body,
             typ,
             ..
-        } => UntypedStatement::Fn {
+        } => IrStatement::Fn {
             location: name.address,
             name: name.value,
             params: params
                 .into_iter()
-                .map(|param| UntypedParameter {
+                .map(|param| IrParameter {
                     name: param.name.value,
                     typ: param.typ,
                 })
@@ -418,13 +417,13 @@ pub fn node_to_ir_statement(source: &NamedSource<String>, node: Node) -> Untyped
             body: node_to_ir_block(source, *body),
             typ,
         },
-        Node::Break { location } => UntypedStatement::Break {
+        Node::Break { location } => IrStatement::Break {
             location: location.address,
         },
-        Node::Continue { location } => UntypedStatement::Continue {
+        Node::Continue { location } => IrStatement::Continue {
             location: location.address,
         },
-        Node::Return { location, value } => UntypedStatement::Return {
+        Node::Return { location, value } => IrStatement::Return {
             location: location.address,
             value: node_to_ir_expression(source, *value),
         },
@@ -432,21 +431,22 @@ pub fn node_to_ir_statement(source: &NamedSource<String>, node: Node) -> Untyped
             iterable,
             variable,
             body,
-        } => UntypedStatement::For {
+        } => IrStatement::For {
             location: variable.address,
             iterable: node_to_ir_expression(source, *iterable),
             variable: variable.value,
             body: node_to_ir_block(source, *body),
         },
-        unexpected => bail!(UntypedIrError::UnexpectedStatementNode { unexpected }),
+        unexpected => bail!(IrError::UnexpectedStatementNode { unexpected }),
     }
 }
 
 /// Tree to ir
-pub fn tree_to_ir(source: &NamedSource<String>, tree: Tree) -> UntypedModule {
-    let mut module = UntypedModule {
+pub fn tree_to_ir(source: NamedSource<String>, tree: Tree) -> IrModule {
+    let mut module = IrModule {
         dependencies: vec![],
         definitions: vec![],
+        source: source.clone(),
     };
 
     // use and declaration
@@ -456,14 +456,14 @@ pub fn tree_to_ir(source: &NamedSource<String>, tree: Tree) -> UntypedModule {
                 location,
                 path,
                 name,
-            } => module.dependencies.push(Dependency {
+            } => module.dependencies.push(IrDependency {
                 location,
                 name: name.map(|n| n.value),
                 path: path.module,
             }),
             declaration => module
                 .definitions
-                .push(node_to_ir_declaration(source, declaration)),
+                .push(node_to_ir_declaration(&source, declaration)),
         };
     }
 

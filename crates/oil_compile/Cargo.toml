@@ -7,7 +7,7 @@ edition = "2024"
 oil_lex = { path = "../oil_lex" }
 oil_parse = { path = "../oil_parse" }
 oil_common = { path = "../oil_common" }
-oil_analyze = { path = "../oil_analyze" }
+oil_ir = { path = "../oil_ir" }
 miette = { version = "7.6.0", features = ["fancy"] }
 ecow = "0.2.6"
 camino = "1.1.10"

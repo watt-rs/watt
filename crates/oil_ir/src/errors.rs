@@ -3,9 +3,9 @@ use miette::{Diagnostic, NamedSource, SourceSpan};
 use oil_ast::ast::Node;
 use thiserror::Error;
 
-/// Untyped ir errors with `thiserror`
+/// ir errors with `thiserror`
 #[derive(Debug, Error, Diagnostic)]
-pub enum UntypedIrError {
+pub enum IrError {
     #[error("unexpected \"{unexpected:?}\" as expression.")]
     #[diagnostic(
         code(uir::unexpected_expression_node),

@@ -5,7 +5,7 @@ members = [
     "crates/oil_common",
     "crates/oil_parse",
     "crates/oil",
-    "crates/oil_analyze",
+    "crates/oil_ir",
     "crates/oil_gen",
     "crates/oil_compile",
 ]

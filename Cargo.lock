@@ -354,21 +354,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "oil_analyze"
-version = "0.1.0"
-dependencies = [
- "camino",
- "ecow",
- "miette",
- "oil_ast",
- "oil_common",
- "oil_lex",
- "oil_parse",
- "petgraph",
- "thiserror",
-]
-
-[[package]]
 name = "oil_ast"
 version = "0.1.0"
 dependencies = [
@@ -392,8 +377,8 @@ dependencies = [
  "ecow",
  "log",
  "miette",
- "oil_analyze",
  "oil_common",
+ "oil_ir",
  "oil_lex",
  "oil_parse",
  "petgraph",
@@ -405,6 +390,21 @@ dependencies = [
 [[package]]
 name = "oil_gen"
 version = "0.1.0"
+
+[[package]]
+name = "oil_ir"
+version = "0.1.0"
+dependencies = [
+ "camino",
+ "ecow",
+ "miette",
+ "oil_ast",
+ "oil_common",
+ "oil_lex",
+ "oil_parse",
+ "petgraph",
+ "thiserror",
+]
 
 [[package]]
 name = "oil_lex"

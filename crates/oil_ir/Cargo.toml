@@ -1,5 +1,5 @@
 [package]
-name = "oil_analyze"
+name = "oil_ir"
 version = "0.1.0"
 edition = "2024"
 
