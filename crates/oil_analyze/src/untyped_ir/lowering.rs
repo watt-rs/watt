@@ -3,7 +3,7 @@ use crate::{
     untyped_ir::errors::UntypedIrError,
     untyped_ir::untyped_ir::{
         BinaryOperator, Dependency, UnaryOperator, UntypedBlock, UntypedDeclaration,
-        UntypedExpression, UntypedFunction, UntypedIrParameter, UntypedModule, UntypedStatement,
+        UntypedExpression, UntypedFunction, UntypedParameter, UntypedModule, UntypedStatement,
         UntypedType, UntypedVariable,
     },
 };
@@ -38,7 +38,7 @@ pub fn node_to_ir_declaration(source: &NamedSource<String>, node: Node) -> Untyp
             name: name.value,
             params: params
                 .into_iter()
-                .map(|param| UntypedIrParameter {
+                .map(|param| UntypedParameter {
                     name: param.name.value,
                     typ: param.typ,
                 })
@@ -58,7 +58,7 @@ pub fn node_to_ir_declaration(source: &NamedSource<String>, node: Node) -> Untyp
             name: name.value,
             constructor: constructor
                 .into_iter()
-                .map(|param| UntypedIrParameter {
+                .map(|param| UntypedParameter {
                     name: param.name.value,
                     typ: param.typ,
                 })
@@ -97,7 +97,7 @@ pub fn node_to_ir_declaration(source: &NamedSource<String>, node: Node) -> Untyp
                         typ,
                         params: params
                             .into_iter()
-                            .map(|param| UntypedIrParameter {
+                            .map(|param| UntypedParameter {
                                 name: param.name.value,
                                 typ: param.typ,
                             })
@@ -410,7 +410,7 @@ pub fn node_to_ir_statement(source: &NamedSource<String>, node: Node) -> Untyped
             name: name.value,
             params: params
                 .into_iter()
-                .map(|param| UntypedIrParameter {
+                .map(|param| UntypedParameter {
                     name: param.name.value,
                     typ: param.typ,
                 })

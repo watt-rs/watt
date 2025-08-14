@@ -3,9 +3,9 @@ use ecow::EcoString;
 use oil_ast::ast::{Publicity, TypePath};
 use oil_common::address::Address;
 
-/// Ir Parameter
+/// Untyped parameter
 #[derive(Debug)]
-pub struct UntypedIrParameter {
+pub struct UntypedParameter {
     pub name: EcoString,
     pub typ: TypePath,
 }
@@ -50,7 +50,7 @@ pub enum UntypedStatement {
     Fn {
         location: Address,
         name: EcoString,
-        params: Vec<UntypedIrParameter>,
+        params: Vec<UntypedParameter>,
         body: UntypedBlock,
         typ: Option<TypePath>,
     },
@@ -160,7 +160,7 @@ pub struct UntypedFunction {
     pub location: Address,
     pub name: EcoString,
     pub publicity: Publicity,
-    pub params: Vec<UntypedIrParameter>,
+    pub params: Vec<UntypedParameter>,
     pub body: UntypedBlock,
     pub typ: Option<TypePath>,
 }
@@ -181,7 +181,7 @@ pub struct UntypedType {
     pub location: Address,
     pub name: EcoString,
     pub publicity: Publicity,
-    pub constructor: Vec<UntypedIrParameter>,
+    pub constructor: Vec<UntypedParameter>,
     pub fields: Vec<UntypedVariable>,
     pub functions: Vec<UntypedFunction>,
 }

@@ -179,14 +179,5 @@ impl<'project_compiler> PackageCompiler<'project_compiler> {
         // Performing toposort
         let sorted = self.toposort(dep_tree);
         info!("performed toposort {:#?}", sorted);
-
-        // Getting main
-        let main_module = match modules.iter().find(|(k, _)| **k == self.config.main) {
-            Some(some) => some,
-            None => bail!(CompileError::NoMainModuleFound {
-                main: self.config.main.clone()
-            }),
-        };
-        info!("found main module: {}", self.config.main)
     }
 }
