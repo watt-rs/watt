@@ -5,18 +5,26 @@ use miette::NamedSource;
 use oil_common::{address::Address, bail};
 use std::collections::HashMap;
 
-/// Variables environment
-#[derive(Debug, Clone, PartialEq)]
-pub struct Environment {
-    variables: HashMap<EcoString, Typ>,
+/// Environments stack
+pub struct EnvironmentsStack {
+    stack: Vec<HashMap<EcoString, Typ>>,
 }
-/// Variables environment implementation
-impl Environment {
-    /// Creates new environment
+
+/// Environments stack implementation
+impl EnvironmentsStack {
+    /// Creates new stack
     pub fn new() -> Self {
-        Self {
-            variables: HashMap::new(),
-        }
+        Self { stack: Vec::new() }
+    }
+
+    /// Pushes environment
+    pub fn push(&mut self) {
+        self.stack.push(HashMap::new())
+    }
+
+    /// Pops environment
+    pub fn pop(&mut self) -> Option<HashMap<EcoString, Typ>> {
+        self.stack.pop()
     }
 
     /// Defines variable
@@ -25,33 +33,20 @@ impl Environment {
         named_source: &NamedSource<String>,
         address: &Address,
         name: EcoString,
-        typ: Typ,
+        variable: Typ,
     ) {
-        if !self.variables.contains_key(&name) {
-            self.variables.insert(name, typ);
-        } else {
-            bail!(AnalyzeError::VariableIsAlreadyDefined {
-                src: named_source.clone(),
-                span: address.span.clone().into()
-            })
-        }
-    }
-
-    /// Stores variable
-    pub fn store(
-        &mut self,
-        named_source: &NamedSource<String>,
-        address: &Address,
-        name: EcoString,
-        typ: Typ,
-    ) {
-        if self.variables.contains_key(&name) {
-            self.variables.insert(name, typ);
-        } else {
-            bail!(AnalyzeError::VariableIsNotDefined {
-                src: named_source.clone(),
-                span: address.span.clone().into()
-            })
+        match self.stack.last_mut() {
+            Some(env) => {
+                if !env.contains_key(&name) {
+                    env.insert(name, variable);
+                } else {
+                    bail!(AnalyzeError::VariableIsAlreadyDefined {
+                        src: named_source.clone(),
+                        span: address.span.clone().into()
+                    })
+                }
+            }
+            None => todo!(),
         }
     }
 
@@ -62,18 +57,34 @@ impl Environment {
         address: &Address,
         name: EcoString,
     ) -> Typ {
-        if self.variables.contains_key(&name) {
-            return self.variables.get(&name).unwrap().clone();
-        } else {
-            bail!(AnalyzeError::VariableIsNotDefined {
-                src: named_source.clone(),
-                span: address.span.clone().into()
-            })
+        for env in self.stack.iter().rev() {
+            if env.contains_key(&name) {
+                return env.get(&name).unwrap().clone();
+            }
         }
+        bail!(AnalyzeError::VariableIsNotDefined {
+            src: named_source.clone(),
+            span: address.span.clone().into()
+        })
+    }
+
+    /// Tries to lookup variable
+    pub fn try_lookup(&self, name: EcoString) -> Option<Typ> {
+        for env in self.stack.iter().rev() {
+            if env.contains_key(&name) {
+                return env.get(&name).map(|t| t.clone());
+            }
+        }
+        None
     }
 
     /// Checks variable existence
     pub fn exists(&self, name: EcoString) -> bool {
-        self.variables.contains_key(&name)
+        for env in self.stack.iter().rev() {
+            if env.contains_key(&name) {
+                return true;
+            }
+        }
+        false
     }
 }

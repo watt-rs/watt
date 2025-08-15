@@ -1,5 +1,7 @@
+use std::rc::Rc;
+
 /// Imports
-use crate::analyze::analyze::Typ;
+use crate::analyze::analyze::{Typ, Type};
 use ecow::EcoString;
 use miette::{Diagnostic, NamedSource, SourceSpan};
 use oil_ir::ir::{IrBinaryOp, IrUnaryOp};
@@ -64,6 +66,16 @@ pub enum AnalyzeError {
         span: SourceSpan,
         t: Typ,
     },
+    #[error("field \"{field}\" is not defined in type {t}.")]
+    #[diagnostic(code(analyze::field_is_not_defined))]
+    FieldIsNotDefined {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("this access is invalid.")]
+        span: SourceSpan,
+        t: EcoString,
+        field: EcoString,
+    },
     #[error("environments stack is empty. it`s a bug!")]
     #[diagnostic(
         code(analyze::environments_stack_is_empty),
@@ -107,6 +119,59 @@ pub enum AnalyzeError {
         #[label("parameters described here.")]
         params_span: SourceSpan,
         #[label("invalid arguments.")]
+        span: SourceSpan,
+    },
+    #[error("expected a logical epxression in if.")]
+    #[diagnostic(code(analyze::expected_logical_in_if))]
+    ExpectedLogicalInIf {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("expected logical expression in if.")]
+        span: SourceSpan,
+    },
+    #[error("expected a logical epxression in while.")]
+    #[diagnostic(code(analyze::expected_logical_in_while))]
+    ExpectedLogicalInWhile {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("expected logical expression in while.")]
+        span: SourceSpan,
+    },
+    #[error("missmatched type annotation. expected {expected:?}, got {got:?}.")]
+    #[diagnostic(code(analyze::missmatched_type_annotation))]
+    MissmatchedTypeAnnotation {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("type annotation missmatched here.")]
+        span: SourceSpan,
+        expected: Typ,
+        got: Typ,
+    },
+    #[error("types missmatch. expected {expected:?}, got {got:?}.")]
+    #[diagnostic(code(analyze::types_missmatch))]
+    TypesMissmatch {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("type annotation missmatched here.")]
+        span: SourceSpan,
+        expected: Typ,
+        got: Typ,
+    },
+    #[error("invalid assignment variable")]
+    #[diagnostic(
+        code(analyze::invalid_assignment_variable),
+        help("please, file an issue on github."),
+        url("https://github.com/oillanguage/oil")
+    )]
+    InvalidAssignmentVariable,
+    #[error("call expression return type is void.")]
+    #[diagnostic(code(analyze::call_expr_return_type_is_void))]
+    CallExprReturnTypeIsVoid {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("function defined here.")]
+        definition_span: SourceSpan,
+        #[label("function call occured here.")]
         span: SourceSpan,
     },
 }
