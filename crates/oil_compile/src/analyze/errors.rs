@@ -1,8 +1,13 @@
 /// Imports
 use crate::analyze::analyze::Typ;
+use ecow::EcoString;
 use miette::{Diagnostic, NamedSource, SourceSpan};
 use oil_ir::ir::{IrBinaryOp, IrUnaryOp};
 use thiserror::Error;
+
+/// For errors
+unsafe impl Send for Typ {}
+unsafe impl Sync for Typ {}
 
 /// Analyze error
 #[derive(Debug, Error, Diagnostic)]
@@ -75,17 +80,28 @@ pub enum AnalyzeError {
         span: SourceSpan,
         t: Typ,
     },
-    #[error("wrong type path.")]
-    #[diagnostic(code(analyze::wrong_type_path))]
-    WrongTypePath {
+    #[error("type {t:?} is not found.")]
+    #[diagnostic(code(analyze::type_is_not_found))]
+    TypeIsNotDefined {
         #[source_code]
         src: NamedSource<String>,
-        #[label("this is incorrect.")]
+        #[label("this type is not found.")]
         span: SourceSpan,
+        t: EcoString,
     },
     #[error("invalid arguments.")]
     #[diagnostic(code(analyze::invalid_args))]
     InvalidArgs {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("parameters described here.")]
+        params_span: SourceSpan,
+        #[label("invalid arguments.")]
+        span: SourceSpan,
+    },
+    #[error("invalid arguments.")]
+    #[diagnostic(code(analyze::invalid_args))]
+    ModuleIsNot {
         #[source_code]
         src: NamedSource<String>,
         #[label("parameters described here.")]

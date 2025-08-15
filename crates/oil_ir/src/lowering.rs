@@ -1,8 +1,3 @@
-/// Imports
-use miette::NamedSource;
-use oil_ast::ast::{Node, Tree};
-use oil_common::bail;
-
 use crate::{
     errors::IrError,
     ir::{
@@ -10,6 +5,10 @@ use crate::{
         IrParameter, IrStatement, IrType, IrUnaryOp, IrVariable,
     },
 };
+/// Imports
+use miette::NamedSource;
+use oil_ast::ast::{Node, Tree};
+use oil_common::bail;
 
 /// Node to ir declaration
 pub fn node_to_ir_declaration(source: &NamedSource<String>, node: Node) -> IrDeclaration {
@@ -216,41 +215,26 @@ pub fn node_to_ir_expression(source: &NamedSource<String>, node: Node) -> IrExpr
                 span: op.address.span.into()
             }),
         },
-        Node::Get { previous, name } => match previous {
-            Some(some) => IrExpression::Get {
-                location: name.address.clone(),
-                base: Some(Box::new(node_to_ir_expression(source, *some))),
-                name: name.value,
-            },
-            None => IrExpression::Get {
-                location: name.address.clone(),
-                base: None,
-                name: name.value,
-            },
+        Node::Get { name } => IrExpression::Get {
+            location: name.address,
+            name: name.value,
+        },
+        Node::FieldAccess { container, name } => IrExpression::FieldAccess {
+            location: name.address,
+            container: Box::new(node_to_ir_expression(source, *container)),
+            name: name.value,
         },
         Node::Call {
-            previous,
-            name,
+            location,
+            what,
             args,
-        } => match previous {
-            Some(base) => IrExpression::Call {
-                base: Some(Box::new(node_to_ir_expression(source, *base))),
-                location: name.address,
-                name: name.value,
-                args: args
-                    .into_iter()
-                    .map(|arg| node_to_ir_expression(source, arg))
-                    .collect(),
-            },
-            None => IrExpression::Call {
-                base: None,
-                location: name.address,
-                name: name.value,
-                args: args
-                    .into_iter()
-                    .map(|arg| node_to_ir_expression(source, arg))
-                    .collect(),
-            },
+        } => IrExpression::Call {
+            location,
+            what: Box::new(node_to_ir_expression(source, *what)),
+            args: args
+                .into_iter()
+                .map(|arg| node_to_ir_expression(source, arg))
+                .collect(),
         },
         Node::Cond { left, right, op } => match op.value.as_str() {
             ">" => IrExpression::Bin {
@@ -361,46 +345,25 @@ pub fn node_to_ir_statement(source: &NamedSource<String>, node: Node) -> IrState
             typ,
         },
         Node::Assign {
-            previous,
-            name,
+            location,
+            what,
             value,
-        } => match previous {
-            Some(base) => IrStatement::Assign {
-                base: Some(node_to_ir_expression(source, *base)),
-                location: name.address,
-                name: name.value,
-                value: node_to_ir_expression(source, *value),
-            },
-            None => IrStatement::Assign {
-                base: None,
-                location: name.address,
-                name: name.value,
-                value: node_to_ir_expression(source, *value),
-            },
+        } => IrStatement::Assign {
+            location,
+            what: Box::new(node_to_ir_expression(source, *what)),
+            value: Box::new(node_to_ir_expression(source, *value)),
         },
         Node::Call {
-            previous,
-            name,
+            location,
+            what,
             args,
-        } => match previous {
-            Some(base) => IrStatement::Call {
-                base: Some(node_to_ir_expression(source, *base)),
-                location: name.address,
-                name: name.value,
-                args: args
-                    .into_iter()
-                    .map(|arg| node_to_ir_expression(source, arg))
-                    .collect(),
-            },
-            None => IrStatement::Call {
-                base: None,
-                location: name.address,
-                name: name.value,
-                args: args
-                    .into_iter()
-                    .map(|arg| node_to_ir_expression(source, arg))
-                    .collect(),
-            },
+        } => IrStatement::Call {
+            location,
+            what: Box::new(node_to_ir_expression(source, *what)),
+            args: args
+                .into_iter()
+                .map(|arg| node_to_ir_expression(source, arg))
+                .collect(),
         },
         Node::FnDeclaration {
             name,

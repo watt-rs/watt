@@ -34,19 +34,12 @@ pub enum IrStatement {
     },
     Assign {
         location: Address,
-        base: Option<IrExpression>,
-        name: EcoString,
-        value: IrExpression,
-    },
-    Get {
-        location: Address,
-        base: Option<IrExpression>,
-        name: IrExpression,
+        what: Box<IrExpression>,
+        value: Box<IrExpression>,
     },
     Call {
         location: Address,
-        base: Option<IrExpression>,
-        name: EcoString,
+        what: Box<IrExpression>,
         args: Vec<IrExpression>,
     },
     Fn {
@@ -106,13 +99,16 @@ pub enum IrExpression {
     },
     Get {
         location: Address,
-        base: Option<Box<IrExpression>>,
+        name: EcoString,
+    },
+    FieldAccess {
+        location: Address,
+        container: Box<IrExpression>,
         name: EcoString,
     },
     Call {
         location: Address,
-        base: Option<Box<IrExpression>>,
-        name: EcoString,
+        what: Box<IrExpression>,
         args: Vec<IrExpression>,
     },
     Range {

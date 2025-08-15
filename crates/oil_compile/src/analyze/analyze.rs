@@ -7,9 +7,7 @@ use ecow::EcoString;
 use miette::NamedSource;
 use oil_ast::ast::TypePath;
 use oil_common::{address::Address, bail};
-use oil_ir::ir::{
-    IrBinaryOp, IrDeclaration, IrExpression, IrModule, IrParameter, IrStatement, IrUnaryOp,
-};
+use oil_ir::ir::{IrBinaryOp, IrDeclaration, IrExpression, IrModule, IrStatement, IrUnaryOp};
 use std::{collections::HashMap, rc::Rc};
 
 /// Prelude type
@@ -45,34 +43,36 @@ pub struct Function {
 pub struct Module {
     pub source: NamedSource<String>,
     pub name: EcoString,
-    pub env: Environment,
+    pub environment: Environment,
+    pub custom_types: HashMap<EcoString, Rc<Type>>,
 }
 
 /// Typ
 #[derive(Debug, Clone, PartialEq)]
 pub enum Typ {
     Prelude(PreludeType),
-    InstanceOf(Rc<Type>),
-    Type(Rc<Type>),
+    Custom(Rc<Type>),
+    Instance(Rc<Type>),
     Function(Rc<Function>),
-    Module(Rc<Module>),
 }
 
 /// Module analyzer
 pub struct ModuleAnalyzer<'pkg> {
-    project_compiler: &'pkg mut ProjectCompiler,
-    environments_stack: Vec<Environment>,
     module: &'pkg IrModule,
+    environments_stack: Vec<Environment>,
+    custom_types: HashMap<EcoString, Rc<Type>>,
+    modules: HashMap<EcoString, &'pkg Module>,
 }
 
 /// Implementation
 impl<'pkg> ModuleAnalyzer<'pkg> {
     /// Creates new module analyzer
-    pub fn new(project_compiler: &'pkg mut ProjectCompiler, module: &'pkg IrModule) -> Self {
+    pub fn new(modules: HashMap<EcoString, &'pkg Module>, module: &'pkg IrModule) -> Self {
         Self {
-            project_compiler,
-            environments_stack: Vec::new(),
             module,
+            environments_stack: Vec::new(),
+            custom_types: HashMap::new(),
+            modules,
         }
     }
 
@@ -241,28 +241,28 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     }
 
     /// Infers get
-    fn infer_get(&self, location: Address, base: Option<IrExpression>, name: EcoString) -> Typ {
-        match base {
-            Some(base) => {
-                let base_inferred = self.infer_expr(base);
-                match base_inferred {
-                    Typ::InstanceOf(instance) => {
-                        return instance.env.lookup(&self.module.source, &location, name);
-                    }
-                    Typ::Module(module) => {
-                        return module.env.lookup(&self.module.source, &location, name);
-                    }
-                    _ => bail!(AnalyzeError::InvalidFieldAccess {
-                        src: self.module.source.clone(),
-                        span: location.span.into(),
-                        t: base_inferred
-                    }),
-                }
-            }
-            None => match self.environments_stack.last() {
-                Some(env) => env.lookup(&self.module.source, &location, name),
-                None => bail!(AnalyzeError::EnvironmentsStackIsEmpty),
-            },
+    fn infer_get(&self, location: Address, name: EcoString) -> Typ {
+        match self.environments_stack.last() {
+            Some(env) => env.lookup(&self.module.source, &location, name),
+            None => bail!(AnalyzeError::EnvironmentsStackIsEmpty),
+        }
+    }
+
+    /// Infers field access
+    fn infer_field_access(
+        &self,
+        location: Address,
+        container: IrExpression,
+        name: EcoString,
+    ) -> Typ {
+        let container_inferred = self.infer_expr(container);
+        match container_inferred {
+            Typ::Custom(t) => t.env.lookup(&self.module.source, &location, name),
+            _ => bail!(AnalyzeError::InvalidFieldAccess {
+                src: self.module.source.clone(),
+                span: location.span.into(),
+                t: container_inferred
+            }),
         }
     }
 
@@ -274,32 +274,35 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 "float" => Typ::Prelude(PreludeType::Float),
                 "bool" => Typ::Prelude(PreludeType::Bool),
                 "string" => Typ::Prelude(PreludeType::String),
-                _ => self.infer_get(location, None, name),
+                _ => match self.custom_types.get(&name) {
+                    Some(t) => Typ::Custom(t.clone()),
+                    None => bail!(AnalyzeError::TypeIsNotDefined {
+                        src: self.module.source.clone(),
+                        span: location.span.into(),
+                        t: name
+                    }),
+                },
             },
             TypePath::Module {
                 location,
                 module,
                 name,
             } => {
-                let module_inferred = self.infer_get(location.clone(), None, module);
-                match module_inferred {
-                    Typ::Module(module) => module.env.lookup(&self.module.source, &location, name),
-                    _ => bail!(AnalyzeError::WrongTypePath {
+                let m = match self.modules.get(&module) {
+                    Some(m) => m,
+                    None => todo!(),
+                };
+                let typ = match m.custom_types.get(&name) {
+                    Some(t) => Typ::Custom(t.clone()),
+                    None => bail!(AnalyzeError::TypeIsNotDefined {
                         src: self.module.source.clone(),
-                        span: location.span.into()
+                        span: location.span.into(),
+                        t: format!("{}.{}", module, name).into()
                     }),
-                }
+                };
+                typ
             }
         }
-    }
-
-    /// Checks args
-    fn check_args(&self, params: &Vec<Typ>, args: Vec<IrExpression>) -> bool {
-        let args = args
-            .iter()
-            .map(|e| self.infer_expr(e.clone()))
-            .collect::<Vec<Typ>>();
-        return params == &args;
     }
 
     /// Infers call
@@ -307,65 +310,31 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         &self,
         location: Address,
         args_location: Address,
-        base: Option<IrExpression>,
-        name: EcoString,
+        what: IrExpression,
         args: Vec<IrExpression>,
     ) -> Typ {
-        match base {
-            Some(base) => {
-                let base_inferred = self.infer_expr(base);
-                match base_inferred {
-                    Typ::InstanceOf(instance) => {
-                        let arguments = args
-                            .iter()
-                            .map(|a| self.infer_expr(a.clone()))
-                            .collect::<Vec<Typ>>();
-                        let function_typ =
-                            instance.env.lookup(&self.module.source, &location, name);
-                        match function_typ {
-                            Typ::Type(type_) => {
-                                if !self.check_args(&type_.params, args) {
-                                    {
-                                        let report:miette::Report = (AnalyzeError::InvalidArgs {
-                                            src:self.module.source,params_span:type_.location.span.into(),span:args_location.span.into(),
-                                        }).into();
-                                        eprintln!("{report:?}");
-                                        std::process::exit(1);
-                                    }
-                                }
-                                Typ::InstanceOf(type_)
-                            }
-                            Typ::Function(function) => {
-                                if !self.check_args(&function.params, args) {
-                                    bail!(AnalyzeError::InvalidArgs {
-                                        src: self.module.source,
-                                        params_span: function.location.span.into(),
-                                        span: args_location.span.into(),
-                                    })
-                                }
-                                function.ret
-                            }
-                            _ => bail!(AnalyzeError::CouldNotCall {
-                                src: self.module.source,
-                                span: location.span.into(),
-                                t: function_typ
-                            }),
-                        }
-                    }
-                    Typ::Module(module) => {
-                        return module.env.lookup(&self.module.source, &location, name);
-                    }
-                    _ => bail!(AnalyzeError::InvalidFieldAccess {
+        let function = self.infer_expr(what);
+        let args = args
+            .iter()
+            .map(|a| self.infer_expr(a.clone()))
+            .collect::<Vec<Typ>>();
+        match function {
+            Typ::Function(f) => {
+                if f.params != args {
+                    bail!(AnalyzeError::InvalidArgs {
                         src: self.module.source.clone(),
-                        span: location.span.into(),
-                        t: base_inferred
-                    }),
+                        params_span: f.location.span.clone().into(),
+                        span: args_location.span.into()
+                    })
+                } else {
+                    return f.ret.clone();
                 }
             }
-            None => match self.environments_stack.last() {
-                Some(env) => env.lookup(&self.module.source, &location, name),
-                None => bail!(AnalyzeError::EnvironmentsStackIsEmpty),
-            },
+            _ => bail!(AnalyzeError::CouldNotCall {
+                src: self.module.source.clone(),
+                span: location.span.into(),
+                t: function
+            }),
         }
     }
 

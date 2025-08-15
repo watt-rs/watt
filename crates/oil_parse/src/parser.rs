@@ -158,142 +158,146 @@ impl<'file_path> Parser<'file_path> {
         params
     }
 
-    /// Access part
-    fn access_part(&mut self, previous: Option<Box<Node>>) -> Node {
-        // if identifier is found
-        if self.check(TokenKind::Id) {
-            // new indetifier
-            let identifier = self.consume(TokenKind::Id).clone();
-            // call value with `( args )`
+    /// Variable parsing
+    fn variable(&mut self) -> Node {
+        // start address
+        let start_address = self.peek().address.clone();
+
+        // variable
+        let variable = self.consume(TokenKind::Id).clone();
+
+        // result node
+        let mut result = Node::Get { name: variable };
+
+        // checking for dots and parens
+        loop {
+            // checking for chain `a.b.c.d`
+            if self.check(TokenKind::Dot) {
+                self.consume(TokenKind::Dot);
+                result = Node::FieldAccess {
+                    container: Box::new(result),
+                    name: self.consume(TokenKind::Id).clone(),
+                };
+            }
+            // checking for call
             if self.check(TokenKind::Lparen) {
                 let args = self.args();
-                Node::Call {
-                    previous,
-                    name: identifier,
+                let end_address = self.previous().address.clone();
+                let address = Address::span(start_address.span.start..end_address.span.end - 1);
+                result = Node::Call {
+                    location: address,
+                    what: Box::new(result),
                     args,
-                }
-            }
-            // get variable value
-            else {
-                return Node::Get {
-                    previous,
-                    name: identifier,
                 };
             }
+            // else, breaking cycle
+            else {
+                break;
+            }
         }
-        // if not, raising an error
-        else {
-            let tk = self.peek().clone();
-            bail!(ParseError::ExpectedIdAsAccess {
-                src: self.named_source.clone(),
-                span: tk.address.span.into(),
-                unexpected: tk.value
-            });
-        }
+        result
     }
 
-    /// Access parsing
-    fn access(&mut self, is_expr: bool) -> Node {
-        // left
-        let start_address = self.peek().address.clone();
-        let mut left = self.access_part(Option::None);
-
-        // by dot
-        while self.check(TokenKind::Dot) {
-            self.consume(TokenKind::Dot);
-            left = self.access_part(Option::Some(Box::new(left)));
-        }
-
-        // getting end token
-        let end_address = self.previous().address.clone();
-
-        // address of full access
-        let address = Address::span(start_address.span.start..end_address.span.end - 1);
-
-        // if is epxression
-        if is_expr {
-            // checking for wrong assignment
-            if self.check(TokenKind::Assign)
-                || self.check(TokenKind::AddAssign)
-                || self.check(TokenKind::SubAssign)
-                || self.check(TokenKind::MulAssign)
-                || self.check(TokenKind::DivAssign)
-            {
-                let tk = self.advance().clone();
-                bail!(ParseError::InvalidOperationInExpr {
-                    src: self.named_source.clone(),
-                    span: tk.address.span.into(),
-                    unexpected: tk.value
-                })
-            }
-        }
-        // else, if statement
-        else {
-            // checking for assignment `=`
-            if self.check(TokenKind::Assign) {
-                self.consume(TokenKind::Assign);
-                let value = self.expr();
-                match left {
-                    Node::Get { previous, name, .. } => {
-                        return Node::Assign {
-                            previous: previous,
-                            name: name,
-                            value: Box::new(value),
-                        };
+    /// Assignment parsing
+    fn assignment(&mut self, address: Address, variable: Node) -> Node {
+        match variable {
+            Node::Call { location, .. } => bail!(ParseError::InvalidAssignmentOperation {
+                src: self.named_source.clone(),
+                span: location.span.into()
+            }),
+            _ => {
+                let op = self.peek().clone();
+                match op.tk_type {
+                    TokenKind::Assign => {
+                        self.advance();
+                        let expr = Box::new(self.expr());
+                        let end_address = self.advance().address.clone();
+                        Node::Assign {
+                            location: Address::span(address.span.start..end_address.span.end - 1),
+                            what: Box::new(variable),
+                            value: expr,
+                        }
                     }
-                    _ => {
-                        bail!(ParseError::InvalidAssignOperation {
-                            src: self.named_source.clone(),
-                            span: address.span.into()
-                        })
-                    }
-                }
-            }
-            // checking for assignments `+=`, `-=`, `/=`, `*=`
-            if self.check(TokenKind::AddAssign)
-                || self.check(TokenKind::SubAssign)
-                || self.check(TokenKind::MulAssign)
-                || self.check(TokenKind::DivAssign)
-            {
-                let address = self.peek().address.clone();
-
-                let (op, op_kind) = match self.advance().tk_type {
-                    TokenKind::AddAssign => ("+", TokenKind::Plus),
-                    TokenKind::SubAssign => ("-", TokenKind::Minus),
-                    TokenKind::MulAssign => ("*", TokenKind::Star),
-                    TokenKind::DivAssign => ("/", TokenKind::Slash),
-                    kind => bail!(ParseError::UnexpectedAssignmentOperator { unexpected: kind }),
-                };
-
-                match left {
-                    Node::Get { previous, name, .. } => {
-                        let variable = Node::Get {
-                            previous: previous.clone(),
-                            name: name.clone(),
-                        };
-                        return Node::Assign {
-                            previous,
-                            name: name,
+                    TokenKind::AddAssign => {
+                        let op_address = self.advance().address.clone();
+                        let expr = Box::new(self.expr());
+                        let end_address = self.advance().address.clone();
+                        Node::Assign {
+                            location: Address::span(address.span.start..end_address.span.end - 1),
+                            what: Box::new(variable.clone()),
                             value: Box::new(Node::Bin {
                                 left: Box::new(variable),
-                                right: Box::new(self.expr()),
-                                op: Token::new(op_kind, op.into(), address),
+                                right: expr,
+                                op: Token {
+                                    tk_type: TokenKind::Plus,
+                                    value: "+".into(),
+                                    address: op_address,
+                                },
                             }),
-                        };
+                        }
                     }
-                    _ => {
-                        bail!(ParseError::InvalidCompoundOperation {
-                            src: self.named_source.clone(),
-                            span: address.span.into(),
-                            op
-                        })
+                    TokenKind::SubAssign => {
+                        let op_address = self.advance().address.clone();
+                        let expr = Box::new(self.expr());
+                        let end_address = self.advance().address.clone();
+                        Node::Assign {
+                            location: Address::span(address.span.start..end_address.span.end - 1),
+                            what: Box::new(variable.clone()),
+                            value: Box::new(Node::Bin {
+                                left: Box::new(variable),
+                                right: expr,
+                                op: Token {
+                                    tk_type: TokenKind::Minus,
+                                    value: "-".into(),
+                                    address: op_address,
+                                },
+                            }),
+                        }
                     }
-                };
+                    TokenKind::MulAssign => {
+                        let op_address = self.advance().address.clone();
+                        let expr = Box::new(self.expr());
+                        let end_address = self.advance().address.clone();
+                        Node::Assign {
+                            location: Address::span(address.span.start..end_address.span.end - 1),
+                            what: Box::new(variable.clone()),
+                            value: Box::new(Node::Bin {
+                                left: Box::new(variable),
+                                right: expr,
+                                op: Token {
+                                    tk_type: TokenKind::Plus,
+                                    value: "*".into(),
+                                    address: op_address,
+                                },
+                            }),
+                        }
+                    }
+                    TokenKind::DivAssign => {
+                        let op_address = self.advance().address.clone();
+                        let expr = Box::new(self.expr());
+                        let end_address = self.advance().address.clone();
+                        Node::Assign {
+                            location: Address::span(address.span.start..end_address.span.end - 1),
+                            what: Box::new(variable.clone()),
+                            value: Box::new(Node::Bin {
+                                left: Box::new(variable),
+                                right: expr,
+                                op: Token {
+                                    tk_type: TokenKind::Plus,
+                                    value: "/".into(),
+                                    address: op_address,
+                                },
+                            }),
+                        }
+                    }
+                    _ => bail!(ParseError::InvalidAssignmentOperator {
+                        src: self.named_source.clone(),
+                        span: op.address.span.into(),
+                        op: op.value
+                    }),
+                }
             }
         }
-
-        // returning
-        left
     }
 
     /// Let declaration parsing
@@ -342,7 +346,7 @@ impl<'file_path> Parser<'file_path> {
     /// Primary expr parsing
     fn primary_expr(&mut self) -> Node {
         match self.peek().tk_type {
-            TokenKind::Id => self.access(true),
+            TokenKind::Id => self.variable(),
             TokenKind::Number => Node::Number {
                 value: self.consume(TokenKind::Number).clone(),
             },
@@ -795,7 +799,35 @@ impl<'file_path> Parser<'file_path> {
     fn statement(&mut self) -> Node {
         match self.peek().tk_type {
             TokenKind::If => self.if_stmt(),
-            TokenKind::Id => self.access(false),
+            TokenKind::Id => {
+                let start = self.peek().address.clone();
+                let variable = self.variable();
+                let end = self.peek().address.clone();
+                match self.peek().tk_type {
+                    TokenKind::AddAssign
+                    | TokenKind::DivAssign
+                    | TokenKind::MulAssign
+                    | TokenKind::SubAssign
+                    | TokenKind::Assign => self.assignment(start, variable),
+                    _ => match &variable {
+                        Node::Call { .. } => variable,
+                        Node::Get { name } => bail!(ParseError::VariableAccessCanNotBeStatement {
+                            src: self.named_source.clone(),
+                            span: name.address.clone().span.into()
+                        }),
+                        Node::FieldAccess { name, .. } => {
+                            bail!(ParseError::VariableAccessCanNotBeStatement {
+                                src: self.named_source.clone(),
+                                span: name.address.clone().span.into()
+                            })
+                        }
+                        _ => bail!(ParseError::UnexpectedStatement {
+                            src: self.named_source.clone(),
+                            span: (start.span.start..end.span.end - 1).into()
+                        }),
+                    },
+                }
+            }
             TokenKind::Continue => self.continue_stmt(),
             TokenKind::Break => self.break_stmt(),
             TokenKind::Ret => self.return_stmt(),

@@ -4,7 +4,6 @@ use oil_common::address::Address;
 use oil_lex::tokens::Token;
 
 /// Dependency path
-/// TODO!@!!!!#!#!!!
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct DependencyPath {
     pub address: Address,
@@ -91,17 +90,20 @@ pub enum Node {
         typ: Option<TypePath>,
     },
     Assign {
-        previous: Option<Box<Node>>,
-        name: Token,
+        location: Address,
+        what: Box<Node>,
         value: Box<Node>,
     },
     Get {
-        previous: Option<Box<Node>>,
+        name: Token,
+    },
+    FieldAccess {
+        container: Box<Node>,
         name: Token,
     },
     Call {
-        previous: Option<Box<Node>>,
-        name: Token,
+        location: Address,
+        what: Box<Node>,
         args: Vec<Node>,
     },
     FnDeclaration {

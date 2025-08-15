@@ -41,35 +41,22 @@ pub enum ParseError {
         span: SourceSpan,
         unexpected: EcoString,
     },
-    #[error("invalid \"=\" operation.")]
-    #[diagnostic(
-        code(parse::invalid_assign_operation),
-        help("this operation can be used only after identifier.")
-    )]
-    InvalidAssignOperation {
+    #[error("could not represent \"{op}\" as assignment or compound operator.")]
+    #[diagnostic(code(parse::invalid_assignment_operator))]
+    InvalidAssignmentOperator {
         #[source_code]
         src: NamedSource<String>,
-        #[label("this in unacceptable with \"=\" operation.")]
+        #[label("this is unrecognized operator.")]
         span: SourceSpan,
+        op: EcoString,
     },
-    #[error("unexpected assignment operator {unexpected:?}.")]
-    #[diagnostic(
-        code(parse::unexpected_assign_operation),
-        help("please, file an issue on github."),
-        url("https://github.com/oillanguage/oil")
-    )]
-    UnexpectedAssignmentOperator { unexpected: TokenKind },
-    #[error("invalid \"{op}\" operation.")]
-    #[diagnostic(
-        code(parse::invalid_compound_operation),
-        help("this operation can be used, only after identifier.")
-    )]
-    InvalidCompoundOperation {
+    #[error("failed to parse assignment.")]
+    #[diagnostic(code(parse::invalid_assignment_operation))]
+    InvalidAssignmentOperation {
         #[source_code]
         src: NamedSource<String>,
-        #[label("this in unacceptable with \"{op}\" operation.")]
+        #[label("this in unacceptable with assignment operation.")]
         span: SourceSpan,
-        op: &'static str,
     },
     #[error("unexpected \"{unexpected}\" as expression.")]
     #[diagnostic(code(parse::unexpected_expression_token))]
@@ -79,6 +66,22 @@ pub enum ParseError {
         #[label("this can not be represented as expression.")]
         span: SourceSpan,
         unexpected: EcoString,
+    },
+    #[error("variable access can not be a statement.")]
+    #[diagnostic(code(parse::variable_access_cannot_be_statement))]
+    VariableAccessCanNotBeStatement {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("this can not be a statement")]
+        span: SourceSpan,
+    },
+    #[error("unexpected statement node.")]
+    #[diagnostic(code(parse::unexpected_statement_node))]
+    UnexpectedStatement {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("this can not be a statement")]
+        span: SourceSpan,
     },
     #[error("unexpected node in type body.")]
     #[diagnostic(code(parse::unexpected_node_in_type_body))]
