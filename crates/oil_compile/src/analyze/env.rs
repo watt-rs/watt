@@ -32,13 +32,13 @@ impl EnvironmentsStack {
         &mut self,
         named_source: &NamedSource<String>,
         address: &Address,
-        name: EcoString,
+        name: &EcoString,
         variable: Typ,
     ) {
         match self.stack.last_mut() {
             Some(env) => {
-                if !env.contains_key(&name) {
-                    env.insert(name, variable);
+                if !env.contains_key(name) {
+                    env.insert(name.clone(), variable);
                 } else {
                     bail!(AnalyzeError::VariableIsAlreadyDefined {
                         src: named_source.clone(),
@@ -55,11 +55,11 @@ impl EnvironmentsStack {
         &self,
         named_source: &NamedSource<String>,
         address: &Address,
-        name: EcoString,
+        name: &EcoString,
     ) -> Typ {
         for env in self.stack.iter().rev() {
-            if env.contains_key(&name) {
-                return env.get(&name).unwrap().clone();
+            if env.contains_key(name) {
+                return env.get(name).unwrap().clone();
             }
         }
         bail!(AnalyzeError::VariableIsNotDefined {
@@ -69,19 +69,19 @@ impl EnvironmentsStack {
     }
 
     /// Tries to lookup variable
-    pub fn try_lookup(&self, name: EcoString) -> Option<Typ> {
+    pub fn try_lookup(&self, name: &EcoString) -> Option<Typ> {
         for env in self.stack.iter().rev() {
-            if env.contains_key(&name) {
-                return env.get(&name).map(|t| t.clone());
+            if env.contains_key(name) {
+                return env.get(name).map(|t| t.clone());
             }
         }
         None
     }
 
     /// Checks variable existence
-    pub fn exists(&self, name: EcoString) -> bool {
+    pub fn exists(&self, name: &EcoString) -> bool {
         for env in self.stack.iter().rev() {
-            if env.contains_key(&name) {
+            if env.contains_key(name) {
                 return true;
             }
         }

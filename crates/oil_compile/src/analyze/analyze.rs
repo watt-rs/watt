@@ -60,7 +60,7 @@ pub enum Typ {
 #[derive(Debug, Clone, PartialEq)]
 pub struct WithPublicity<T: Clone + PartialEq> {
     publicity: Publicity,
-    value: T
+    value: T,
 }
 
 /// Module analyzer
@@ -134,6 +134,10 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             | IrBinaryOp::Div
             | IrBinaryOp::BitwiseAnd
             | IrBinaryOp::BitwiseOr
+            | IrBinaryOp::Le
+            | IrBinaryOp::Lt
+            | IrBinaryOp::Ge
+            | IrBinaryOp::Gt
             | IrBinaryOp::Mod => {
                 // Checking prelude types
                 match left_typ {
@@ -169,15 +173,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 }
             }
             // Logical
-            IrBinaryOp::Ge
-            | IrBinaryOp::Gt
-            | IrBinaryOp::Lt
-            | IrBinaryOp::Neq
-            | IrBinaryOp::Xor
-            | IrBinaryOp::And
-            | IrBinaryOp::Eq
-            | IrBinaryOp::Le
-            | IrBinaryOp::Or => {
+            IrBinaryOp::Xor | IrBinaryOp::And | IrBinaryOp::Or => {
                 // Checking prelude types
                 match left_typ {
                     PreludeType::Bool => match right_typ {
@@ -199,6 +195,8 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     }),
                 }
             }
+            // conditional
+            IrBinaryOp::Eq | IrBinaryOp::Neq => Typ::Prelude(PreludeType::Bool),
         }
     }
 
@@ -250,7 +248,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     /// Infers get
     fn infer_get(&self, location: Address, name: EcoString) -> Typ {
         self.environments_stack
-            .lookup(&self.module.source, &location, name)
+            .lookup(&self.module.source, &location, &name)
     }
 
     /// Infers field access
@@ -258,24 +256,67 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         &self,
         location: Address,
         container: IrExpression,
-        name: EcoString,
+        field: EcoString,
     ) -> Typ {
-        let container_inferred = self.infer_expr(container);
-        match container_inferred {
-            Typ::Custom(t) => match t.env.get(&name) {
-                Some(field) => field.clone(),
-                None => bail!(AnalyzeError::FieldIsNotDefined {
-                    src: self.module.source.clone(),
-                    span: location.span.into(),
-                    t: t.name.clone(),
-                    field: name
-                }),
-            },
-            _ => bail!(AnalyzeError::InvalidFieldAccess {
-                src: self.module.source.clone(),
-                span: location.span.into(),
-                t: container_inferred
-            }),
+        match container {
+            IrExpression::Get { location, name } => {
+                if self.environments_stack.exists(&name) {
+                    let container_inferred =
+                        self.environments_stack
+                            .lookup(&self.module.source, &location, &name);
+                    match container_inferred {
+                        Typ::Custom(t) => match t.env.get(&name) {
+                            Some(field) => field.value.clone(),
+                            None => bail!(AnalyzeError::FieldIsNotDefined {
+                                src: self.module.source.clone(),
+                                span: location.span.into(),
+                                t: t.name.clone(),
+                                field: name
+                            }),
+                        },
+                        _ => bail!(AnalyzeError::InvalidFieldAccess {
+                            src: self.module.source.clone(),
+                            span: location.span.into(),
+                            t: container_inferred
+                        }),
+                    }
+                } else if self.modules.contains_key(&name) {
+                    let module = self.modules.get(&name).unwrap();
+                    match module.environment.get(&name) {
+                        Some(field) => field.clone(),
+                        None => bail!(AnalyzeError::FieldIsNotDefined {
+                            src: module.source.clone(),
+                            span: location.span.into(),
+                            t: module.name.clone(),
+                            field: name
+                        }),
+                    }
+                } else {
+                    bail!(AnalyzeError::VariableIsNotDefined {
+                        src: self.module.source.clone(),
+                        span: location.span.into()
+                    })
+                }
+            }
+            _ => {
+                let container_inferred = self.infer_expr(container);
+                match container_inferred {
+                    Typ::Custom(t) => match t.env.get(&field) {
+                        Some(field) => field.value.clone(),
+                        None => bail!(AnalyzeError::FieldIsNotDefined {
+                            src: self.module.source.clone(),
+                            span: location.span.into(),
+                            t: t.name.clone(),
+                            field: field
+                        }),
+                    },
+                    _ => bail!(AnalyzeError::InvalidFieldAccess {
+                        src: self.module.source.clone(),
+                        span: location.span.into(),
+                        t: container_inferred
+                    }),
+                }
+            }
         }
     }
 
@@ -288,7 +329,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 "bool" => Typ::Prelude(PreludeType::Bool),
                 "string" => Typ::Prelude(PreludeType::String),
                 _ => match self.custom_types.get(&name) {
-                    Some(t) => Typ::Custom(t.clone()),
+                    Some(t) => Typ::Custom(t.value.clone()),
                     None => bail!(AnalyzeError::TypeIsNotDefined {
                         src: self.module.source.clone(),
                         span: location.span.into(),
@@ -306,7 +347,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     None => todo!(),
                 };
                 let typ = match m.custom_types.get(&name) {
-                    Some(t) => Typ::Custom(t.clone()),
+                    Some(t) => Typ::Custom(t.value.clone()),
                     None => bail!(AnalyzeError::TypeIsNotDefined {
                         src: self.module.source.clone(),
                         span: location.span.into(),
@@ -421,76 +462,20 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             None => {}
         }
         self.environments_stack
-            .define(&self.module.source, &location, name, inferred_value);
+            .define(&self.module.source, &location, &name, inferred_value);
     }
 
     /// Analyzes assignment
     fn analyze_assignment(&mut self, location: Address, what: IrExpression, value: IrExpression) {
+        let inferred_what = self.infer_expr(what);
         let inferred_value = self.infer_expr(value);
-        match what {
-            IrExpression::Get { name, .. } => {
-                let typ =
-                    self.environments_stack
-                        .lookup(&self.module.source, &location, name.clone());
-                if inferred_value != typ {
-                    bail!(AnalyzeError::TypesMissmatch {
-                        src: self.module.source.clone(),
-                        span: location.span.into(),
-                        expected: typ,
-                        got: inferred_value
-                    })
-                }
-            }
-            IrExpression::FieldAccess {
-                container, name, ..
-            } => match *container {
-                IrExpression::Get { name, .. } => {
-                    let module = self.modules.get(&name).map(|m| *m);
-                    let variable = self.environments_stack.try_lookup(name);
-                    match (module, variable) {
-                        (Some(module), Some(variable)) => {
-                            if variable != inferred_value {
-                                match module.environment.get()
-                            }
-                        },
-                        (None, Some(typ)) => {
-                            if inferred_value != typ {
-                                bail!(AnalyzeError::TypesMissmatch {
-                                    src: self.module.source.clone(),
-                                    span: location.span.into(),
-                                    expected: typ,
-                                    got: inferred_value
-                                })
-                            }
-                        }
-                    }
-                }
-                expr => {
-                    let container_inferred = self.infer_expr(expr);
-                    match container_inferred {
-                        Typ::Instance(instance) => {
-                            let typ =
-                                instance
-                                    .env
-                                    .lookup(&self.module.source, &location, name.clone());
-                            if inferred_value != typ {
-                                bail!(AnalyzeError::TypesMissmatch {
-                                    src: self.module.source.clone(),
-                                    span: location.span.into(),
-                                    expected: typ,
-                                    got: inferred_value
-                                })
-                            }
-                        }
-                        _ => bail!(AnalyzeError::InvalidFieldAccess {
-                            src: self.module.source.clone(),
-                            span: location.span.into(),
-                            t: container_inferred
-                        }),
-                    }
-                }
-            },
-            _ => bail!(AnalyzeError::InvalidAssignmentVariable),
+        if inferred_what == inferred_value {
+            bail!(AnalyzeError::TypesMissmatch {
+                src: self.module.source.clone(),
+                span: location.span.into(),
+                expected: inferred_what,
+                got: inferred_value
+            })
         }
     }
 
@@ -503,7 +488,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         body: IrBlock,
         ret_type: Option<TypePath>,
     ) {
-        self.environments_stack.push(Environment::new());
+        self.environments_stack.push();
 
         // inferring params
         let params = params
@@ -511,12 +496,10 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             .map(|p| (p.name, self.infer_type_path(p.typ.clone())))
             .collect::<HashMap<EcoString, Typ>>();
 
-        params
-            .iter()
-            .for_each(|p| match self.environments_stack.last_mut() {
-                Some(env) => env.define(&self.module.source, &location, p.0.clone(), p.1.clone()),
-                None => bail!(AnalyzeError::EnvironmentsStackIsEmpty),
-            });
+        params.iter().for_each(|p| {
+            self.environments_stack
+                .define(&self.module.source, &location, p.0, p.1.clone())
+        });
 
         // inferring body
         self.analyze_block(body);
@@ -533,15 +516,12 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             env,
             ret: ret_type.map_or(Typ::Void, |t| self.infer_type_path(t)),
         };
-        match self.environments_stack.pop() {
-            Some(mut env) => env.define(
-                &self.module.source,
-                &location,
-                name,
-                Typ::Function(Rc::new(function)),
-            ),
-            None => bail!(AnalyzeError::EnvironmentsStackIsEmpty),
-        };
+        self.environments_stack.define(
+            &self.module.source.clone(),
+            &location,
+            &name,
+            Typ::Function(Rc::new(function)),
+        );
     }
 
     /// Analyzes statement
@@ -554,7 +534,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 elseif,
             } => {
                 // pushing env
-                self.environments_stack.push(Environment::new());
+                self.environments_stack.push();
                 // inferring logical
                 let inferred_logical = self.infer_expr(logical);
                 match inferred_logical {
@@ -586,7 +566,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 body,
             } => {
                 // pushing env
-                self.environments_stack.push(Environment::new());
+                self.environments_stack.push();
                 // inferring logical
                 let inferred_logical = self.infer_expr(logical);
                 match inferred_logical {
@@ -604,6 +584,8 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 }
                 // analyzing block
                 self.analyze_block(body);
+                // popping env
+                self.environments_stack.pop();
             }
             IrStatement::Define {
                 location,
@@ -644,12 +626,27 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
 
     /// Analyzes declaration
     pub fn analyze_declaration(&mut self, declaration: IrDeclaration) {
-        todo!()
+        match declaration {
+            IrDeclaration::Function(ir_function) => self.analyze_function(
+                ir_function.location,
+                ir_function.name,
+                ir_function.params,
+                ir_function.body,
+                ir_function.typ,
+            ),
+            IrDeclaration::Variable(ir_variable) => self.analyze_define(
+                ir_variable.location,
+                ir_variable.name,
+                ir_variable.value,
+                ir_variable.typ,
+            ),
+            IrDeclaration::Type(ir_type) => todo!(),
+        }
     }
 
     /// Performs analyze of module
     pub fn analyze(&mut self) {
-        self.environments_stack.push(Environment::new());
+        self.environments_stack.push();
         for definition in self.module.clone().definitions {
             self.analyze_declaration(definition)
         }

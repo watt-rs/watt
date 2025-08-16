@@ -1,5 +1,6 @@
 /// Imports
 use crate::{
+    analyze::analyze::{Module, ModuleAnalyzer},
     errors::CompileError,
     io::io::{self, OilFile},
     project::ProjectCompiler,
@@ -178,12 +179,20 @@ impl<'project_compiler> PackageCompiler<'project_compiler> {
 
         // Performing toposort
         let sorted = self.toposort(dep_tree);
+        let sorted_modules = sorted
+            .iter()
+            .map(|m| match modules.get(*m) {
+                Some(module) => module,
+                None => bail!(CompileError::NoModuleFound { name: (*m).clone() }),
+            })
+            .collect::<Vec<&IrModule>>();
         info!("performed toposort {:#?}", sorted);
 
         // Performing analyze
         info!("analyzing modules...");
-        for module in sorted {
-            todo!()
+        for module in sorted_modules {
+            let mut analyzer = ModuleAnalyzer::new(HashMap::new(), module);
+            analyzer.analyze();
         }
     }
 }
