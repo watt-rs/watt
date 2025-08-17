@@ -111,6 +111,11 @@ pub enum IrExpression {
         what: Box<IrExpression>,
         args: Vec<IrExpression>,
     },
+    New {
+        location: Address,
+        what: TypePath,
+        args: Vec<IrExpression>,
+    },
     Range {
         location: Address,
         from: Box<IrExpression>,

@@ -62,6 +62,7 @@ pub enum TokenKind {
     Range,         // ..
     As,            // as
     Pub,           // pub
+    New,           // new
 }
 
 /// Token structure

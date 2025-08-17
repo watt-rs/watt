@@ -1,7 +1,5 @@
-use std::rc::Rc;
-
 /// Imports
-use crate::analyze::analyze::{Typ, Type};
+use crate::analyze::analyze::Typ;
 use ecow::EcoString;
 use miette::{Diagnostic, NamedSource, SourceSpan};
 use oil_ir::ir::{IrBinaryOp, IrUnaryOp};
@@ -76,6 +74,15 @@ pub enum AnalyzeError {
         t: EcoString,
         field: EcoString,
     },
+    #[error("field \"{field}\" is private.")]
+    #[diagnostic(code(analyze::field_is_private))]
+    FieldIsPrivate {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("this access is invalid.")]
+        span: SourceSpan,
+        field: EcoString,
+    },
     #[error("environments stack is empty. it`s a bug!")]
     #[diagnostic(
         code(analyze::environments_stack_is_empty),
@@ -92,14 +99,41 @@ pub enum AnalyzeError {
         span: SourceSpan,
         t: Typ,
     },
-    #[error("type {t:?} is not found.")]
-    #[diagnostic(code(analyze::type_is_not_found))]
+    #[error("could not instantiate instance of {t:?}.")]
+    #[diagnostic(code(analyze::could_not_instantiate))]
+    CouldNotInstantiate {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("type {t:?} isn't a custom type.")]
+        span: SourceSpan,
+        t: Typ,
+    },
+    #[error("type {t:?} is not defined.")]
+    #[diagnostic(code(analyze::type_is_not_defined))]
     TypeIsNotDefined {
         #[source_code]
         src: NamedSource<String>,
-        #[label("this type is not found.")]
+        #[label("this type is not defined.")]
         span: SourceSpan,
         t: EcoString,
+    },
+    #[error("type named {t:?} is already defined.")]
+    #[diagnostic(code(analyze::type_is_already_defined))]
+    TypeIsAlreadyDefined {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("this type is already defined.")]
+        span: SourceSpan,
+        t: EcoString,
+    },
+    #[error("method named {m:?} is already defined.")]
+    #[diagnostic(code(analyze::method_is_already_defined))]
+    MethodIsAlreadyDefined {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("this method is already defined.")]
+        span: SourceSpan,
+        m: EcoString,
     },
     #[error("invalid arguments.")]
     #[diagnostic(code(analyze::invalid_args))]
@@ -172,6 +206,14 @@ pub enum AnalyzeError {
         #[label("function defined here.")]
         definition_span: SourceSpan,
         #[label("function call occured here.")]
+        span: SourceSpan,
+    },
+    #[error("`self` variable can not be declared.")]
+    #[diagnostic(code(analyze::self_variable_can_not_be_declared))]
+    SelfVariableDeclared {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("not available.")]
         span: SourceSpan,
     },
 }

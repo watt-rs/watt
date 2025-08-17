@@ -97,6 +97,11 @@ pub enum Node {
     Get {
         name: Token,
     },
+    New {
+        location: Address,
+        typ: TypePath,
+        args: Vec<Node>,
+    },
     FieldAccess {
         container: Box<Node>,
         name: Token,
@@ -139,6 +144,7 @@ pub enum Node {
         value: Box<Node>,
     },
     TypeDeclaration {
+        location: Address,
         name: Token,
         publicity: Publicity,
         constructor: Vec<Parameter>,

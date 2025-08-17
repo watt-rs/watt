@@ -47,13 +47,14 @@ pub fn node_to_ir_declaration(source: &NamedSource<String>, node: Node) -> IrDec
             typ,
         }),
         Node::TypeDeclaration {
+            location,
             name,
             publicity,
             constructor,
             fields,
             functions,
         } => IrDeclaration::Type(IrType {
-            location: name.address,
+            location,
             publicity,
             name: name.value,
             constructor: constructor
@@ -300,6 +301,18 @@ pub fn node_to_ir_expression(source: &NamedSource<String>, node: Node) -> IrExpr
             location: location.address,
             from: Box::new(node_to_ir_expression(source, *from)),
             to: Box::new(node_to_ir_expression(source, *to)),
+        },
+        Node::New {
+            location,
+            typ,
+            args,
+        } => IrExpression::New {
+            location,
+            what: typ,
+            args: args
+                .into_iter()
+                .map(|arg| node_to_ir_expression(source, arg))
+                .collect(),
         },
         unexpected => bail!(IrError::UnexpectedExpressionNode { unexpected }),
     }

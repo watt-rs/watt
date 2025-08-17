@@ -198,6 +198,31 @@ impl<'file_path> Parser<'file_path> {
         result
     }
 
+    /// New (instantiation) parsing
+    fn instantiation(&mut self) -> Node {
+        // start address
+        let start_address = self.peek().address.clone();
+
+        // new
+        self.consume(TokenKind::New);
+
+        // type path
+        let typ = self.type_annotation();
+
+        // args
+        let args = self.args();
+
+        // end address
+        let end_address = self.previous().address.clone();
+        let address = Address::span(start_address.span.start..end_address.span.end);
+
+        Node::New {
+            location: address,
+            typ,
+            args,
+        }
+    }
+
     /// Assignment parsing
     fn assignment(&mut self, address: Address, variable: Node) -> Node {
         match variable {
@@ -211,7 +236,7 @@ impl<'file_path> Parser<'file_path> {
                     TokenKind::Assign => {
                         self.advance();
                         let expr = Box::new(self.expr());
-                        let end_address = self.advance().address.clone();
+                        let end_address = self.peek().address.clone();
                         Node::Assign {
                             location: Address::span(address.span.start..end_address.span.end - 1),
                             what: Box::new(variable),
@@ -221,7 +246,7 @@ impl<'file_path> Parser<'file_path> {
                     TokenKind::AddAssign => {
                         let op_address = self.advance().address.clone();
                         let expr = Box::new(self.expr());
-                        let end_address = self.advance().address.clone();
+                        let end_address = self.peek().address.clone();
                         Node::Assign {
                             location: Address::span(address.span.start..end_address.span.end - 1),
                             what: Box::new(variable.clone()),
@@ -239,7 +264,7 @@ impl<'file_path> Parser<'file_path> {
                     TokenKind::SubAssign => {
                         let op_address = self.advance().address.clone();
                         let expr = Box::new(self.expr());
-                        let end_address = self.advance().address.clone();
+                        let end_address = self.peek().address.clone();
                         Node::Assign {
                             location: Address::span(address.span.start..end_address.span.end - 1),
                             what: Box::new(variable.clone()),
@@ -257,7 +282,7 @@ impl<'file_path> Parser<'file_path> {
                     TokenKind::MulAssign => {
                         let op_address = self.advance().address.clone();
                         let expr = Box::new(self.expr());
-                        let end_address = self.advance().address.clone();
+                        let end_address = self.peek().address.clone();
                         Node::Assign {
                             location: Address::span(address.span.start..end_address.span.end - 1),
                             what: Box::new(variable.clone()),
@@ -275,7 +300,7 @@ impl<'file_path> Parser<'file_path> {
                     TokenKind::DivAssign => {
                         let op_address = self.advance().address.clone();
                         let expr = Box::new(self.expr());
-                        let end_address = self.advance().address.clone();
+                        let end_address = self.peek().address.clone();
                         Node::Assign {
                             location: Address::span(address.span.start..end_address.span.end - 1),
                             what: Box::new(variable.clone()),
@@ -347,6 +372,7 @@ impl<'file_path> Parser<'file_path> {
     fn primary_expr(&mut self) -> Node {
         match self.peek().tk_type {
             TokenKind::Id => self.variable(),
+            TokenKind::New => self.instantiation(),
             TokenKind::Number => Node::Number {
                 value: self.consume(TokenKind::Number).clone(),
             },
@@ -713,6 +739,9 @@ impl<'file_path> Parser<'file_path> {
 
     /// Type declaration parsing
     fn type_declaration(&mut self, publicity: Publicity) -> Node {
+        // start address
+        let start_address = self.peek().address.clone();
+
         // variable is used to create type span in bails.
         let type_tk = self.consume(TokenKind::Type).clone();
 
@@ -724,6 +753,10 @@ impl<'file_path> Parser<'file_path> {
         if self.check(TokenKind::Lparen) {
             constructor = self.parameters();
         }
+
+        // creating type address
+        let end_address = self.previous().address.clone();
+        let address = Address::span(start_address.span.start..end_address.span.end);
 
         // type contents
         let mut functions = Vec::new();
@@ -770,6 +803,7 @@ impl<'file_path> Parser<'file_path> {
         }
 
         Node::TypeDeclaration {
+            location: address,
             publicity,
             name,
             constructor,

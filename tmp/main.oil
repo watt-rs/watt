@@ -1,5 +1,11 @@
-use package_b/b as io
+type Flower(amount: int) {
+    let water_amount = amount
+    pub fn water(amount: int) {
+        self.water_amount += amount
+    }
+}
 
 fn main() {
-    io.println('Hello, world!')
+    let flower: Flower = new Flower(true)
+    flower.water(flower.water_amount)
 }

@@ -43,6 +43,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
             ("let", TokenKind::Let),
             ("use", TokenKind::Use),
             ("pub", TokenKind::Pub),
+            ("new", TokenKind::New),
         ]);
         // Lexer
         Lexer {
