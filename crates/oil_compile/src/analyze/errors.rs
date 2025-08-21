@@ -83,6 +83,15 @@ pub enum AnalyzeError {
         span: SourceSpan,
         field: EcoString,
     },
+    #[error("type \"{t}\" is private.")]
+    #[diagnostic(code(analyze::type_is_private))]
+    TypeIsPrivate {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("this access is invalid.")]
+        span: SourceSpan,
+        t: EcoString,
+    },
     #[error("environments stack is empty. it`s a bug!")]
     #[diagnostic(
         code(analyze::environments_stack_is_empty),
@@ -145,16 +154,6 @@ pub enum AnalyzeError {
         #[label("invalid arguments.")]
         span: SourceSpan,
     },
-    #[error("invalid arguments.")]
-    #[diagnostic(code(analyze::invalid_args))]
-    ModuleIsNot {
-        #[source_code]
-        src: NamedSource<String>,
-        #[label("parameters described here.")]
-        params_span: SourceSpan,
-        #[label("invalid arguments.")]
-        span: SourceSpan,
-    },
     #[error("expected a logical epxression in if.")]
     #[diagnostic(code(analyze::expected_logical_in_if))]
     ExpectedLogicalInIf {
@@ -191,13 +190,6 @@ pub enum AnalyzeError {
         expected: Typ,
         got: Typ,
     },
-    #[error("invalid assignment variable")]
-    #[diagnostic(
-        code(analyze::invalid_assignment_variable),
-        help("please, file an issue on github."),
-        url("https://github.com/oillanguage/oil")
-    )]
-    InvalidAssignmentVariable,
     #[error("call expression return type is void.")]
     #[diagnostic(code(analyze::call_expr_return_type_is_void))]
     CallExprReturnTypeIsVoid {
@@ -215,5 +207,39 @@ pub enum AnalyzeError {
         src: NamedSource<String>,
         #[label("not available.")]
         span: SourceSpan,
+    },
+    #[error("break used outside loop.")]
+    #[diagnostic(code(analyze::break_without_loop))]
+    BreakWithoutLoop {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("not available here.")]
+        span: SourceSpan,
+    },
+    #[error("continue used outside loop.")]
+    #[diagnostic(code(analyze::continue_without_loop))]
+    ContinueWithoutLoop {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("not available here.")]
+        span: SourceSpan,
+    },
+    #[error("return used outside function.")]
+    #[diagnostic(code(analyze::return_without_function))]
+    ReturnWithoutFunction {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("not available here.")]
+        span: SourceSpan,
+    },
+    #[error("wrong return type. expected {expected:?}, got {got:?}")]
+    #[diagnostic(code(analyze::wrong_return_type))]
+    WrongReturnType {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("this return seems to be wrong.")]
+        span: SourceSpan,
+        expected: Typ,
+        got: Typ,
     },
 }

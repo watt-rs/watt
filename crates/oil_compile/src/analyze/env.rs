@@ -5,9 +5,23 @@ use miette::NamedSource;
 use oil_common::{address::Address, bail};
 use std::collections::HashMap;
 
+/// Environment type
+#[derive(PartialEq)]
+pub enum EnvironmentType {
+    Function(Typ),
+    Loop,
+    Conditional,
+    ConstructorParams,
+    Fields,
+    Module,
+}
+
+/// Environment
+type Environment = (EnvironmentType, HashMap<EcoString, Typ>);
+
 /// Environments stack
 pub struct EnvironmentsStack {
-    stack: Vec<HashMap<EcoString, Typ>>,
+    stack: Vec<Environment>,
 }
 
 /// Environments stack implementation
@@ -18,12 +32,12 @@ impl EnvironmentsStack {
     }
 
     /// Pushes environment
-    pub fn push(&mut self) {
-        self.stack.push(HashMap::new())
+    pub fn push(&mut self, environment_type: EnvironmentType) {
+        self.stack.push((environment_type, HashMap::new()))
     }
 
     /// Pops environment
-    pub fn pop(&mut self) -> Option<HashMap<EcoString, Typ>> {
+    pub fn pop(&mut self) -> Option<Environment> {
         self.stack.pop()
     }
 
@@ -37,8 +51,8 @@ impl EnvironmentsStack {
     ) {
         match self.stack.last_mut() {
             Some(env) => {
-                if !env.contains_key(name) {
-                    env.insert(name.clone(), variable);
+                if !env.1.contains_key(name) {
+                    env.1.insert(name.clone(), variable);
                 } else {
                     bail!(AnalyzeError::VariableIsAlreadyDefined {
                         src: named_source.clone(),
@@ -58,8 +72,8 @@ impl EnvironmentsStack {
         name: &EcoString,
     ) -> Typ {
         for env in self.stack.iter().rev() {
-            if env.contains_key(name) {
-                return env.get(name).unwrap().clone();
+            if env.1.contains_key(name) {
+                return env.1.get(name).unwrap().clone();
             }
         }
         bail!(AnalyzeError::VariableIsNotDefined {
@@ -68,23 +82,34 @@ impl EnvironmentsStack {
         })
     }
 
-    /// Tries to lookup variable
-    pub fn try_lookup(&self, name: &EcoString) -> Option<Typ> {
-        for env in self.stack.iter().rev() {
-            if env.contains_key(name) {
-                return env.get(name).map(|t| t.clone());
-            }
-        }
-        None
-    }
-
     /// Checks variable existence
     pub fn exists(&self, name: &EcoString) -> bool {
         for env in self.stack.iter().rev() {
-            if env.contains_key(name) {
+            if env.1.contains_key(name) {
                 return true;
             }
         }
         false
+    }
+
+    /// Checks env with provided env type exists in hierarchy
+    pub fn contains_env(&self, t: EnvironmentType) -> bool {
+        for env in self.stack.iter().rev() {
+            if env.0 == t {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Checks function with provided ret type exists in hierarchy
+    pub fn contains_function(&self) -> Option<&Typ> {
+        for env in self.stack.iter().rev() {
+            match &env.0 {
+                EnvironmentType::Function(typ) => return Some(typ),
+                _ => continue,
+            }
+        }
+        None
     }
 }

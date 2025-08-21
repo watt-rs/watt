@@ -1,5 +1,9 @@
 /// Imports
-use crate::analyze::{env::EnvironmentsStack, errors::AnalyzeError, rc_ptr::RcPtr};
+use crate::analyze::{
+    env::{EnvironmentType, EnvironmentsStack},
+    errors::AnalyzeError,
+    rc_ptr::RcPtr,
+};
 use ecow::EcoString;
 use miette::NamedSource;
 use oil_ast::ast::{Publicity, TypePath};
@@ -399,7 +403,17 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     None => todo!(),
                 };
                 let typ = match m.custom_types.get(&name) {
-                    Some(t) => Typ::Custom(t.value.clone()),
+                    Some(t) => {
+                        if t.publicity != Publicity::Private {
+                            Typ::Custom(t.value.clone())
+                        } else {
+                            bail!(AnalyzeError::TypeIsPrivate {
+                                src: self.module.source.clone(),
+                                span: location.span.into(),
+                                t: name
+                            })
+                        }
+                    }
                     None => bail!(AnalyzeError::TypeIsNotDefined {
                         src: self.module.source.clone(),
                         span: location.span.into(),
@@ -582,7 +596,10 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         body: IrBlock,
         ret_type: Option<TypePath>,
     ) {
-        self.environments_stack.push();
+        // inferring return type
+        let ret = ret_type.map_or(Typ::Void, |t| self.infer_type_path(t));
+        self.environments_stack
+            .push(EnvironmentType::Function(ret.clone()));
 
         // inferring params
         let params = params
@@ -604,7 +621,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             location: location.clone(),
             name: name.clone(),
             params: params.into_iter().map(|(_, v)| v).collect::<Vec<Typ>>(),
-            ret: ret_type.map_or(Typ::Void, |t| self.infer_type_path(t)),
+            ret,
         };
         self.environments_stack.define(
             &self.module.source.clone(),
@@ -624,7 +641,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 elseif,
             } => {
                 // pushing env
-                self.environments_stack.push();
+                self.environments_stack.push(EnvironmentType::Conditional);
                 // inferring logical
                 let inferred_logical = self.infer_expr(logical);
                 match inferred_logical {
@@ -656,18 +673,18 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 body,
             } => {
                 // pushing env
-                self.environments_stack.push();
+                self.environments_stack.push(EnvironmentType::Loop);
                 // inferring logical
                 let inferred_logical = self.infer_expr(logical);
                 match inferred_logical {
                     Typ::Prelude(prelude) => match prelude {
                         PreludeType::Bool => {}
-                        _ => bail!(AnalyzeError::ExpectedLogicalInIf {
+                        _ => bail!(AnalyzeError::ExpectedLogicalInWhile {
                             src: self.module.source.clone(),
                             span: location.span.into()
                         }),
                     },
-                    _ => bail!(AnalyzeError::ExpectedLogicalInIf {
+                    _ => bail!(AnalyzeError::ExpectedLogicalInWhile {
                         src: self.module.source.clone(),
                         span: location.span.into()
                     }),
@@ -702,15 +719,42 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 body,
                 typ,
             } => self.analyze_function(location, name, params, body, typ),
-            IrStatement::Break { location } => todo!(),
-            IrStatement::Continue { location } => todo!(),
-            IrStatement::For {
-                location,
-                iterable,
-                variable,
-                body,
-            } => todo!(),
-            IrStatement::Return { location, value } => todo!(),
+            IrStatement::Break { location } => {
+                if !self.environments_stack.contains_env(EnvironmentType::Loop) {
+                    bail!(AnalyzeError::BreakWithoutLoop {
+                        src: self.module.source.clone(),
+                        span: location.span.into(),
+                    })
+                }
+            }
+            IrStatement::Continue { location } => {
+                if !self.environments_stack.contains_env(EnvironmentType::Loop) {
+                    bail!(AnalyzeError::ContinueWithoutLoop {
+                        src: self.module.source.clone(),
+                        span: location.span.into(),
+                    })
+                }
+            }
+            IrStatement::Return { location, value } => {
+                let inferred_value = self.infer_expr(value);
+                match self.environments_stack.contains_function() {
+                    Some(ret_type) => {
+                        if &inferred_value != ret_type {
+                            bail!(AnalyzeError::WrongReturnType {
+                                src: self.module.source.clone(),
+                                span: location.span.into(),
+                                expected: ret_type.clone(),
+                                got: inferred_value
+                            })
+                        }
+                    }
+                    None => bail!(AnalyzeError::ReturnWithoutFunction {
+                        src: self.module.source.clone(),
+                        span: location.span.into(),
+                    }),
+                }
+            }
+            IrStatement::For { .. } => todo!(),
         }
     }
 
@@ -725,7 +769,10 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         body: IrBlock,
         ret_type: Option<TypePath>,
     ) {
-        self.environments_stack.push();
+        // inferring return type
+        let ret = ret_type.map_or(Typ::Void, |t| self.infer_type_path(t));
+        self.environments_stack
+            .push(EnvironmentType::Function(ret.clone()));
 
         // inferring params
         let params = params
@@ -754,7 +801,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             location: location.clone(),
             name: name.clone(),
             params: params.into_iter().map(|(_, v)| v).collect::<Vec<Typ>>(),
-            ret: ret_type.map_or(Typ::Void, |t| self.infer_type_path(t)),
+            ret,
         };
 
         // defining function, if not already defined
@@ -800,7 +847,8 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         }));
 
         // params env start
-        self.environments_stack.push();
+        self.environments_stack
+            .push(EnvironmentType::ConstructorParams);
 
         // params
         inferred_params.into_iter().for_each(|p| {
@@ -809,7 +857,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         });
 
         // fields env start
-        self.environments_stack.push();
+        self.environments_stack.push(EnvironmentType::Fields);
 
         // fields
         fields.clone().into_iter().for_each(|f| {
@@ -818,7 +866,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
 
         // fields env end
         let analyzed_fields = match self.environments_stack.pop() {
-            Some(fields) => fields,
+            Some(fields) => fields.1,
             None => bail!(AnalyzeError::EnvironmentsStackIsEmpty),
         };
 
@@ -899,7 +947,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
 
     /// Performs analyze of module
     pub fn analyze(&mut self) {
-        self.environments_stack.push();
+        self.environments_stack.push(EnvironmentType::Module);
         for definition in self.module.clone().definitions {
             self.analyze_declaration(definition)
         }

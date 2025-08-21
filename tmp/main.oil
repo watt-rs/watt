@@ -6,6 +6,6 @@ type Flower(amount: int) {
 }
 
 fn main() {
-    let flower: Flower = new Flower(true)
-    flower.water(flower.water_amount)
+    let flower: Flower = new Flower(10)
+    flower.water(10)
 }
