@@ -198,31 +198,6 @@ impl<'file_path> Parser<'file_path> {
         result
     }
 
-    /// New (instantiation) parsing
-    fn instantiation(&mut self) -> Node {
-        // start address
-        let start_address = self.peek().address.clone();
-
-        // new
-        self.consume(TokenKind::New);
-
-        // type path
-        let typ = self.type_annotation();
-
-        // args
-        let args = self.args();
-
-        // end address
-        let end_address = self.previous().address.clone();
-        let address = Address::span(start_address.span.start..end_address.span.end);
-
-        Node::New {
-            location: address,
-            typ,
-            args,
-        }
-    }
-
     /// Assignment parsing
     fn assignment(&mut self, address: Address, variable: Node) -> Node {
         match variable {
@@ -372,7 +347,6 @@ impl<'file_path> Parser<'file_path> {
     fn primary_expr(&mut self) -> Node {
         match self.peek().tk_type {
             TokenKind::Id => self.variable(),
-            TokenKind::New => self.instantiation(),
             TokenKind::Number => Node::Number {
                 value: self.consume(TokenKind::Number).clone(),
             },
@@ -812,11 +786,58 @@ impl<'file_path> Parser<'file_path> {
         }
     }
 
+    /// Enum declaration parsing
+    fn enum_declaration(&mut self, publicity: Publicity) -> Node {
+        // start address
+        let start_address = self.peek().address.clone();
+
+        // variable is used to create type span in bails.
+        self.consume(TokenKind::Enum);
+
+        // type name
+        let name = self.consume(TokenKind::Id).clone();
+
+        // creating type address
+        let end_address = self.previous().address.clone();
+        let address = Address::span(start_address.span.start..end_address.span.end);
+
+        // type contents
+        let mut variants = Vec::new();
+
+        // variants parsing
+        if self.check(TokenKind::Lbrace) {
+            self.consume(TokenKind::Lbrace);
+            while !self.check(TokenKind::Rbrace) {
+                let name = self.consume(TokenKind::Id).clone();
+                let params = if self.check(TokenKind::Lparen) {
+                    self.parameters()
+                } else {
+                    Vec::new()
+                };
+                variants.push(EnumConstructor::new(name, params));
+                if self.check(TokenKind::Comma) {
+                    self.advance();
+                } else {
+                    break;
+                }
+            }
+            self.consume(TokenKind::Rbrace);
+        }
+
+        Node::EnumDeclaration {
+            location: address,
+            publicity,
+            name,
+            variants,
+        }
+    }
+
     /// Declaration parsing
     fn declaration(&mut self, publicity: Publicity) -> Node {
         match self.peek().tk_type {
             TokenKind::Type => self.type_declaration(publicity),
             TokenKind::Fn => self.fn_declaration(publicity),
+            TokenKind::Enum => self.enum_declaration(publicity),
             TokenKind::Let => self.let_declaration(publicity),
             _ => {
                 let token = self.peek().clone();

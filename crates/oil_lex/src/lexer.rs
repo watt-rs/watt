@@ -9,21 +9,21 @@ use oil_common::bail;
 use std::collections::HashMap;
 
 /// Lexer structure
-pub struct Lexer<'file_path, 'cursor> {
+pub struct Lexer<'source, 'cursor> {
     cursor: Cursor<'cursor>,
-    named_source: &'file_path NamedSource<String>,
+    named_source: &'source NamedSource<String>,
     tokens: Vec<Token>,
     keywords: HashMap<&'static str, TokenKind>,
 }
 
 /// Lexer implementation
-impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
+impl<'source, 'cursor> Lexer<'source, 'cursor> {
     /// Creates new lexer from
     ///
     /// * `code`: source code represented as `&'cursor [char]`
     /// * `file_path`: source file path
     ///
-    pub fn new(code: &'cursor [char], named_source: &'file_path NamedSource<String>) -> Self {
+    pub fn new(code: &'cursor [char], named_source: &'source NamedSource<String>) -> Self {
         // Keywords list
         let keywords_map = HashMap::from([
             ("fn", TokenKind::Fn),
@@ -32,6 +32,7 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
             ("elif", TokenKind::Elif),
             ("else", TokenKind::Else),
             ("type", TokenKind::Type),
+            ("enum", TokenKind::Enum),
             ("while", TokenKind::While),
             ("for", TokenKind::For),
             ("in", TokenKind::In),
@@ -43,7 +44,6 @@ impl<'file_path, 'cursor> Lexer<'file_path, 'cursor> {
             ("let", TokenKind::Let),
             ("use", TokenKind::Use),
             ("pub", TokenKind::Pub),
-            ("new", TokenKind::New),
         ]);
         // Lexer
         Lexer {

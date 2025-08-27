@@ -1,0 +1,17 @@
+enum Option[T] {
+    Some(value: T),
+    None
+}
+
+fn test() {
+    let number: Option[int] = Option::Some(15)
+    let boolean: bool = false
+    match number {
+        Some(value) => {
+            boolean = true
+        }
+        None => {
+            boolean = false
+        }
+    }
+}

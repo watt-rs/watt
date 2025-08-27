@@ -12,6 +12,14 @@ pub struct IrParameter {
     pub typ: TypePath,
 }
 
+/// Ir enum constructor
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct IrEnumConstructor {
+    pub location: Address,
+    pub name: EcoString,
+    pub params: Vec<IrParameter>,
+}
+
 /// Ir statement
 #[derive(Debug, Clone, PartialEq)]
 pub enum IrStatement {
@@ -111,11 +119,6 @@ pub enum IrExpression {
         what: Box<IrExpression>,
         args: Vec<IrExpression>,
     },
-    New {
-        location: Address,
-        what: TypePath,
-        args: Vec<IrExpression>,
-    },
     Range {
         location: Address,
         from: Box<IrExpression>,
@@ -189,12 +192,22 @@ pub struct IrType {
     pub functions: Vec<IrFunction>,
 }
 
+/// Ir enum
+#[derive(Debug, Clone, PartialEq)]
+pub struct IrEnum {
+    pub location: Address,
+    pub name: EcoString,
+    pub publicity: Publicity,
+    pub variants: Vec<IrEnumConstructor>,
+}
+
 /// Ir declaration
 #[derive(Debug, Clone, PartialEq)]
 pub enum IrDeclaration {
     Function(IrFunction),
     Variable(IrVariable),
     Type(IrType),
+    Enum(IrEnum),
 }
 
 /// Ir dependency

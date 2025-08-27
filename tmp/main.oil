@@ -1,11 +1,15 @@
-type Flower(amount: int) {
-    let water_amount = amount
-    pub fn water(amount: int) {
-        self.water_amount += amount
-    }
+type Juice(multiplier: int) {
+  let multiplier: int = multiplier
+  pub let juice: int = 0
+
+  pub fn apply(amount: int) {
+    self.juice += (self.multiplier * amount)
+  }
 }
 
 fn main() {
-    let flower: Flower = new Flower(10)
-    flower.water(10)
+  let juice: Juice = Juice(3)
+  juice.apply(10)
+
+  let result = juice.juice
 }

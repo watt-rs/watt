@@ -39,6 +39,21 @@ impl Parameter {
     }
 }
 
+/// Enum constructor
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct EnumConstructor {
+    pub name: Token,
+    pub params: Vec<Parameter>,
+}
+
+/// Enum constructor implementation
+impl EnumConstructor {
+    /// Creates new parameter
+    pub fn new(name: Token, params: Vec<Parameter>) -> Self {
+        Self { name, params }
+    }
+}
+
 /// Publicity
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Publicity {
@@ -97,11 +112,6 @@ pub enum Node {
     Get {
         name: Token,
     },
-    New {
-        location: Address,
-        typ: TypePath,
-        args: Vec<Node>,
-    },
     FieldAccess {
         container: Box<Node>,
         name: Token,
@@ -150,6 +160,12 @@ pub enum Node {
         constructor: Vec<Parameter>,
         fields: Vec<Node>,
         functions: Vec<Node>,
+    },
+    EnumDeclaration {
+        location: Address,
+        name: Token,
+        publicity: Publicity,
+        variants: Vec<EnumConstructor>,
     },
     For {
         iterable: Box<Node>,

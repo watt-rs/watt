@@ -1,9 +1,13 @@
 /// Imports
-use crate::analyze::{analyze::Typ, errors::AnalyzeError};
+use crate::analyze::{
+    errors::AnalyzeError,
+    rc_ptr::RcPtr,
+    typ::{Typ, Type},
+};
 use ecow::EcoString;
 use miette::NamedSource;
 use oil_common::{address::Address, bail};
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap};
 
 /// Environment type
 #[derive(PartialEq)]
@@ -13,6 +17,7 @@ pub enum EnvironmentType {
     Conditional,
     ConstructorParams,
     Fields,
+    Type(RcPtr<RefCell<Type>>),
     Module,
 }
 
@@ -76,9 +81,10 @@ impl EnvironmentsStack {
                 return env.1.get(name).unwrap().clone();
             }
         }
-        bail!(AnalyzeError::VariableIsNotDefined {
+        bail!(AnalyzeError::CouldNotResolve {
             src: named_source.clone(),
-            span: address.span.clone().into()
+            span: address.span.clone().into(),
+            name: name.clone()
         })
     }
 
@@ -102,11 +108,22 @@ impl EnvironmentsStack {
         false
     }
 
-    /// Checks function with provided ret type exists in hierarchy
+    /// Checks function exists in hierarchy
     pub fn contains_function(&self) -> Option<&Typ> {
         for env in self.stack.iter().rev() {
             match &env.0 {
                 EnvironmentType::Function(typ) => return Some(typ),
+                _ => continue,
+            }
+        }
+        None
+    }
+
+    /// Checks type exists in hierarchy
+    pub fn contains_type(&self) -> Option<&RcPtr<RefCell<Type>>> {
+        for env in self.stack.iter().rev() {
+            match &env.0 {
+                EnvironmentType::Type(typ) => return Some(typ),
                 _ => continue,
             }
         }

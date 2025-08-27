@@ -3,107 +3,30 @@ use crate::analyze::{
     env::{EnvironmentType, EnvironmentsStack},
     errors::AnalyzeError,
     rc_ptr::RcPtr,
+    res::Res,
+    typ::{CustomType, Enum, EnumVariant, Function, Module, PreludeType, Typ, Type, WithPublicity},
 };
 use ecow::EcoString;
-use miette::NamedSource;
 use oil_ast::ast::{Publicity, TypePath};
 use oil_common::{address::Address, bail};
 use oil_ir::ir::{
-    IrBinaryOp, IrBlock, IrDeclaration, IrExpression, IrFunction, IrModule, IrParameter,
-    IrStatement, IrUnaryOp, IrVariable,
+    IrBinaryOp, IrBlock, IrDeclaration, IrEnumConstructor, IrExpression, IrFunction, IrModule,
+    IrParameter, IrStatement, IrUnaryOp, IrVariable,
 };
-use std::{cell::RefCell, collections::HashMap, fmt::Debug};
+use std::{cell::RefCell, collections::HashMap};
 
-/// Prelude type
-#[derive(Debug, Clone, PartialEq)]
-pub enum PreludeType {
-    Int,
-    Float,
-    Bool,
-    String,
-}
-
-/// Custom type
-#[derive(Clone)]
-pub struct Type {
-    pub location: Address,
-    pub name: EcoString,
-    pub params: Vec<Typ>,
-    pub env: HashMap<EcoString, WithPublicity<Typ>>,
-}
-
-/// Debug implementation
-impl Debug for Type {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Custom({})", self.name)
-    }
-}
-
-/// Function
-#[derive(Clone)]
-pub struct Function {
-    pub location: Address,
-    pub name: EcoString,
-    pub params: Vec<Typ>,
-    pub ret: Typ,
-}
-
-/// Debug implementation
-impl Debug for Function {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Function({})", self.name)
-    }
-}
-
-/// Module
-#[derive(Clone)]
-pub struct Module {
-    pub source: NamedSource<String>,
-    pub name: EcoString,
-    pub environment: HashMap<EcoString, WithPublicity<Typ>>,
-    pub custom_types: HashMap<EcoString, WithPublicity<RcPtr<RefCell<Type>>>>,
-}
-
-/// Debug implementation
-impl Debug for Module {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Prelude({})", self.name)
-    }
-}
-
-/// Typ
-#[derive(Clone, PartialEq)]
-pub enum Typ {
-    Prelude(PreludeType),
-    Custom(RcPtr<RefCell<Type>>),
-    Function(RcPtr<Function>),
-    Void,
-}
-
-/// Debug implementation
-impl Debug for Typ {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Prelude(prelude) => write!(f, "Type(Prelude({prelude:?}))"),
-            Self::Custom(custom) => write!(f, "Type(Custom({}))", custom.borrow().name),
-            Self::Function(function) => write!(f, "Type(Function({}))", function.name),
-            Self::Void => write!(f, "Void"),
-        }
-    }
-}
-
-/// T with publicity
-#[derive(Debug, Clone, PartialEq)]
-pub struct WithPublicity<T: Clone + PartialEq> {
-    publicity: Publicity,
-    value: T,
+/// Call result
+pub enum CallResult {
+    FromFunction(Typ, RcPtr<Function>),
+    FromType(Typ),
+    FromEnum(Typ),
 }
 
 /// Module analyzer
 pub struct ModuleAnalyzer<'pkg> {
     module: &'pkg IrModule,
     environments_stack: EnvironmentsStack,
-    custom_types: HashMap<EcoString, WithPublicity<RcPtr<RefCell<Type>>>>,
+    custom_types: HashMap<EcoString, WithPublicity<CustomType>>,
     modules: HashMap<EcoString, &'pkg Module>,
 }
 
@@ -282,9 +205,164 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     }
 
     /// Infers get
-    fn infer_get(&self, location: Address, name: EcoString) -> Typ {
-        self.environments_stack
-            .lookup(&self.module.source, &location, &name)
+    fn infer_get(&self, location: Address, name: EcoString) -> Res {
+        // Local variable
+        if self.environments_stack.exists(&name) {
+            Res::Value(
+                self.environments_stack
+                    .lookup(&self.module.source, &location, &name),
+            )
+        }
+        // Module
+        else if self.modules.contains_key(&name) {
+            Res::Module(name)
+        }
+        // Type or could not resolve
+        else {
+            // Checking type existence
+            match self.custom_types.get(&name) {
+                Some(t) => Res::Custom(t.value.clone()),
+                None => bail!(AnalyzeError::CouldNotResolve {
+                    src: self.module.source.clone(),
+                    span: location.span.into(),
+                    name
+                }),
+            }
+        }
+    }
+
+    /// Infers module field access
+    fn infer_module_field_access(
+        &self,
+        field_location: Address,
+        field_module: EcoString,
+        field_name: EcoString,
+    ) -> Res {
+        // Getting module
+        match self.modules.get(&field_module) {
+            // Getting module
+            Some(module) => match module.environment.get(&field_name) {
+                // If environment field exists,
+                // checking it's publicity
+                Some(var_typ) => match var_typ.publicity {
+                    // If environment field is public, we resolved field
+                    Publicity::Public => Res::Value(var_typ.value.clone()),
+                    // Else, checking custom type field exists
+                    _ => match module.custom_types.get(&field_name) {
+                        // If type exists
+                        Some(custom) => {
+                            // Checking its publicity
+                            match custom.publicity {
+                                // If type is public
+                                Publicity::Public => Res::Custom(custom.value.clone()),
+                                // If type is private, raising `both module fields is private`
+                                _ => bail!(AnalyzeError::BothModuleFieldsIsPrivate {
+                                    src: self.module.source.clone(),
+                                    span: field_location.span.into(),
+                                    name: field_name
+                                }),
+                            }
+                        }
+                        // Else, raising `module field is private`
+                        None => bail!(AnalyzeError::ModuleFieldIsPrivate {
+                            src: self.module.source.clone(),
+                            span: field_location.span.into(),
+                            name: field_name
+                        }),
+                    },
+                },
+                // If no environment field found, finding type field
+                _ => match module.custom_types.get(&field_name) {
+                    // If type exists
+                    Some(custom) => {
+                        // Checking its publicity
+                        match custom.publicity {
+                            // If type is public
+                            Publicity::Public => Res::Custom(custom.value.clone()),
+                            // If type is private, raising `type is private`
+                            _ => bail!(AnalyzeError::TypeIsPrivate {
+                                src: self.module.source.clone(),
+                                span: field_location.span.into(),
+                                t: custom.value.clone()
+                            }),
+                        }
+                    }
+                    // Else, raising `module field is private`
+                    None => bail!(AnalyzeError::ModuleFieldIsPrivate {
+                        src: self.module.source.clone(),
+                        span: field_location.span.into(),
+                        name: field_name
+                    }),
+                },
+            },
+            // If module is not defined
+            None => bail!(AnalyzeError::ModuleIsNotDefined { m: field_module }),
+        }
+    }
+
+    /// Infers enum field access
+    fn infer_enum_field_access(
+        &self,
+        field_location: Address,
+        en: RcPtr<Enum>,
+        field_name: EcoString,
+    ) -> Res {
+        // Finding variant
+        match en.variants.iter().find(|var| var.name == field_name) {
+            Some(variant) => Res::Variant(en.clone(), variant.clone()),
+            None => bail!(AnalyzeError::EnumVariantIsNotDefined {
+                src: self.module.source.clone(),
+                span: field_location.span.into(),
+                e: en.name.clone(),
+                variant: field_name
+            }),
+        }
+    }
+
+    /// Infers type field access
+    fn infer_type_field_access(
+        &self,
+        field_location: Address,
+        ty: RcPtr<RefCell<Type>>,
+        field_name: EcoString,
+    ) -> Res {
+        // Finding field
+        let borrowed = ty.borrow();
+        match borrowed.env.get(&field_name) {
+            Some(typ) => match typ.publicity {
+                // Checking publicity
+                Publicity::Public => Res::Value(typ.value.clone()),
+                // Checking environments stack contains type
+                _ => match self.environments_stack.contains_type() {
+                    // If type is same
+                    Some(t) => {
+                        if *t == ty {
+                            Res::Value(typ.value.clone())
+                        } else {
+                            bail!(AnalyzeError::FieldIsPrivate {
+                                src: self.module.source.clone(),
+                                span: field_location.span.into(),
+                                t: borrowed.name.clone(),
+                                field: field_name
+                            });
+                        }
+                    }
+                    // Else
+                    None => bail!(AnalyzeError::FieldIsPrivate {
+                        src: self.module.source.clone(),
+                        span: field_location.span.into(),
+                        t: borrowed.name.clone(),
+                        field: field_name
+                    }),
+                },
+            },
+            None => bail!(AnalyzeError::FieldIsNotDefined {
+                src: self.module.source.clone(),
+                span: field_location.span.into(),
+                t: borrowed.name.clone(),
+                field: field_name
+            }),
+        }
     }
 
     /// Infers access
@@ -293,91 +371,116 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         field_location: Address,
         container: IrExpression,
         field_name: EcoString,
-    ) -> Typ {
-        match container {
-            IrExpression::Get { location, name } => {
-                if self.environments_stack.exists(&name) {
-                    let container_inferred =
-                        self.environments_stack
-                            .lookup(&self.module.source, &location, &name);
-                    match container_inferred {
-                        Typ::Custom(t) => match t.borrow().env.get(&field_name) {
-                            Some(field) => {
-                                if field.publicity != Publicity::Private || name == "self" {
-                                    field.value.clone()
-                                } else {
-                                    bail!(AnalyzeError::FieldIsPrivate {
-                                        src: self.module.source.clone(),
-                                        span: field_location.span.into(),
-                                        field: field_name
-                                    })
-                                }
-                            }
-                            None => bail!(AnalyzeError::FieldIsNotDefined {
-                                src: self.module.source.clone(),
-                                span: field_location.span.into(),
-                                t: t.borrow().name.clone(),
-                                field: name
-                            }),
-                        },
-                        _ => bail!(AnalyzeError::InvalidFieldAccess {
-                            src: self.module.source.clone(),
-                            span: field_location.span.into(),
-                            t: container_inferred
-                        }),
-                    }
-                } else if self.modules.contains_key(&name) {
-                    let module = self.modules.get(&name).unwrap();
-                    match module.environment.get(&field_name) {
-                        Some(field) => {
-                            if field.publicity != Publicity::Private {
-                                field.value.clone()
-                            } else {
-                                bail!(AnalyzeError::FieldIsPrivate {
-                                    src: self.module.source.clone(),
-                                    span: field_location.span.into(),
-                                    field: field_name
-                                })
-                            }
-                        }
-                        None => bail!(AnalyzeError::FieldIsNotDefined {
-                            src: module.source.clone(),
-                            span: field_location.span.into(),
-                            t: module.name.clone(),
-                            field: field_name
-                        }),
-                    }
-                } else {
-                    bail!(AnalyzeError::VariableIsNotDefined {
-                        src: self.module.source.clone(),
-                        span: field_location.span.into()
-                    })
-                }
+    ) -> Res {
+        // Inferring container
+        let container_inferred = self.infer_resolution(container);
+        match &container_inferred {
+            // Module field access
+            Res::Module(name) => {
+                self.infer_module_field_access(field_location, name.clone(), field_name)
             }
-            _ => {
-                let container_inferred = self.infer_expr(container);
-                match container_inferred {
-                    Typ::Custom(t) => match t.borrow().env.get(&field_name) {
-                        Some(field) => field.value.clone(),
-                        None => bail!(AnalyzeError::FieldIsNotDefined {
-                            src: self.module.source.clone(),
-                            span: field_location.span.into(),
-                            t: t.borrow().name.clone(),
-                            field: field_name
-                        }),
-                    },
-                    _ => bail!(AnalyzeError::InvalidFieldAccess {
-                        src: self.module.source.clone(),
-                        span: field_location.span.into(),
-                        t: container_inferred
-                    }),
+            // Enum field access
+            Res::Custom(custom) => match custom {
+                CustomType::Enum(en) => {
+                    self.infer_enum_field_access(field_location, en.clone(), field_name)
                 }
-            }
+                _ => bail!(AnalyzeError::CouldNotResolveFieldsIn {
+                    src: self.module.source.clone(),
+                    span: field_location.span.into(),
+                    res: container_inferred
+                }),
+            },
+            // Type field access
+            Res::Value(typ) => match typ {
+                Typ::Custom(t) => {
+                    self.infer_type_field_access(field_location, t.clone(), field_name)
+                }
+                _ => bail!(AnalyzeError::CouldNotResolveFieldsIn {
+                    src: self.module.source.clone(),
+                    span: field_location.span.into(),
+                    res: container_inferred
+                }),
+            },
+            // Else
+            _ => bail!(AnalyzeError::CouldNotResolveFieldsIn {
+                src: self.module.source.clone(),
+                span: field_location.span.into(),
+                res: container_inferred
+            }),
         }
     }
 
-    /// Infers type path
-    fn infer_type_path(&self, path: TypePath) -> Typ {
+    /// Infers call
+    fn infer_call(
+        &self,
+        location: Address,
+        what: IrExpression,
+        args: Vec<IrExpression>,
+    ) -> CallResult {
+        let function = self.infer_resolution(what);
+        let args = args
+            .iter()
+            .map(|a| self.infer_expr(a.clone()))
+            .collect::<Vec<Typ>>();
+        match &function {
+            Res::Custom(t) => match t {
+                CustomType::Type(ty) => {
+                    let borrowed = ty.borrow();
+                    if borrowed.params != args {
+                        bail!(AnalyzeError::InvalidArgs {
+                            src: self.module.source.clone(),
+                            params_span: borrowed.location.span.clone().into(),
+                            span: location.span.into()
+                        })
+                    } else {
+                        return CallResult::FromType(Typ::Custom(ty.clone()));
+                    }
+                }
+                _ => bail!(AnalyzeError::CouldNotCall {
+                    src: self.module.source.clone(),
+                    span: location.span.into(),
+                    res: function
+                }),
+            },
+            Res::Value(t) => match t {
+                Typ::Function(f) => {
+                    if f.params != args {
+                        bail!(AnalyzeError::InvalidArgs {
+                            src: self.module.source.clone(),
+                            params_span: f.location.span.clone().into(),
+                            span: location.span.into()
+                        })
+                    } else {
+                        return CallResult::FromFunction(f.ret.clone(), f.clone());
+                    }
+                }
+                _ => bail!(AnalyzeError::CouldNotCall {
+                    src: self.module.source.clone(),
+                    span: location.span.into(),
+                    res: function
+                }),
+            },
+            Res::Variant(en, variant) => {
+                if variant.params.values().cloned().collect::<Vec<Typ>>() != args {
+                    bail!(AnalyzeError::InvalidArgs {
+                        src: self.module.source.clone(),
+                        params_span: variant.location.span.clone().into(),
+                        span: location.span.into()
+                    })
+                } else {
+                    return CallResult::FromEnum(Typ::Enum(en.clone()));
+                }
+            }
+            _ => bail!(AnalyzeError::CouldNotCall {
+                src: self.module.source.clone(),
+                span: location.span.into(),
+                res: function
+            }),
+        }
+    }
+
+    /// Infers type annotation
+    fn infer_type_annotation(&self, path: TypePath) -> Typ {
         match path {
             TypePath::Local { location, name } => match name.as_str() {
                 "int" => Typ::Prelude(PreludeType::Int),
@@ -385,7 +488,10 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 "bool" => Typ::Prelude(PreludeType::Bool),
                 "string" => Typ::Prelude(PreludeType::String),
                 _ => match self.custom_types.get(&name) {
-                    Some(t) => Typ::Custom(t.value.clone()),
+                    Some(t) => match &t.value {
+                        CustomType::Enum(en) => Typ::Enum(en.clone()),
+                        CustomType::Type(ty) => Typ::Custom(ty.clone()),
+                    },
                     None => bail!(AnalyzeError::TypeIsNotDefined {
                         src: self.module.source.clone(),
                         span: location.span.into(),
@@ -405,12 +511,15 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 let typ = match m.custom_types.get(&name) {
                     Some(t) => {
                         if t.publicity != Publicity::Private {
-                            Typ::Custom(t.value.clone())
+                            match &t.value {
+                                CustomType::Enum(en) => Typ::Enum(en.clone()),
+                                CustomType::Type(ty) => Typ::Custom(ty.clone()),
+                            }
                         } else {
                             bail!(AnalyzeError::TypeIsPrivate {
                                 src: self.module.source.clone(),
                                 span: location.span.into(),
-                                t: name
+                                t: t.value.clone()
                             })
                         }
                     }
@@ -425,61 +534,32 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         }
     }
 
-    /// Infers call
-    fn infer_call(
-        &self,
-        location: Address,
-        what: IrExpression,
-        args: Vec<IrExpression>,
-    ) -> (Typ, RcPtr<Function>) {
-        let function = self.infer_expr(what);
-        let args = args
-            .iter()
-            .map(|a| self.infer_expr(a.clone()))
-            .collect::<Vec<Typ>>();
-        match function {
-            Typ::Function(f) => {
-                if f.params != args {
-                    bail!(AnalyzeError::InvalidArgs {
-                        src: self.module.source.clone(),
-                        params_span: f.location.span.clone().into(),
-                        span: location.span.into()
-                    })
-                } else {
-                    return (f.ret.clone(), f);
+    /// Infers resolution
+    fn infer_resolution(&self, expr: IrExpression) -> Res {
+        match expr {
+            IrExpression::Get { location, name } => self.infer_get(location, name),
+            IrExpression::FieldAccess {
+                location,
+                container,
+                name,
+            } => self.infer_field_access(location, *container, name),
+            IrExpression::Call {
+                location,
+                what,
+                args,
+            } => match self.infer_call(location.clone(), *what, args) {
+                CallResult::FromFunction(typ, function) => {
+                    if typ == Typ::Void {
+                        todo!();
+                    } else {
+                        Res::Value(typ)
+                    }
                 }
-            }
-            _ => bail!(AnalyzeError::CouldNotCall {
-                src: self.module.source.clone(),
-                span: location.span.into(),
-                t: function
-            }),
-        }
-    }
-
-    /// Infers new
-    fn infer_new(&self, location: Address, what: TypePath, args: Vec<IrExpression>) -> Typ {
-        let typ = self.infer_type_path(what);
-        let args = args
-            .iter()
-            .map(|a| self.infer_expr(a.clone()))
-            .collect::<Vec<Typ>>();
-        match typ.clone() {
-            Typ::Custom(t) => {
-                if t.borrow().params != args {
-                    bail!(AnalyzeError::InvalidArgs {
-                        src: self.module.source.clone(),
-                        params_span: t.borrow().location.span.clone().into(),
-                        span: location.span.into()
-                    })
-                } else {
-                    return typ;
-                }
-            }
-            _ => bail!(AnalyzeError::CouldNotInstantiate {
-                src: self.module.source.clone(),
-                span: location.span.into(),
-                t: typ
+                CallResult::FromType(t) => Res::Value(t),
+                CallResult::FromEnum(e) => Res::Value(e),
+            },
+            expr => bail!(AnalyzeError::UnexpectedExprInResolution {
+                expr: format!("{:?}", expr).into()
             }),
         }
     }
@@ -502,29 +582,31 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 value,
                 op,
             } => self.infer_unary(location, op, *value),
-            IrExpression::Get { location, name } => self.infer_get(location, name),
+            IrExpression::Get { location, name } => self
+                .infer_get(location.clone(), name)
+                .unwrap_typ(&self.module.source, &location),
             IrExpression::FieldAccess {
                 location,
                 container,
                 name,
-            } => self.infer_field_access(location, *container, name),
+            } => self
+                .infer_field_access(location.clone(), *container, name)
+                .unwrap_typ(&self.module.source, &location),
             IrExpression::Call {
                 location,
                 what,
                 args,
             } => match self.infer_call(location.clone(), *what, args) {
-                (Typ::Void, function) => bail!(AnalyzeError::CallExprReturnTypeIsVoid {
-                    src: self.module.source.clone(),
-                    span: location.span.into(),
-                    definition_span: function.location.clone().span.into()
-                }),
-                (t, _) => t,
+                CallResult::FromFunction(typ, function) => {
+                    if typ == Typ::Void {
+                        todo!();
+                    } else {
+                        typ
+                    }
+                }
+                CallResult::FromType(t) => t,
+                CallResult::FromEnum(e) => e,
             },
-            IrExpression::New {
-                location,
-                what,
-                args,
-            } => self.infer_new(location, what, args),
             IrExpression::Range { .. } => todo!(),
         }
     }
@@ -547,7 +629,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         let inferred_value = self.infer_expr(value);
         match typ {
             Some(annotated_path) => {
-                let annotated = self.infer_type_path(annotated_path);
+                let annotated = self.infer_type_annotation(annotated_path);
                 if inferred_value != annotated {
                     bail!(AnalyzeError::MissmatchedTypeAnnotation {
                         src: self.module.source.clone(),
@@ -597,14 +679,14 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         ret_type: Option<TypePath>,
     ) {
         // inferring return type
-        let ret = ret_type.map_or(Typ::Void, |t| self.infer_type_path(t));
+        let ret = ret_type.map_or(Typ::Void, |t| self.infer_type_annotation(t));
         self.environments_stack
             .push(EnvironmentType::Function(ret.clone()));
 
         // inferring params
         let params = params
             .into_iter()
-            .map(|p| (p.name, self.infer_type_path(p.typ.clone())))
+            .map(|p| (p.name, self.infer_type_annotation(p.typ.clone())))
             .collect::<HashMap<EcoString, Typ>>();
 
         params.iter().for_each(|p| {
@@ -770,14 +852,14 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         ret_type: Option<TypePath>,
     ) {
         // inferring return type
-        let ret = ret_type.map_or(Typ::Void, |t| self.infer_type_path(t));
+        let ret = ret_type.map_or(Typ::Void, |t| self.infer_type_annotation(t));
         self.environments_stack
             .push(EnvironmentType::Function(ret.clone()));
 
         // inferring params
         let params = params
             .into_iter()
-            .map(|p| (p.name, self.infer_type_path(p.typ.clone())))
+            .map(|p| (p.name, self.infer_type_annotation(p.typ.clone())))
             .collect::<HashMap<EcoString, Typ>>();
 
         params.iter().for_each(|p| {
@@ -835,7 +917,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         // inferred params
         let inferred_params = params
             .into_iter()
-            .map(|p| (p.name, (p.location, self.infer_type_path(p.typ))))
+            .map(|p| (p.name, (p.location, self.infer_type_annotation(p.typ))))
             .collect::<HashMap<EcoString, (Address, Typ)>>();
 
         // construction type
@@ -886,6 +968,10 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         });
         drop(borrowed);
 
+        // type env start
+        self.environments_stack
+            .push(EnvironmentType::Type(type_.clone()));
+
         // adding functions
         functions.into_iter().for_each(|f| {
             self.analyze_method(
@@ -899,6 +985,9 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             );
         });
 
+        // type env end
+        self.environments_stack.pop();
+
         // defining type, if not already defined
         match self.custom_types.get(&name) {
             Some(_) => bail!(AnalyzeError::TypeIsAlreadyDefined {
@@ -911,7 +1000,55 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     name,
                     WithPublicity {
                         publicity,
-                        value: type_,
+                        value: CustomType::Type(type_),
+                    },
+                );
+            }
+        }
+    }
+
+    /// Analyzes enum
+    fn analyze_enum(
+        &mut self,
+        location: Address,
+        name: EcoString,
+        publicity: Publicity,
+        variants: Vec<IrEnumConstructor>,
+    ) {
+        // inferred variants
+        let inferred_variants = variants
+            .into_iter()
+            .map(|v| EnumVariant {
+                location: v.location,
+                name: v.name,
+                params: v
+                    .params
+                    .into_iter()
+                    .map(|param| (param.name, self.infer_type_annotation(param.typ)))
+                    .collect(),
+            })
+            .collect::<Vec<EnumVariant>>();
+
+        // construction enum
+        let enum_ = RcPtr::new(Enum {
+            location: location.clone(),
+            name: name.clone(),
+            variants: inferred_variants,
+        });
+
+        // defining enum
+        match self.custom_types.get(&name) {
+            Some(_) => bail!(AnalyzeError::TypeIsAlreadyDefined {
+                src: self.module.source.clone(),
+                span: location.span.into(),
+                t: name
+            }),
+            None => {
+                self.custom_types.insert(
+                    name,
+                    WithPublicity {
+                        publicity,
+                        value: CustomType::Enum(enum_),
                     },
                 );
             }
@@ -941,6 +1078,12 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 ir_type.constructor,
                 ir_type.fields,
                 ir_type.functions,
+            ),
+            IrDeclaration::Enum(ir_enum) => self.analyze_enum(
+                ir_enum.location,
+                ir_enum.name,
+                ir_enum.publicity,
+                ir_enum.variants,
             ),
         }
     }

@@ -1,5 +1,8 @@
 /// Imports
-use crate::analyze::analyze::Typ;
+use crate::analyze::{
+    res::Res,
+    typ::{CustomType, Typ},
+};
 use ecow::EcoString;
 use miette::{Diagnostic, NamedSource, SourceSpan};
 use oil_ir::ir::{IrBinaryOp, IrUnaryOp};
@@ -8,20 +11,26 @@ use thiserror::Error;
 /// For errors
 unsafe impl Send for Typ {}
 unsafe impl Sync for Typ {}
+unsafe impl Send for Res {}
+unsafe impl Sync for Res {}
+unsafe impl Send for CustomType {}
+unsafe impl Sync for CustomType {}
 
 /// Analyze error
+/// todo: add additional sources refs for definitions
 #[derive(Debug, Error, Diagnostic)]
 pub enum AnalyzeError {
-    #[error("variable is not defined.")]
+    #[error("could not resolve {name}.")]
     #[diagnostic(
-        code(analyze::variable_is_not_defined),
-        help("check variable existence.")
+        code(analyze::could_not_resolve),
+        help("check symbol/variable existence.")
     )]
-    VariableIsNotDefined {
+    CouldNotResolve {
         #[source_code]
         src: NamedSource<String>,
-        #[label("this variable is not defined.")]
+        #[label("this is not defined.")]
         span: SourceSpan,
+        name: EcoString,
     },
     #[error("variable is already defined.")]
     #[diagnostic(
@@ -74,23 +83,62 @@ pub enum AnalyzeError {
         t: EcoString,
         field: EcoString,
     },
-    #[error("field \"{field}\" is private.")]
+    #[error("variant \"{variant}\" is not defined in enum \"{e}\".")]
+    #[diagnostic(code(analyze::enum_variant_is_not_defined))]
+    EnumVariantIsNotDefined {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("this access is invalid.")]
+        span: SourceSpan,
+        e: EcoString,
+        variant: EcoString,
+    },
+    #[error("field \"{field}\" is not defined in module \"{m}\".")]
+    #[diagnostic(code(analyze::module_field_is_not_defined))]
+    ModuleFieldIsNotDefined {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("this access is invalid.")]
+        span: SourceSpan,
+        m: EcoString,
+        field: EcoString,
+    },
+    #[error("field \"{field}\" is private in type \"{t}\".")]
     #[diagnostic(code(analyze::field_is_private))]
     FieldIsPrivate {
         #[source_code]
         src: NamedSource<String>,
         #[label("this access is invalid.")]
         span: SourceSpan,
+        t: EcoString,
         field: EcoString,
     },
-    #[error("type \"{t}\" is private.")]
+    #[error("type \"{t:?}\" is private.")]
     #[diagnostic(code(analyze::type_is_private))]
     TypeIsPrivate {
         #[source_code]
         src: NamedSource<String>,
         #[label("this access is invalid.")]
         span: SourceSpan,
-        t: EcoString,
+        t: CustomType,
+    },
+    #[error("both, type & field named \"{name:?}\" is private.")]
+    #[diagnostic(code(analyze::both_module_fields_is_private))]
+    BothModuleFieldsIsPrivate {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("this access is invalid.")]
+        span: SourceSpan,
+        name: EcoString,
+    },
+    #[error("module field \"{name:?}\" is private.")]
+    #[diagnostic(code(analyze::module_field_is_private))]
+    ModuleFieldIsPrivate {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("this access is invalid.")]
+        span: SourceSpan,
+        name: EcoString,
     },
     #[error("environments stack is empty. it`s a bug!")]
     #[diagnostic(
@@ -99,25 +147,25 @@ pub enum AnalyzeError {
         url("https://github.com/oillanguage/oil")
     )]
     EnvironmentsStackIsEmpty,
-    #[error("could not call {t:?}.")]
+    #[error("could not call {res:?}.")]
     #[diagnostic(code(analyze::could_not_call))]
     CouldNotCall {
         #[source_code]
         src: NamedSource<String>,
         #[label("this is incorrect.")]
         span: SourceSpan,
-        t: Typ,
+        res: Res,
     },
-    #[error("could not instantiate instance of {t:?}.")]
-    #[diagnostic(code(analyze::could_not_instantiate))]
-    CouldNotInstantiate {
+    #[error("could not resolve fields in {res:?}.")]
+    #[diagnostic(code(analyze::could_not_resolve_fileds_in))]
+    CouldNotResolveFieldsIn {
         #[source_code]
         src: NamedSource<String>,
-        #[label("type {t:?} isn't a custom type.")]
+        #[label("this is incorrect.")]
         span: SourceSpan,
-        t: Typ,
+        res: Res,
     },
-    #[error("type {t:?} is not defined.")]
+    #[error("type {t} is not defined.")]
     #[diagnostic(code(analyze::type_is_not_defined))]
     TypeIsNotDefined {
         #[source_code]
@@ -126,7 +174,14 @@ pub enum AnalyzeError {
         span: SourceSpan,
         t: EcoString,
     },
-    #[error("type named {t:?} is already defined.")]
+    #[error("module {m} is not defined.")]
+    #[diagnostic(
+        code(analyze::module_is_not_defined),
+        help("please, file an issue on github."),
+        url("https://github.com/oillanguage/oil")
+    )]
+    ModuleIsNotDefined { m: EcoString },
+    #[error("type named {t} is already defined.")]
     #[diagnostic(code(analyze::type_is_already_defined))]
     TypeIsAlreadyDefined {
         #[source_code]
@@ -135,7 +190,7 @@ pub enum AnalyzeError {
         span: SourceSpan,
         t: EcoString,
     },
-    #[error("method named {m:?} is already defined.")]
+    #[error("method named {m} is already defined.")]
     #[diagnostic(code(analyze::method_is_already_defined))]
     MethodIsAlreadyDefined {
         #[source_code]
@@ -194,9 +249,11 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::call_expr_return_type_is_void))]
     CallExprReturnTypeIsVoid {
         #[source_code]
-        src: NamedSource<String>,
+        fn_src: NamedSource<String>,
         #[label("function defined here.")]
         definition_span: SourceSpan,
+        #[source_code]
+        call_src: NamedSource<String>,
         #[label("function call occured here.")]
         span: SourceSpan,
     },
@@ -242,4 +299,20 @@ pub enum AnalyzeError {
         expected: Typ,
         got: Typ,
     },
+    #[error("unexpected resolution {res:?}.")]
+    #[diagnostic(code(analyze::unexpected_resolution), help("can't use {res:?} here."))]
+    UnexpectedResolution {
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("this is unexpected.")]
+        span: SourceSpan,
+        res: Res,
+    },
+    #[error("unexpected expr in resolution {expr:?}.")]
+    #[diagnostic(
+        code(analyze::unexpected_expr_in_resolution),
+        help("please, file an issue on github."),
+        url("https://github.com/oillanguage/oil")
+    )]
+    UnexpectedExprInResolution { expr: EcoString },
 }

@@ -16,8 +16,4 @@ impl Address {
     pub fn span(span: Range<usize>) -> Address {
         Address { span: span }
     }
-    /// Unknown address
-    pub fn unknown() -> Address {
-        Address { span: 0..0 }
-    }
 }

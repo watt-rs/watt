@@ -26,7 +26,7 @@ type Juice(multiplier: int) {
 }
 
 fn main() {
-  let juice: Juice = new Juice(3)
+  let juice: Juice = Juice(3)
   juice.apply(10)
 
   io.println(juice.juice)

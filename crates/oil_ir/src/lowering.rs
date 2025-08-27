@@ -1,8 +1,8 @@
 use crate::{
     errors::IrError,
     ir::{
-        IrBinaryOp, IrBlock, IrDeclaration, IrDependency, IrExpression, IrFunction, IrModule,
-        IrParameter, IrStatement, IrType, IrUnaryOp, IrVariable,
+        IrBinaryOp, IrBlock, IrDeclaration, IrDependency, IrEnum, IrEnumConstructor, IrExpression,
+        IrFunction, IrModule, IrParameter, IrStatement, IrType, IrUnaryOp, IrVariable,
     },
 };
 /// Imports
@@ -108,6 +108,32 @@ pub fn node_to_ir_declaration(source: &NamedSource<String>, node: Node) -> IrDec
                         body: node_to_ir_block(source, *body),
                     },
                     unexpected => bail!(IrError::UnexpectedNodeInTypebody { unexpected }),
+                })
+                .collect(),
+        }),
+        Node::EnumDeclaration {
+            location,
+            name,
+            publicity,
+            variants,
+        } => IrDeclaration::Enum(IrEnum {
+            location,
+            publicity,
+            name: name.value,
+            variants: variants
+                .into_iter()
+                .map(|v| IrEnumConstructor {
+                    location: v.name.address,
+                    name: v.name.value,
+                    params: v
+                        .params
+                        .into_iter()
+                        .map(|param| IrParameter {
+                            location: param.name.address,
+                            name: param.name.value,
+                            typ: param.typ,
+                        })
+                        .collect(),
                 })
                 .collect(),
         }),
@@ -301,18 +327,6 @@ pub fn node_to_ir_expression(source: &NamedSource<String>, node: Node) -> IrExpr
             location: location.address,
             from: Box::new(node_to_ir_expression(source, *from)),
             to: Box::new(node_to_ir_expression(source, *to)),
-        },
-        Node::New {
-            location,
-            typ,
-            args,
-        } => IrExpression::New {
-            location,
-            what: typ,
-            args: args
-                .into_iter()
-                .map(|arg| node_to_ir_expression(source, arg))
-                .collect(),
         },
         unexpected => bail!(IrError::UnexpectedExpressionNode { unexpected }),
     }
