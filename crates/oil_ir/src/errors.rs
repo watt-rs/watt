@@ -1,6 +1,7 @@
 /// Imports
 use miette::{Diagnostic, NamedSource, SourceSpan};
 use oil_ast::ast::Node;
+use std::sync::Arc;
 use thiserror::Error;
 
 /// ir errors with `thiserror`
@@ -45,7 +46,7 @@ pub enum IrError {
     #[diagnostic(code(uir::failed_to_parse_f64))]
     FailedToParseF64 {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this number cannot be represented as f64.")]
         span: SourceSpan,
     },
@@ -53,7 +54,7 @@ pub enum IrError {
     #[diagnostic(code(uir::failed_to_parse_i64))]
     FailedToParseI64 {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this number cannot be represented as i64.")]
         span: SourceSpan,
     },
@@ -65,7 +66,7 @@ pub enum IrError {
     )]
     UnknownOp {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this operator is unknown.")]
         span: SourceSpan,
     },

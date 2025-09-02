@@ -7,7 +7,7 @@ use crate::analyze::{
 use ecow::EcoString;
 use miette::NamedSource;
 use oil_common::{address::Address, bail};
-use std::{cell::RefCell, collections::HashMap};
+use std::{cell::RefCell, collections::HashMap, sync::Arc};
 
 /// Environment type
 #[derive(PartialEq)]
@@ -49,7 +49,7 @@ impl EnvironmentsStack {
     /// Defines variable
     pub fn define(
         &mut self,
-        named_source: &NamedSource<String>,
+        named_source: &NamedSource<Arc<String>>,
         address: &Address,
         name: &EcoString,
         variable: Typ,
@@ -72,7 +72,7 @@ impl EnvironmentsStack {
     /// Lookups variable
     pub fn lookup(
         &self,
-        named_source: &NamedSource<String>,
+        named_source: &NamedSource<Arc<String>>,
         address: &Address,
         name: &EcoString,
     ) -> Typ {

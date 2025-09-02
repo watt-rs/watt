@@ -506,7 +506,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             } => {
                 let m = match self.modules.get(&module) {
                     Some(m) => m,
-                    None => todo!(),
+                    None => bail!(AnalyzeError::ModuleIsNotDefined { m: module }),
                 };
                 let typ = match m.custom_types.get(&name) {
                     Some(t) => {
@@ -550,7 +550,12 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             } => match self.infer_call(location.clone(), *what, args) {
                 CallResult::FromFunction(typ, function) => {
                     if typ == Typ::Void {
-                        todo!();
+                        bail!(AnalyzeError::CallExprReturnTypeIsVoid {
+                            fn_src: function.source.clone(),
+                            definition_span: function.location.span.clone().into(),
+                            call_src: self.module.source.clone(),
+                            span: location.span.into()
+                        })
                     } else {
                         Res::Value(typ)
                     }
@@ -599,7 +604,12 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             } => match self.infer_call(location.clone(), *what, args) {
                 CallResult::FromFunction(typ, function) => {
                     if typ == Typ::Void {
-                        todo!();
+                        bail!(AnalyzeError::CallExprReturnTypeIsVoid {
+                            fn_src: function.source.clone(),
+                            definition_span: function.location.span.clone().into(),
+                            call_src: self.module.source.clone(),
+                            span: location.span.into()
+                        })                    
                     } else {
                         typ
                     }
@@ -700,6 +710,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
 
         // creating and defining function
         let function = Function {
+            source: self.module.source.clone(),
             location: location.clone(),
             name: name.clone(),
             params: params.into_iter().map(|(_, v)| v).collect::<Vec<Typ>>(),
@@ -880,6 +891,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
 
         // creating and defining function
         let function = Function {
+            source: self.module.source.clone(),
             location: location.clone(),
             name: name.clone(),
             params: params.into_iter().map(|(_, v)| v).collect::<Vec<Typ>>(),
@@ -922,6 +934,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
 
         // construction type
         let type_ = RcPtr::new(RefCell::new(Type {
+            source: self.module.source.clone(),
             location: location.clone(),
             name: name.clone(),
             params: inferred_params.iter().map(|p| p.1.1.clone()).collect(),
@@ -1031,6 +1044,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
 
         // construction enum
         let enum_ = RcPtr::new(Enum {
+            source: self.module.source.clone(),
             location: location.clone(),
             name: name.clone(),
             variants: inferred_variants,

@@ -1,15 +1,17 @@
-type Juice(multiplier: int) {
-  let multiplier: int = multiplier
-  pub let juice: int = 0
+type Flower(water_level: int) {
+    pub let water_level: int = water_level
+    pub fn water(add: int) {
+        self.water_level += add
+    }
+}
 
-  pub fn apply(amount: int) {
-    self.juice += (self.multiplier * amount)
-  }
+enum Pot {
+    Full(flower: Flower),
+    Nothing
 }
 
 fn main() {
-  let juice: Juice = Juice(3)
-  juice.apply(10)
-
-  let result = juice.juice
+    let flower1 = Pot.Nothing()
+    let flower2 = Pot.Full(Flower(15))
+    let result = Flower(15).water(3)
 }

@@ -1,6 +1,7 @@
-use ecow::EcoString;
 /// Imports
+use ecow::EcoString;
 use miette::{Diagnostic, NamedSource, SourceSpan};
+use std::sync::Arc;
 use thiserror::Error;
 
 /// Lex errors with `thiserror`
@@ -10,7 +11,7 @@ pub enum LexError {
     #[diagnostic(code(lex::unexpected_char))]
     UnexpectedCharacter {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this character isn't expected here.")]
         span: SourceSpan,
         ch: char,
@@ -19,7 +20,7 @@ pub enum LexError {
     #[diagnostic(code(lex::unclosed_string_quotes))]
     UnclosedStringQuotes {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("no ending quote specified.")]
         span: SourceSpan,
     },
@@ -27,7 +28,7 @@ pub enum LexError {
     #[diagnostic(code(lex::invalid_number))]
     InvalidNumber {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this number isn't valid.")]
         span: SourceSpan,
         number: EcoString,

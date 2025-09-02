@@ -7,6 +7,7 @@ use crate::analyze::{
 use ecow::EcoString;
 use miette::NamedSource;
 use oil_common::{address::Address, bail};
+use std::sync::Arc;
 
 // Resolution
 #[derive(Debug)]
@@ -21,7 +22,7 @@ pub enum Res {
 impl Res {
     /// Unwraps resolution as typ,
     /// if resolution isn't typ, raises error
-    pub fn unwrap_typ(self, source: &NamedSource<String>, address: &Address) -> Typ {
+    pub fn unwrap_typ(self, source: &NamedSource<Arc<String>>, address: &Address) -> Typ {
         match self {
             Res::Value(t) => t,
             _ => bail!(AnalyzeError::UnexpectedResolution {

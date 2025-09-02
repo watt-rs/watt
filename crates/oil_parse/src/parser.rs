@@ -6,18 +6,19 @@ use oil_ast::ast::*;
 use oil_common::address::Address;
 use oil_common::bail;
 use oil_lex::tokens::{Token, TokenKind};
+use std::sync::Arc;
 
 /// Parser structure
 pub struct Parser<'file_path> {
     tokens: Vec<Token>,
     current: u128,
-    named_source: &'file_path NamedSource<String>,
+    named_source: &'file_path NamedSource<Arc<String>>,
 }
 /// Parser implementation
 #[allow(unused_qualifications)]
 impl<'file_path> Parser<'file_path> {
     /// New parser
-    pub fn new(tokens: Vec<Token>, named_source: &'file_path NamedSource<String>) -> Self {
+    pub fn new(tokens: Vec<Token>, named_source: &'file_path NamedSource<Arc<String>>) -> Self {
         Parser {
             tokens,
             current: 0,

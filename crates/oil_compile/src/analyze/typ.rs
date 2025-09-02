@@ -4,7 +4,7 @@ use ecow::EcoString;
 use miette::NamedSource;
 use oil_ast::ast::Publicity;
 use oil_common::address::Address;
-use std::{cell::RefCell, collections::HashMap, fmt::Debug};
+use std::{cell::RefCell, collections::HashMap, fmt::Debug, sync::Arc};
 
 /// Prelude type
 #[derive(Debug, Clone, PartialEq)]
@@ -18,6 +18,7 @@ pub enum PreludeType {
 /// Custom type
 #[derive(Clone)]
 pub struct Type {
+    pub source: NamedSource<Arc<String>>,
     pub location: Address,
     pub name: EcoString,
     pub params: Vec<Typ>,
@@ -43,6 +44,7 @@ pub struct EnumVariant {
 #[derive(Clone)]
 #[allow(dead_code)]
 pub struct Enum {
+    pub source: NamedSource<Arc<String>>,
     pub location: Address,
     pub name: EcoString,
     pub variants: Vec<EnumVariant>,
@@ -58,6 +60,7 @@ impl Debug for Enum {
 /// Function
 #[derive(Clone)]
 pub struct Function {
+    pub source: NamedSource<Arc<String>>,
     pub location: Address,
     pub name: EcoString,
     pub params: Vec<Typ>,
@@ -82,7 +85,7 @@ pub enum CustomType {
 #[derive(Clone)]
 #[allow(dead_code)]
 pub struct Module {
-    pub source: NamedSource<String>,
+    pub source: NamedSource<Arc<String>>,
     pub name: EcoString,
     pub environment: HashMap<EcoString, WithPublicity<Typ>>,
     pub custom_types: HashMap<EcoString, WithPublicity<CustomType>>,

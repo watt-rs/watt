@@ -3,6 +3,7 @@ use ecow::EcoString;
 use miette::NamedSource;
 use oil_ast::ast::{Publicity, TypePath};
 use oil_common::address::Address;
+use std::sync::Arc;
 
 /// Ir parameter
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -223,5 +224,5 @@ pub struct IrDependency {
 pub struct IrModule {
     pub definitions: Vec<IrDeclaration>,
     pub dependencies: Vec<IrDependency>,
-    pub source: NamedSource<String>,
+    pub source: NamedSource<Arc<String>>,
 }

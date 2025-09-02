@@ -7,11 +7,12 @@ use miette::NamedSource;
 use oil_common::address::Address;
 use oil_common::bail;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// Lexer structure
 pub struct Lexer<'source, 'cursor> {
     cursor: Cursor<'cursor>,
-    named_source: &'source NamedSource<String>,
+    named_source: &'source NamedSource<Arc<String>>,
     tokens: Vec<Token>,
     keywords: HashMap<&'static str, TokenKind>,
 }
@@ -23,7 +24,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
     /// * `code`: source code represented as `&'cursor [char]`
     /// * `file_path`: source file path
     ///
-    pub fn new(code: &'cursor [char], named_source: &'source NamedSource<String>) -> Self {
+    pub fn new(code: &'cursor [char], named_source: &'source NamedSource<Arc<String>>) -> Self {
         // Keywords list
         let keywords_map = HashMap::from([
             ("fn", TokenKind::Fn),

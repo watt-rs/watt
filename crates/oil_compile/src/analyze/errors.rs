@@ -6,6 +6,7 @@ use crate::analyze::{
 use ecow::EcoString;
 use miette::{Diagnostic, NamedSource, SourceSpan};
 use oil_ir::ir::{IrBinaryOp, IrUnaryOp};
+use std::sync::Arc;
 use thiserror::Error;
 
 /// For errors
@@ -27,7 +28,7 @@ pub enum AnalyzeError {
     )]
     CouldNotResolve {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this is not defined.")]
         span: SourceSpan,
         name: EcoString,
@@ -39,7 +40,7 @@ pub enum AnalyzeError {
     )]
     VariableIsAlreadyDefined {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this variable is already defined.")]
         span: SourceSpan,
     },
@@ -47,7 +48,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::invalid_binary_op))]
     InvalidBinaryOp {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this is incorrect.")]
         span: SourceSpan,
         a: Typ,
@@ -58,7 +59,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::invalid_unary_op))]
     InvalidUnaryOp {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this is incorrect.")]
         span: SourceSpan,
         t: Typ,
@@ -68,7 +69,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::invalid_field_access))]
     InvalidFieldAccess {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this is incorrect.")]
         span: SourceSpan,
         t: Typ,
@@ -77,7 +78,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::field_is_not_defined))]
     FieldIsNotDefined {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this access is invalid.")]
         span: SourceSpan,
         t: EcoString,
@@ -87,7 +88,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::enum_variant_is_not_defined))]
     EnumVariantIsNotDefined {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this access is invalid.")]
         span: SourceSpan,
         e: EcoString,
@@ -97,7 +98,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::module_field_is_not_defined))]
     ModuleFieldIsNotDefined {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this access is invalid.")]
         span: SourceSpan,
         m: EcoString,
@@ -107,7 +108,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::field_is_private))]
     FieldIsPrivate {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this access is invalid.")]
         span: SourceSpan,
         t: EcoString,
@@ -117,7 +118,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::type_is_private))]
     TypeIsPrivate {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this access is invalid.")]
         span: SourceSpan,
         t: CustomType,
@@ -126,7 +127,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::both_module_fields_is_private))]
     BothModuleFieldsIsPrivate {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this access is invalid.")]
         span: SourceSpan,
         name: EcoString,
@@ -135,7 +136,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::module_field_is_private))]
     ModuleFieldIsPrivate {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this access is invalid.")]
         span: SourceSpan,
         name: EcoString,
@@ -151,7 +152,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::could_not_call))]
     CouldNotCall {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this is incorrect.")]
         span: SourceSpan,
         res: Res,
@@ -160,7 +161,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::could_not_resolve_fileds_in))]
     CouldNotResolveFieldsIn {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this is incorrect.")]
         span: SourceSpan,
         res: Res,
@@ -169,7 +170,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::type_is_not_defined))]
     TypeIsNotDefined {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this type is not defined.")]
         span: SourceSpan,
         t: EcoString,
@@ -185,8 +186,8 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::type_is_already_defined))]
     TypeIsAlreadyDefined {
         #[source_code]
-        src: NamedSource<String>,
-        #[label("this type is already defined.")]
+        src: NamedSource<Arc<String>>,
+        #[label("new definition here.")]
         span: SourceSpan,
         t: EcoString,
     },
@@ -194,7 +195,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::method_is_already_defined))]
     MethodIsAlreadyDefined {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this method is already defined.")]
         span: SourceSpan,
         m: EcoString,
@@ -203,7 +204,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::invalid_args))]
     InvalidArgs {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("parameters described here.")]
         params_span: SourceSpan,
         #[label("invalid arguments.")]
@@ -213,7 +214,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::expected_logical_in_if))]
     ExpectedLogicalInIf {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("expected logical expression in if.")]
         span: SourceSpan,
     },
@@ -221,7 +222,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::expected_logical_in_while))]
     ExpectedLogicalInWhile {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("expected logical expression in while.")]
         span: SourceSpan,
     },
@@ -229,7 +230,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::missmatched_type_annotation))]
     MissmatchedTypeAnnotation {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("type annotation missmatched here.")]
         span: SourceSpan,
         expected: Typ,
@@ -239,7 +240,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::types_missmatch))]
     TypesMissmatch {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("type annotation missmatched here.")]
         span: SourceSpan,
         expected: Typ,
@@ -249,11 +250,11 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::call_expr_return_type_is_void))]
     CallExprReturnTypeIsVoid {
         #[source_code]
-        fn_src: NamedSource<String>,
+        fn_src: NamedSource<Arc<String>>,
         #[label("function defined here.")]
         definition_span: SourceSpan,
         #[source_code]
-        call_src: NamedSource<String>,
+        call_src: NamedSource<Arc<String>>,
         #[label("function call occured here.")]
         span: SourceSpan,
     },
@@ -261,7 +262,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::self_variable_can_not_be_declared))]
     SelfVariableDeclared {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("not available.")]
         span: SourceSpan,
     },
@@ -269,7 +270,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::break_without_loop))]
     BreakWithoutLoop {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("not available here.")]
         span: SourceSpan,
     },
@@ -277,7 +278,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::continue_without_loop))]
     ContinueWithoutLoop {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("not available here.")]
         span: SourceSpan,
     },
@@ -285,7 +286,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::return_without_function))]
     ReturnWithoutFunction {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("not available here.")]
         span: SourceSpan,
     },
@@ -293,7 +294,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::wrong_return_type))]
     WrongReturnType {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this return seems to be wrong.")]
         span: SourceSpan,
         expected: Typ,
@@ -303,7 +304,7 @@ pub enum AnalyzeError {
     #[diagnostic(code(analyze::unexpected_resolution), help("can't use {res:?} here."))]
     UnexpectedResolution {
         #[source_code]
-        src: NamedSource<String>,
+        src: NamedSource<Arc<String>>,
         #[label("this is unexpected.")]
         span: SourceSpan,
         res: Res,

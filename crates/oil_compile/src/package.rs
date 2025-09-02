@@ -14,7 +14,7 @@ use oil_ir::{ir::IrModule, lowering};
 use oil_lex::lexer::Lexer;
 use oil_parse::parser::Parser;
 use petgraph::{Direction, prelude::DiGraphMap};
-use std::collections::{HashMap, HashSet};
+use std::{collections::{HashMap, HashSet}, sync::Arc};
 
 /// Package config
 pub struct PackageConfig {
@@ -59,7 +59,7 @@ impl<'project_compiler> PackageCompiler<'project_compiler> {
         let code = file.read();
         let code_chars: Vec<char> = code.chars().collect();
         // Creating named source for miette
-        let named_source = NamedSource::<String>::new(module_name, code);
+        let named_source = NamedSource::<Arc<String>>::new(module_name, Arc::new(code));
         // Lexing
         let lexer = Lexer::new(&code_chars, &named_source);
         let tokens = lexer.lex();

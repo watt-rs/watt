@@ -1,3 +1,4 @@
+/// Imports
 use crate::{
     errors::IrError,
     ir::{
@@ -5,13 +6,13 @@ use crate::{
         IrFunction, IrModule, IrParameter, IrStatement, IrType, IrUnaryOp, IrVariable,
     },
 };
-/// Imports
 use miette::NamedSource;
 use oil_ast::ast::{Node, Tree};
 use oil_common::bail;
+use std::sync::Arc;
 
 /// Node to ir declaration
-pub fn node_to_ir_declaration(source: &NamedSource<String>, node: Node) -> IrDeclaration {
+pub fn node_to_ir_declaration(source: &NamedSource<Arc<String>>, node: Node) -> IrDeclaration {
     match node {
         Node::Define {
             publicity,
@@ -142,7 +143,7 @@ pub fn node_to_ir_declaration(source: &NamedSource<String>, node: Node) -> IrDec
 }
 
 /// Node to ir block
-pub fn node_to_ir_block(source: &NamedSource<String>, node: Node) -> IrBlock {
+pub fn node_to_ir_block(source: &NamedSource<Arc<String>>, node: Node) -> IrBlock {
     match node {
         Node::Block { body } => IrBlock {
             nodes: body
@@ -155,7 +156,7 @@ pub fn node_to_ir_block(source: &NamedSource<String>, node: Node) -> IrBlock {
 }
 
 /// Node to ir expression
-pub fn node_to_ir_expression(source: &NamedSource<String>, node: Node) -> IrExpression {
+pub fn node_to_ir_expression(source: &NamedSource<Arc<String>>, node: Node) -> IrExpression {
     match node {
         Node::Number { value } => {
             if value.value.contains('.') {
@@ -333,7 +334,7 @@ pub fn node_to_ir_expression(source: &NamedSource<String>, node: Node) -> IrExpr
 }
 
 /// Node to ir statement
-pub fn node_to_ir_statement(source: &NamedSource<String>, node: Node) -> IrStatement {
+pub fn node_to_ir_statement(source: &NamedSource<Arc<String>>, node: Node) -> IrStatement {
     match node {
         Node::If {
             location,
@@ -437,7 +438,7 @@ pub fn node_to_ir_statement(source: &NamedSource<String>, node: Node) -> IrState
 }
 
 /// Tree to ir
-pub fn tree_to_ir(source: NamedSource<String>, tree: Tree) -> IrModule {
+pub fn tree_to_ir(source: NamedSource<Arc<String>>, tree: Tree) -> IrModule {
     let mut module = IrModule {
         dependencies: vec![],
         definitions: vec![],
