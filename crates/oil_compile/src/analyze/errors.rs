@@ -258,14 +258,6 @@ pub enum AnalyzeError {
         #[label("function call occured here.")]
         span: SourceSpan,
     },
-    #[error("`self` variable can not be declared.")]
-    #[diagnostic(code(analyze::self_variable_can_not_be_declared))]
-    SelfVariableDeclared {
-        #[source_code]
-        src: NamedSource<Arc<String>>,
-        #[label("not available.")]
-        span: SourceSpan,
-    },
     #[error("break used outside loop.")]
     #[diagnostic(code(analyze::break_without_loop))]
     BreakWithoutLoop {

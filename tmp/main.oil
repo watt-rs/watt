@@ -10,8 +10,15 @@ enum Pot {
     Nothing
 }
 
+enum Option {
+    Some(element: dyn),
+    None
+}
+
+fn sum(a: dyn, b: dyn): float {
+    return a
+}
+
 fn main() {
-    let flower1 = Pot.Nothing()
-    let flower2 = Pot.Full(Flower(15))
-    let result = Flower(15).water(3)
+    let a: dyn = sum(13,15)
 }

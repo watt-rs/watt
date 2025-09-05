@@ -487,6 +487,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 "float" => Typ::Prelude(PreludeType::Float),
                 "bool" => Typ::Prelude(PreludeType::Bool),
                 "string" => Typ::Prelude(PreludeType::String),
+                "dyn" => Typ::Dyn,
                 _ => match self.custom_types.get(&name) {
                     Some(t) => match &t.value {
                         CustomType::Enum(en) => Typ::Enum(en.clone()),
@@ -609,7 +610,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                             definition_span: function.location.span.clone().into(),
                             call_src: self.module.source.clone(),
                             span: location.span.into()
-                        })                    
+                        })
                     } else {
                         typ
                     }
@@ -640,7 +641,18 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         match typ {
             Some(annotated_path) => {
                 let annotated = self.infer_type_annotation(annotated_path);
-                if inferred_value != annotated {
+                if inferred_value == annotated {
+                    // defining by annotated type, because:
+                    //
+                    // 1. we can get
+                    // non-dyn value, but annotation will be `dyn`
+                    //
+                    // 2. we can get
+                    // dyn value, but annotation will not be `dyn`
+                    //
+                    self.environments_stack
+                        .define(&self.module.source, &location, &name, annotated)
+                } else {
                     bail!(AnalyzeError::MissmatchedTypeAnnotation {
                         src: self.module.source.clone(),
                         span: location.span.into(),
@@ -649,14 +661,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     })
                 }
             }
-            None => {}
-        }
-        match name.as_str() {
-            "self" => bail!(AnalyzeError::SelfVariableDeclared {
-                src: self.module.source.clone(),
-                span: location.span.into(),
-            }),
-            _ => self.environments_stack.define(
+            None => self.environments_stack.define(
                 &self.module.source,
                 &location,
                 &name,

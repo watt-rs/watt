@@ -99,13 +99,30 @@ impl Debug for Module {
 }
 
 /// Typ
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub enum Typ {
     Prelude(PreludeType),
     Custom(RcPtr<RefCell<Type>>),
     Enum(RcPtr<Enum>),
     Function(RcPtr<Function>),
+    Dyn,
     Void,
+}
+
+/// PartialEq implementation
+impl PartialEq for Typ {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Typ::Prelude(a), Typ::Prelude(b)) => a == b,
+            (Typ::Custom(a), Typ::Custom(b)) => a == b,
+            (Typ::Enum(a), Typ::Enum(b)) => a == b,
+            (Typ::Function(a), Typ::Function(b)) => a == b,
+            (Typ::Void, Typ::Void) => true,
+            (other, Typ::Dyn) => other != &Typ::Void,
+            (Typ::Dyn, other) => other != &Typ::Void,
+            _ => false,
+        }
+    }
 }
 
 /// Debug implementation
@@ -116,7 +133,8 @@ impl Debug for Typ {
             Self::Custom(custom) => write!(f, "Type(Custom({}))", custom.borrow().name),
             Self::Enum(custom_enum) => write!(f, "Type(Enum({}))", custom_enum.name),
             Self::Function(function) => write!(f, "Type(Function({}))", function.name),
-            Self::Void => write!(f, "Void"),
+            Self::Dyn => write!(f, "Type(Dyn)"),
+            Self::Void => write!(f, "Type(Void)"),
         }
     }
 }
