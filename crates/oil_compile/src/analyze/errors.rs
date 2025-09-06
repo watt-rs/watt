@@ -18,7 +18,6 @@ unsafe impl Send for CustomType {}
 unsafe impl Sync for CustomType {}
 
 /// Analyze error
-/// todo: add additional sources refs for definitions
 #[derive(Debug, Error, Diagnostic)]
 pub enum AnalyzeError {
     #[error("could not resolve {name}.")]

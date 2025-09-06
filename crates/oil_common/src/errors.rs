@@ -8,3 +8,12 @@ macro_rules! bail {
         std::process::exit(1);
     }};
 }
+
+/// Prints warning
+#[macro_export]
+macro_rules! warn {
+    ($report:expr) => {{
+        let report: miette::Report = $report.into();
+        eprintln!("{report:?}");
+    }};
+}

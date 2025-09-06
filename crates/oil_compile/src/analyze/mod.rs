@@ -4,3 +4,4 @@ pub mod errors;
 mod rc_ptr;
 mod res;
 mod typ;
+pub mod warnings;

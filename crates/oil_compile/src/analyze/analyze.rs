@@ -5,10 +5,11 @@ use crate::analyze::{
     rc_ptr::RcPtr,
     res::Res,
     typ::{CustomType, Enum, EnumVariant, Function, Module, PreludeType, Typ, Type, WithPublicity},
+    warnings::AnalyzeWarning,
 };
 use ecow::EcoString;
 use oil_ast::ast::{Publicity, TypePath};
-use oil_common::{address::Address, bail};
+use oil_common::{address::Address, bail, warn};
 use oil_ir::ir::{
     IrBinaryOp, IrBlock, IrDeclaration, IrEnumConstructor, IrExpression, IrFunction, IrModule,
     IrParameter, IrStatement, IrUnaryOp, IrVariable,
@@ -20,6 +21,7 @@ pub enum CallResult {
     FromFunction(Typ, RcPtr<Function>),
     FromType(Typ),
     FromEnum(Typ),
+    FromDyn,
 }
 
 /// Module analyzer
@@ -93,10 +95,6 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             | IrBinaryOp::Div
             | IrBinaryOp::BitwiseAnd
             | IrBinaryOp::BitwiseOr
-            | IrBinaryOp::Le
-            | IrBinaryOp::Lt
-            | IrBinaryOp::Ge
-            | IrBinaryOp::Gt
             | IrBinaryOp::Mod => {
                 // Checking prelude types
                 match left_typ {
@@ -154,7 +152,30 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     }),
                 }
             }
-            // conditional
+            // Compare
+            IrBinaryOp::Le | IrBinaryOp::Lt | IrBinaryOp::Ge | IrBinaryOp::Gt => {
+                // Checking prelude types
+                match left_typ {
+                    PreludeType::Int | PreludeType::Float => match right_typ {
+                        PreludeType::Int | PreludeType::Float => Typ::Prelude(PreludeType::Bool),
+                        _ => bail!(AnalyzeError::InvalidBinaryOp {
+                            src: self.module.source.clone(),
+                            span: (location.span.start..location.span.end).into(),
+                            a: inferred_left,
+                            b: inferred_right,
+                            op
+                        }),
+                    },
+                    _ => bail!(AnalyzeError::InvalidBinaryOp {
+                        src: self.module.source.clone(),
+                        span: (location.span.start..location.span.end).into(),
+                        a: inferred_left,
+                        b: inferred_right,
+                        op
+                    }),
+                }
+            }
+            // Equality
             IrBinaryOp::Eq | IrBinaryOp::Neq => Typ::Prelude(PreludeType::Bool),
         }
     }
@@ -392,9 +413,21 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             },
             // Type field access
             Res::Value(typ) => match typ {
+                // Custom Type
                 Typ::Custom(t) => {
                     self.infer_type_field_access(field_location, t.clone(), field_name)
                 }
+                // Dyn
+                Typ::Dyn => {
+                    // Returning `dyn` like field type,
+                    // but emitting warning
+                    warn!(AnalyzeWarning::AccessOfDynField {
+                        src: self.module.source.clone(),
+                        span: field_location.span.into()
+                    });
+                    Res::Value(Typ::Dyn)
+                }
+                // Else
                 _ => bail!(AnalyzeError::CouldNotResolveFieldsIn {
                     src: self.module.source.clone(),
                     span: field_location.span.into(),
@@ -423,6 +456,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             .map(|a| self.infer_expr(a.clone()))
             .collect::<Vec<Typ>>();
         match &function {
+            // Custom type
             Res::Custom(t) => match t {
                 CustomType::Type(ty) => {
                     let borrowed = ty.borrow();
@@ -442,7 +476,9 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     res: function
                 }),
             },
+            // Value
             Res::Value(t) => match t {
+                // Function
                 Typ::Function(f) => {
                     if f.params != args {
                         bail!(AnalyzeError::InvalidArgs {
@@ -454,12 +490,24 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                         return CallResult::FromFunction(f.ret.clone(), f.clone());
                     }
                 }
+                // Dyn
+                Typ::Dyn => {
+                    // Returning `dyn` call result,
+                    // but emitting warning
+                    warn!(AnalyzeWarning::CallOfDyn {
+                        src: self.module.source.clone(),
+                        span: location.span.into()
+                    });
+                    CallResult::FromDyn
+                }
+                // Else
                 _ => bail!(AnalyzeError::CouldNotCall {
                     src: self.module.source.clone(),
                     span: location.span.into(),
                     res: function
                 }),
             },
+            // Variant
             Res::Variant(en, variant) => {
                 if variant.params.values().cloned().collect::<Vec<Typ>>() != args {
                     bail!(AnalyzeError::InvalidArgs {
@@ -563,6 +611,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 }
                 CallResult::FromType(t) => Res::Value(t),
                 CallResult::FromEnum(e) => Res::Value(e),
+                CallResult::FromDyn => Res::Value(Typ::Dyn),
             },
             expr => bail!(AnalyzeError::UnexpectedExprInResolution {
                 expr: format!("{:?}", expr).into()
@@ -617,6 +666,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 }
                 CallResult::FromType(t) => t,
                 CallResult::FromEnum(e) => e,
+                CallResult::FromDyn => Typ::Dyn,
             },
             IrExpression::Range { .. } => todo!(),
         }
@@ -695,8 +745,6 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     ) {
         // inferring return type
         let ret = ret_type.map_or(Typ::Void, |t| self.infer_type_annotation(t));
-        self.environments_stack
-            .push(EnvironmentType::Function(ret.clone()));
 
         // inferring params
         let params = params
@@ -704,6 +752,30 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             .map(|p| (p.name, self.infer_type_annotation(p.typ.clone())))
             .collect::<HashMap<EcoString, Typ>>();
 
+        // creating and defining function
+        let function = Function {
+            source: self.module.source.clone(),
+            location: location.clone(),
+            name: name.clone(),
+            params: params
+                .clone()
+                .into_iter()
+                .map(|(_, v)| v)
+                .collect::<Vec<Typ>>(),
+            ret: ret.clone(),
+        };
+        self.environments_stack.define(
+            &self.module.source.clone(),
+            &location,
+            &name,
+            Typ::Function(RcPtr::new(function)),
+        );
+
+        // pushing new scope
+        self.environments_stack
+            .push(EnvironmentType::Function(ret.clone()));
+
+        // defining params in new scope
         params.iter().for_each(|p| {
             self.environments_stack
                 .define(&self.module.source, &location, p.0, p.1.clone())
@@ -712,21 +784,6 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         // inferring body
         self.analyze_block(body);
         self.environments_stack.pop();
-
-        // creating and defining function
-        let function = Function {
-            source: self.module.source.clone(),
-            location: location.clone(),
-            name: name.clone(),
-            params: params.into_iter().map(|(_, v)| v).collect::<Vec<Typ>>(),
-            ret,
-        };
-        self.environments_stack.define(
-            &self.module.source.clone(),
-            &location,
-            &name,
-            Typ::Function(RcPtr::new(function)),
-        );
     }
 
     /// Analyzes statement
