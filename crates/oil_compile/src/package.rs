@@ -1,6 +1,6 @@
 /// Imports
 use crate::{
-    analyze::analyze::ModuleAnalyzer,
+    analyze::{analyze::ModuleAnalyzer, typ::Module},
     errors::CompileError,
     io::io::{self, OilFile},
     project::ProjectCompiler,
@@ -193,10 +193,11 @@ impl<'project_compiler> PackageCompiler<'project_compiler> {
 
         // Performing analyze
         info!("analyzing modules...");
+        let mut modules: HashMap<EcoString, Module> = HashMap::new();
         for (name, module) in sorted_modules {
-            let mut modules = HashMap::new();
             let mut analyzer = ModuleAnalyzer::new(module, name, &mut modules);
-            analyzer.analyze();
+            let module = analyzer.analyze();
+            modules.insert(name.clone(), module);
         }
 
         // Performing codegen

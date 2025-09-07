@@ -33,7 +33,7 @@ pub struct ModuleAnalyzer<'pkg> {
     /// Resolver
     resolver: ModuleResolver<'pkg>,
     /// Modules available to import
-    modules: &'pkg mut HashMap<EcoString, &'pkg Module>,
+    modules: &'pkg mut HashMap<EcoString, Module>,
 }
 
 /// Implementation
@@ -42,7 +42,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     pub fn new(
         module: &'pkg IrModule,
         module_name: &'pkg EcoString,
-        modules: &'pkg mut HashMap<EcoString, &'pkg Module>,
+        modules: &'pkg mut HashMap<EcoString, Module>,
     ) -> Self {
         Self {
             module,
