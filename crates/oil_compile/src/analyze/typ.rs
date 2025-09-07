@@ -1,5 +1,5 @@
 /// Imports
-use crate::analyze::rc_ptr::RcPtr;
+use crate::analyze::{rc_ptr::RcPtr, resolve::ModDef};
 use ecow::EcoString;
 use miette::NamedSource;
 use oil_ast::ast::Publicity;
@@ -87,8 +87,7 @@ pub enum CustomType {
 pub struct Module {
     pub source: NamedSource<Arc<String>>,
     pub name: EcoString,
-    pub environment: HashMap<EcoString, WithPublicity<Typ>>,
-    pub custom_types: HashMap<EcoString, WithPublicity<CustomType>>,
+    pub fields: HashMap<EcoString, ModDef>,
 }
 
 /// Debug implementation

@@ -1,0 +1,200 @@
+/// Imports
+use crate::analyze::{
+    errors::AnalyzeError,
+    rc_ptr::RcPtr,
+    res::Res,
+    rib::{Rib, RibKind, RibsStack},
+    typ::{CustomType, Module, Typ, Type, WithPublicity},
+};
+use ecow::EcoString;
+use miette::NamedSource;
+use oil_common::{address::Address, bail};
+use std::{cell::RefCell, collections::HashMap, sync::Arc};
+
+/// Definition
+pub enum Def {
+    /// Module definition
+    Module(ModDef),
+    /// Local definition
+    Local(Typ),
+}
+
+/// Module definition
+///
+/// CustomType, Variable
+/// definitions for module
+///
+#[derive(Clone)]
+pub enum ModDef {
+    /// Custom type
+    CustomType(WithPublicity<CustomType>),
+    /// Variable
+    Variable(WithPublicity<Typ>),
+}
+
+/// Module resolver
+///
+/// * rib_stack - stack of ribs for nested scopes
+/// * definitions - module definitions
+pub struct ModuleResolver<'pkg> {
+    /// Ribs stack of module
+    ribs_stack: RibsStack,
+    /// Module definitions
+    mod_defs: HashMap<EcoString, ModDef>,
+    /// Imported modules
+    pub imported_modules: HashMap<EcoString, &'pkg Module>,
+}
+
+/// Implementation
+impl<'pkg> ModuleResolver<'pkg> {
+    /// Creates new module resolver
+    pub fn new() -> Self {
+        Self {
+            ribs_stack: RibsStack::new(),
+            mod_defs: HashMap::new(),
+            imported_modules: HashMap::new(),
+        }
+    }
+
+    /// Creates definiton, if no definition
+    /// with same name is already defined.
+    pub fn define(
+        &mut self,
+        named_source: &NamedSource<Arc<String>>,
+        address: &Address,
+        name: &EcoString,
+        def: Def,
+    ) {
+        // Checking def
+        match def {
+            // If module
+            Def::Module(mod_def) => {
+                // Checking already defined
+                match self.mod_defs.get(name) {
+                    // If already defined
+                    Some(_) => match mod_def {
+                        // Custom type
+                        ModDef::CustomType(_) => {
+                            bail!(AnalyzeError::TypeIsAlreadyDefined {
+                                src: named_source.clone(),
+                                span: address.span.clone().into(),
+                                t: name.clone()
+                            })
+                        }
+                        // Variable
+                        ModDef::Variable(_) => {
+                            bail!(AnalyzeError::VariableIsAlreadyDefined {
+                                src: named_source.clone(),
+                                span: address.span.clone().into(),
+                            })
+                        }
+                    },
+                    // If not
+                    None => {
+                        self.mod_defs.insert(name.clone(), mod_def);
+                    }
+                }
+            }
+            // If local
+            Def::Local(local_def) => {
+                self.ribs_stack
+                    .define(named_source, address, name, local_def);
+            }
+        }
+    }
+
+    /// Resolves up a value
+    /// Raises error if variable is not found.
+    pub fn resolve(
+        &self,
+        named_source: &NamedSource<Arc<String>>,
+        address: &Address,
+        name: &EcoString,
+    ) -> Res {
+        // Checking existence in ribs
+        match self.ribs_stack.lookup(name) {
+            Some(typ) => Res::Value(typ),
+            None => match self.mod_defs.get(name) {
+                // Checking existence in module definitions
+                Some(typ) => match typ {
+                    ModDef::CustomType(ty) => Res::Custom(ty.value.clone()),
+                    ModDef::Variable(var) => Res::Value(var.value.clone()),
+                },
+                None => match self.imported_modules.get(name) {
+                    // Checking existence in modules
+                    Some(_) => Res::Module(name.clone()),
+                    None => bail!(AnalyzeError::CouldNotResolve {
+                        src: named_source.clone(),
+                        span: address.clone().span.into(),
+                        name: name.clone()
+                    }),
+                },
+            },
+        }
+    }
+
+    /// Resolves up a type
+    /// Raises error if variable is not found.
+    pub fn resolve_type(
+        &self,
+        name: &EcoString,
+        named_source: &NamedSource<Arc<String>>,
+        address: &Address,
+    ) -> CustomType {
+        // Checking existence in module definitions
+        match self.mod_defs.get(name) {
+            Some(typ) => match typ {
+                ModDef::CustomType(ty) => return ty.value.clone(),
+                ModDef::Variable(_) => bail!(AnalyzeError::CouldNotUseValueAsType {
+                    src: named_source.clone(),
+                    span: address.clone().span.into(),
+                    v: name.clone()
+                }),
+            },
+            None => bail!(AnalyzeError::TypeIsNotDefined {
+                src: named_source.clone(),
+                span: address.clone().span.into(),
+                t: name.clone()
+            }),
+        }
+    }
+
+    /// Resolves up a module
+    pub fn resolve_module(&self, name: &EcoString) -> &Module {
+        // Checking existence in module definitions
+        match self.imported_modules.get(name) {
+            Some(m) => m,
+            None => bail!(AnalyzeError::ModuleIsNotDefined { m: name.clone() }),
+        }
+    }
+
+    /// Contains type rib
+    pub fn contains_type_rib(&self) -> Option<&RcPtr<RefCell<Type>>> {
+        return self.ribs_stack.contains_type();
+    }
+
+    /// Contains fn rib
+    pub fn contains_fn_rib(&self) -> Option<&Typ> {
+        return self.ribs_stack.contains_function();
+    }
+
+    /// Contains rib with specifix kind
+    pub fn contains_rib(&self, kind: RibKind) -> bool {
+        return self.ribs_stack.contains_rib(kind);
+    }
+
+    /// Pushes rib
+    pub fn push_rib(&mut self, kind: RibKind) {
+        self.ribs_stack.push(kind);
+    }
+
+    /// Pops rib
+    pub fn pop_rib(&mut self) -> Option<Rib> {
+        return self.ribs_stack.pop();
+    }
+
+    /// Collects fields from resolver
+    pub fn collect(&mut self) -> HashMap<EcoString, ModDef> {
+        self.mod_defs.drain().collect()
+    }
+}

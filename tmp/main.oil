@@ -1,4 +1,20 @@
+type Flower(water_level: int) {
+    pub let water_level: int = water_level
+    pub fn water(add: int) {
+        self.water_level += add
+    }
+}
+
+enum Pot {
+    Full(flower: Flower),
+    Nothing
+}
+
+enum Option {
+    Some(element: dyn),
+    None
+}
+
 fn main() {
-    let a: dyn = 132
-    a.b()
+    let pot = Option.Some(Pot.Full(Flower(15)))
 }

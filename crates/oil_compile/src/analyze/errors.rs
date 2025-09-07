@@ -32,6 +32,24 @@ pub enum AnalyzeError {
         span: SourceSpan,
         name: EcoString,
     },
+    #[error("could not use type {t} as value.")]
+    #[diagnostic(code(analyze::could_not_use_type_as_value))]
+    CouldNotUseTypeAsValue {
+        #[source_code]
+        src: NamedSource<Arc<String>>,
+        #[label("could not use as value.")]
+        span: SourceSpan,
+        t: EcoString,
+    },
+    #[error("could not use value {v} as type.")]
+    #[diagnostic(code(analyze::could_not_use_value_as_type))]
+    CouldNotUseValueAsType {
+        #[source_code]
+        src: NamedSource<Arc<String>>,
+        #[label("could not use as type.")]
+        span: SourceSpan,
+        v: EcoString,
+    },
     #[error("variable is already defined.")]
     #[diagnostic(
         code(analyze::variable_is_already_defined),
@@ -121,15 +139,6 @@ pub enum AnalyzeError {
         #[label("this access is invalid.")]
         span: SourceSpan,
         t: CustomType,
-    },
-    #[error("both, type & field named \"{name:?}\" is private.")]
-    #[diagnostic(code(analyze::both_module_fields_is_private))]
-    BothModuleFieldsIsPrivate {
-        #[source_code]
-        src: NamedSource<Arc<String>>,
-        #[label("this access is invalid.")]
-        span: SourceSpan,
-        name: EcoString,
     },
     #[error("module field \"{name:?}\" is private.")]
     #[diagnostic(code(analyze::module_field_is_private))]

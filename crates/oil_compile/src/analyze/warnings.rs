@@ -6,10 +6,10 @@ use thiserror::Error;
 /// Analyze warning
 #[derive(Debug, Error, Diagnostic)]
 pub enum AnalyzeWarning {
-    #[error("found unsafe code.")]
+    #[error("found unsafe runtime field access.")]
     #[diagnostic(
         code(analyze::warn::access_of_dyn_field),
-        help("unsafe runtime field access."),
+        help("it's better to cast `dyn` before accessing its fields."),
         severity(warning)
     )]
     AccessOfDynField {
@@ -18,10 +18,10 @@ pub enum AnalyzeWarning {
         #[label("this is unsafe.")]
         span: SourceSpan,
     },
-    #[error("found unsafe code.")]
+    #[error("found unsafe runtime call.")]
     #[diagnostic(
         code(analyze::warn::call_of_dyn),
-        help("unsafe runtime call."),
+        help("it's better to cast `dyn` before calling it."),
         severity(warning)
     )]
     CallOfDyn {

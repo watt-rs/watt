@@ -1,9 +1,10 @@
 /// Imports
 use crate::analyze::{
-    env::{EnvironmentType, EnvironmentsStack},
     errors::AnalyzeError,
     rc_ptr::RcPtr,
     res::Res,
+    resolve::{Def, ModDef, ModuleResolver},
+    rib::RibKind,
     typ::{CustomType, Enum, EnumVariant, Function, Module, PreludeType, Typ, Type, WithPublicity},
     warnings::AnalyzeWarning,
 };
@@ -26,20 +27,27 @@ pub enum CallResult {
 
 /// Module analyzer
 pub struct ModuleAnalyzer<'pkg> {
+    /// Current analyzing module info
     module: &'pkg IrModule,
-    environments_stack: EnvironmentsStack,
-    custom_types: HashMap<EcoString, WithPublicity<CustomType>>,
-    modules: HashMap<EcoString, &'pkg Module>,
+    module_name: &'pkg EcoString,
+    /// Resolver
+    resolver: ModuleResolver<'pkg>,
+    /// Modules available to import
+    modules: &'pkg mut HashMap<EcoString, &'pkg Module>,
 }
 
 /// Implementation
 impl<'pkg> ModuleAnalyzer<'pkg> {
     /// Creates new module analyzer
-    pub fn new(modules: HashMap<EcoString, &'pkg Module>, module: &'pkg IrModule) -> Self {
+    pub fn new(
+        module: &'pkg IrModule,
+        module_name: &'pkg EcoString,
+        modules: &'pkg mut HashMap<EcoString, &'pkg Module>,
+    ) -> Self {
         Self {
             module,
-            environments_stack: EnvironmentsStack::new(),
-            custom_types: HashMap::new(),
+            module_name,
+            resolver: ModuleResolver::new(),
             modules,
         }
     }
@@ -227,29 +235,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
 
     /// Infers get
     fn infer_get(&self, location: Address, name: EcoString) -> Res {
-        // Local variable
-        if self.environments_stack.exists(&name) {
-            Res::Value(
-                self.environments_stack
-                    .lookup(&self.module.source, &location, &name),
-            )
-        }
-        // Module
-        else if self.modules.contains_key(&name) {
-            Res::Module(name)
-        }
-        // Type or could not resolve
-        else {
-            // Checking type existence
-            match self.custom_types.get(&name) {
-                Some(t) => Res::Custom(t.value.clone()),
-                None => bail!(AnalyzeError::CouldNotResolve {
-                    src: self.module.source.clone(),
-                    span: location.span.into(),
-                    name
-                }),
-            }
-        }
+        self.resolver.resolve(&self.module.source, &location, &name)
     }
 
     /// Infers module field access
@@ -260,61 +246,33 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         field_name: EcoString,
     ) -> Res {
         // Getting module
-        match self.modules.get(&field_module) {
+        match self.resolver.imported_modules.get(&field_module) {
             // Getting module
-            Some(module) => match module.environment.get(&field_name) {
-                // If environment field exists,
+            Some(module) => match module.fields.get(&field_name) {
+                // If field exists
                 // checking it's publicity
-                Some(var_typ) => match var_typ.publicity {
-                    // If environment field is public, we resolved field
-                    Publicity::Public => Res::Value(var_typ.value.clone()),
-                    // Else, checking custom type field exists
-                    _ => match module.custom_types.get(&field_name) {
-                        // If type exists
-                        Some(custom) => {
-                            // Checking its publicity
-                            match custom.publicity {
-                                // If type is public
-                                Publicity::Public => Res::Custom(custom.value.clone()),
-                                // If type is private, raising `both module fields is private`
-                                _ => bail!(AnalyzeError::BothModuleFieldsIsPrivate {
-                                    src: self.module.source.clone(),
-                                    span: field_location.span.into(),
-                                    name: field_name
-                                }),
-                            }
-                        }
-                        // Else, raising `module field is private`
-                        None => bail!(AnalyzeError::ModuleFieldIsPrivate {
-                            src: self.module.source.clone(),
-                            span: field_location.span.into(),
-                            name: field_name
-                        }),
-                    },
-                },
-                // If no environment field found, finding type field
-                _ => match module.custom_types.get(&field_name) {
-                    // If type exists
-                    Some(custom) => {
-                        // Checking its publicity
-                        match custom.publicity {
-                            // If type is public
-                            Publicity::Public => Res::Custom(custom.value.clone()),
-                            // If type is private, raising `type is private`
-                            _ => bail!(AnalyzeError::TypeIsPrivate {
+                Some(def) => match def {
+                    ModDef::CustomType(ty) => {
+                        match ty.publicity {
+                            // If field is public, we resolved field
+                            Publicity::Public => Res::Custom(ty.value.clone()),
+                            // Else, raising `module field is private`
+                            _ => bail!(AnalyzeError::ModuleFieldIsPrivate {
                                 src: self.module.source.clone(),
                                 span: field_location.span.into(),
-                                t: custom.value.clone()
+                                name: field_name
                             }),
                         }
                     }
-                    // Else, raising `module field is private`
-                    None => bail!(AnalyzeError::ModuleFieldIsPrivate {
-                        src: self.module.source.clone(),
-                        span: field_location.span.into(),
-                        name: field_name
-                    }),
+                    ModDef::Variable(_) => todo!(),
                 },
+                // Else, raising `module field is not defined`
+                None => bail!(AnalyzeError::ModuleFieldIsNotDefined {
+                    src: self.module.source.clone(),
+                    span: field_location.span.into(),
+                    m: field_module,
+                    field: field_name
+                }),
             },
             // If module is not defined
             None => bail!(AnalyzeError::ModuleIsNotDefined { m: field_module }),
@@ -354,7 +312,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 // Checking publicity
                 Publicity::Public => Res::Value(typ.value.clone()),
                 // Checking environments stack contains type
-                _ => match self.environments_stack.contains_type() {
+                _ => match self.resolver.contains_type_rib() {
                     // If type is same
                     Some(t) => {
                         if *t == ty {
@@ -536,16 +494,12 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 "bool" => Typ::Prelude(PreludeType::Bool),
                 "string" => Typ::Prelude(PreludeType::String),
                 "dyn" => Typ::Dyn,
-                _ => match self.custom_types.get(&name) {
-                    Some(t) => match &t.value {
-                        CustomType::Enum(en) => Typ::Enum(en.clone()),
-                        CustomType::Type(ty) => Typ::Custom(ty.clone()),
-                    },
-                    None => bail!(AnalyzeError::TypeIsNotDefined {
-                        src: self.module.source.clone(),
-                        span: location.span.into(),
-                        t: name
-                    }),
+                _ => match self
+                    .resolver
+                    .resolve_type(&name, &self.module.source, &location)
+                {
+                    CustomType::Enum(en) => Typ::Enum(en.clone()),
+                    CustomType::Type(ty) => Typ::Custom(ty.clone()),
                 },
             },
             TypePath::Module {
@@ -553,25 +507,29 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 module,
                 name,
             } => {
-                let m = match self.modules.get(&module) {
-                    Some(m) => m,
-                    None => bail!(AnalyzeError::ModuleIsNotDefined { m: module }),
-                };
-                let typ = match m.custom_types.get(&name) {
-                    Some(t) => {
-                        if t.publicity != Publicity::Private {
-                            match &t.value {
-                                CustomType::Enum(en) => Typ::Enum(en.clone()),
-                                CustomType::Type(ty) => Typ::Custom(ty.clone()),
+                let m = self.resolver.resolve_module(&module);
+                let typ = match m.fields.get(&name) {
+                    Some(field) => match field {
+                        ModDef::CustomType(t) => {
+                            if t.publicity != Publicity::Private {
+                                match &t.value {
+                                    CustomType::Enum(en) => Typ::Enum(en.clone()),
+                                    CustomType::Type(ty) => Typ::Custom(ty.clone()),
+                                }
+                            } else {
+                                bail!(AnalyzeError::TypeIsPrivate {
+                                    src: self.module.source.clone(),
+                                    span: location.span.into(),
+                                    t: t.value.clone()
+                                })
                             }
-                        } else {
-                            bail!(AnalyzeError::TypeIsPrivate {
-                                src: self.module.source.clone(),
-                                span: location.span.into(),
-                                t: t.value.clone()
-                            })
                         }
-                    }
+                        ModDef::Variable(_) => bail!(AnalyzeError::CouldNotUseValueAsType {
+                            src: self.module.source.clone(),
+                            span: location.clone().span.into(),
+                            v: name
+                        }),
+                    },
                     None => bail!(AnalyzeError::TypeIsNotDefined {
                         src: self.module.source.clone(),
                         span: location.span.into(),
@@ -700,8 +658,12 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     // 2. we can get
                     // dyn value, but annotation will not be `dyn`
                     //
-                    self.environments_stack
-                        .define(&self.module.source, &location, &name, annotated)
+                    self.resolver.define(
+                        &self.module.source,
+                        &location,
+                        &name,
+                        Def::Local(annotated),
+                    )
                 } else {
                     bail!(AnalyzeError::MissmatchedTypeAnnotation {
                         src: self.module.source.clone(),
@@ -711,11 +673,11 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     })
                 }
             }
-            None => self.environments_stack.define(
+            None => self.resolver.define(
                 &self.module.source,
                 &location,
                 &name,
-                inferred_value,
+                Def::Local(inferred_value),
             ),
         }
     }
@@ -734,8 +696,8 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         }
     }
 
-    /// Analyzes funciton
-    fn analyze_function(
+    /// Analyzes funciton statement
+    fn analyze_function_stmt(
         &mut self,
         location: Address,
         name: EcoString,
@@ -764,26 +726,80 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 .collect::<Vec<Typ>>(),
             ret: ret.clone(),
         };
-        self.environments_stack.define(
+        self.resolver.define(
             &self.module.source.clone(),
             &location,
             &name,
-            Typ::Function(RcPtr::new(function)),
+            Def::Local(Typ::Function(RcPtr::new(function))),
         );
 
         // pushing new scope
-        self.environments_stack
-            .push(EnvironmentType::Function(ret.clone()));
+        self.resolver.push_rib(RibKind::Function(ret.clone()));
 
         // defining params in new scope
         params.iter().for_each(|p| {
-            self.environments_stack
-                .define(&self.module.source, &location, p.0, p.1.clone())
+            self.resolver
+                .define(&self.module.source, &location, p.0, Def::Local(p.1.clone()))
         });
 
         // inferring body
         self.analyze_block(body);
-        self.environments_stack.pop();
+        self.resolver.pop_rib();
+    }
+
+    /// Analyzes funciton declaration
+    fn analyze_function_decl(
+        &mut self,
+        location: Address,
+        publicity: Publicity,
+        name: EcoString,
+        params: Vec<IrParameter>,
+        body: IrBlock,
+        ret_type: Option<TypePath>,
+    ) {
+        // inferring return type
+        let ret = ret_type.map_or(Typ::Void, |t| self.infer_type_annotation(t));
+
+        // inferring params
+        let params = params
+            .into_iter()
+            .map(|p| (p.name, self.infer_type_annotation(p.typ.clone())))
+            .collect::<HashMap<EcoString, Typ>>();
+
+        // creating and defining function
+        let function = Function {
+            source: self.module.source.clone(),
+            location: location.clone(),
+            name: name.clone(),
+            params: params
+                .clone()
+                .into_iter()
+                .map(|(_, v)| v)
+                .collect::<Vec<Typ>>(),
+            ret: ret.clone(),
+        };
+        self.resolver.define(
+            &self.module.source.clone(),
+            &location,
+            &name,
+            Def::Module(ModDef::Variable(WithPublicity {
+                publicity,
+                value: Typ::Function(RcPtr::new(function)),
+            })),
+        );
+
+        // pushing new scope
+        self.resolver.push_rib(RibKind::Function(ret.clone()));
+
+        // defining params in new scope
+        params.iter().for_each(|p| {
+            self.resolver
+                .define(&self.module.source, &location, p.0, Def::Local(p.1.clone()))
+        });
+
+        // inferring body
+        self.analyze_block(body);
+        self.resolver.pop_rib();
     }
 
     /// Analyzes statement
@@ -795,8 +811,8 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 body,
                 elseif,
             } => {
-                // pushing env
-                self.environments_stack.push(EnvironmentType::Conditional);
+                // pushing rib
+                self.resolver.push_rib(RibKind::Conditional);
                 // inferring logical
                 let inferred_logical = self.infer_expr(logical);
                 match inferred_logical {
@@ -814,8 +830,8 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 }
                 // analyzing block
                 self.analyze_block(body);
-                // popping env
-                self.environments_stack.pop();
+                // popping rib
+                self.resolver.pop_rib();
                 // analyzing elseif
                 match elseif {
                     Some(elseif) => self.analyze_statement(*elseif),
@@ -827,8 +843,8 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 logical,
                 body,
             } => {
-                // pushing env
-                self.environments_stack.push(EnvironmentType::Loop);
+                // pushing rib
+                self.resolver.push_rib(RibKind::Loop);
                 // inferring logical
                 let inferred_logical = self.infer_expr(logical);
                 match inferred_logical {
@@ -846,8 +862,8 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 }
                 // analyzing block
                 self.analyze_block(body);
-                // popping env
-                self.environments_stack.pop();
+                // popping rib
+                self.resolver.pop_rib();
             }
             IrStatement::Define {
                 location,
@@ -873,9 +889,9 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 params,
                 body,
                 typ,
-            } => self.analyze_function(location, name, params, body, typ),
+            } => self.analyze_function_stmt(location, name, params, body, typ),
             IrStatement::Break { location } => {
-                if !self.environments_stack.contains_env(EnvironmentType::Loop) {
+                if !self.resolver.contains_rib(RibKind::Loop) {
                     bail!(AnalyzeError::BreakWithoutLoop {
                         src: self.module.source.clone(),
                         span: location.span.into(),
@@ -883,7 +899,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 }
             }
             IrStatement::Continue { location } => {
-                if !self.environments_stack.contains_env(EnvironmentType::Loop) {
+                if !self.resolver.contains_rib(RibKind::Loop) {
                     bail!(AnalyzeError::ContinueWithoutLoop {
                         src: self.module.source.clone(),
                         span: location.span.into(),
@@ -892,7 +908,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             }
             IrStatement::Return { location, value } => {
                 let inferred_value = self.infer_expr(value);
-                match self.environments_stack.contains_function() {
+                match self.resolver.contains_fn_rib() {
                     Some(ret_type) => {
                         if &inferred_value != ret_type {
                             bail!(AnalyzeError::WrongReturnType {
@@ -926,8 +942,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     ) {
         // inferring return type
         let ret = ret_type.map_or(Typ::Void, |t| self.infer_type_annotation(t));
-        self.environments_stack
-            .push(EnvironmentType::Function(ret.clone()));
+        self.resolver.push_rib(RibKind::Function(ret.clone()));
 
         // inferring params
         let params = params
@@ -936,20 +951,20 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             .collect::<HashMap<EcoString, Typ>>();
 
         params.iter().for_each(|p| {
-            self.environments_stack
-                .define(&self.module.source, &location, p.0, p.1.clone())
+            self.resolver
+                .define(&self.module.source, &location, p.0, Def::Local(p.1.clone()))
         });
 
-        self.environments_stack.define(
+        self.resolver.define(
             &self.module.source,
             &location,
             &"self".into(),
-            Typ::Custom(type_.clone()),
+            Def::Local(Typ::Custom(type_.clone())),
         );
 
         // inferring body
         self.analyze_block(body);
-        self.environments_stack.pop();
+        self.resolver.pop_rib();
 
         // creating and defining function
         let function = Function {
@@ -1004,17 +1019,16 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         }));
 
         // params env start
-        self.environments_stack
-            .push(EnvironmentType::ConstructorParams);
+        self.resolver.push_rib(RibKind::ConstructorParams);
 
         // params
         inferred_params.into_iter().for_each(|p| {
-            self.environments_stack
-                .define(&self.module.source, &p.1.0, &p.0, p.1.1);
+            self.resolver
+                .define(&self.module.source, &p.1.0, &p.0, Def::Local(p.1.1));
         });
 
         // fields env start
-        self.environments_stack.push(EnvironmentType::Fields);
+        self.resolver.push_rib(RibKind::Fields);
 
         // fields
         fields.clone().into_iter().for_each(|f| {
@@ -1022,13 +1036,13 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         });
 
         // fields env end
-        let analyzed_fields = match self.environments_stack.pop() {
+        let analyzed_fields = match self.resolver.pop_rib() {
             Some(fields) => fields.1,
             None => bail!(AnalyzeError::EnvironmentsStackIsEmpty),
         };
 
         // params env end
-        self.environments_stack.pop();
+        self.resolver.pop_rib();
 
         // adding fields to type env
         let mut borrowed = type_.borrow_mut();
@@ -1044,8 +1058,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         drop(borrowed);
 
         // type env start
-        self.environments_stack
-            .push(EnvironmentType::Type(type_.clone()));
+        self.resolver.push_rib(RibKind::Type(type_.clone()));
 
         // adding functions
         functions.into_iter().for_each(|f| {
@@ -1061,25 +1074,18 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         });
 
         // type env end
-        self.environments_stack.pop();
+        self.resolver.pop_rib();
 
         // defining type, if not already defined
-        match self.custom_types.get(&name) {
-            Some(_) => bail!(AnalyzeError::TypeIsAlreadyDefined {
-                src: self.module.source.clone(),
-                span: location.span.into(),
-                t: name
-            }),
-            None => {
-                self.custom_types.insert(
-                    name,
-                    WithPublicity {
-                        publicity,
-                        value: CustomType::Type(type_),
-                    },
-                );
-            }
-        }
+        self.resolver.define(
+            &self.module.source,
+            &location,
+            &name,
+            Def::Module(ModDef::CustomType(WithPublicity {
+                publicity,
+                value: CustomType::Type(type_),
+            })),
+        );
     }
 
     /// Analyzes enum
@@ -1112,30 +1118,24 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             variants: inferred_variants,
         });
 
-        // defining enum
-        match self.custom_types.get(&name) {
-            Some(_) => bail!(AnalyzeError::TypeIsAlreadyDefined {
-                src: self.module.source.clone(),
-                span: location.span.into(),
-                t: name
-            }),
-            None => {
-                self.custom_types.insert(
-                    name,
-                    WithPublicity {
-                        publicity,
-                        value: CustomType::Enum(enum_),
-                    },
-                );
-            }
-        }
+        // defining enum, if not already defined
+        self.resolver.define(
+            &self.module.source,
+            &location,
+            &name,
+            Def::Module(ModDef::CustomType(WithPublicity {
+                publicity,
+                value: CustomType::Enum(enum_),
+            })),
+        );
     }
 
     /// Analyzes declaration
     pub fn analyze_declaration(&mut self, declaration: IrDeclaration) {
         match declaration {
-            IrDeclaration::Function(ir_function) => self.analyze_function(
+            IrDeclaration::Function(ir_function) => self.analyze_function_decl(
                 ir_function.location,
+                ir_function.publicity,
                 ir_function.name,
                 ir_function.params,
                 ir_function.body,
@@ -1165,10 +1165,14 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     }
 
     /// Performs analyze of module
-    pub fn analyze(&mut self) {
-        self.environments_stack.push(EnvironmentType::Module);
+    pub fn analyze(&mut self) -> Module {
         for definition in self.module.clone().definitions {
             self.analyze_declaration(definition)
+        }
+        Module {
+            source: self.module.source.clone(),
+            name: self.module_name.clone(),
+            fields: self.resolver.collect(),
         }
     }
 }

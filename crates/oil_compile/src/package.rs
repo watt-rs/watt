@@ -14,7 +14,10 @@ use oil_ir::{ir::IrModule, lowering};
 use oil_lex::lexer::Lexer;
 use oil_parse::parser::Parser;
 use petgraph::{Direction, prelude::DiGraphMap};
-use std::{collections::{HashMap, HashSet}, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 /// Package config
 pub struct PackageConfig {
@@ -182,17 +185,21 @@ impl<'project_compiler> PackageCompiler<'project_compiler> {
         let sorted_modules = sorted
             .iter()
             .map(|m| match modules.get(*m) {
-                Some(module) => module,
+                Some(module) => (*m, module),
                 None => bail!(CompileError::NoModuleFound { name: (*m).clone() }),
             })
-            .collect::<Vec<&IrModule>>();
-        info!("performed toposort {:#?}", sorted);
+            .collect::<HashMap<&EcoString, &IrModule>>();
+        info!("performed toposort {:#?}", sorted_modules);
 
         // Performing analyze
         info!("analyzing modules...");
-        for module in sorted_modules {
-            let mut analyzer = ModuleAnalyzer::new(HashMap::new(), module);
+        for (name, module) in sorted_modules {
+            let mut modules = HashMap::new();
+            let mut analyzer = ModuleAnalyzer::new(module, name, &mut modules);
             analyzer.analyze();
         }
+
+        // Performing codegen
+        info!("performing codegen...")
     }
 }
