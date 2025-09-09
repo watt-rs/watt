@@ -63,6 +63,8 @@ pub enum TokenKind {
     Range,         // ..
     As,            // as
     Pub,           // pub
+    Match,         // match
+    Arrow,         // arrow
 }
 
 /// Token structure

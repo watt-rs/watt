@@ -62,6 +62,18 @@ pub enum Publicity {
     None,
 }
 
+/// Pattern
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum Pattern {
+    // Unwrap enum pattern
+    // `Pot.Full { flower, .. }`
+    Unwrap { en: Box<Node>, fields: Vec<Token> },
+    // `123456`
+    Value(Node),
+    // `0..10`
+    Range { start: Box<Node>, end: Box<Node> },
+}
+
 /// Ast node
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 #[allow(dead_code)]
@@ -171,6 +183,10 @@ pub enum Node {
         iterable: Box<Node>,
         variable: Token,
         body: Box<Node>,
+    },
+    Match {
+        value: Box<Node>,
+        patterns: Vec<Pattern>,
     },
     Range {
         location: Token,

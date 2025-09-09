@@ -358,6 +358,7 @@ impl<'file_path> Parser<'file_path> {
                 value: self.consume(TokenKind::Bool).clone(),
             },
             TokenKind::Lparen => self.grouping_expr(),
+            TokenKind::Match => self.pattern_matching(),
             _ => {
                 let token = self.peek().clone();
                 bail!(ParseError::UnexpectedExpressionToken {
@@ -672,6 +673,38 @@ impl<'file_path> Parser<'file_path> {
         }
     }
 
+    /// Pattern parsing
+    fn pattern(&mut self) -> Pattern {
+        // Parsing value
+        let value = self.expr();
+        // Checking for unwrap of enum
+        if self.check(TokenKind::Lbrace) {
+            // { .., n fields }
+            self.consume(TokenKind::Lbrace);
+            // Checking for close of braces
+            if self.check(TokenKind::Rbrace) {
+                self.advance();
+                return Pattern::Value(value);
+            }
+            // Parsing field names
+            let mut fields = Vec::new();
+            fields.push(self.consume(TokenKind::Id).clone());
+            while self.check(TokenKind::Comma) {
+                self.advance();
+                fields.push(self.consume(TokenKind::Id).clone());
+            }
+            // As result, enum unwrap pattern
+            Pattern::Unwrap {
+                en: Box::new(value),
+                fields,
+            }
+        }
+        // If no unwrap, returning just as value
+        else {
+            Pattern::Value(value)
+        }
+    }
+
     /// Fn declaration parsing
     fn fn_declaration(&mut self, publicity: Publicity) -> Node {
         self.consume(TokenKind::Fn);
@@ -833,6 +866,26 @@ impl<'file_path> Parser<'file_path> {
         }
     }
 
+    /// Pattern match parsing
+    fn pattern_matching(&mut self) -> Node {
+        // `match value { patterns, ... }`
+        self.consume(TokenKind::Match);
+        let value = self.expr();
+
+        // patterns
+        self.consume(TokenKind::Lbrace);
+        let mut patterns: Vec<Pattern> = Vec::new();
+        while !self.check(TokenKind::Lbrace) {
+            patterns.push(self.pattern())
+        }
+        self.consume(TokenKind::Rbrace);
+
+        Node::Match {
+            value: Box::new(value),
+            patterns,
+        }
+    }
+
     /// Declaration parsing
     fn declaration(&mut self, publicity: Publicity) -> Node {
         match self.peek().tk_type {
@@ -891,6 +944,7 @@ impl<'file_path> Parser<'file_path> {
             TokenKind::While => self.while_stmt(),
             TokenKind::Let => self.let_declaration(Publicity::None),
             TokenKind::Fn => self.fn_declaration(Publicity::None),
+            TokenKind::Match => self.pattern_matching(),
             _ => {
                 let token = self.peek().clone();
                 bail!(ParseError::UnexpectedStatementToken {

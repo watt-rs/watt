@@ -13,7 +13,7 @@ use oil_common::bail;
 use oil_ir::{ir::IrModule, lowering};
 use oil_lex::lexer::Lexer;
 use oil_parse::parser::Parser;
-use petgraph::{Direction, prelude::DiGraphMap};
+use petgraph::{prelude::DiGraphMap, Direction};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,

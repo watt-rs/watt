@@ -45,6 +45,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
             ("let", TokenKind::Let),
             ("use", TokenKind::Use),
             ("pub", TokenKind::Pub),
+            ("match", TokenKind::Match),
         ]);
         // Lexer
         Lexer {
@@ -99,6 +100,8 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
                 '-' => {
                     if self.is_match('=') {
                         self.add_tk(TokenKind::SubAssign, "-=");
+                    } else if self.is_match('>') {
+                        self.add_tk(TokenKind::Arrow, "->");
                     } else {
                         self.add_tk(TokenKind::Minus, "-");
                     }
