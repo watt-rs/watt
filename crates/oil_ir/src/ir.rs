@@ -21,6 +21,24 @@ pub struct IrEnumConstructor {
     pub params: Vec<IrParameter>,
 }
 
+/// Ir pattern
+#[derive(Debug, Clone, PartialEq)]
+pub enum IrPattern {
+    // Unwrap enum pattern
+    // `Pot.Full { flower, .. }`
+    Unwrap {
+        en: IrExpression,
+        fields: Vec<EcoString>,
+    },
+    // `123456`
+    Value(IrExpression),
+    // `0..10`
+    Range {
+        start: IrExpression,
+        end: IrExpression,
+    },
+}
+
 /// Ir statement
 #[derive(Debug, Clone, PartialEq)]
 pub enum IrStatement {
@@ -74,6 +92,11 @@ pub enum IrStatement {
         location: Address,
         value: IrExpression,
     },
+    Match {
+        location: Address,
+        value: IrExpression,
+        patterns: Vec<(IrPattern, IrBlock)>,
+    },
 }
 
 /// Ir Expression
@@ -124,6 +147,11 @@ pub enum IrExpression {
         location: Address,
         from: Box<IrExpression>,
         to: Box<IrExpression>,
+    },
+    Match {
+        location: Address,
+        value: Box<IrExpression>,
+        patterns: Vec<(IrPattern, IrBlock)>,
     },
 }
 

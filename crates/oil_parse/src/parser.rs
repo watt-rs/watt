@@ -431,7 +431,7 @@ impl<'file_path> Parser<'file_path> {
         let mut left = self.additive_expr();
 
         if self.check(TokenKind::Range) {
-            let location = self.consume(TokenKind::Range).clone();
+            let location = self.consume(TokenKind::Range).address.clone();
             let right = self.additive_expr();
             left = Node::Range {
                 location,
@@ -505,19 +505,19 @@ impl<'file_path> Parser<'file_path> {
 
     /// Continue statement parsing
     fn continue_stmt(&mut self) -> Node {
-        let location = self.consume(TokenKind::Continue).clone();
+        let location = self.consume(TokenKind::Continue).address.clone();
         Node::Continue { location }
     }
 
     /// Break statement parsing
     fn break_stmt(&mut self) -> Node {
-        let location = self.consume(TokenKind::Break).clone();
+        let location = self.consume(TokenKind::Break).address.clone();
         Node::Break { location }
     }
 
     /// Return statement parsing
     fn return_stmt(&mut self) -> Node {
-        let location = self.consume(TokenKind::Ret).clone();
+        let location = self.consume(TokenKind::Ret).address.clone();
         let value = Box::new(self.expr());
         Node::Return { location, value }
     }
@@ -553,7 +553,7 @@ impl<'file_path> Parser<'file_path> {
 
     /// While statement parsing
     fn while_stmt(&mut self) -> Node {
-        let location = self.consume(TokenKind::While).clone();
+        let location = self.consume(TokenKind::While).address.clone();
         let logical = self.expr();
 
         self.consume(TokenKind::Lbrace);
@@ -569,7 +569,7 @@ impl<'file_path> Parser<'file_path> {
 
     /// Else parsing
     fn else_stmt(&mut self) -> Node {
-        let location = self.consume(TokenKind::Else).clone();
+        let location = self.consume(TokenKind::Else).address.clone();
 
         self.consume(TokenKind::Lbrace);
         let body = self.block();
@@ -578,7 +578,7 @@ impl<'file_path> Parser<'file_path> {
         Node::If {
             location: location.clone(),
             logical: Box::new(Node::Bool {
-                value: Token::new(TokenKind::Bool, "true".into(), location.address),
+                value: Token::new(TokenKind::Bool, "true".into(), location),
             }),
             body: Box::new(body),
             elseif: None,
@@ -587,7 +587,7 @@ impl<'file_path> Parser<'file_path> {
 
     /// Elif parsing
     fn elif_stmt(&mut self) -> Node {
-        let location = self.consume(TokenKind::Elif).clone();
+        let location = self.consume(TokenKind::Elif).address.clone();
         let logical = self.expr();
 
         self.consume(TokenKind::Lbrace);
@@ -621,7 +621,7 @@ impl<'file_path> Parser<'file_path> {
 
     /// If statement parsing
     fn if_stmt(&mut self) -> Node {
-        let location = self.consume(TokenKind::If).clone();
+        let location = self.consume(TokenKind::If).address.clone();
         let logical = self.expr();
 
         self.consume(TokenKind::Lbrace);
@@ -693,11 +693,9 @@ impl<'file_path> Parser<'file_path> {
                 self.advance();
                 fields.push(self.consume(TokenKind::Id).clone());
             }
+            self.consume(TokenKind::Rbrace);
             // As result, enum unwrap pattern
-            Pattern::Unwrap {
-                en: Box::new(value),
-                fields,
-            }
+            Pattern::Unwrap { en: value, fields }
         }
         // If no unwrap, returning just as value
         else {
@@ -868,19 +866,32 @@ impl<'file_path> Parser<'file_path> {
 
     /// Pattern match parsing
     fn pattern_matching(&mut self) -> Node {
+        // Start address
+        let start = self.peek().address.clone();
+
         // `match value { patterns, ... }`
         self.consume(TokenKind::Match);
         let value = self.expr();
 
-        // patterns
+        // End address
+        let end = self.peek().address.clone();
+
+        // Patterns
         self.consume(TokenKind::Lbrace);
-        let mut patterns: Vec<Pattern> = Vec::new();
-        while !self.check(TokenKind::Lbrace) {
-            patterns.push(self.pattern())
+        let mut patterns = Vec::new();
+        while !self.check(TokenKind::Rbrace) {
+            let pattern = self.pattern();
+            // -> { body, ... }
+            self.consume(TokenKind::Arrow);
+            self.consume(TokenKind::Lbrace);
+            let body = self.block();
+            self.consume(TokenKind::Rbrace);
+            patterns.push((pattern, body));
         }
         self.consume(TokenKind::Rbrace);
 
         Node::Match {
+            location: Address::span(start.span.start..end.span.end),
             value: Box::new(value),
             patterns,
         }

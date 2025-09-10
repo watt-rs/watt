@@ -33,11 +33,18 @@ impl Debug for Type {
 }
 
 /// Enum varient
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct EnumVariant {
     pub location: Address,
     pub name: EcoString,
     pub params: HashMap<EcoString, Typ>,
+}
+
+/// Debug implementation
+impl Debug for EnumVariant {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Variant({})", self.name)
+    }
 }
 
 /// Custom enum

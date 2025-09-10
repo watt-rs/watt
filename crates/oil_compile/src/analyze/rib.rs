@@ -17,6 +17,7 @@ pub enum RibKind {
     Conditional,
     ConstructorParams,
     Fields,
+    Pattern,
     Type(RcPtr<RefCell<Type>>),
 }
 

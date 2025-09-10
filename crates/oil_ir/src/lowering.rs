@@ -3,11 +3,11 @@ use crate::{
     errors::IrError,
     ir::{
         IrBinaryOp, IrBlock, IrDeclaration, IrDependency, IrEnum, IrEnumConstructor, IrExpression,
-        IrFunction, IrModule, IrParameter, IrStatement, IrType, IrUnaryOp, IrVariable,
+        IrFunction, IrModule, IrParameter, IrPattern, IrStatement, IrType, IrUnaryOp, IrVariable,
     },
 };
 use miette::NamedSource;
-use oil_ast::ast::{Node, Tree};
+use oil_ast::ast::{Node, Pattern, Tree};
 use oil_common::bail;
 use std::sync::Arc;
 
@@ -325,9 +325,38 @@ pub fn node_to_ir_expression(source: &NamedSource<Arc<String>>, node: Node) -> I
             }),
         },
         Node::Range { location, from, to } => IrExpression::Range {
-            location: location.address,
+            location,
             from: Box::new(node_to_ir_expression(source, *from)),
             to: Box::new(node_to_ir_expression(source, *to)),
+        },
+        Node::Match {
+            location,
+            value,
+            patterns,
+        } => IrExpression::Match {
+            location,
+            value: Box::new(node_to_ir_expression(source, *value)),
+            patterns: patterns
+                .into_iter()
+                .map(|pattern| {
+                    (
+                        match pattern.0 {
+                            Pattern::Unwrap { en, fields } => IrPattern::Unwrap {
+                                en: node_to_ir_expression(source, en),
+                                fields: fields.into_iter().map(|field| field.value).collect(),
+                            },
+                            Pattern::Value(value) => {
+                                IrPattern::Value(node_to_ir_expression(source, value))
+                            }
+                            Pattern::Range { start, end } => IrPattern::Range {
+                                start: node_to_ir_expression(source, start),
+                                end: node_to_ir_expression(source, end),
+                            },
+                        },
+                        node_to_ir_block(source, pattern.1),
+                    )
+                })
+                .collect(),
         },
         unexpected => bail!(IrError::UnexpectedExpressionNode { unexpected }),
     }
@@ -343,13 +372,13 @@ pub fn node_to_ir_statement(source: &NamedSource<Arc<String>>, node: Node) -> Ir
             elseif,
         } => match elseif {
             Some(elseif) => IrStatement::If {
-                location: location.address,
+                location: location,
                 logical: node_to_ir_expression(source, *logical),
                 body: node_to_ir_block(source, *body),
                 elseif: Some(Box::new(node_to_ir_statement(source, *elseif))),
             },
             None => IrStatement::If {
-                location: location.address,
+                location: location,
                 logical: node_to_ir_expression(source, *logical),
                 body: node_to_ir_block(source, *body),
                 elseif: None,
@@ -360,7 +389,7 @@ pub fn node_to_ir_statement(source: &NamedSource<Arc<String>>, node: Node) -> Ir
             logical,
             body,
         } => IrStatement::While {
-            location: location.address,
+            location: location,
             logical: node_to_ir_expression(source, *logical),
             body: node_to_ir_block(source, *body),
         },
@@ -413,14 +442,10 @@ pub fn node_to_ir_statement(source: &NamedSource<Arc<String>>, node: Node) -> Ir
             body: node_to_ir_block(source, *body),
             typ,
         },
-        Node::Break { location } => IrStatement::Break {
-            location: location.address,
-        },
-        Node::Continue { location } => IrStatement::Continue {
-            location: location.address,
-        },
+        Node::Break { location } => IrStatement::Break { location: location },
+        Node::Continue { location } => IrStatement::Continue { location: location },
         Node::Return { location, value } => IrStatement::Return {
-            location: location.address,
+            location: location,
             value: node_to_ir_expression(source, *value),
         },
         Node::For {
@@ -432,6 +457,35 @@ pub fn node_to_ir_statement(source: &NamedSource<Arc<String>>, node: Node) -> Ir
             iterable: node_to_ir_expression(source, *iterable),
             variable: variable.value,
             body: node_to_ir_block(source, *body),
+        },
+        Node::Match {
+            location,
+            value,
+            patterns,
+        } => IrStatement::Match {
+            location: location,
+            value: node_to_ir_expression(source, *value),
+            patterns: patterns
+                .into_iter()
+                .map(|pattern| {
+                    (
+                        match pattern.0 {
+                            Pattern::Unwrap { en, fields } => IrPattern::Unwrap {
+                                en: node_to_ir_expression(source, en),
+                                fields: fields.into_iter().map(|field| field.value).collect(),
+                            },
+                            Pattern::Value(value) => {
+                                IrPattern::Value(node_to_ir_expression(source, value))
+                            }
+                            Pattern::Range { start, end } => IrPattern::Range {
+                                start: node_to_ir_expression(source, start),
+                                end: node_to_ir_expression(source, end),
+                            },
+                        },
+                        node_to_ir_block(source, pattern.1),
+                    )
+                })
+                .collect(),
         },
         unexpected => bail!(IrError::UnexpectedStatementNode { unexpected }),
     }

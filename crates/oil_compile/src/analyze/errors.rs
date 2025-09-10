@@ -111,6 +111,16 @@ pub enum AnalyzeError {
         e: EcoString,
         variant: EcoString,
     },
+    #[error("field \"{field}\" is not defined in {res:?}")]
+    #[diagnostic(code(analyze::enum_variant_is_not_defined))]
+    EnumVariantFieldIsNotDefined {
+        #[source_code]
+        src: NamedSource<Arc<String>>,
+        #[label("this access is invalid.")]
+        span: SourceSpan,
+        res: Res,
+        field: EcoString,
+    },
     #[error("field \"{field}\" is not defined in module \"{m}\".")]
     #[diagnostic(code(analyze::module_field_is_not_defined))]
     ModuleFieldIsNotDefined {
@@ -299,6 +309,15 @@ pub enum AnalyzeError {
         span: SourceSpan,
         expected: Typ,
         got: Typ,
+    },
+    #[error("wrong unwrap pattern. expected variant of enum, got {got:?}")]
+    #[diagnostic(code(analyze::wrong_unwrap_pattern))]
+    WrongUnwrapPattern {
+        #[source_code]
+        src: NamedSource<Arc<String>>,
+        #[label("this return seems to be wrong.")]
+        span: SourceSpan,
+        got: Res,
     },
     #[error("unexpected resolution {res:?}.")]
     #[diagnostic(code(analyze::unexpected_resolution), help("can't use {res:?} here."))]

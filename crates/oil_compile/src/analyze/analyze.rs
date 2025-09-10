@@ -13,9 +13,9 @@ use oil_ast::ast::{Publicity, TypePath};
 use oil_common::{address::Address, bail, warn};
 use oil_ir::ir::{
     IrBinaryOp, IrBlock, IrDeclaration, IrEnumConstructor, IrExpression, IrFunction, IrModule,
-    IrParameter, IrStatement, IrUnaryOp, IrVariable,
+    IrParameter, IrPattern, IrStatement, IrUnaryOp, IrVariable,
 };
-use std::{cell::RefCell, collections::HashMap};
+use std::{cell::RefCell, collections::HashMap, env::var};
 
 /// Call result
 pub enum CallResult {
@@ -264,7 +264,18 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                             }),
                         }
                     }
-                    ModDef::Variable(_) => todo!(),
+                    ModDef::Variable(var) => {
+                        match var.publicity {
+                            // If field is public, we resolved field
+                            Publicity::Public => Res::Value(var.value.clone()),
+                            // Else, raising `module field is private`
+                            _ => bail!(AnalyzeError::ModuleFieldIsPrivate {
+                                src: self.module.source.clone(),
+                                span: field_location.span.into(),
+                                name: field_name
+                            }),
+                        }
+                    }
                 },
                 // Else, raising `module field is not defined`
                 None => bail!(AnalyzeError::ModuleFieldIsNotDefined {
@@ -627,6 +638,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 CallResult::FromDyn => Typ::Dyn,
             },
             IrExpression::Range { .. } => todo!(),
+            IrExpression::Match { .. } => todo!(),
         }
     }
 
@@ -747,59 +759,85 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         self.resolver.pop_rib();
     }
 
-    /// Analyzes funciton declaration
-    fn analyze_function_decl(
+    /// Analyzes pattern matching
+    fn analyze_pattern_matching(
         &mut self,
         location: Address,
-        publicity: Publicity,
-        name: EcoString,
-        params: Vec<IrParameter>,
-        body: IrBlock,
-        ret_type: Option<TypePath>,
+        what: IrExpression,
+        patterns: Vec<(IrPattern, IrBlock)>,
     ) {
-        // inferring return type
-        let ret = ret_type.map_or(Typ::Void, |t| self.infer_type_annotation(t));
-
-        // inferring params
-        let params = params
-            .into_iter()
-            .map(|p| (p.name, self.infer_type_annotation(p.typ.clone())))
-            .collect::<HashMap<EcoString, Typ>>();
-
-        // creating and defining function
-        let function = Function {
-            source: self.module.source.clone(),
-            location: location.clone(),
-            name: name.clone(),
-            params: params
-                .clone()
-                .into_iter()
-                .map(|(_, v)| v)
-                .collect::<Vec<Typ>>(),
-            ret: ret.clone(),
-        };
-        self.resolver.define(
-            &self.module.source.clone(),
-            &location,
-            &name,
-            Def::Module(ModDef::Variable(WithPublicity {
-                publicity,
-                value: Typ::Function(RcPtr::new(function)),
-            })),
-        );
-
-        // pushing new scope
-        self.resolver.push_rib(RibKind::Function(ret.clone()));
-
-        // defining params in new scope
-        params.iter().for_each(|p| {
-            self.resolver
-                .define(&self.module.source, &location, p.0, Def::Local(p.1.clone()))
-        });
-
-        // inferring body
-        self.analyze_block(body);
-        self.resolver.pop_rib();
+        // inferring matchable
+        let inferred_what = self.infer_expr(what);
+        // analyzing patterns
+        for pattern in patterns {
+            // Pattern scope start
+            self.resolver.push_rib(RibKind::Pattern);
+            // Matching pattern
+            match pattern.0 {
+                IrPattern::Unwrap { en, fields } => {
+                    // inferring resolution, and checking
+                    // that is a enum variant
+                    let res = self.infer_resolution(en);
+                    match &res {
+                        Res::Variant(en, variant) => {
+                            // If types aren't equal
+                            let en_typ = Typ::Enum(en.clone());
+                            if inferred_what != en_typ {
+                                bail!(AnalyzeError::TypesMissmatch {
+                                    src: self.module.source.clone(),
+                                    span: location.span.into(),
+                                    expected: en_typ,
+                                    got: inferred_what.clone()
+                                });
+                            }
+                            // If types equal, checking fields existence
+                            else {
+                                fields.into_iter().for_each(|field| {
+                                    match variant.params.get(&field) {
+                                        // Defining field with it's type, if it exists
+                                        Some(typ) => {
+                                            self.resolver.define(
+                                                &self.module.source,
+                                                &location,
+                                                &field,
+                                                Def::Local(typ.clone()),
+                                            );
+                                        }
+                                        None => bail!(AnalyzeError::EnumVariantFieldIsNotDefined {
+                                            src: self.module.source.clone(),
+                                            span: location.span.clone().into(),
+                                            res: res.clone(),
+                                            field
+                                        }),
+                                    }
+                                });
+                            }
+                        }
+                        _ => bail!(AnalyzeError::WrongUnwrapPattern {
+                            src: self.module.source.clone(),
+                            span: location.span.into(),
+                            got: res
+                        }),
+                    }
+                }
+                IrPattern::Value(value) => {
+                    let inferred_value = self.infer_expr(value);
+                    if inferred_value != inferred_what {
+                        bail!(AnalyzeError::TypesMissmatch {
+                            src: self.module.source.clone(),
+                            span: location.span.into(),
+                            expected: inferred_what,
+                            got: inferred_value
+                        })
+                    }
+                }
+                IrPattern::Range { start, end } => todo!(),
+            }
+            // Analyzing body
+            self.analyze_block(pattern.1);
+            // Pattern scope end
+            self.resolver.pop_rib();
+        }
     }
 
     /// Analyzes statement
@@ -926,6 +964,11 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 }
             }
             IrStatement::For { .. } => todo!(),
+            IrStatement::Match {
+                location,
+                value,
+                patterns,
+            } => self.analyze_pattern_matching(location, value, patterns),
         }
     }
 
@@ -1128,6 +1171,61 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 value: CustomType::Enum(enum_),
             })),
         );
+    }
+
+    /// Analyzes funciton declaration
+    fn analyze_function_decl(
+        &mut self,
+        location: Address,
+        publicity: Publicity,
+        name: EcoString,
+        params: Vec<IrParameter>,
+        body: IrBlock,
+        ret_type: Option<TypePath>,
+    ) {
+        // inferring return type
+        let ret = ret_type.map_or(Typ::Void, |t| self.infer_type_annotation(t));
+
+        // inferring params
+        let params = params
+            .into_iter()
+            .map(|p| (p.name, self.infer_type_annotation(p.typ.clone())))
+            .collect::<HashMap<EcoString, Typ>>();
+
+        // creating and defining function
+        let function = Function {
+            source: self.module.source.clone(),
+            location: location.clone(),
+            name: name.clone(),
+            params: params
+                .clone()
+                .into_iter()
+                .map(|(_, v)| v)
+                .collect::<Vec<Typ>>(),
+            ret: ret.clone(),
+        };
+        self.resolver.define(
+            &self.module.source.clone(),
+            &location,
+            &name,
+            Def::Module(ModDef::Variable(WithPublicity {
+                publicity,
+                value: Typ::Function(RcPtr::new(function)),
+            })),
+        );
+
+        // pushing new scope
+        self.resolver.push_rib(RibKind::Function(ret.clone()));
+
+        // defining params in new scope
+        params.iter().for_each(|p| {
+            self.resolver
+                .define(&self.module.source, &location, p.0, Def::Local(p.1.clone()))
+        });
+
+        // inferring body
+        self.analyze_block(body);
+        self.resolver.pop_rib();
     }
 
     /// Analyzes declaration

@@ -67,11 +67,11 @@ pub enum Publicity {
 pub enum Pattern {
     // Unwrap enum pattern
     // `Pot.Full { flower, .. }`
-    Unwrap { en: Box<Node>, fields: Vec<Token> },
+    Unwrap { en: Node, fields: Vec<Token> },
     // `123456`
     Value(Node),
     // `0..10`
-    Range { start: Box<Node>, end: Box<Node> },
+    Range { start: Node, end: Node },
 }
 
 /// Ast node
@@ -100,13 +100,13 @@ pub enum Node {
         op: Token,
     },
     If {
-        location: Token,
+        location: Address,
         logical: Box<Node>,
         body: Box<Node>,
         elseif: Option<Box<Node>>,
     },
     While {
-        location: Token,
+        location: Address,
         logical: Box<Node>,
         body: Box<Node>,
     },
@@ -141,10 +141,10 @@ pub enum Node {
         typ: Option<TypePath>,
     },
     Break {
-        location: Token,
+        location: Address,
     },
     Continue {
-        location: Token,
+        location: Address,
     },
     Use {
         location: Address,
@@ -162,7 +162,7 @@ pub enum Node {
         op: Token,
     },
     Return {
-        location: Token,
+        location: Address,
         value: Box<Node>,
     },
     TypeDeclaration {
@@ -185,11 +185,12 @@ pub enum Node {
         body: Box<Node>,
     },
     Match {
+        location: Address,
         value: Box<Node>,
-        patterns: Vec<Pattern>,
+        patterns: Vec<(Pattern, Node)>,
     },
     Range {
-        location: Token,
+        location: Address,
         from: Box<Node>,
         to: Box<Node>,
     },

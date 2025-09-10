@@ -10,7 +10,7 @@ use oil_common::{address::Address, bail};
 use std::sync::Arc;
 
 // Resolution
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Res {
     Module(EcoString),
     Custom(CustomType),
