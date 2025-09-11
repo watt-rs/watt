@@ -74,6 +74,14 @@ pub enum Pattern {
     Range { start: Node, end: Node },
 }
 
+/// Case
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct Case {
+    pub address: Address,
+    pub pattern: Pattern,
+    pub body: Node,
+}
+
 /// Ast node
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 #[allow(dead_code)]
@@ -187,7 +195,7 @@ pub enum Node {
     Match {
         location: Address,
         value: Box<Node>,
-        patterns: Vec<(Pattern, Node)>,
+        cases: Vec<Case>,
     },
     Range {
         location: Address,

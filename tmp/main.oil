@@ -18,7 +18,7 @@ enum Option {
 fn main() {
     let pot = Option.Some(Pot.Full(Flower(15)))
     match pot {
-        Option.Some { element } -> {
+        Option.Some { element, other_field } -> {
         }
         Option.None() -> {
         }

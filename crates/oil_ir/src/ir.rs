@@ -39,6 +39,14 @@ pub enum IrPattern {
     },
 }
 
+// Ir case
+#[derive(Debug, Clone, PartialEq)]
+pub struct IrCase {
+    pub location: Address,
+    pub pattern: IrPattern,
+    pub body: IrBlock,
+}
+
 /// Ir statement
 #[derive(Debug, Clone, PartialEq)]
 pub enum IrStatement {
@@ -95,7 +103,7 @@ pub enum IrStatement {
     Match {
         location: Address,
         value: IrExpression,
-        patterns: Vec<(IrPattern, IrBlock)>,
+        cases: Vec<IrCase>,
     },
 }
 
@@ -151,7 +159,7 @@ pub enum IrExpression {
     Match {
         location: Address,
         value: Box<IrExpression>,
-        patterns: Vec<(IrPattern, IrBlock)>,
+        cases: Vec<IrCase>,
     },
 }
 

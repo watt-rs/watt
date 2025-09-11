@@ -112,11 +112,11 @@ pub enum AnalyzeError {
         variant: EcoString,
     },
     #[error("field \"{field}\" is not defined in {res:?}")]
-    #[diagnostic(code(analyze::enum_variant_is_not_defined))]
+    #[diagnostic(code(analyze::enum_variant_field_is_not_defined))]
     EnumVariantFieldIsNotDefined {
         #[source_code]
         src: NamedSource<Arc<String>>,
-        #[label("this access is invalid.")]
+        #[label("this pattern isn't valid.")]
         span: SourceSpan,
         res: Res,
         field: EcoString,

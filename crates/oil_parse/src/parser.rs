@@ -876,24 +876,33 @@ impl<'file_path> Parser<'file_path> {
         // End address
         let end = self.peek().address.clone();
 
-        // Patterns
+        // Cases
         self.consume(TokenKind::Lbrace);
-        let mut patterns = Vec::new();
+        let mut cases = Vec::new();
         while !self.check(TokenKind::Rbrace) {
+            // Start address of pattern
+            let pat_start = self.peek().address.clone();
+            // Pattern of case
             let pattern = self.pattern();
+            // End address of pattern
+            let pat_end = self.peek().address.clone();
             // -> { body, ... }
             self.consume(TokenKind::Arrow);
             self.consume(TokenKind::Lbrace);
             let body = self.block();
             self.consume(TokenKind::Rbrace);
-            patterns.push((pattern, body));
+            cases.push(Case {
+                address: Address::span(pat_start.span.start..pat_end.span.end),
+                pattern,
+                body,
+            });
         }
         self.consume(TokenKind::Rbrace);
 
         Node::Match {
             location: Address::span(start.span.start..end.span.end),
             value: Box::new(value),
-            patterns,
+            cases,
         }
     }
 

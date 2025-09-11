@@ -12,8 +12,8 @@ use ecow::EcoString;
 use oil_ast::ast::{Publicity, TypePath};
 use oil_common::{address::Address, bail, warn};
 use oil_ir::ir::{
-    IrBinaryOp, IrBlock, IrDeclaration, IrEnumConstructor, IrExpression, IrFunction, IrModule,
-    IrParameter, IrPattern, IrStatement, IrUnaryOp, IrVariable,
+    IrBinaryOp, IrBlock, IrCase, IrDeclaration, IrEnumConstructor, IrExpression, IrFunction,
+    IrModule, IrParameter, IrPattern, IrStatement, IrUnaryOp, IrVariable,
 };
 use std::{cell::RefCell, collections::HashMap, env::var};
 
@@ -764,16 +764,16 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         &mut self,
         location: Address,
         what: IrExpression,
-        patterns: Vec<(IrPattern, IrBlock)>,
+        cases: Vec<IrCase>,
     ) {
         // inferring matchable
         let inferred_what = self.infer_expr(what);
-        // analyzing patterns
-        for pattern in patterns {
+        // analyzing cases
+        for case in cases {
             // Pattern scope start
             self.resolver.push_rib(RibKind::Pattern);
             // Matching pattern
-            match pattern.0 {
+            match case.pattern {
                 IrPattern::Unwrap { en, fields } => {
                     // inferring resolution, and checking
                     // that is a enum variant
@@ -785,7 +785,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                             if inferred_what != en_typ {
                                 bail!(AnalyzeError::TypesMissmatch {
                                     src: self.module.source.clone(),
-                                    span: location.span.into(),
+                                    span: case.location.span.into(),
                                     expected: en_typ,
                                     got: inferred_what.clone()
                                 });
@@ -805,7 +805,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                                         }
                                         None => bail!(AnalyzeError::EnumVariantFieldIsNotDefined {
                                             src: self.module.source.clone(),
-                                            span: location.span.clone().into(),
+                                            span: case.location.span.clone().into(),
                                             res: res.clone(),
                                             field
                                         }),
@@ -815,7 +815,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                         }
                         _ => bail!(AnalyzeError::WrongUnwrapPattern {
                             src: self.module.source.clone(),
-                            span: location.span.into(),
+                            span: case.location.span.into(),
                             got: res
                         }),
                     }
@@ -825,7 +825,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     if inferred_value != inferred_what {
                         bail!(AnalyzeError::TypesMissmatch {
                             src: self.module.source.clone(),
-                            span: location.span.into(),
+                            span: case.location.span.into(),
                             expected: inferred_what,
                             got: inferred_value
                         })
@@ -834,7 +834,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 IrPattern::Range { start, end } => todo!(),
             }
             // Analyzing body
-            self.analyze_block(pattern.1);
+            self.analyze_block(case.body);
             // Pattern scope end
             self.resolver.pop_rib();
         }
@@ -967,8 +967,8 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             IrStatement::Match {
                 location,
                 value,
-                patterns,
-            } => self.analyze_pattern_matching(location, value, patterns),
+                cases,
+            } => self.analyze_pattern_matching(location, value, cases),
         }
     }
 

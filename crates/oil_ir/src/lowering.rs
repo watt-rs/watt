@@ -2,8 +2,9 @@
 use crate::{
     errors::IrError,
     ir::{
-        IrBinaryOp, IrBlock, IrDeclaration, IrDependency, IrEnum, IrEnumConstructor, IrExpression,
-        IrFunction, IrModule, IrParameter, IrPattern, IrStatement, IrType, IrUnaryOp, IrVariable,
+        IrBinaryOp, IrBlock, IrCase, IrDeclaration, IrDependency, IrEnum, IrEnumConstructor,
+        IrExpression, IrFunction, IrModule, IrParameter, IrPattern, IrStatement, IrType, IrUnaryOp,
+        IrVariable,
     },
 };
 use miette::NamedSource;
@@ -332,29 +333,28 @@ pub fn node_to_ir_expression(source: &NamedSource<Arc<String>>, node: Node) -> I
         Node::Match {
             location,
             value,
-            patterns,
+            cases,
         } => IrExpression::Match {
             location,
             value: Box::new(node_to_ir_expression(source, *value)),
-            patterns: patterns
+            cases: cases
                 .into_iter()
-                .map(|pattern| {
-                    (
-                        match pattern.0 {
-                            Pattern::Unwrap { en, fields } => IrPattern::Unwrap {
-                                en: node_to_ir_expression(source, en),
-                                fields: fields.into_iter().map(|field| field.value).collect(),
-                            },
-                            Pattern::Value(value) => {
-                                IrPattern::Value(node_to_ir_expression(source, value))
-                            }
-                            Pattern::Range { start, end } => IrPattern::Range {
-                                start: node_to_ir_expression(source, start),
-                                end: node_to_ir_expression(source, end),
-                            },
+                .map(|case| IrCase {
+                    location: case.address,
+                    pattern: match case.pattern {
+                        Pattern::Unwrap { en, fields } => IrPattern::Unwrap {
+                            en: node_to_ir_expression(source, en),
+                            fields: fields.into_iter().map(|field| field.value).collect(),
                         },
-                        node_to_ir_block(source, pattern.1),
-                    )
+                        Pattern::Value(value) => {
+                            IrPattern::Value(node_to_ir_expression(source, value))
+                        }
+                        Pattern::Range { start, end } => IrPattern::Range {
+                            start: node_to_ir_expression(source, start),
+                            end: node_to_ir_expression(source, end),
+                        },
+                    },
+                    body: node_to_ir_block(source, case.body),
                 })
                 .collect(),
         },
@@ -461,29 +461,28 @@ pub fn node_to_ir_statement(source: &NamedSource<Arc<String>>, node: Node) -> Ir
         Node::Match {
             location,
             value,
-            patterns,
+            cases,
         } => IrStatement::Match {
             location: location,
             value: node_to_ir_expression(source, *value),
-            patterns: patterns
+            cases: cases
                 .into_iter()
-                .map(|pattern| {
-                    (
-                        match pattern.0 {
-                            Pattern::Unwrap { en, fields } => IrPattern::Unwrap {
-                                en: node_to_ir_expression(source, en),
-                                fields: fields.into_iter().map(|field| field.value).collect(),
-                            },
-                            Pattern::Value(value) => {
-                                IrPattern::Value(node_to_ir_expression(source, value))
-                            }
-                            Pattern::Range { start, end } => IrPattern::Range {
-                                start: node_to_ir_expression(source, start),
-                                end: node_to_ir_expression(source, end),
-                            },
+                .map(|case| IrCase {
+                    location: case.address,
+                    pattern: match case.pattern {
+                        Pattern::Unwrap { en, fields } => IrPattern::Unwrap {
+                            en: node_to_ir_expression(source, en),
+                            fields: fields.into_iter().map(|field| field.value).collect(),
                         },
-                        node_to_ir_block(source, pattern.1),
-                    )
+                        Pattern::Value(value) => {
+                            IrPattern::Value(node_to_ir_expression(source, value))
+                        }
+                        Pattern::Range { start, end } => IrPattern::Range {
+                            start: node_to_ir_expression(source, start),
+                            end: node_to_ir_expression(source, end),
+                        },
+                    },
+                    body: node_to_ir_block(source, case.body),
                 })
                 .collect(),
         },
