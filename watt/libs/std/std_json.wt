@@ -127,7 +127,7 @@ unit json {
                 case ']' -> tokens.add(new JsonToken(JsonTokenKind.Rbracket, ']', line))
                 case ',' -> tokens.add(new JsonToken(JsonTokenKind.Comma, ',', line))
                 case ':' -> tokens.add(new JsonToken(JsonTokenKind.Colon, ':', line))
-                case '-' -> tokens.add(lex_nu mber(current)?)
+                case '-' -> tokens.add(lex_number(current)?)
                 case ' ' {}
                 case '\n' -> line += 1
                 case '\t' {}
