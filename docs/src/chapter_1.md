@@ -19,7 +19,7 @@ my_project
   /main.wt
 ```
 
-Now open the main.rs file and let's write our first program, traditional 'Hello, world!'
+Now open the main.wt file and let's write our first program, traditional 'Hello, world!'
 
 *main.wt:*
 ```watt
