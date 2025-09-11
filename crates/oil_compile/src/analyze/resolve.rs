@@ -9,7 +9,7 @@ use crate::analyze::{
 use ecow::EcoString;
 use miette::NamedSource;
 use oil_common::{address::Address, bail};
-use std::{cell::RefCell, collections::HashMap, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, fmt::Debug, sync::Arc};
 
 /// Definition
 pub enum Def {
@@ -32,27 +32,40 @@ pub enum ModDef {
     Variable(WithPublicity<Typ>),
 }
 
+/// Debug implementation
+impl Debug for ModDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ModDef::CustomType(ty) => write!(f, "ModDef({ty:?})"),
+            ModDef::Variable(var) => write!(f, "ModDef({var:?})"),
+        }
+    }
+}
+
 /// Module resolver
 ///
 /// * rib_stack - stack of ribs for nested scopes
 /// * definitions - module definitions
-pub struct ModuleResolver<'pkg> {
+pub struct ModuleResolver {
     /// Ribs stack of module
     ribs_stack: RibsStack,
     /// Module definitions
     mod_defs: HashMap<EcoString, ModDef>,
     /// Imported modules
-    pub imported_modules: HashMap<EcoString, &'pkg Module>,
+    pub imported_modules: HashMap<EcoString, RcPtr<Module>>,
+    /// Imported modules
+    pub imported_defs: HashMap<EcoString, ModDef>,
 }
 
 /// Implementation
-impl<'pkg> ModuleResolver<'pkg> {
+impl ModuleResolver {
     /// Creates new module resolver
     pub fn new() -> Self {
         Self {
             ribs_stack: RibsStack::new(),
             mod_defs: HashMap::new(),
             imported_modules: HashMap::new(),
+            imported_defs: HashMap::new(),
         }
     }
 
@@ -120,14 +133,21 @@ impl<'pkg> ModuleResolver<'pkg> {
                     ModDef::CustomType(ty) => Res::Custom(ty.value.clone()),
                     ModDef::Variable(var) => Res::Value(var.value.clone()),
                 },
-                None => match self.imported_modules.get(name) {
-                    // Checking existence in modules
-                    Some(_) => Res::Module(name.clone()),
-                    None => bail!(AnalyzeError::CouldNotResolve {
-                        src: named_source.clone(),
-                        span: address.clone().span.into(),
-                        name: name.clone()
-                    }),
+                None => match self.imported_defs.get(name) {
+                    // Checking existence in imported defs
+                    Some(typ) => match typ {
+                        ModDef::CustomType(ty) => Res::Custom(ty.value.clone()),
+                        ModDef::Variable(var) => Res::Value(var.value.clone()),
+                    },
+                    None => match self.imported_modules.get(name) {
+                        // Checking existence in modules
+                        Some(_) => Res::Module(name.clone()),
+                        None => bail!(AnalyzeError::CouldNotResolve {
+                            src: named_source.clone(),
+                            span: address.clone().span.into(),
+                            name: name.clone()
+                        }),
+                    },
                 },
             },
         }
@@ -151,11 +171,22 @@ impl<'pkg> ModuleResolver<'pkg> {
                     v: name.clone()
                 }),
             },
-            None => bail!(AnalyzeError::TypeIsNotDefined {
-                src: named_source.clone(),
-                span: address.clone().span.into(),
-                t: name.clone()
-            }),
+            None => match self.imported_defs.get(name) {
+                // Checking existence in imported defs
+                Some(typ) => match typ {
+                    ModDef::CustomType(ty) => return ty.value.clone(),
+                    ModDef::Variable(_) => bail!(AnalyzeError::CouldNotUseValueAsType {
+                        src: named_source.clone(),
+                        span: address.clone().span.into(),
+                        v: name.clone()
+                    }),
+                },
+                None => bail!(AnalyzeError::TypeIsNotDefined {
+                    src: named_source.clone(),
+                    span: address.clone().span.into(),
+                    t: name.clone()
+                }),
+            },
         }
     }
 
@@ -196,5 +227,60 @@ impl<'pkg> ModuleResolver<'pkg> {
     /// Collects fields from resolver
     pub fn collect(&mut self) -> HashMap<EcoString, ModDef> {
         self.mod_defs.drain().collect()
+    }
+
+    /// Imports module as name
+    pub fn import_as(
+        &mut self,
+        named_source: &NamedSource<Arc<String>>,
+        address: &Address,
+        name: EcoString,
+        module: RcPtr<Module>,
+    ) {
+        match self.imported_modules.get(&name) {
+            Some(module) => bail!(AnalyzeError::ModuleIsAlreadyImportedAs {
+                src: named_source.clone(),
+                span: address.span.clone().into(),
+                m: module.name.clone(),
+                name: name.clone()
+            }),
+            None => self.imported_modules.insert(name, module),
+        };
+    }
+
+    /// Imports names from module
+    pub fn import_for(
+        &mut self,
+        named_source: &NamedSource<Arc<String>>,
+        address: &Address,
+        names: Vec<EcoString>,
+        module: RcPtr<Module>,
+    ) {
+        // Importing names
+        for name in names {
+            // Checking name existence
+            match module.fields.get(&name) {
+                Some(def) => match self.imported_defs.get(&name) {
+                    // Checking name is already imported from other module
+                    Some(already) => bail!(AnalyzeError::DefIsAlreadyImported {
+                        src: named_source.clone(),
+                        span: address.span.clone().into(),
+                        name: name.clone(),
+                        def: already.clone()
+                    }),
+                    None => {
+                        self.imported_defs.insert(name, def.clone());
+                    }
+                },
+                None => {
+                    bail!(AnalyzeError::ModuleFieldIsNotDefined {
+                        src: named_source.clone(),
+                        span: address.span.clone().into(),
+                        m: module.name.clone(),
+                        field: name
+                    })
+                }
+            }
+        }
     }
 }

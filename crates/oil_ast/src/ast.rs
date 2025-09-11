@@ -82,6 +82,13 @@ pub struct Case {
     pub body: Node,
 }
 
+/// Use kind
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum UseKind {
+    AsName(Token),
+    ForNames(Vec<Token>),
+}
+
 /// Ast node
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 #[allow(dead_code)]
@@ -157,7 +164,7 @@ pub enum Node {
     Use {
         location: Address,
         path: DependencyPath,
-        name: Option<Token>,
+        kind: UseKind,
     },
     Cond {
         left: Box<Node>,

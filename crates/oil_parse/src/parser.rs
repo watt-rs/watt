@@ -179,6 +179,7 @@ impl<'file_path> Parser<'file_path> {
                     container: Box::new(result),
                     name: self.consume(TokenKind::Id).clone(),
                 };
+                continue;
             }
             // checking for call
             if self.check(TokenKind::Lparen) {
@@ -190,11 +191,10 @@ impl<'file_path> Parser<'file_path> {
                     what: Box::new(result),
                     args,
                 };
+                continue;
             }
-            // else, breaking cycle
-            else {
-                break;
-            }
+            // breaking cycle
+            break;
         }
         result
     }
@@ -532,13 +532,24 @@ impl<'file_path> Parser<'file_path> {
 
         // `path/to/module`
         let path = self.dependency_path();
-        let name;
+        let kind;
+
+        // `for $name, $name, n...`
+        if self.check(TokenKind::For) {
+            self.consume(TokenKind::For);
+            // Parsing names
+            let mut names = Vec::new();
+            names.push(self.consume(TokenKind::Id).clone());
+            while self.check(TokenKind::Comma) {
+                self.advance();
+                names.push(self.consume(TokenKind::Id).clone());
+            }
+            kind = UseKind::ForNames(names);
+        }
         // `as $id`
-        if self.check(TokenKind::As) {
+        else {
             self.consume(TokenKind::As);
-            name = Option::Some(self.consume(TokenKind::Id).clone());
-        } else {
-            name = Option::None;
+            kind = UseKind::AsName(self.consume(TokenKind::Id).clone());
         }
 
         // end of span `use ... as ...`
@@ -547,7 +558,7 @@ impl<'file_path> Parser<'file_path> {
         Node::Use {
             location: Address::span(span_start.address.span.start..span_end.address.span.end),
             path,
-            name,
+            kind,
         }
     }
 

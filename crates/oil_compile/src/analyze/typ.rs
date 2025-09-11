@@ -82,10 +82,20 @@ impl Debug for Function {
 }
 
 /// Custom type
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq)]
 pub enum CustomType {
     Enum(RcPtr<Enum>),
     Type(RcPtr<RefCell<Type>>),
+}
+
+/// Debug implementation
+impl Debug for CustomType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CustomType::Enum(en) => write!(f, "Custom({:?})", en),
+            CustomType::Type(ty) => write!(f, "Custom({:?})", ty),
+        }
+    }
 }
 
 /// Module
@@ -146,8 +156,15 @@ impl Debug for Typ {
 }
 
 /// T with publicity
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct WithPublicity<T: Clone + PartialEq> {
     pub publicity: Publicity,
     pub value: T,
+}
+
+/// Debug implementation
+impl<T: Debug + Clone + PartialEq> Debug for WithPublicity<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "WithPublicity({:?}, {:?})", self.publicity, self.value)
+    }
 }

@@ -247,12 +247,19 @@ pub enum IrDeclaration {
     Enum(IrEnum),
 }
 
+/// Ir dependency kind
+#[derive(Debug, Clone, PartialEq)]
+pub enum IrDependencyKind {
+    AsName(EcoString),
+    ForNames(Vec<EcoString>),
+}
+
 /// Ir dependency
 #[derive(Debug, Clone, PartialEq)]
 pub struct IrDependency {
     pub location: Address,
-    pub name: Option<EcoString>,
     pub path: EcoString,
+    pub kind: IrDependencyKind,
 }
 
 /// Ir module

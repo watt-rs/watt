@@ -1,3 +1,6 @@
+use option for Option
+use option for Option
+
 type Flower(water_level: int) {
     pub let water_level: int = water_level
     pub fn water(add: int) {
@@ -10,15 +13,10 @@ enum Pot {
     Nothing
 }
 
-enum Option {
-    Some(element: dyn),
-    None
-}
-
 fn main() {
     let pot = Option.Some(Pot.Full(Flower(15)))
     match pot {
-        Option.Some { element, other_field } -> {
+        Option.Some { element } -> {
         }
         Option.None() -> {
         }

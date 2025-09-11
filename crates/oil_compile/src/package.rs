@@ -1,6 +1,6 @@
 /// Imports
 use crate::{
-    analyze::{analyze::ModuleAnalyzer, typ::Module},
+    analyze::{analyze::ModuleAnalyzer, rc_ptr::RcPtr, typ::Module},
     errors::CompileError,
     io::io::{self, OilFile},
     project::ProjectCompiler,
@@ -13,7 +13,7 @@ use oil_common::bail;
 use oil_ir::{ir::IrModule, lowering};
 use oil_lex::lexer::Lexer;
 use oil_parse::parser::Parser;
-use petgraph::{prelude::DiGraphMap, Direction};
+use petgraph::{Direction, prelude::DiGraphMap};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -182,25 +182,23 @@ impl<'project_compiler> PackageCompiler<'project_compiler> {
 
         // Performing toposort
         let sorted = self.toposort(dep_tree);
-        let sorted_modules = sorted
-            .iter()
-            .map(|m| match modules.get(*m) {
-                Some(module) => (*m, module),
-                None => bail!(CompileError::NoModuleFound { name: (*m).clone() }),
-            })
-            .collect::<HashMap<&EcoString, &IrModule>>();
-        info!("performed toposort {:#?}", sorted_modules);
+        info!("performed toposort {:#?}", sorted);
 
         // Performing analyze
         info!("analyzing modules...");
-        let mut modules: HashMap<EcoString, Module> = HashMap::new();
-        for (name, module) in sorted_modules {
-            let mut analyzer = ModuleAnalyzer::new(module, name, &mut modules);
-            let module = analyzer.analyze();
-            modules.insert(name.clone(), module);
+        let mut analyzed_modules: HashMap<EcoString, RcPtr<Module>> = HashMap::new();
+        for name in sorted {
+            info!("analyzing module {name}");
+            let module = modules.get(name).unwrap();
+            let mut analyzer = ModuleAnalyzer::new(module, name, &analyzed_modules);
+            let analyzed_module = analyzer.analyze();
+            analyzed_modules.insert(name.clone(), RcPtr::new(analyzed_module));
         }
 
         // Performing codegen
-        info!("performing codegen...")
+        info!("performing codegen...");
+        for module in analyzed_modules {
+            info!("performing codegen for {}", module.0)
+        }
     }
 }

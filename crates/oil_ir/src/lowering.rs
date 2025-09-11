@@ -2,13 +2,13 @@
 use crate::{
     errors::IrError,
     ir::{
-        IrBinaryOp, IrBlock, IrCase, IrDeclaration, IrDependency, IrEnum, IrEnumConstructor,
-        IrExpression, IrFunction, IrModule, IrParameter, IrPattern, IrStatement, IrType, IrUnaryOp,
-        IrVariable,
+        IrBinaryOp, IrBlock, IrCase, IrDeclaration, IrDependency, IrDependencyKind, IrEnum,
+        IrEnumConstructor, IrExpression, IrFunction, IrModule, IrParameter, IrPattern, IrStatement,
+        IrType, IrUnaryOp, IrVariable,
     },
 };
 use miette::NamedSource;
-use oil_ast::ast::{Node, Pattern, Tree};
+use oil_ast::ast::{Node, Pattern, Tree, UseKind};
 use oil_common::bail;
 use std::sync::Arc;
 
@@ -504,11 +504,16 @@ pub fn tree_to_ir(source: NamedSource<Arc<String>>, tree: Tree) -> IrModule {
             Node::Use {
                 location,
                 path,
-                name,
+                kind,
             } => module.dependencies.push(IrDependency {
                 location,
-                name: name.map(|n| n.value),
                 path: path.module,
+                kind: match kind {
+                    UseKind::AsName(name) => IrDependencyKind::AsName(name.value),
+                    UseKind::ForNames(names) => IrDependencyKind::ForNames(
+                        names.into_iter().map(|name| name.value).collect(),
+                    ),
+                },
             }),
             declaration => module
                 .definitions

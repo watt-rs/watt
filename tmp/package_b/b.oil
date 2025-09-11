@@ -1,2 +1,1 @@
-use a
-use package_a/a
+use package_a/a as a2

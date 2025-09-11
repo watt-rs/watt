@@ -12,10 +12,10 @@ use ecow::EcoString;
 use oil_ast::ast::{Publicity, TypePath};
 use oil_common::{address::Address, bail, warn};
 use oil_ir::ir::{
-    IrBinaryOp, IrBlock, IrCase, IrDeclaration, IrEnumConstructor, IrExpression, IrFunction,
-    IrModule, IrParameter, IrPattern, IrStatement, IrUnaryOp, IrVariable,
+    IrBinaryOp, IrBlock, IrCase, IrDeclaration, IrDependency, IrDependencyKind, IrEnumConstructor,
+    IrExpression, IrFunction, IrModule, IrParameter, IrPattern, IrStatement, IrUnaryOp, IrVariable,
 };
-use std::{cell::RefCell, collections::HashMap, env::var};
+use std::{cell::RefCell, collections::HashMap};
 
 /// Call result
 pub enum CallResult {
@@ -31,9 +31,9 @@ pub struct ModuleAnalyzer<'pkg> {
     module: &'pkg IrModule,
     module_name: &'pkg EcoString,
     /// Resolver
-    resolver: ModuleResolver<'pkg>,
+    resolver: ModuleResolver,
     /// Modules available to import
-    modules: &'pkg mut HashMap<EcoString, Module>,
+    modules: &'pkg HashMap<EcoString, RcPtr<Module>>,
 }
 
 /// Implementation
@@ -42,7 +42,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     pub fn new(
         module: &'pkg IrModule,
         module_name: &'pkg EcoString,
-        modules: &'pkg mut HashMap<EcoString, Module>,
+        modules: &'pkg HashMap<EcoString, RcPtr<Module>>,
     ) -> Self {
         Self {
             module,
@@ -831,7 +831,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                         })
                     }
                 }
-                IrPattern::Range { start, end } => todo!(),
+                IrPattern::Range { start: _, end: _ } => todo!(),
             }
             // Analyzing body
             self.analyze_block(case.body);
@@ -1262,9 +1262,37 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         }
     }
 
+    /// Performs import
+    pub fn perform_import(&mut self, import: IrDependency) {
+        match self.modules.get(&import.path) {
+            Some(module) => match import.kind {
+                IrDependencyKind::AsName(name) => self.resolver.import_as(
+                    &self.module.source,
+                    &import.location,
+                    name,
+                    module.clone(),
+                ),
+                IrDependencyKind::ForNames(names) => self.resolver.import_for(
+                    &self.module.source,
+                    &import.location,
+                    names,
+                    module.clone(),
+                ),
+            },
+            None => bail!(AnalyzeError::ImportOfUnknownModule {
+                src: self.module.source.clone(),
+                span: import.location.span.into(),
+                m: import.path
+            }),
+        };
+    }
+
     /// Performs analyze of module
     pub fn analyze(&mut self) -> Module {
-        for definition in self.module.clone().definitions {
+        for import in self.module.dependencies.clone() {
+            self.perform_import(import)
+        }
+        for definition in self.module.definitions.clone() {
             self.analyze_declaration(definition)
         }
         Module {

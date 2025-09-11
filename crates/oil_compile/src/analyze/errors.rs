@@ -1,6 +1,7 @@
 /// Imports
 use crate::analyze::{
     res::Res,
+    resolve::ModDef,
     typ::{CustomType, Typ},
 };
 use ecow::EcoString;
@@ -150,7 +151,7 @@ pub enum AnalyzeError {
         span: SourceSpan,
         t: CustomType,
     },
-    #[error("module field \"{name:?}\" is private.")]
+    #[error("module field \"{name}\" is private.")]
     #[diagnostic(code(analyze::module_field_is_private))]
     ModuleFieldIsPrivate {
         #[source_code]
@@ -184,7 +185,7 @@ pub enum AnalyzeError {
         span: SourceSpan,
         res: Res,
     },
-    #[error("type {t} is not defined.")]
+    #[error("type \"{t}\" is not defined.")]
     #[diagnostic(code(analyze::type_is_not_defined))]
     TypeIsNotDefined {
         #[source_code]
@@ -193,14 +194,23 @@ pub enum AnalyzeError {
         span: SourceSpan,
         t: EcoString,
     },
-    #[error("module {m} is not defined.")]
+    #[error("module \"{m}\" is not defined.")]
     #[diagnostic(
         code(analyze::module_is_not_defined),
         help("please, file an issue on github."),
         url("https://github.com/oillanguage/oil")
     )]
     ModuleIsNotDefined { m: EcoString },
-    #[error("type named {t} is already defined.")]
+    #[error("module \"{m}\" is unknown and can't be imported.")]
+    #[diagnostic(code(analyze::import_of_unknown_module))]
+    ImportOfUnknownModule {
+        #[source_code]
+        src: NamedSource<Arc<String>>,
+        #[label("this module is not unknown.")]
+        span: SourceSpan,
+        m: EcoString,
+    },
+    #[error("type named \"{t}\" is already defined.")]
     #[diagnostic(code(analyze::type_is_already_defined))]
     TypeIsAlreadyDefined {
         #[source_code]
@@ -209,7 +219,7 @@ pub enum AnalyzeError {
         span: SourceSpan,
         t: EcoString,
     },
-    #[error("method named {m} is already defined.")]
+    #[error("method named \"{m}\" is already defined.")]
     #[diagnostic(code(analyze::method_is_already_defined))]
     MethodIsAlreadyDefined {
         #[source_code]
@@ -217,6 +227,26 @@ pub enum AnalyzeError {
         #[label("this method is already defined.")]
         span: SourceSpan,
         m: EcoString,
+    },
+    #[error("module \"{m}\" is already imported as \"{name}\".")]
+    #[diagnostic(code(analyze::module_is_already_imported))]
+    ModuleIsAlreadyImportedAs {
+        #[source_code]
+        src: NamedSource<Arc<String>>,
+        #[label("this module is already imported.")]
+        span: SourceSpan,
+        m: EcoString,
+        name: EcoString,
+    },
+    #[error("name \"{name}\" is already imported as {def:?}.")]
+    #[diagnostic(code(analyze::def_is_already_imported))]
+    DefIsAlreadyImported {
+        #[source_code]
+        src: NamedSource<Arc<String>>,
+        #[label("this name is already imported.")]
+        span: SourceSpan,
+        name: EcoString,
+        def: ModDef,
     },
     #[error("invalid arguments.")]
     #[diagnostic(code(analyze::invalid_args))]
