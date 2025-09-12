@@ -407,8 +407,8 @@ pub fn node_to_ir_statement(source: &NamedSource<Arc<String>>, node: Node) -> Ir
             value,
         } => IrStatement::Assign {
             location,
-            what: Box::new(node_to_ir_expression(source, *what)),
-            value: Box::new(node_to_ir_expression(source, *value)),
+            what: node_to_ir_expression(source, *what),
+            value: node_to_ir_expression(source, *value),
         },
         Node::Call {
             location,
@@ -416,7 +416,7 @@ pub fn node_to_ir_statement(source: &NamedSource<Arc<String>>, node: Node) -> Ir
             args,
         } => IrStatement::Call {
             location,
-            what: Box::new(node_to_ir_expression(source, *what)),
+            what: node_to_ir_expression(source, *what),
             args: args
                 .into_iter()
                 .map(|arg| node_to_ir_expression(source, arg))

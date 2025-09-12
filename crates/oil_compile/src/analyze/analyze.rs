@@ -913,13 +913,13 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 location,
                 what,
                 value,
-            } => self.analyze_assignment(location, *what, *value),
+            } => self.analyze_assignment(location, what, value),
             IrStatement::Call {
                 location,
                 what,
                 args,
             } => {
-                self.infer_call(location, *what, args);
+                self.infer_call(location, what, args);
             }
             IrStatement::Fn {
                 location,

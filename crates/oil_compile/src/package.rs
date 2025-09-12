@@ -1,6 +1,7 @@
 /// Imports
 use crate::{
     analyze::{analyze::ModuleAnalyzer, rc_ptr::RcPtr, typ::Module},
+    codegen::codegen::{self, gen_expression, gen_statement},
     errors::CompileError,
     io::io::{self, OilFile},
     project::ProjectCompiler,
@@ -9,13 +10,17 @@ use camino::Utf8PathBuf;
 use ecow::EcoString;
 use log::info;
 use miette::NamedSource;
-use oil_common::bail;
-use oil_ir::{ir::IrModule, lowering};
+use oil_common::{address::Address, bail};
+use oil_ir::{
+    ir::{IrBlock, IrCase, IrExpression, IrModule, IrPattern, IrStatement},
+    lowering,
+};
 use oil_lex::lexer::Lexer;
 use oil_parse::parser::Parser;
 use petgraph::{Direction, prelude::DiGraphMap};
 use std::{
     collections::{HashMap, HashSet},
+    ops::Add,
     sync::Arc,
 };
 
@@ -200,5 +205,50 @@ impl<'project_compiler> PackageCompiler<'project_compiler> {
         for module in analyzed_modules {
             info!("performing codegen for {}", module.0)
         }
+
+        info!(
+            "{:#}",
+            gen_statement(IrStatement::Match {
+                location: Address::new(0),
+                value: IrExpression::Float {
+                    location: Address::new(0),
+                    value: 0f64
+                },
+                cases: vec![
+                    IrCase {
+                        location: Address::new(0),
+                        pattern: IrPattern::Unwrap {
+                            en: IrExpression::Get {
+                                location: Address::new(0),
+                                name: EcoString::from("TestEnum")
+                            },
+                            fields: vec![
+                                EcoString::from("f1"),
+                                EcoString::from("f2"),
+                                EcoString::from("f3")
+                            ]
+                        },
+                        body: IrBlock { nodes: Vec::new() }
+                    },
+                    IrCase {
+                        location: Address::new(0),
+                        pattern: IrPattern::Unwrap {
+                            en: IrExpression::Get {
+                                location: Address::new(0),
+                                name: EcoString::from("TestEnum")
+                            },
+                            fields: vec![
+                                EcoString::from("f1"),
+                                EcoString::from("f2"),
+                                EcoString::from("f3")
+                            ]
+                        },
+                        body: IrBlock { nodes: Vec::new() }
+                    }
+                ]
+            })
+            .to_file_string()
+            .unwrap()
+        )
     }
 }

@@ -1,5 +1,4 @@
 use option for Option
-use option for Option
 
 type Flower(water_level: int) {
     pub let water_level: int = water_level

@@ -69,12 +69,12 @@ pub enum IrStatement {
     },
     Assign {
         location: Address,
-        what: Box<IrExpression>,
-        value: Box<IrExpression>,
+        what: IrExpression,
+        value: IrExpression,
     },
     Call {
         location: Address,
-        what: Box<IrExpression>,
+        what: IrExpression,
         args: Vec<IrExpression>,
     },
     Fn {

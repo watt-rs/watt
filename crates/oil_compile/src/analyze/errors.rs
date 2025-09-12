@@ -33,15 +33,6 @@ pub enum AnalyzeError {
         span: SourceSpan,
         name: EcoString,
     },
-    #[error("could not use type {t} as value.")]
-    #[diagnostic(code(analyze::could_not_use_type_as_value))]
-    CouldNotUseTypeAsValue {
-        #[source_code]
-        src: NamedSource<Arc<String>>,
-        #[label("could not use as value.")]
-        span: SourceSpan,
-        t: EcoString,
-    },
     #[error("could not use value {v} as type.")]
     #[diagnostic(code(analyze::could_not_use_value_as_type))]
     CouldNotUseValueAsType {
@@ -82,15 +73,6 @@ pub enum AnalyzeError {
         span: SourceSpan,
         t: Typ,
         op: IrUnaryOp,
-    },
-    #[error("could not access field of type {t:?}.")]
-    #[diagnostic(code(analyze::invalid_field_access))]
-    InvalidFieldAccess {
-        #[source_code]
-        src: NamedSource<Arc<String>>,
-        #[label("this is incorrect.")]
-        span: SourceSpan,
-        t: Typ,
     },
     #[error("field \"{field}\" is not defined in type {t}.")]
     #[diagnostic(code(analyze::field_is_not_defined))]

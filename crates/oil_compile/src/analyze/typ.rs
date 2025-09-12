@@ -17,6 +17,7 @@ pub enum PreludeType {
 
 /// Custom type
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct Type {
     pub source: NamedSource<Arc<String>>,
     pub location: Address,
