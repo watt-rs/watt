@@ -1,0 +1,95 @@
+import 'std.errors'
+import 'std.color'
+import 'std.time'
+import 'std.io'
+
+unit LoggerLevel {
+    Trace := -15
+    Debug := -10
+    Info := -5
+    Warn := 0
+    Error := 5
+    Fatal := 10
+}
+
+type FATAL(msg) impl Display {
+    fn to_string() {
+        return time.now().to_string() + color.paint_magenta(' FATAL: ') + msg
+    }
+}
+
+type ERROR(msg) impl Display {
+    fn to_string() {
+        return time.now().to_string() + color.paint_red(' ERROR: ') + msg
+    }
+}
+
+type WARN(msg) impl Display {
+    fn to_string() {
+        return time.now().to_string() + color.paint_yellow(' WARN: ') + msg
+    }
+}
+
+type INFO(msg) impl Display {
+    fn to_string() {
+        return time.now().to_string() + color.paint_green(' INFO: ') + msg
+    }
+}
+
+type DEBUG(msg) impl Display {
+    fn to_string() {
+        return time.now().to_string() + color.paint_blue(' DEBUG: ') + msg
+    }
+}
+
+type TRACE(msg) impl Display {
+    fn to_string() {
+        return time.now().to_string() + color.paint_cyan(' TRACE: ') + msg
+    }
+}
+
+type Logger(lvl) impl Display {
+    fn to_string() {
+        return 'logger with level ' + lvl
+    }
+
+    fn available(other_lvl) {
+      return lvl <= other_lvl
+    }
+
+    fn Fatal(msg) {
+        if available(LoggerLevel.Fatal) {
+            io.println(new FATAL(msg))
+        }
+    }
+
+    fn Error(msg) {
+        if available(LoggerLevel.Error) {
+            io.println(new ERROR(msg))
+        }
+    }
+
+    fn Warn(msg) {
+        if available(LoggerLevel.Warn) {
+          io.println(new WARN(msg))
+        }
+    }
+
+    fn Info(msg) {
+        if available(LoggerLevel.Info) {
+           io.println(new INFO(msg))
+        }
+    }
+
+    fn Debug(msg) {
+        if available(LoggerLevel.Debug) { 
+            io.println(new DEBUG(msg))
+        }
+    }
+
+    fn Trace(msg) {
+        if available(LoggerLevel.Trace) {
+            io.println(new TRACE(msg))
+        }
+    }
+}
