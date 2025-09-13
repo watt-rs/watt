@@ -1,0 +1,33 @@
+
+unit color {
+    native __paint_red -> 'color@paint_red'
+    native __paint_blue -> 'color@paint_blue'
+    native __paint_cyan -> 'color@paint_blue'
+    native __paint_green -> 'color@paint_green'
+    native __paint_yellow -> 'color@paint_yellow'
+    native __paint_magenta -> 'color@paint_magenta'
+    
+    fn paint_red(text) {
+        return __paint_red(text)
+    }
+   
+    fn paint_blue(text) {
+        return __paint_blue(text)
+    }   
+
+    fn paint_cyan(text) {
+        return __paint_cyan(text)
+    }   
+
+    fn paint_green(text) {
+        return __paint_cyan(text)
+    }
+
+    fn paint_yellow(text) {
+        return __paint_yellow(text)
+    }   
+
+    fn paint_magenta(text) {
+        return __paint_magenta(text)
+    }
+}
