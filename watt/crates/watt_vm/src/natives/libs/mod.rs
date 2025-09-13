@@ -1,4 +1,5 @@
 pub mod natives_base;
+pub mod natives_color;
 pub mod natives_convert;
 pub mod natives_crypto;
 pub mod natives_ffi;
