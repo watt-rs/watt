@@ -16,6 +16,14 @@ fn main() {
     let pot = Option.Some(Pot.Full(Flower(15)))
     match pot {
         Option.Some { element } -> {
+            let int: int = element
+            if int == 14 {
+                let a = int
+            } elif int == 15 {
+                let b = int
+            } else {
+                let c = int
+            }
         }
         Option.None() -> {
         }
