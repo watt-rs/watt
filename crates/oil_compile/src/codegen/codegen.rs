@@ -200,18 +200,22 @@ pub fn gen_declaration(decl: IrDeclaration) -> js::Tokens {
         // Type declaration
         IrDeclaration::Type(ir_type) => {
             // Methods
-            let methods = quote!($(for function in ir_type.functions =>
-                $(function.name.to_string())($(for param in function.params join (, ) => $(param.name.to_string()))) {
-                    $(gen_block(function.body))
-                }
-            ));
+            let methods = quote! {
+                $(for function in ir_type.functions =>
+                    $(function.name.to_string())($(for param in function.params join (, ) => $(param.name.to_string()))) {
+                        $(gen_block(function.body))
+                    }
+                )
+            };
 
             // constructor($field, $field, n...)
             // with meta type field as `type_name`
-            let constructor = quote!(constructor($(for field in ir_type.fields.clone() join (, ) => $(field.name.to_string()))) {
-                this.$("$")meta = $(quoted(ir_type.name.to_string()));
-                $(for field in ir_type.fields.clone() join ($['\r']) => this.$(field.name.to_string()) = $(gen_expression(field.value));)
-            });
+            let constructor = quote! {
+                constructor($(for field in ir_type.fields.clone() join (, ) => $(field.name.to_string()))) {
+                    this.$("$")meta = $(quoted(ir_type.name.to_string()));
+                    $(for field in ir_type.fields.clone() join ($['\r']) => this.$(field.name.to_string()) = $(gen_expression(field.value));)
+                }
+            };
 
             // Class of `Type` named as $type_name
             // and class fabric named as `type_name`

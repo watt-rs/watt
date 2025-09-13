@@ -1,7 +1,7 @@
 /// Imports
 use crate::{
     analyze::{analyze::ModuleAnalyzer, rc_ptr::RcPtr, typ::Module},
-    codegen::codegen::{gen_declaration, gen_module},
+    codegen::codegen::{gen_module},
     errors::CompileError,
     io::io::{self, OilFile},
     project::ProjectCompiler,
@@ -10,9 +10,9 @@ use camino::Utf8PathBuf;
 use ecow::EcoString;
 use log::info;
 use miette::NamedSource;
-use oil_common::{address::Address, bail};
+use oil_common::{bail};
 use oil_ir::{
-    ir::{IrBlock, IrCase, IrExpression, IrModule, IrPattern, IrStatement},
+    ir::IrModule,
     lowering,
 };
 use oil_lex::lexer::Lexer;
