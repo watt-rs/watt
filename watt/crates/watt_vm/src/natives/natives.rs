@@ -27,6 +27,7 @@ pub unsafe fn provide_builtins(vm: &mut VM) -> Result<(), Error> {
     natives_strings::provide(&built_in_address, vm)?;
     natives_ffi::provide(&built_in_address, vm)?;
     natives_net::provide(&built_in_address, vm)?;
+    natives_color::provide(&built_in_address, vm)?;
 
     Ok(())
 }
