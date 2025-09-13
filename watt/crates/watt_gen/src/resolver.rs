@@ -47,6 +47,8 @@ impl<'import_key, 'import_path> ImportsResolver<'import_key, 'import_path> {
                 ("std.json", "./libs/std/std_json.wt"),
                 ("std.ffi", "./libs/std/std_ffi.wt"),
                 ("std.net", "./libs/std/std_net.wt"),
+                ("std.logger", "./libs/std/std_logger.wt"),
+                ("std.color", "./libs/std/std_color.wt"),
             ]),
             builtins: vec!["./libs/base.wt".to_string()],
         }
