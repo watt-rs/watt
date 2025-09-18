@@ -397,11 +397,11 @@ version = "0.1.0"
 dependencies = [
  "camino",
  "ecow",
- "genco",
  "log",
  "miette",
  "oil_ast",
  "oil_common",
+ "oil_gen",
  "oil_ir",
  "oil_lex",
  "oil_parse",
@@ -414,6 +414,11 @@ dependencies = [
 [[package]]
 name = "oil_gen"
 version = "0.1.0"
+dependencies = [
+ "ecow",
+ "genco",
+ "oil_ir",
+]
 
 [[package]]
 name = "oil_ir"

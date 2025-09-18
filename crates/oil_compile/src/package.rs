@@ -1,7 +1,6 @@
 /// Imports
 use crate::{
     analyze::{analyze::ModuleAnalyzer, rc_ptr::RcPtr, typ::Module},
-    codegen::codegen::{gen_module},
     errors::CompileError,
     io::io::{self, OilFile},
     project::ProjectCompiler,
@@ -10,11 +9,9 @@ use camino::Utf8PathBuf;
 use ecow::EcoString;
 use log::info;
 use miette::NamedSource;
-use oil_common::{bail};
-use oil_ir::{
-    ir::IrModule,
-    lowering,
-};
+use oil_common::bail;
+use oil_gen::gen_module;
+use oil_ir::{ir::IrModule, lowering};
 use oil_lex::lexer::Lexer;
 use oil_parse::parser::Parser;
 use petgraph::{Direction, prelude::DiGraphMap};
@@ -205,7 +202,7 @@ impl<'project_compiler> PackageCompiler<'project_compiler> {
             info!("performing codegen for {}", module.0);
             info!(
                 "\n{:#}",
-                gen_module(modules.get(&module.0).unwrap())
+                gen_module(&module.0, modules.get(&module.0).unwrap())
                     .to_file_string()
                     .unwrap()
             )
