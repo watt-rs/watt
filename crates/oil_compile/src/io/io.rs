@@ -1,9 +1,13 @@
 /// Imports
 use crate::io::errors::IoError;
-use camino::Utf8PathBuf;
+use camino::{Utf8Path, Utf8PathBuf};
 use ecow::EcoString;
+use log::info;
 use oil_common::bail;
-use std::fs;
+use std::{
+    fs::{self, File},
+    io::Write,
+};
 use walkdir::WalkDir;
 
 /// Oil file
@@ -79,13 +83,13 @@ pub fn collect_sources(path: &Utf8PathBuf) -> Vec<OilFile> {
 }
 
 /// Returns module name by path
-pub fn module_name(root: &Utf8PathBuf, file: &OilFile) -> EcoString {
+pub fn module_name(root: &Utf8Path, file: &OilFile) -> EcoString {
     // Getting module local path
-    let mut module_path = match file.path().strip_prefix(root.clone()) {
+    let mut module_path = match file.path().strip_prefix(root) {
         Ok(ok) => ok.to_path_buf(),
         Err(_) => bail!(IoError::FailedToStripPrefix {
             path: file.path(),
-            root: root.clone()
+            root: root.to_path_buf()
         }),
     };
 
@@ -96,5 +100,23 @@ pub fn module_name(root: &Utf8PathBuf, file: &OilFile) -> EcoString {
     let result = module_path.to_string();
 
     // Normalizing windows paths
-    result.replace("\\", "/").into()
+    EcoString::from(result.replace("\\", "/"))
+}
+
+/// Writes text to the file
+pub fn write(path: Utf8PathBuf, text: String) {
+    // Creating file, if not exists
+    match File::create(&path) {
+        Ok(mut file) => {
+            // Writing text
+            if let Err(_) = file.write(&text.into_bytes()) {
+                bail!(IoError::FailedToWrite { path })
+            } else {
+                info!("Wrote text to {path}")
+            }
+        }
+        Err(_) => {
+            bail!(IoError::FailedToWrite { path })
+        }
+    }
 }

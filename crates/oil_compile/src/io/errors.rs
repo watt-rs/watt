@@ -15,6 +15,13 @@ pub enum IoError {
         url("https://github.com/oillanguage/oil")
     )]
     FailedToRead { path: Utf8PathBuf },
+    #[error("failed to write in file: {path}.")]
+    #[diagnostic(
+        code(io::failed_to_write),
+        help("please, file an issue on github."),
+        url("https://github.com/oillanguage/oil")
+    )]
+    FailedToWrite { path: Utf8PathBuf },
     #[error("entry error inside children of: {path}.")]
     #[diagnostic(
         code(io::failed_to_read),

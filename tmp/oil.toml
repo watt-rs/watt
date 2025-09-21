@@ -1,3 +1,8 @@
-[oil]
-version = "0.0.1"
+[project]
+pkg = "app"
 main = "main"
+runtime = "common"
+name = "test"
+dependencies = [
+    "https://github.com/oil-rs/std"
+]

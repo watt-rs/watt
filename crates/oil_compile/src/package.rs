@@ -3,11 +3,10 @@ use crate::{
     analyze::{analyze::ModuleAnalyzer, rc_ptr::RcPtr, typ::Module},
     errors::CompileError,
     io::io::{self, OilFile},
-    project::ProjectCompiler,
 };
-use camino::Utf8PathBuf;
+use camino::{Utf8Path, Utf8PathBuf};
 use ecow::EcoString;
-use log::info;
+use log::{error, info, trace};
 use miette::NamedSource;
 use oil_common::bail;
 use oil_gen::gen_module;
@@ -17,43 +16,32 @@ use oil_parse::parser::Parser;
 use petgraph::{Direction, prelude::DiGraphMap};
 use std::{
     collections::{HashMap, HashSet},
+    fs,
     sync::Arc,
 };
 
-/// Package config
-pub struct PackageConfig {
-    /// Main file
-    pub main: EcoString,
-    /// Package version
-    pub version: EcoString,
-}
-
 /// Package compiler
-pub struct PackageCompiler<'compile> {
-    /// Project compiler ref
-    project: &'compile mut ProjectCompiler,
-    /// Config of package
-    config: PackageConfig,
+pub struct PackageCompiler<'modules> {
     /// Path to package
     path: Utf8PathBuf,
     /// Compilation outcome path
     outcome: Utf8PathBuf,
+    /// Analyzed modules
+    analyzed_modules: &'modules mut HashMap<EcoString, RcPtr<Module>>,
 }
 
 /// Package compiler implementation
-impl<'project_compiler> PackageCompiler<'project_compiler> {
+impl<'modules> PackageCompiler<'modules> {
     /// Creates new package compiler
     pub fn new(
-        project: &'project_compiler mut ProjectCompiler,
-        config: PackageConfig,
         path: Utf8PathBuf,
         outcome: Utf8PathBuf,
+        analyzed_modules: &'modules mut HashMap<EcoString, RcPtr<Module>>,
     ) -> Self {
         Self {
-            project,
-            config,
             path,
             outcome,
+            analyzed_modules,
         }
     }
 
@@ -160,52 +148,75 @@ impl<'project_compiler> PackageCompiler<'project_compiler> {
 
     /// Compiles package
     pub fn compile(&mut self) {
-        // Initializing logging
-        pretty_env_logger::init();
-        info!("compiling package: {}", self.path);
+        trace!("Compiling package: {}", self.path);
 
         // Collecting sources
-        let mut modules = HashMap::new();
+        let mut loaded_modules = HashMap::new();
         for source in self.collect_sources() {
-            let module_name = io::module_name(&self.path, &source);
+            let module_name = io::module_name(self.path.parent().unwrap(), &source);
             let module = self.load_module(&module_name, &source);
-            modules.insert(module_name.clone(), module);
-            info!("loaded module {:?} with name {:?}", source, module_name);
+            loaded_modules.insert(module_name.clone(), module);
+            info!("Loaded module {:?} with name {:?}", source, module_name);
         }
 
         // Building dependencies tree
-        info!("building dependencies tree...");
+        info!("Building dependencies tree...");
         let mut dep_tree: HashMap<&EcoString, Vec<&EcoString>> = HashMap::new();
-        modules.iter().for_each(|(n, m)| {
-            dep_tree.insert(n, m.dependencies.iter().map(|d| &d.path).collect());
+        loaded_modules.iter().for_each(|(n, m)| {
+            dep_tree.insert(
+                n,
+                m.dependencies
+                    .iter()
+                    .filter(|d| loaded_modules.contains_key(&d.path))
+                    .map(|d| &d.path)
+                    .collect(),
+            );
         });
-        info!("found dependencies {:#?}", dep_tree);
+        info!("Found dependencies {:#?}", dep_tree);
 
         // Performing toposort
         let sorted = self.toposort(dep_tree);
-        info!("performed toposort {:#?}", sorted);
+        info!("Performed toposort {:#?}", sorted);
 
         // Performing analyze
-        info!("analyzing modules...");
-        let mut analyzed_modules: HashMap<EcoString, RcPtr<Module>> = HashMap::new();
+        info!("Analyzing modules...");
+        let mut completed_modules = HashMap::new();
         for name in sorted {
-            info!("analyzing module {name}");
-            let module = modules.get(name).unwrap();
-            let mut analyzer = ModuleAnalyzer::new(module, name, &analyzed_modules);
-            let analyzed_module = analyzer.analyze();
-            analyzed_modules.insert(name.clone(), RcPtr::new(analyzed_module));
+            info!("Analyzing module {name}");
+            let module = loaded_modules.get(name).unwrap();
+            let mut analyzer = ModuleAnalyzer::new(module, name, &self.analyzed_modules);
+            let analyzed_module = RcPtr::new(analyzer.analyze());
+            self.analyzed_modules
+                .insert(name.clone(), analyzed_module.clone());
+            completed_modules.insert(name.clone(), analyzed_module);
         }
 
         // Performing codegen
-        info!("performing codegen...");
-        for module in analyzed_modules {
-            info!("performing codegen for {}", module.0);
-            info!(
-                "\n{:#}",
-                gen_module(&module.0, modules.get(&module.0).unwrap())
-                    .to_file_string()
-                    .unwrap()
-            )
+        info!("Performing codegen...");
+        let mut generated_modules = HashMap::new();
+        for module in completed_modules.iter() {
+            info!("Performing codegen for {}", module.0);
+            let generated = gen_module(&module.0, loaded_modules.get(module.0).unwrap())
+                .to_file_string()
+                .unwrap();
+            generated_modules.insert(module.0.clone(), generated);
+        }
+
+        // Writing outcome
+        info!("Writing outcome...");
+        for module in generated_modules {
+            // Target path
+            let mut target_path = Utf8PathBuf::from(self.outcome.clone());
+            target_path.push(Utf8Path::new(&format!("{}.js", &module.0)));
+            // Creating directory
+            if let Some(path) = target_path.parent() {
+                // Catching error
+                if let Err(error) = fs::create_dir_all(path) {
+                    error!("{:?}", error);
+                }
+            }
+            // Creating file
+            io::write(target_path, module.1);
         }
     }
 }
