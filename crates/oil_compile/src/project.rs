@@ -31,8 +31,6 @@ impl ProjectCompiler {
 
     /// Compiles project
     pub fn compile(&mut self) {
-        // Initializing logging
-        pretty_env_logger::init();
         // Compiling
         trace!("Compiling project...");
         for package_path in &self.packages {

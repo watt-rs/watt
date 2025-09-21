@@ -23,10 +23,12 @@ pub enum CompileError {
         url("https://github.com/oillanguage/oil")
     )]
     FailedToFindImportCycle,
+    /*
     #[error("no main module with name {main} found.")]
     #[diagnostic(code(compile::no_main_module_found), help("check module existence."))]
     NoMainModuleFound { main: EcoString },
     #[error("no module with name {name} found.")]
     #[diagnostic(code(compile::no_module_found), help("check module existence."))]
     NoModuleFound { name: EcoString },
+    */
 }

@@ -1,8 +1,7 @@
-[project]
+[pkg]
 pkg = "app"
-main = "main"
-runtime = "common"
 name = "test"
+main = "main"
 dependencies = [
-    "https://github.com/oil-rs/std"
+    "https://github.com/oil-rs/std.git"
 ]

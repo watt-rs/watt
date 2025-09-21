@@ -1,43 +1,48 @@
 /// Imports
+use crate::errors::PackageError;
+use camino::Utf8PathBuf;
+use oil_common::bail;
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::fs;
 
 /// Package type
 #[derive(Deserialize)]
-enum PackageType {
+pub enum PackageType {
     #[serde(rename = "lib")]
     Lib,
     #[serde(rename = "app")]
     App,
 }
 
-/// Package runtime
+/// Package config
 #[derive(Deserialize)]
-enum PackageRuntime {
-    #[serde(rename = "bun")]
-    Bun,
-    #[serde(rename = "deno")]
-    Deno,
-    #[serde(rename = "common")]
-    Common,
-}
-
-/// Project config
-#[derive(Deserialize)]
-struct ProjectConfig {
-    pkg: PackageType,
-    main: String,
-    runtime: PackageRuntime,
+pub struct PackageConfig {
+    pub pkg: PackageType,
+    pub name: String,
+    pub main: Option<String>,
+    pub dependencies: Vec<String>,
 }
 
 /// Oil.toml
 #[derive(Deserialize)]
-struct OilConfig {
-    project: ProjectConfig,
-    dependencies: HashMap<String, String>,
+pub struct OilConfig {
+    pub pkg: PackageConfig,
 }
 
 /// Parses config
-fn parse(text: String) -> Option<OilConfig> {
-    todo!()
+pub fn parse(path: Utf8PathBuf, text: String) -> OilConfig {
+    match toml::from_str(&text) {
+        Ok(cfg) => cfg,
+        Err(_) => bail!(PackageError::FailedToParseConfig { path }),
+    }
+}
+
+/// Locates and reads config file
+pub fn locate(path: Utf8PathBuf) -> String {
+    let mut config_path = path.clone();
+    config_path.push("oil.toml");
+    match fs::read_to_string(&config_path) {
+        Ok(text) => text,
+        Err(_) => bail!(PackageError::FailedToFindConfig { path }),
+    }
 }
