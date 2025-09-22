@@ -1,6 +1,5 @@
 /// Imports
 use camino::Utf8PathBuf;
-use ecow::EcoString;
 use miette::Diagnostic;
 use thiserror::Error;
 
@@ -15,7 +14,7 @@ pub enum PackageError {
     FailedToFindConfig { path: Utf8PathBuf },
     #[error("found an import cycle {a} <> {b}.")]
     #[diagnostic(code(pkg::found_import_cycle))]
-    FoundDependenciesCycle { a: EcoString, b: EcoString },
+    FoundDependenciesCycle { a: String, b: String },
     #[error("import cycle path has wrong length {len}.")]
     #[diagnostic(
         code(pkg::cycle_path_has_wrong_length),
@@ -36,4 +35,11 @@ pub enum PackageError {
         url("https://github.com/oillanguage/oil")
     )]
     FailedToFindDependenciesCycle,
+    #[error("dependency key {key} is not found in solved map.")]
+    #[diagnostic(
+        code(pkg::no_solved_key_found),
+        help("please, file an issue on github."),
+        url("https://github.com/oillanguage/oil")
+    )]
+    NoSolvedKeyFound { key: String },
 }

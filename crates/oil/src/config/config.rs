@@ -46,3 +46,8 @@ pub fn locate(path: Utf8PathBuf) -> String {
         Err(_) => bail!(PackageError::FailedToFindConfig { path }),
     }
 }
+
+/// Locates and parses config
+pub fn retrieve_config(path: Utf8PathBuf) -> OilConfig {
+    parse(path.clone(), locate(path))
+}

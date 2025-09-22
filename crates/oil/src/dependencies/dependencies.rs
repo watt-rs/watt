@@ -1,7 +1,10 @@
 /// Imports
-use crate::errors::PackageError;
+use crate::{
+    config::config::{self, PackageConfig},
+    dependencies::dependencies,
+    errors::PackageError,
+};
 use camino::Utf8PathBuf;
-use ecow::EcoString;
 use git2::Repository;
 use log::info;
 use oil_common::bail;
@@ -11,11 +14,11 @@ use url::Url;
 
 /// Finds cycle in a graph
 fn find_cycle<'dep>(
-    origin: &'dep EcoString,
-    parent: &'dep EcoString,
-    graph: &petgraph::prelude::DiGraphMap<&'dep EcoString, ()>,
-    path: &mut Vec<&'dep EcoString>,
-    done: &mut HashSet<&'dep EcoString>,
+    origin: &'dep String,
+    parent: &'dep String,
+    graph: &petgraph::prelude::DiGraphMap<&'dep String, ()>,
+    path: &mut Vec<&'dep String>,
+    done: &mut HashSet<&'dep String>,
 ) -> bool {
     done.insert(parent);
     for node in graph.neighbors_directed(parent, Direction::Outgoing) {
@@ -35,9 +38,9 @@ fn find_cycle<'dep>(
 }
 
 /// Toposorts dependencies graph
-fn toposort<'s>(deps: HashMap<&'s EcoString, Vec<&'s EcoString>>) -> Vec<&'s EcoString> {
+fn toposort<'s>(deps: HashMap<&'s String, Vec<&'s String>>) -> Vec<&'s String> {
     // Creating graph for toposorting
-    let mut deps_graph: DiGraphMap<&EcoString, ()> =
+    let mut deps_graph: DiGraphMap<&String, ()> =
         petgraph::prelude::DiGraphMap::with_capacity(deps.len(), deps.len() * 5);
 
     // Adding nodes
@@ -86,6 +89,10 @@ fn toposort<'s>(deps: HashMap<&'s EcoString, Vec<&'s EcoString>>) -> Vec<&'s Eco
 }
 
 /// Url to package name
+///
+// https://github.com/oil-rs/std -> std
+// https://org.gittea.com/repo -> repo
+// ...
 pub fn url_to_pkg_name(url: &String) -> String {
     match Url::parse(url) {
         Ok(ok) => match ok.path_segments().and_then(|segments| segments.last()) {
@@ -130,4 +137,64 @@ pub fn download<'s>(url: &'s String, cache: Utf8PathBuf) -> (Utf8PathBuf, String
     path.push(package_name.as_str());
     info!("Crawled name {package_name} from {url}.");
     (path, package_name)
+}
+
+/// Resolves packages,
+/// returns recursivly found hash map
+///
+/// * cache -- .cache path
+/// * solved -- already solved packages
+/// * name -- package name
+/// * config -- package config
+///
+fn resolve_packages(
+    cache: Utf8PathBuf,
+    solved: &mut HashMap<String, Vec<String>>,
+    name: String,
+    config: PackageConfig,
+) -> &mut HashMap<String, Vec<String>> {
+    // If already solved
+    if solved.contains_key(&name) {
+        solved
+    }
+    // If not
+    else {
+        info!("Resolving packages that {name} depends on.");
+        // Inserting vector
+        solved.insert(name.clone(), Vec::new());
+        // Dependencies
+        for dependency in config.dependencies {
+            // Downloading dependency if not already downloaded
+            let downloaded = dependencies::download(&dependency, cache.clone());
+            let config = config::retrieve_config(downloaded.0);
+            info!("+ Found dependency {} of {name}", &downloaded.1);
+            // Adding dependency
+            match solved.get_mut(&name) {
+                Some(vector) => vector.push(downloaded.1.clone()),
+                None => bail!(PackageError::NoSolvedKeyFound { key: name }),
+            }
+            // Resolving dependency packages
+            resolve_packages(cache.clone(), solved, downloaded.1, config.pkg);
+        }
+        solved
+    }
+}
+
+/// Solves dependencies,
+///
+/// returns toposorted vector
+/// of packages
+pub fn solve(cache: Utf8PathBuf, name: String, config: PackageConfig) -> Vec<String> {
+    // Solved packages
+    let packages = resolve_packages(cache, &mut HashMap::new(), name, config).to_owned();
+    // Toposorting
+    toposort(
+        packages
+            .iter()
+            .map(|(k, v)| (k, v.iter().map(|e| e).collect()))
+            .collect::<HashMap<&String, Vec<&String>>>(),
+    )
+    .iter()
+    .map(|s| (*s).clone())
+    .collect()
 }
