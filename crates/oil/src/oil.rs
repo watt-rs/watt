@@ -1,8 +1,6 @@
+use crate::commands::run;
 /// Imports
 use camino::Utf8PathBuf;
-use oil_compile::project::ProjectCompiler;
-
-use crate::commands::run;
 
 /// Runs code
 #[allow(unused_variables)]
@@ -18,7 +16,7 @@ pub fn run() {
     project_compiler.compile();
     */
     run::run(
-        Utf8PathBuf::from("/home/vyacheslav/oil/tmp/"),
+        Utf8PathBuf::from("/home/vyacheslav/oil/test/"),
         String::from("test"),
     );
 }

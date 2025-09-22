@@ -5,6 +5,7 @@ use ecow::EcoString;
 use log::info;
 use oil_common::bail;
 use std::{
+    ffi::OsStr,
     fs::{self, File},
     io::Write,
 };
@@ -49,8 +50,19 @@ pub fn collect_sources(path: &Utf8PathBuf) -> Vec<OilFile> {
                 Some(ext) => ext == "oil",
                 None => false,
             };
+        } else {
+            // Ignoring .cache directory
+            match entry_path.file_name() {
+                Some(directory) => {
+                    if directory == OsStr::new(".cache") {
+                        false
+                    } else {
+                        true
+                    }
+                }
+                None => false,
+            }
         }
-        true
     });
 
     // Validating entrires

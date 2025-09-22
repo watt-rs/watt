@@ -153,7 +153,7 @@ impl<'modules> PackageCompiler<'modules> {
         // Collecting sources
         let mut loaded_modules = HashMap::new();
         for source in self.collect_sources() {
-            let module_name = io::module_name(self.path.parent().unwrap(), &source);
+            let module_name = io::module_name(&self.path, &source);
             let module = self.load_module(&module_name, &source);
             loaded_modules.insert(module_name.clone(), module);
             info!("Loaded module {:?} with name {:?}", source, module_name);
