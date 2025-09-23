@@ -16,6 +16,7 @@ pub enum PackageType {
 
 /// Package config
 #[derive(Deserialize)]
+#[allow(dead_code)]
 pub struct PackageConfig {
     pub pkg: PackageType,
     pub name: String,

@@ -117,24 +117,22 @@ pub fn download<'s>(url: &'s String, cache: Utf8PathBuf) -> (Utf8PathBuf, String
     let package_name = url_to_pkg_name(url);
     let mut path = cache.clone();
     path.push(&package_name);
-    match Url::parse(url) {
-        Ok(_) => match Repository::clone(url, path.clone()) {
-            Err(error) => match error.code() {
-                git2::ErrorCode::Exists => {
-                    info!("Repository {url} is already downloaded, skipping.")
-                }
-                _ => {
-                    bail!(PackageError::FailedToCloneRepo { url: url.clone() })
+    // Checking already downloaded
+    if path.exists() {
+        info!("Repository {url} is already downloaded, skipping.")
+    }
+    // If not, downloading
+    else {
+        match Url::parse(url) {
+            Ok(_) => match Repository::clone(url, path.clone()) {
+                Err(_) => bail!(PackageError::FailedToCloneRepo { url: url.clone() }),
+                Ok(_) => {
+                    info!("Repository from {url} download successfully.");
                 }
             },
-            Ok(_) => {
-                info!("Repository from {url} download successfully.");
-            }
-        },
-        Err(_) => bail!(PackageError::InvalidUrl { url: url.clone() }),
+            Err(_) => bail!(PackageError::InvalidUrl { url: url.clone() }),
+        }
     }
-    let mut path = cache.clone();
-    path.push(package_name.as_str());
     info!("Crawled name {package_name} from {url}.");
     (path, package_name)
 }
