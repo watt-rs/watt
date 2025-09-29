@@ -35,7 +35,7 @@ fn main() {
 
 ### ToDo
 - [ ] make anonymous founctions expressions
-	- [+] make type annotations for functions: ```let a: fn(): int = f```
+	- [x] make type annotations for functions: ```let a: fn(): int = f```
 - [ ] make check for main function and module in project
 - [ ] make for loop
     - [ ] make analyze and compilation for codegen
