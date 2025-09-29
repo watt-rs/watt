@@ -106,25 +106,54 @@ impl<'file_path> Parser<'file_path> {
 
     /// Type annotation parsing
     fn type_annotation(&mut self) -> TypePath {
-        // fisrt id
-        let first_id = self.consume(TokenKind::Id).clone();
-        // if dot found
-        if self.check(TokenKind::Dot) {
-            // consuming dot
-            self.consume(TokenKind::Dot);
-            // module type path
-            TypePath::Module {
-                location: first_id.address,
-                module: first_id.value,
-                name: self.consume(TokenKind::Id).value.clone(),
+        // If function type annotation
+        if self.check(TokenKind::Fn) {
+            // start of span `fn (...): ...`
+            let span_start = self.peek().address.clone();
+            self.consume(TokenKind::Fn);
+            // params
+            self.consume(TokenKind::Lparen);
+            let mut params = Vec::new();
+            params.push(self.type_annotation());
+            while self.check(TokenKind::Comma) {
+                self.advance();
+                params.push(self.type_annotation());
+            }
+            self.consume(TokenKind::Rparen);
+            // : $ret
+            self.consume(TokenKind::Colon);
+            let ret = Box::new(self.type_annotation());
+            // end of span `fn (...): ...`
+            let span_end = self.peek().address.clone();
+            // function type path
+            TypePath::Function {
+                location: Address::span(span_start.span.start..span_end.span.end),
+                params: params,
+                ret,
             }
         }
-        // else
+        // Else, type name annotation
         else {
-            // local type path
-            TypePath::Local {
-                location: first_id.address,
-                name: first_id.value,
+            // fisrt id
+            let first_id = self.consume(TokenKind::Id).clone();
+            // if dot found
+            if self.check(TokenKind::Dot) {
+                // consuming dot
+                self.consume(TokenKind::Dot);
+                // module type path
+                TypePath::Module {
+                    location: first_id.address,
+                    module: first_id.value,
+                    name: self.consume(TokenKind::Id).value.clone(),
+                }
+            }
+            // else
+            else {
+                // local type path
+                TypePath::Local {
+                    location: first_id.address,
+                    name: first_id.value,
+                }
             }
         }
     }

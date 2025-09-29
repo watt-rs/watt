@@ -1,6 +1,7 @@
 /// Imports
 use core::fmt;
 use std::{
+    fmt::Debug,
     ops::{Deref, DerefMut},
     rc::Rc,
 };
@@ -14,6 +15,14 @@ impl<T> RcPtr<T> {
     /// Creates new RcPtr
     pub fn new(value: T) -> Self {
         RcPtr(Rc::new(value))
+    }
+}
+
+/// Implementation for T: PartialEq
+impl<T: PartialEq + Debug> RcPtr<T> {
+    /// Eq by value
+    pub fn veq(&self, other: &Self) -> bool {
+        self.0 == other.0
     }
 }
 

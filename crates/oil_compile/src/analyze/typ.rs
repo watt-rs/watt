@@ -82,6 +82,14 @@ impl Debug for Function {
     }
 }
 
+/// PartialEq implementation
+/// ignores function name and location
+impl PartialEq for Function {
+    fn eq(&self, other: &Self) -> bool {
+        self.source == other.source && self.params == other.params && self.ret == other.ret
+    }
+}
+
 /// Custom type
 #[derive(Clone, PartialEq)]
 pub enum CustomType {
@@ -133,7 +141,7 @@ impl PartialEq for Typ {
             (Typ::Prelude(a), Typ::Prelude(b)) => a == b,
             (Typ::Custom(a), Typ::Custom(b)) => a == b,
             (Typ::Enum(a), Typ::Enum(b)) => a == b,
-            (Typ::Function(a), Typ::Function(b)) => a == b,
+            (Typ::Function(a), Typ::Function(b)) => a.veq(b),
             (Typ::Void, Typ::Void) => true,
             (other, Typ::Dyn) => other != &Typ::Void,
             (Typ::Dyn, other) => other != &Typ::Void,

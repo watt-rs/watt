@@ -549,6 +549,20 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 };
                 typ
             }
+            TypePath::Function {
+                location,
+                params,
+                ret,
+            } => Typ::Function(RcPtr::new(Function {
+                source: self.module.source.clone(),
+                location,
+                name: EcoString::from("$annotated"),
+                params: params
+                    .into_iter()
+                    .map(|p| self.infer_type_annotation(p))
+                    .collect(),
+                ret: self.infer_type_annotation(*ret),
+            })),
         }
     }
 

@@ -22,6 +22,11 @@ pub enum TypePath {
         module: EcoString,
         name: EcoString,
     },
+    Function {
+        location: Address,
+        params: Vec<TypePath>,
+        ret: Box<TypePath>,
+    },
 }
 
 /// Parameter
