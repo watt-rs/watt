@@ -188,6 +188,46 @@ impl<'file_path> Parser<'file_path> {
         params
     }
 
+    /// Anonymous fn expr
+    fn anonymous_fn_expr(&mut self) -> Node {
+        // start span `fn (): ... {}`
+        let start_span = self.peek().address.clone();
+        self.consume(TokenKind::Fn);
+
+        // params
+        let mut params: Vec<Parameter> = Vec::new();
+        if self.check(TokenKind::Lparen) {
+            params = self.parameters();
+        }
+
+        // return type
+        let typ;
+        // if type specified
+        if self.check(TokenKind::Colon) {
+            // `: $type`
+            self.consume(TokenKind::Colon);
+            typ = Some(self.type_annotation());
+        }
+        // else
+        else {
+            typ = None
+        }
+        // end span `fn (): ... {}`
+        let end_span = self.peek().address.clone();
+
+        // body
+        self.consume(TokenKind::Lbrace);
+        let body = self.block();
+        self.consume(TokenKind::Rbrace);
+
+        Node::AnonymousFn {
+            location: Address::span(start_span.span.start..end_span.span.end),
+            params,
+            body: Box::new(body),
+            typ,
+        }
+    }
+
     /// Variable parsing
     fn variable(&mut self) -> Node {
         // start address
@@ -387,7 +427,7 @@ impl<'file_path> Parser<'file_path> {
                 value: self.consume(TokenKind::Bool).clone(),
             },
             TokenKind::Lparen => self.grouping_expr(),
-            TokenKind::Match => self.pattern_matching(),
+            TokenKind::Fn => self.anonymous_fn_expr(),
             _ => {
                 let token = self.peek().clone();
                 bail!(ParseError::UnexpectedExpressionToken {

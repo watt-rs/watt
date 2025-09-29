@@ -54,7 +54,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
 
     /// Infers binary
     fn infer_binary(
-        &self,
+        &mut self,
         location: Address,
         op: IrBinaryOp,
         left: IrExpression,
@@ -189,7 +189,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     }
 
     /// Infers unary
-    fn infer_unary(&self, location: Address, op: IrUnaryOp, value: IrExpression) -> Typ {
+    fn infer_unary(&mut self, location: Address, op: IrUnaryOp, value: IrExpression) -> Typ {
         // Inferred value `Typ`
         let inferred_value = self.infer_expr(value);
 
@@ -357,7 +357,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
 
     /// Infers access
     fn infer_field_access(
-        &self,
+        &mut self,
         field_location: Address,
         container: IrExpression,
         field_name: EcoString,
@@ -414,7 +414,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
 
     /// Infers call
     fn infer_call(
-        &self,
+        &mut self,
         location: Address,
         what: IrExpression,
         args: Vec<IrExpression>,
@@ -497,7 +497,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     }
 
     /// Infers type annotation
-    fn infer_type_annotation(&self, path: TypePath) -> Typ {
+    fn infer_type_annotation(&mut self, path: TypePath) -> Typ {
         match path {
             TypePath::Local { location, name } => match name.as_str() {
                 "int" => Typ::Prelude(PreludeType::Int),
@@ -567,7 +567,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     }
 
     /// Infers resolution
-    fn infer_resolution(&self, expr: IrExpression) -> Res {
+    fn infer_resolution(&mut self, expr: IrExpression) -> Res {
         match expr {
             IrExpression::Get { location, name } => self.infer_get(location, name),
             IrExpression::FieldAccess {
@@ -602,8 +602,55 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         }
     }
 
+    /// Infers anonumous fn
+    fn infer_anonymous_fn(
+        &mut self,
+        location: Address,
+        params: Vec<IrParameter>,
+        body: IrBlock,
+        ret_type: Option<TypePath>,
+    ) -> Typ {
+        // inferring return type
+        let ret = ret_type.map_or(Typ::Void, |t| self.infer_type_annotation(t));
+
+        // inferring params
+        let params = params
+            .into_iter()
+            .map(|p| (p.name, self.infer_type_annotation(p.typ.clone())))
+            .collect::<HashMap<EcoString, Typ>>();
+
+        // creating and defining function
+        let function = Function {
+            source: self.module.source.clone(),
+            location: location.clone(),
+            name: EcoString::from("$anonymous"),
+            params: params
+                .clone()
+                .into_iter()
+                .map(|(_, v)| v)
+                .collect::<Vec<Typ>>(),
+            ret: ret.clone(),
+        };
+
+        // pushing new scope
+        self.resolver.push_rib(RibKind::Function(ret.clone()));
+
+        // defining params in new scope
+        params.iter().for_each(|p| {
+            self.resolver
+                .define(&self.module.source, &location, p.0, Def::Local(p.1.clone()))
+        });
+
+        // inferring body
+        self.analyze_block(body);
+        self.resolver.pop_rib();
+
+        // result
+        Typ::Function(RcPtr::new(function))
+    }
+
     /// Infers expression
-    fn infer_expr(&self, expr: IrExpression) -> Typ {
+    fn infer_expr(&mut self, expr: IrExpression) -> Typ {
         match expr {
             IrExpression::Float { .. } => Typ::Prelude(PreludeType::Float),
             IrExpression::Int { .. } => Typ::Prelude(PreludeType::Int),
@@ -652,7 +699,12 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 CallResult::FromDyn => Typ::Dyn,
             },
             IrExpression::Range { .. } => todo!(),
-            IrExpression::Match { .. } => todo!(),
+            IrExpression::AnFn {
+                location,
+                params,
+                body,
+                typ,
+            } => self.infer_anonymous_fn(location, params, body, typ),
         }
     }
 

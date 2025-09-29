@@ -156,10 +156,11 @@ pub enum IrExpression {
         from: Box<IrExpression>,
         to: Box<IrExpression>,
     },
-    Match {
+    AnFn {
         location: Address,
-        value: Box<IrExpression>,
-        cases: Vec<IrCase>,
+        params: Vec<IrParameter>,
+        body: IrBlock,
+        typ: Option<TypePath>,
     },
 }
 

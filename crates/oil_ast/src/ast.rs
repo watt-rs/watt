@@ -160,6 +160,12 @@ pub enum Node {
         body: Box<Node>,
         typ: Option<TypePath>,
     },
+    AnonymousFn {
+        location: Address,
+        params: Vec<Parameter>,
+        body: Box<Node>,
+        typ: Option<TypePath>,
+    },
     Break {
         location: Address,
     },

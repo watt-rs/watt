@@ -330,33 +330,23 @@ pub fn node_to_ir_expression(source: &NamedSource<Arc<String>>, node: Node) -> I
             from: Box::new(node_to_ir_expression(source, *from)),
             to: Box::new(node_to_ir_expression(source, *to)),
         },
-        Node::Match {
+        Node::AnonymousFn {
             location,
-            value,
-            cases,
-        } => IrExpression::Match {
+            params,
+            body,
+            typ,
+        } => IrExpression::AnFn {
             location,
-            value: Box::new(node_to_ir_expression(source, *value)),
-            cases: cases
+            params: params
                 .into_iter()
-                .map(|case| IrCase {
-                    location: case.address,
-                    pattern: match case.pattern {
-                        Pattern::Unwrap { en, fields } => IrPattern::Unwrap {
-                            en: node_to_ir_expression(source, en),
-                            fields: fields.into_iter().map(|field| field.value).collect(),
-                        },
-                        Pattern::Value(value) => {
-                            IrPattern::Value(node_to_ir_expression(source, value))
-                        }
-                        Pattern::Range { start, end } => IrPattern::Range {
-                            start: node_to_ir_expression(source, start),
-                            end: node_to_ir_expression(source, end),
-                        },
-                    },
-                    body: node_to_ir_block(source, case.body),
+                .map(|param| IrParameter {
+                    location: param.name.address,
+                    name: param.name.value,
+                    typ: param.typ,
                 })
                 .collect(),
+            body: node_to_ir_block(source, *body),
+            typ,
         },
         unexpected => bail!(IrError::UnexpectedExpressionNode { unexpected }),
     }

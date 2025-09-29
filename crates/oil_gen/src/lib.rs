@@ -9,12 +9,10 @@ use oil_ir::ir::{
 /// Generates expression code
 pub fn gen_expression(expr: IrExpression) -> js::Tokens {
     match expr {
-        // Just values
         IrExpression::Float { location: _, value } => quote! ( $(value.to_string()) ),
         IrExpression::Int { location: _, value } => quote! ( $(value.to_string()) ),
         IrExpression::String { location: _, value } => quote! ( $(quoted(value.as_str())) ),
         IrExpression::Bool { location: _, value } => quote! ( $(value.as_str()) ),
-        // Binary operations
         IrExpression::Bin {
             location: _,
             left,
@@ -48,12 +46,10 @@ pub fn gen_expression(expr: IrExpression) -> js::Tokens {
                 quote!( !$spec_eq($(gen_expression(*left)), $(gen_expression(*right))) )
             }
         },
-        // Unary operations
         IrExpression::Unary { value, op, .. } => match op {
             IrUnaryOp::Negate => quote!( -$(gen_expression(*value)) ),
             IrUnaryOp::Bang => quote!( !$(gen_expression(*value)) ),
         },
-        // Variables
         IrExpression::Get { name, .. } => quote!($(name.as_str())),
         IrExpression::FieldAccess {
             location: _,
@@ -67,10 +63,15 @@ pub fn gen_expression(expr: IrExpression) -> js::Tokens {
         } => quote! {
             $(gen_expression(*what))($(for arg in args join (, ) => $(gen_expression(arg))))
         },
-        // Range
+        IrExpression::AnFn { params, body, .. } => {
+            // function ($param, $param, n...)
+            quote! {
+                function ($(for param in params join (, ) => $(param.name.to_string()))) {
+                    $(gen_block(body))
+                }
+            }
+        }
         IrExpression::Range { .. } => todo!(),
-        // Match
-        IrExpression::Match { .. } => todo!(),
     }
 }
 
