@@ -477,11 +477,14 @@ impl<'file_path> Parser<'file_path> {
         left
     }
 
-    /// Binary operations `+`, `-` parsing
+    /// Binary operations `+`, `-`, '<>' parsing
     fn additive_expr(&mut self) -> Node {
         let mut left = self.multiplicative_expr();
 
-        while self.check(TokenKind::Plus) || self.check(TokenKind::Minus) {
+        while self.check(TokenKind::Plus)
+            || self.check(TokenKind::Minus)
+            || self.check(TokenKind::Concat)
+        {
             let op = self.peek().clone();
             self.current += 1;
             let right = self.multiplicative_expr();

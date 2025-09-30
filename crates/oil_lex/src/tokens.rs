@@ -47,6 +47,7 @@ pub enum TokenKind {
     Less,          // <
     GreaterEq,     // >=
     LessEq,        // <=
+    Concat,        // <>
     Elif,          // elif
     Else,          // else
     Use,           // use

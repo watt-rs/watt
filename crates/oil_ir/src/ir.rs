@@ -183,6 +183,7 @@ pub enum IrBinaryOp {
     Lt,
     Ge,
     Le,
+    Concat,
 }
 
 /// Unary operator

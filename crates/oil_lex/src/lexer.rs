@@ -168,6 +168,8 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
                 '<' => {
                     if self.is_match('=') {
                         self.add_tk(TokenKind::LessEq, "<=");
+                    } else if self.is_match('>') {
+                        self.add_tk(TokenKind::Concat, "<>");
                     } else {
                         self.add_tk(TokenKind::Less, "<");
                     }

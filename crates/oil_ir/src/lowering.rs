@@ -245,6 +245,12 @@ pub fn node_to_ir_expression(source: &NamedSource<Arc<String>>, node: Node) -> I
                 right: Box::new(node_to_ir_expression(source, *right)),
                 op: IrBinaryOp::Div,
             },
+            "<>" => IrExpression::Bin {
+                location: op.address,
+                left: Box::new(node_to_ir_expression(source, *left)),
+                right: Box::new(node_to_ir_expression(source, *right)),
+                op: IrBinaryOp::Concat,
+            },            
             _ => bail!(IrError::UnknownOp {
                 src: source.clone(),
                 span: op.address.span.into()

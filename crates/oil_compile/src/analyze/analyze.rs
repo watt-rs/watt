@@ -96,6 +96,29 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
 
         // Matching operator
         match op {
+            // Concat
+            IrBinaryOp::Concat => {
+                // Checking prelude types
+                match left_typ {
+                    PreludeType::String => match right_typ {
+                        PreludeType::String => Typ::Prelude(PreludeType::String),
+                        _ => bail!(AnalyzeError::InvalidBinaryOp {
+                            src: self.module.source.clone(),
+                            span: (location.span.start..location.span.end).into(),
+                            a: inferred_left,
+                            b: inferred_right,
+                            op
+                        }),
+                    },
+                    _ => bail!(AnalyzeError::InvalidBinaryOp {
+                        src: self.module.source.clone(),
+                        span: (location.span.start..location.span.end).into(),
+                        a: inferred_left,
+                        b: inferred_right,
+                        op
+                    }),
+                }
+            }
             // Arithmetical
             IrBinaryOp::Add
             | IrBinaryOp::Mul

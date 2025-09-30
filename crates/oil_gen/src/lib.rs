@@ -19,6 +19,8 @@ pub fn gen_expression(expr: IrExpression) -> js::Tokens {
             right,
             op,
         } => match op {
+            // With string values
+            IrBinaryOp::Concat => quote!( $(gen_expression(*left)) + $(gen_expression(*right)) ),
             // With number values
             IrBinaryOp::Add => quote!( $(gen_expression(*left)) + $(gen_expression(*right)) ),
             IrBinaryOp::Sub => quote!( $(gen_expression(*left)) - $(gen_expression(*right)) ),
