@@ -1,4 +1,4 @@
-function $enum_equals(a, b) {
+function $$enum_equals(a, b) {
 
     let a_keys = Object.keys(a);
     let b_keys = Object.keys(b);
@@ -23,7 +23,7 @@ function $enum_equals(a, b) {
     return true;
 }
 
-export function $equals(a, b) {
+export function $$equals(a, b) {
 
     if (typeof(a) !== "object" || typeof(b) !== "object") {
         return a == b;
@@ -56,6 +56,6 @@ export function $equals(a, b) {
     }
 }
 
-export function $match() {
+export function $$match() {
 
 }

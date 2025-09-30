@@ -777,6 +777,7 @@ dependencies = [
  "miette",
  "oil_common",
  "oil_compile",
+ "oil_gen",
  "petgraph",
  "serde",
  "thiserror",

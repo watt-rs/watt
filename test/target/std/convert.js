@@ -1,4 +1,4 @@
-import {$match, $equals} from "../prelude.js"
+import {$$match, $$equals} from "../prelude.js"
 
 export function int(val) {
     return parseInt(val)

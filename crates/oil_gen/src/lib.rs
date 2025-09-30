@@ -280,7 +280,7 @@ pub fn gen_module(name: &EcoString, module: &IrModule) -> js::Tokens {
     // Gen
     quote! {
         // Prelude
-        import {$("$")match, $("$")equals} from $(quoted(format!("{dependencies_prefix}prelude.js")))
+        import {$("$$match"), $("$$equals")} from $(quoted(format!("{dependencies_prefix}prelude.js")))
         // Dependencies
         //
         // for `AsName`: import * as $name from "$module"
@@ -366,5 +366,13 @@ pub fn gen_prelude() -> js::Tokens {
         export function $("$$")match() {
 
         }
+    }
+}
+
+/// Generates index file
+pub fn gen_index(main_module: String) -> js::Tokens {
+    quote! {
+        import { main } from $(quoted(format!("./{}.js", main_module)))
+        main();
     }
 }
