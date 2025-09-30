@@ -109,13 +109,29 @@ fn write_index(
     index_path
 }
 
+/// Path to package name
+///
+// ~/oil/test/ -> test
+// ~/oil/test/.cache/std -> std
+// ...
+fn path_to_pkg_name(path: &Utf8PathBuf) -> String {
+    match path.file_name() {
+        Some(file_name) => file_name.to_string(),
+        None => bail!(PackageError::FailedToGetProjectNameFromPath { path: path.clone() }),
+    }
+}
+
 /// Compiles project to js
-pub fn compile(path: Utf8PathBuf, name: String, rt: JsRuntime) {
+/// returns path to `index.js`
+pub fn compile(path: Utf8PathBuf) -> Utf8PathBuf {
     // Cache path
     let mut cache_path = path.clone();
     cache_path.push(".cache");
     // Config
     let config = config::retrieve_config(path.clone());
+    // Retrieving project name
+    let name = path_to_pkg_name(&path);
+    info!("Crawled project name {name} from {path}.");
     // Getting toposorted packages
     println!("{} Resolving packages...", style("[🔍]").bold().cyan());
     let resolved = dependencies::solve(cache_path.clone(), name.clone(), &config.pkg);
@@ -150,6 +166,13 @@ pub fn compile(path: Utf8PathBuf, name: String, rt: JsRuntime) {
     let index_path = write_index(&completed_packages, path, &target_path, &config);
     // Done
     println!("{} Done.", style("[✓]").bold().yellow());
-    // Running
+    return index_path;
+}
+
+/// Runs project
+pub fn run(path: Utf8PathBuf, rt: JsRuntime) {
+    // Compiling project
+    let index_path = compile(path);
+    // Running it
     run_by_rt(index_path, rt);
 }

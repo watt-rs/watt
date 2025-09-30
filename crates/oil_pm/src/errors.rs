@@ -65,4 +65,7 @@ pub enum PackageError {
         help("please, specify the module in config.")
     )]
     NoMainModuleFoundSpecified { path: Utf8PathBuf },
+    #[error("failed to get project name from path {path}.")]
+    #[diagnostic(code(compile::failed_to_get_project_name_from_path))]
+    FailedToGetProjectNameFromPath { path: Utf8PathBuf },
 }

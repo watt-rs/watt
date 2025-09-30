@@ -1,5 +1,6 @@
 /// Modules
 pub(crate) mod commands;
+pub(crate) mod errors;
 pub(crate) mod oil;
 
 /// Imports
@@ -9,6 +10,7 @@ use clap::{Parser, Subcommand};
  * Cli
  */
 
+/// Cli itself
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 #[command(propagate_version = true)]
@@ -17,18 +19,23 @@ struct Cli {
     command: SubCommand,
 }
 
+/// Subcommands
 #[derive(Subcommand)]
 enum SubCommand {
     /// Adds package from url
-    Add { url: String, package_name: String },
+    Add { url: String },
     /// Removes package by name
-    Remove { package_name: String },
+    Remove { url: String },
     /// Runs project
     Run,
-    /// Builds porject
-    Build,
+    /// Compiles project
+    Compile,
     /// Creates new project
     New { name: String },
+    /// Clears cache of packages
+    Clean,
+    /// Initializes new project in current folder
+    Init,
 }
 
 /// Cli commands handler
