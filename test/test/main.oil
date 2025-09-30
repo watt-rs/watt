@@ -2,7 +2,6 @@ use std/io as io
 use std/rt as rt
 
 fn main() {
-  let petr: string = "Nagaev"
-  petr = petr <> " Petr"
-  io.println(petr <> " on " <> rt.which() <> " runtime.")
+  let name: string = io.ask("Enter your name:")
+  io.println(name <> " on " <> rt.which() <> " runtime.")
 }

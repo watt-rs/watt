@@ -6,13 +6,28 @@ export function println(text) {
     console.log(text)
 }
 
-export function input() {
+export function readln() {
     
-  if (rt.which() == "Deno") {
-    return prompt()
+  let runtime = rt.which();
+  if (runtime == "Deno" ||
+      runtime == "Bun") {
+    return prompt("");
   }
   else {
-    return "unimplemented"
+    return "unimplemented";
+  }
+
+}
+
+export function ask(text) {
+    
+  let runtime = rt.which();
+  if (runtime == "Deno" ||
+      runtime == "Bun") {
+    return prompt(text);
+  }
+  else {
+    return "unimplemented";
   }
 
 }
