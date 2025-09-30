@@ -1,9 +1,0 @@
-fn do(f: fn(int, int): int) {
-    f(15, 13)
-}
-
-fn eq() {
-    do(fn (a: int, b: int): int {
-        return a + b
-    })
-}

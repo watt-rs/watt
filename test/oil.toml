@@ -1,7 +1,7 @@
 [pkg]
 pkg = "app"
 name = "test"
-main = "main"
+main = "test/main"
 dependencies = [
     "https://github.com/oil-rs/std.git"
 ]

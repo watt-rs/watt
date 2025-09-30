@@ -1,31 +1,19 @@
-use std/option for Option
+use std/io as io
+use std/convert as conv
+use std/rt as rt
 
-type Flower(water_level: int) {
-    pub let water_level: int = water_level
-    pub fn water(add: int) {
-        self.water_level += add
-    }
-}
+type Juice(multiplier: int) {
+  let multiplier: int = multiplier
+  pub let juice: int = 0
 
-enum Pot {
-    Full(flower: Flower),
-    Nothing
+  pub fn apply(amount: int) {
+    self.juice += (self.multiplier * amount)
+  }
 }
 
 fn main() {
-    let pot = Option.Some(Pot.Full(Flower(15)))
-    match pot {
-        Option.Some { element } -> {
-            let int: int = element
-            if int == 14 {
-                let a = int
-            } elif int == 15 {
-                let b = int
-            } else {
-                let c = int
-            }
-        }
-        Option.None() -> {
-        }
-    }
+  let juice: Juice = Juice(3)
+  juice.apply(conv.int(io.input()))
+
+  io.println(juice.juice)
 }

@@ -239,6 +239,17 @@ pub struct IrEnum {
     pub variants: Vec<IrEnumConstructor>,
 }
 
+/// Ir extern
+#[derive(Debug, Clone, PartialEq)]
+pub struct IrExtern {
+    pub location: Address,
+    pub name: EcoString,
+    pub publicity: Publicity,
+    pub params: Vec<IrParameter>,
+    pub body: EcoString,
+    pub typ: Option<TypePath>,
+}
+
 /// Ir declaration
 #[derive(Debug, Clone, PartialEq)]
 pub enum IrDeclaration {
@@ -246,6 +257,7 @@ pub enum IrDeclaration {
     Variable(IrVariable),
     Type(IrType),
     Enum(IrEnum),
+    Extern(IrExtern),
 }
 
 /// Ir dependency kind

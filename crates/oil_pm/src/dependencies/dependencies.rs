@@ -5,6 +5,7 @@ use crate::{
     errors::PackageError,
 };
 use camino::Utf8PathBuf;
+use console::style;
 use git2::Repository;
 use log::info;
 use oil_common::bail;
@@ -123,6 +124,10 @@ pub fn download<'s>(url: &'s String, cache: Utf8PathBuf) -> (Utf8PathBuf, String
     }
     // If not, downloading
     else {
+        println!(
+            "   {} Downloading: {package_name} from {url} ...",
+            style("[🔗]").bold().bright().green()
+        );
         match Url::parse(url) {
             Ok(_) => match Repository::clone(url, path.clone()) {
                 Err(_) => bail!(PackageError::FailedToCloneRepo { url: url.clone() }),
@@ -132,6 +137,10 @@ pub fn download<'s>(url: &'s String, cache: Utf8PathBuf) -> (Utf8PathBuf, String
             },
             Err(_) => bail!(PackageError::InvalidUrl { url: url.clone() }),
         }
+        println!(
+            "   {} Repository {package_name} downloaded successfully.",
+            style("[✓]").bold().green()
+        );
     }
     info!("Crawled name {package_name} from {url}.");
     (path, package_name)
@@ -145,12 +154,12 @@ pub fn download<'s>(url: &'s String, cache: Utf8PathBuf) -> (Utf8PathBuf, String
 /// * name -- package name
 /// * config -- package config
 ///
-fn resolve_packages(
+fn resolve_packages<'cfg, 'solved>(
     cache: Utf8PathBuf,
-    solved: &mut HashMap<String, Vec<String>>,
+    solved: &'solved mut HashMap<String, Vec<String>>,
     name: String,
-    config: PackageConfig,
-) -> &mut HashMap<String, Vec<String>> {
+    config: &'cfg PackageConfig,
+) -> &'solved mut HashMap<String, Vec<String>> {
     // If already solved
     if solved.contains_key(&name) {
         solved
@@ -161,7 +170,7 @@ fn resolve_packages(
         // Inserting vector
         solved.insert(name.clone(), Vec::new());
         // Dependencies
-        for dependency in config.dependencies {
+        for dependency in &config.dependencies {
             // Downloading dependency if not already downloaded
             let downloaded = dependencies::download(&dependency, cache.clone());
             let config = config::retrieve_config(downloaded.0);
@@ -172,7 +181,7 @@ fn resolve_packages(
                 None => bail!(PackageError::NoSolvedKeyFound { key: name }),
             }
             // Resolving dependency packages
-            resolve_packages(cache.clone(), solved, downloaded.1, config.pkg);
+            resolve_packages(cache.clone(), solved, downloaded.1, &config.pkg);
         }
         solved
     }
@@ -182,9 +191,9 @@ fn resolve_packages(
 ///
 /// returns toposorted vector
 /// of packages
-pub fn solve(cache: Utf8PathBuf, name: String, config: PackageConfig) -> Vec<String> {
+pub fn solve(cache: Utf8PathBuf, name: String, config: &PackageConfig) -> Vec<String> {
     // Solved packages
-    let packages = resolve_packages(cache, &mut HashMap::new(), name, config).to_owned();
+    let packages = resolve_packages(cache, &mut HashMap::new(), name, &config).to_owned();
     // Toposorting
     toposort(
         packages

@@ -823,6 +823,53 @@ impl<'file_path> Parser<'file_path> {
         }
     }
 
+    /// Extern fn declaration parsing
+    fn extern_fn_declaration(&mut self, publicity: Publicity) -> Node {
+        // Starting span of `extern fn(...): ... = "..."`
+        let start_span = self.peek().address.clone();
+
+        self.consume(TokenKind::Extern);
+        self.consume(TokenKind::Fn);
+
+        // function name
+        let name = self.consume(TokenKind::Id).clone();
+
+        // params
+        let mut params: Vec<Parameter> = Vec::new();
+        if self.check(TokenKind::Lparen) {
+            params = self.parameters();
+        }
+
+        // return type
+        let typ;
+        // if type specified
+        if self.check(TokenKind::Colon) {
+            // `: $type`
+            self.consume(TokenKind::Colon);
+            typ = Some(self.type_annotation());
+        }
+        // else
+        else {
+            typ = None
+        }
+
+        // body
+        self.consume(TokenKind::Assign);
+        let body = self.consume(TokenKind::Text).clone();
+
+        // Ending span of `extern fn(...): ... = "..."`
+        let end_span = self.previous().address.clone();
+
+        Node::ExternFn {
+            location: Address::span(start_span.span.start..end_span.span.end),
+            name,
+            publicity,
+            params,
+            typ,
+            body,
+        }
+    }
+
     /// Type declaration parsing
     fn type_declaration(&mut self, publicity: Publicity) -> Node {
         // start address
@@ -993,6 +1040,7 @@ impl<'file_path> Parser<'file_path> {
             TokenKind::Fn => self.fn_declaration(publicity),
             TokenKind::Enum => self.enum_declaration(publicity),
             TokenKind::Let => self.let_declaration(publicity),
+            TokenKind::Extern => self.extern_fn_declaration(publicity),
             _ => {
                 let token = self.peek().clone();
                 bail!(ParseError::UnexpectedDeclarationToken {

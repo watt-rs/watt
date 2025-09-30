@@ -20,6 +20,24 @@ use std::{
     sync::Arc,
 };
 
+/// Completed module
+pub struct CompletedModule {
+    /// Name
+    pub name: EcoString,
+    /// Analyzed
+    pub analyzed: RcPtr<Module>,
+    /// Generated
+    pub generated: Utf8PathBuf,
+}
+
+/// Completed package
+pub struct CompletedPackage {
+    /// Path to package
+    pub path: Utf8PathBuf,
+    /// Completed modules
+    pub modules: Vec<CompletedModule>,
+}
+
 /// Package compiler
 pub struct PackageCompiler<'modules> {
     /// Path to package
@@ -147,7 +165,8 @@ impl<'modules> PackageCompiler<'modules> {
     }
 
     /// Compiles package
-    pub fn compile(&mut self) {
+    /// returns analyzed modules
+    pub fn compile(&mut self) -> CompletedPackage {
         trace!("Compiling package: {}", self.path);
 
         // Collecting sources
@@ -180,7 +199,7 @@ impl<'modules> PackageCompiler<'modules> {
 
         // Performing analyze
         info!("Analyzing modules...");
-        let mut completed_modules = HashMap::new();
+        let mut analyzed_modules = HashMap::new();
         for name in sorted {
             info!("Analyzing module {name}");
             let module = loaded_modules.get(name).unwrap();
@@ -188,13 +207,13 @@ impl<'modules> PackageCompiler<'modules> {
             let analyzed_module = RcPtr::new(analyzer.analyze());
             self.analyzed_modules
                 .insert(name.clone(), analyzed_module.clone());
-            completed_modules.insert(name.clone(), analyzed_module);
+            analyzed_modules.insert(name.clone(), analyzed_module);
         }
 
         // Performing codegen
         info!("Performing codegen...");
         let mut generated_modules = HashMap::new();
-        for module in completed_modules.iter() {
+        for module in analyzed_modules.iter() {
             info!("Performing codegen for {}", module.0);
             let generated = gen_module(&module.0, loaded_modules.get(module.0).unwrap())
                 .to_file_string()
@@ -204,10 +223,12 @@ impl<'modules> PackageCompiler<'modules> {
 
         // Writing outcome
         info!("Writing outcome...");
+        let mut completed_modules = HashMap::new();
         for module in generated_modules {
             // Target path
             let mut target_path = Utf8PathBuf::from(self.outcome.clone());
             target_path.push(Utf8Path::new(&format!("{}.js", &module.0)));
+            completed_modules.insert(module.0, target_path.clone());
             // Creating directory
             if let Some(path) = target_path.parent() {
                 // Catching error
@@ -217,6 +238,19 @@ impl<'modules> PackageCompiler<'modules> {
             }
             // Creating file
             io::write(target_path, module.1);
+        }
+
+        // Returning analyzed modules
+        CompletedPackage {
+            path: self.path.clone(),
+            modules: analyzed_modules
+                .into_iter()
+                .map(|(name, module)| CompletedModule {
+                    name: name.clone(),
+                    analyzed: module,
+                    generated: completed_modules.get(&name).unwrap().clone(),
+                })
+                .collect(),
         }
     }
 }

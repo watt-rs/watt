@@ -1,5 +1,5 @@
-use ecow::EcoString;
 /// Imports
+use ecow::EcoString;
 use genco::{lang::js, quote, quote_in, tokens::quoted};
 use oil_ir::ir::{
     IrBinaryOp, IrBlock, IrDeclaration, IrDependencyKind, IrExpression, IrModule, IrPattern,
@@ -38,12 +38,10 @@ pub fn gen_expression(expr: IrExpression) -> js::Tokens {
             IrBinaryOp::Le => quote!( $(gen_expression(*left)) <= $(gen_expression(*right)) ),
             // With bool
             IrBinaryOp::Eq => {
-                let spec_eq = "$equals";
-                quote!( $spec_eq($(gen_expression(*left)), $(gen_expression(*right))) )
+                quote!( $("$$equals")($(gen_expression(*left)), $(gen_expression(*right))) )
             }
             IrBinaryOp::Neq => {
-                let spec_eq = "$equals";
-                quote!( !$spec_eq($(gen_expression(*left)), $(gen_expression(*right))) )
+                quote!( !$("$$equals")($(gen_expression(*left)), $(gen_expression(*right))) )
             }
         },
         IrExpression::Unary { value, op, .. } => match op {
@@ -154,19 +152,19 @@ pub fn gen_statement(stmt: IrStatement) -> js::Tokens {
         } => {
             // Pattern matching
             quote! {
-                $("$match")($(gen_expression(value)), [
+                $("$$match")($(gen_expression(value)), [
                     $['\r']
                     $(for case in cases join (,$['\r']) {
                         $(match case.pattern {
                             // Value pattern / eq pattern
                             IrPattern::Value(val) => {
-                                new EqPattern($(gen_expression(val)), function() {
+                                new $("$$")EqPattern($(gen_expression(val)), function() {
                                     $(gen_block(case.body))
                                 })
                             },
                             // Unwrap pattern of fields {field, field, n..}
                             IrPattern::Unwrap { en: _, fields } => {
-                                new UnwrapPattern([$(for field in fields.clone() join (, ) => $(quoted(field.as_str())))], function($("fields")) {
+                                new $("$$")UnwrapPattern([$(for field in fields.clone() join (, ) => $(quoted(field.as_str())))], function($("fields")) {
                                     $(for field in fields => let $(field.clone().to_string()) = $("fields").$(field.as_str());$['\r'])
                                     $(gen_block(case.body))
                                 })
@@ -186,25 +184,23 @@ pub fn gen_statement(stmt: IrStatement) -> js::Tokens {
 /// Generates declaration
 pub fn gen_declaration(decl: IrDeclaration) -> js::Tokens {
     match decl {
-        // Function declaration
         IrDeclaration::Function(ir_function) => {
             // function $name($param, $param, n...)
             quote! {
-                function $(ir_function.name.to_string())($(for param in ir_function.params join (, ) => $(param.name.to_string()))) {
+                export function $(ir_function.name.to_string())($(for param in ir_function.params join (, ) => $(param.name.to_string()))) {
                     $(gen_block(ir_function.body))
                 }
             }
         }
-        // Variable declaration
         IrDeclaration::Variable(ir_variable) => quote! {
-            let $(ir_variable.name.to_string()) = $(gen_expression(ir_variable.value));
+            export let $(ir_variable.name.to_string()) = $(gen_expression(ir_variable.value));
         },
-        // Type declaration
         IrDeclaration::Type(ir_type) => {
             // Methods
             let methods = quote! {
                 $(for function in ir_type.functions =>
                     $(function.name.to_string())($(for param in function.params join (, ) => $(param.name.to_string()))) {
+                        let self = this;
                         $(gen_block(function.body))
                     }
                 )
@@ -222,16 +218,15 @@ pub fn gen_declaration(decl: IrDeclaration) -> js::Tokens {
             // Class of `Type` named as $type_name
             // and class fabric named as `type_name`
             quote! {
-                class $("$")$(ir_type.name.to_string()) {
+                export class $("$")$(ir_type.name.to_string()) {
                     $constructor
                     $methods
                 }
-                function $(ir_type.name.to_string())($(for field in ir_type.fields.clone() join (, ) => $(field.name.to_string()))) {
+                export function $(ir_type.name.to_string())($(for field in ir_type.fields.clone() join (, ) => $(field.name.to_string()))) {
                     return new $("$")$(ir_type.name.to_string())($(for field in ir_type.fields join (, ) => $(field.name.to_string())));
                 }
             }
         }
-        // Enum declaration
         IrDeclaration::Enum(ir_enum) => {
             // ($variant_name): ($param, $param, n...): ({
             //    $meta: "Enum"
@@ -250,9 +245,16 @@ pub fn gen_declaration(decl: IrDeclaration) -> js::Tokens {
 
             // constr $name = {}
             quote! {
-                const $(ir_enum.name.to_string()) = {
+                export const $(ir_enum.name.to_string()) = {
                     $variants
                 };
+            }
+        }
+        IrDeclaration::Extern(ir_extern) => {
+            quote! {
+                export function $(ir_extern.name.to_string())($(for param in ir_extern.params join (, ) => $(param.name.to_string()))) {
+                    $(ir_extern.body.to_string())
+                }
             }
         }
     }
@@ -273,24 +275,96 @@ pub fn gen_module(name: &EcoString, module: &IrModule) -> js::Tokens {
     // Dependencies prefix
     let dependencies_prefix = match name_segments_amount {
         1 => String::from("./"),
-        _ => String::from("../".repeat(name_segments_amount)),
+        _ => String::from("../".repeat(name_segments_amount - 1)),
     };
     // Gen
     quote! {
+        // Prelude
+        import {$("$")match, $("$")equals} from $(quoted(format!("{dependencies_prefix}prelude.js")))
         // Dependencies
         //
         // for `AsName`: import * as $name from "$module"
         // for `ForNames`: import {$name, $name, ...} from "$module"
         $(for dep in module.dependencies.clone() join ($['\r']) => $(match dep.kind {
             IrDependencyKind::AsName(name) => {
-                import * as $(name.to_string()) from $(quoted(format!("{dependencies_prefix}{}", dep.path.as_str())))
+                import * as $(name.to_string()) from $(quoted(format!("{dependencies_prefix}{}.js", dep.path.as_str())))
             },
             IrDependencyKind::ForNames(names) => {
-                import {$(for name in names join(, ) => $(name.to_string()))} from $(quoted(format!("{dependencies_prefix}{}", dep.path.as_str())))
+                import {$(for name in names join(, ) => $(name.to_string()))} from $(quoted(format!("{dependencies_prefix}{}.js", dep.path.as_str())))
             },
         }))
         $['\n']
         // Declarations
         $(for decl in module.definitions.clone() join ($['\n']) => $(gen_declaration(decl)))
+    }
+}
+
+/// Generates prelude
+pub fn gen_prelude() -> js::Tokens {
+    quote! {
+        // EnumEquals$fn
+        function $("$$")enum_equals(a, b) {
+            // Gettting keys
+            let a_keys = Object.keys(a);
+            let b_keys = Object.keys(b);
+            // Checking length
+            if (a_keys.length != b_keys.length) {
+                return false
+            }
+            // Checking entries
+            for (const k1 of a_keys) {
+                // If b keys includes a key
+                if (b_keys.includes(k1)) {
+                    // Comparing values
+                    if ($("$")equals(a[k1], b[k1]) == false) {
+                        return false
+                    }
+                }
+                // Otherwise
+                else {
+                    return false;
+                }
+            };
+            return true;
+        }
+
+        // Equals$Fn
+        export function $("$$")equals(a, b) {
+            // If both not objects
+            if (typeof(a) !== "object" || typeof(b) !== "object") {
+                return a == b;
+            }
+            // Else
+            else {
+                // If meta is $Type or other
+                if ("$meta" in a) {
+                    if ("$meta" in b) {
+                        // Getting meta, if it exists
+                        let a_meta = a.$("$")meta;
+                        let b_meta = b.$("$")meta;
+                        // If meta is different
+                        if (a_meta != b_meta) {
+                            return false
+                        } else {
+                            // Meta
+                            let meta = a_meta;
+                            // If meta is $Enum
+                            if (meta == "Enum") {
+                                // Comparing enums
+                                return $("$")enum_equals(a, b)
+                            }
+                            return a === b;
+                        }
+                    }
+                } else {
+                    return a == b;
+                }
+            }
+        }
+
+        // Match$Fn
+        export function $("$$")match() {
+
+        }
     }
 }

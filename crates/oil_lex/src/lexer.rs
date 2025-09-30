@@ -46,6 +46,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
             ("use", TokenKind::Use),
             ("pub", TokenKind::Pub),
             ("match", TokenKind::Match),
+            ("extern", TokenKind::Extern),
         ]);
         // Lexer
         Lexer {
@@ -197,9 +198,13 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
                 '\0' => {}
                 ' ' => {}
                 '\n' => {}
-                '\'' => {
+                '\"' => {
                     let tk = self.scan_string();
                     self.tokens.push(tk)
+                }
+                '`' => {
+                    let tk = self.scan_multiline_string();
+                    self.tokens.push(tk);
                 }
                 _ => {
                     // numbers
@@ -236,23 +241,57 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
         self.tokens
     }
 
-    /// Scans string. Implies quote is already ate. East ending quote.
+    /// Scans string. Implies quote is already ate. Eats ending quote.
     fn scan_string(&mut self) -> Token {
         // Start of span
         let span_start = self.cursor.current;
         // String text
         let mut text: EcoString = EcoString::new();
 
-        while self.cursor.peek() != '\'' {
+        while self.cursor.peek() != '\"' {
             let ch = self.advance();
 
-            if ch == '\\' && self.cursor.peek() == '\'' {
+            if ch == '\\' && self.cursor.peek() == '\"' {
                 text.push(self.advance());
             } else {
                 text.push(ch);
             }
 
             if self.cursor.is_at_end() || self.is_match('\n') {
+                bail!(LexError::UnclosedStringQuotes {
+                    src: self.named_source.clone(),
+                    span: (span_start..self.cursor.current).into(),
+                })
+            }
+        }
+
+        self.advance();
+        let span_end = self.cursor.current;
+
+        Token {
+            tk_type: TokenKind::Text,
+            value: text,
+            address: Address::span(span_start..span_end),
+        }
+    }
+
+    /// Scans multiline string. Implies quote is already ate. Eats ending quote.
+    fn scan_multiline_string(&mut self) -> Token {
+        // Start of span
+        let span_start = self.cursor.current;
+        // String text
+        let mut text: EcoString = EcoString::new();
+
+        while self.cursor.peek() != '`' {
+            let ch = self.advance();
+
+            if ch == '\\' && self.cursor.peek() == '`' {
+                text.push(self.advance());
+            } else {
+                text.push(ch);
+            }
+
+            if self.cursor.is_at_end() {
                 bail!(LexError::UnclosedStringQuotes {
                     src: self.named_source.clone(),
                     span: (span_start..self.cursor.current).into(),

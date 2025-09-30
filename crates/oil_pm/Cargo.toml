@@ -1,0 +1,20 @@
+[package]
+name = "oil_pm"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ecow = "0.2.6"
+git2 = "0.20.2"
+url = "2.5.7"
+console = "0.16.1"
+indicatif = "0.18.0"
+camino = "1.1.10"
+miette = { version = "7.6.0", features = ["fancy"] }
+thiserror = "2.0.12"
+petgraph = "0.8.2"
+oil_common = { path = "../oil_common" }
+oil_compile = { path = "../oil_compile" }
+log = "0.4.27"
+serde = { version = "1.0.226", features = ["derive"] }
+toml = "0.9.7"

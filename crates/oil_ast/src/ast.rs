@@ -220,6 +220,14 @@ pub enum Node {
         from: Box<Node>,
         to: Box<Node>,
     },
+    ExternFn {
+        location: Address,
+        name: Token,
+        publicity: Publicity,
+        params: Vec<Parameter>,
+        typ: Option<TypePath>,
+        body: Token,
+    },
 }
 
 /// Ast tree

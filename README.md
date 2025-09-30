@@ -42,4 +42,3 @@ fn main() {
 - [ ] add invalid names as js keywords, such as `class`, `function`, etc...
 - [ ] foreign functions mechanism
 - [ ] different runtimes
- 

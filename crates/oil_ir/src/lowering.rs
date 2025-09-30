@@ -3,8 +3,8 @@ use crate::{
     errors::IrError,
     ir::{
         IrBinaryOp, IrBlock, IrCase, IrDeclaration, IrDependency, IrDependencyKind, IrEnum,
-        IrEnumConstructor, IrExpression, IrFunction, IrModule, IrParameter, IrPattern, IrStatement,
-        IrType, IrUnaryOp, IrVariable,
+        IrEnumConstructor, IrExpression, IrExtern, IrFunction, IrModule, IrParameter, IrPattern,
+        IrStatement, IrType, IrUnaryOp, IrVariable,
     },
 };
 use miette::NamedSource;
@@ -138,6 +138,28 @@ pub fn node_to_ir_declaration(source: &NamedSource<Arc<String>>, node: Node) -> 
                         .collect(),
                 })
                 .collect(),
+        }),
+        Node::ExternFn {
+            location,
+            name,
+            publicity,
+            params,
+            typ,
+            body,
+        } => IrDeclaration::Extern(IrExtern {
+            location,
+            publicity,
+            name: name.value,
+            params: params
+                .into_iter()
+                .map(|param| IrParameter {
+                    location: param.name.address,
+                    name: param.name.value,
+                    typ: param.typ,
+                })
+                .collect(),
+            body: body.value,
+            typ,
         }),
         unexpected => bail!(IrError::UnexpectedDeclarationNode { unexpected }),
     }

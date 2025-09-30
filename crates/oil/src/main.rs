@@ -1,8 +1,5 @@
 /// Modules
 pub(crate) mod commands;
-pub(crate) mod config;
-pub(crate) mod dependencies;
-pub(crate) mod errors;
 pub(crate) mod oil;
 
 /// Imports

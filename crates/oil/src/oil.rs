@@ -1,6 +1,7 @@
 use crate::commands::run;
 /// Imports
 use camino::Utf8PathBuf;
+use oil_pm::runtime::JsRuntime;
 
 /// Runs code
 #[allow(unused_variables)]
@@ -18,5 +19,6 @@ pub fn run() {
     run::run(
         Utf8PathBuf::from("/home/vyacheslav/oil/test/"),
         String::from("test"),
+        JsRuntime::Deno,
     );
 }

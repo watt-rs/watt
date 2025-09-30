@@ -1,4 +1,5 @@
 /// Imports
+use crate::runtime::JsRuntime;
 use camino::Utf8PathBuf;
 use miette::Diagnostic;
 use thiserror::Error;
@@ -42,4 +43,26 @@ pub enum PackageError {
         url("https://github.com/oillanguage/oil")
     )]
     NoSolvedKeyFound { key: String },
+    #[error("failed to run project using {rt:?}. error: {error}")]
+    #[diagnostic(code(pkg::failed_to_run_project))]
+    FailedToRunProject { rt: JsRuntime, error: String },
+    #[error("no main package with path {path} found.")]
+    #[diagnostic(
+        code(compile::no_main_package_found),
+        help("please, file an issue on github."),
+        url("https://github.com/oillanguage/oil")
+    )]
+    NoMainPackageFound { path: Utf8PathBuf },
+    #[error("no main module with name {module} found.")]
+    #[diagnostic(code(compile::no_main_module_found), help("check module existence."))]
+    NoMainModuleFound { module: String },
+    #[error("no main function found in module {module} marked as main.")]
+    #[diagnostic(code(compile::no_main_function_found), help("define a main function."))]
+    NoMainFnFound { module: String },
+    #[error("no main module specified in config {path}.")]
+    #[diagnostic(
+        code(compile::no_main_module_specified),
+        help("please, specify the module in config.")
+    )]
+    NoMainModuleFoundSpecified { path: Utf8PathBuf },
 }

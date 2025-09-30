@@ -1294,6 +1294,47 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         self.resolver.pop_rib();
     }
 
+    /// Analyzes extern function declaration
+    fn analyze_extern(
+        &mut self,
+        location: Address,
+        publicity: Publicity,
+        name: EcoString,
+        params: Vec<IrParameter>,
+        ret_type: Option<TypePath>,
+    ) {
+        // inferring return type
+        let ret = ret_type.map_or(Typ::Void, |t| self.infer_type_annotation(t));
+
+        // inferring params
+        let params = params
+            .into_iter()
+            .map(|p| (p.name, self.infer_type_annotation(p.typ.clone())))
+            .collect::<HashMap<EcoString, Typ>>();
+
+        // creating and defining function
+        let function = Function {
+            source: self.module.source.clone(),
+            location: location.clone(),
+            name: name.clone(),
+            params: params
+                .clone()
+                .into_iter()
+                .map(|(_, v)| v)
+                .collect::<Vec<Typ>>(),
+            ret: ret.clone(),
+        };
+        self.resolver.define(
+            &self.module.source.clone(),
+            &location,
+            &name,
+            Def::Module(ModDef::Variable(WithPublicity {
+                publicity,
+                value: Typ::Function(RcPtr::new(function)),
+            })),
+        );
+    }
+
     /// Analyzes declaration
     pub fn analyze_declaration(&mut self, declaration: IrDeclaration) {
         match declaration {
@@ -1324,6 +1365,13 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 ir_enum.name,
                 ir_enum.publicity,
                 ir_enum.variants,
+            ),
+            IrDeclaration::Extern(ir_extern) => self.analyze_extern(
+                ir_extern.location,
+                ir_extern.publicity,
+                ir_extern.name,
+                ir_extern.params,
+                ir_extern.typ,
             ),
         }
     }

@@ -65,6 +65,7 @@ pub enum TokenKind {
     Pub,           // pub
     Match,         // match
     Arrow,         // arrow
+    Extern,        // extern
 }
 
 /// Token structure
