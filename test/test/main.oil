@@ -1,7 +1,8 @@
 use std/io as io
+use std/rt as rt
 
 fn main() {
   let petr: string = "Nagaev"
   petr = petr <> " Petr"
-  io.println(petr)
+  io.println(petr <> " on " <> rt.which() <> " runtime.")
 }

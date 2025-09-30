@@ -1,9 +1,9 @@
 /// Modules
 pub(crate) mod commands;
 pub(crate) mod errors;
-pub(crate) mod oil;
 
 /// Imports
+use crate::commands::run;
 use clap::{Parser, Subcommand};
 
 /*
@@ -27,7 +27,10 @@ enum SubCommand {
     /// Removes package by name
     Remove { url: String },
     /// Runs project
-    Run,
+    Run {
+        #[arg(value_parser = ["deno", "bun", "node"])]
+        rt: Option<String>,
+    },
     /// Compiles project
     Compile,
     /// Creates new project
@@ -40,7 +43,16 @@ enum SubCommand {
 
 /// Cli commands handler
 pub fn cli() {
-    oil::run();
+    // Parsing arguments
+    match Cli::parse().command {
+        SubCommand::Add { url } => todo!(),
+        SubCommand::Remove { url } => todo!(),
+        SubCommand::Run { rt } => run::execute(rt),
+        SubCommand::Compile => todo!(),
+        SubCommand::New { name } => todo!(),
+        SubCommand::Clean => todo!(),
+        SubCommand::Init => todo!(),
+    }
 }
 
 /// Main function

@@ -2,7 +2,10 @@
 use crate::errors::CliError;
 use camino::Utf8PathBuf;
 use oil_common::bail;
-use oil_pm::{compile, runtime::JsRuntime};
+use oil_pm::{
+    compile,
+    runtime::{self, JsRuntime},
+};
 use std::env;
 
 /// Runs code
@@ -12,7 +15,17 @@ fn run(path: Utf8PathBuf, runtime: JsRuntime) {
 }
 
 /// Executes command
-pub fn execute(runtime: JsRuntime) {
+pub fn execute(rt: Option<String>) {
+    // Getting runtime from string
+    let runtime = match rt {
+        Some(rt) => match rt.as_str() {
+            "bun" => JsRuntime::Bun,
+            "deno" => JsRuntime::Deno,
+            "node" => JsRuntime::Node,
+            _ => bail!(CliError::InvalidRuntime { rt }),
+        },
+        None => runtime::DEFAULT,
+    };
     // Retrieving current directory
     let cwd = match env::current_dir() {
         Ok(path) => match Utf8PathBuf::try_from(path.clone()) {

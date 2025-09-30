@@ -1,7 +1,7 @@
 /// Imports
 use miette::Diagnostic;
-use thiserror::Error;
 use std::path::PathBuf;
+use thiserror::Error;
 
 /// Cli error
 #[derive(Debug, Error, Diagnostic)]
@@ -15,4 +15,7 @@ pub enum CliError {
     #[error("failed to convert path {path} to utf8 path.")]
     #[diagnostic(code(pkg::wrong_utf8_path))]
     WrongUtf8Path { path: PathBuf },
+    #[error("runtime {rt} is invalid.")]
+    #[diagnostic(code(pkg::invalid_runtime))]
+    InvalidRuntime { rt: String },
 }

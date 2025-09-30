@@ -11,3 +11,6 @@ pub enum JsRuntime {
     /// for browsers
     Common,
 }
+
+/// Default runtime
+pub const DEFAULT: JsRuntime = JsRuntime::Deno;
