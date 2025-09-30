@@ -1,6 +1,7 @@
 import {$$match, $$equals} from "../prelude.js"
 
 import * as rt from "../std/rt.js"
+import {panic} from "../std/rt.js"
 
 export function println(text) {
     console.log(text)
@@ -14,7 +15,7 @@ export function readln() {
     return prompt("");
   }
   else {
-    return "unimplemented";
+    panic("`readln` is not implemented for " + runtime + " runtime");
   }
 
 }
@@ -27,7 +28,7 @@ export function ask(text) {
     return prompt(text);
   }
   else {
-    return "unimplemented";
+    panic("`ask` is not implemented for " + runtime + " runtime");
   }
 
 }
