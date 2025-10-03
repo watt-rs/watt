@@ -114,7 +114,7 @@ fn write_index(
 // ~/oil/test/ -> test
 // ~/oil/test/.cache/std -> std
 // ...
-fn path_to_pkg_name(path: &Utf8PathBuf) -> String {
+pub fn path_to_pkg_name(path: &Utf8PathBuf) -> String {
     match path.file_name() {
         Some(file_name) => file_name.to_string(),
         None => bail!(PackageError::FailedToGetProjectNameFromPath { path: path.clone() }),

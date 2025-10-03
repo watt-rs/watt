@@ -13,6 +13,16 @@ pub enum PackageError {
     #[error("failed to find \"oil.toml\" at \"{path}\"")]
     #[diagnostic(code(pkg::failed_to_find_config))]
     FailedToFindConfig { path: Utf8PathBuf },
+    #[error("failed to generate \"oil.toml\" at \"{path}\". file already exists.")]
+    #[diagnostic(code(pkg::failed_to_gen_config))]
+    FailedToGenConfig { path: Utf8PathBuf },
+    #[error("failed to serialize config.")]
+    #[diagnostic(
+        code(pkg::failed_to_serialize_config),
+        help("please, file an issue on github."),
+        url("https://github.com/oillanguage/oil")
+    )]
+    FailedToSerializeConfig { path: Utf8PathBuf },
     #[error("found an import cycle {a} <> {b}.")]
     #[diagnostic(code(pkg::found_import_cycle))]
     FoundDependenciesCycle { a: String, b: String },

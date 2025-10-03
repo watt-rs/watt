@@ -31,6 +31,8 @@ enum SubCommand {
         #[arg(value_parser = ["deno", "bun", "node"])]
         rt: Option<String>,
     },
+    /// Analyzes project for compile-time errors.
+    Analyze,
     /// Compiles project
     Compile,
     /// Creates new project
@@ -48,6 +50,7 @@ pub fn cli() {
         SubCommand::Add { url } => todo!(),
         SubCommand::Remove { url } => todo!(),
         SubCommand::Run { rt } => run::execute(rt),
+        SubCommand::Analyze => todo!(),
         SubCommand::Compile => todo!(),
         SubCommand::New { name } => todo!(),
         SubCommand::Clean => todo!(),
