@@ -75,7 +75,15 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                         t2: t2.clone()
                     }),
                 },
-                (Typ::Dyn, _) | (_, Typ::Dyn) => Typ::Dyn,
+                (Typ::Dyn, t) | (t, Typ::Dyn) => match t {
+                    Typ::Void => bail!(AnalyzeError::CouldNotUnify {
+                        src: self.module.source.clone(),
+                        span: location.span.clone().into(),
+                        t1: t1.clone(),
+                        t2: t2.clone()
+                    }),
+                    _ => Typ::Dyn,
+                },
                 _ => bail!(AnalyzeError::CouldNotUnify {
                     src: self.module.source.clone(),
                     span: location.span.clone().into(),

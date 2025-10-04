@@ -24,7 +24,7 @@ export function unwrap(result) {
         }),
         new $$UnwrapPattern([], function($$fields) {
             rt.panic("unwrap on error result.");
-            return unreachable();
+            return unreachable;
         })
     ]);
     if ($$match_result != null && $$match_result != undefined) {

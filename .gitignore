@@ -1,3 +1,4 @@
 /target
 /std
 /examples/juice/.cache
+/examples/enum/.cache

@@ -63,8 +63,8 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         match elseif {
             Some(elseif) => {
                 // unifying types
-                let inferred = &self.infer_stmt(*elseif)?;
-                Some(self.unify(&location, &inferred, inferred))
+                let inferred_elif = self.infer_stmt(*elseif)?;
+                Some(self.unify(&location, &inferred, &inferred_elif))
             }
             None => Some(inferred),
         }

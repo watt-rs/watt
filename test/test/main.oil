@@ -1,10 +1,5 @@
+use std/io as io
+
 fn main() {
-    let a = 5
-    a = match a {
-        5 -> {
-            return 5
-        }
-        2 -> {
-        }
-    }
+    io.println("Hello, world!")
 }

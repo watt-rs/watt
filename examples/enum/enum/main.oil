@@ -1,0 +1,25 @@
+use std/io as io
+
+type Flower(water_level: int) {
+    pub let water_level = water_level
+    pub fn water(amount: int) {
+        self.water_level += amount
+    }
+}
+
+enum Pot {
+    Full(flower: Flower),
+    Empty
+}
+
+fn main() {
+    let pot = Pot.Full(Flower(15))
+    match pot {
+        Pot.Full { flower } -> {
+            io.println(flower)
+        }
+        Pot.Empty() -> {
+            io.println("empty")
+        }
+    }
+}
