@@ -166,8 +166,8 @@ pub fn gen_statement(stmt: IrStatement) -> js::Tokens {
                             },
                             // Unwrap pattern of fields {field, field, n..}
                             IrPattern::Unwrap { en: _, fields } => {
-                                new $("$$")UnwrapPattern([$(for field in fields.clone() join (, ) => $(quoted(field.as_str())))], function($("fields")) {
-                                    $(for field in fields => let $(field.clone().to_string()) = $("fields").$(field.as_str());$['\r'])
+                                new $("$$")UnwrapPattern([$(for field in fields.clone() join (, ) => $(quoted(field.as_str())))], function($("$$fields")) {
+                                    $(for field in fields => let $(field.clone().to_string()) = $("$$fields").$(field.as_str());$['\r'])
                                     $(gen_block(case.body))
                                 })
                             },
@@ -282,7 +282,7 @@ pub fn gen_module(name: &EcoString, module: &IrModule) -> js::Tokens {
     // Gen
     quote! {
         // Prelude
-        import {$("$$match"), $("$$equals")} from $(quoted(format!("{dependencies_prefix}prelude.js")))
+        import {$("$$match"), $("$$equals"), $("$$EqPattern"), $("$$UnwrapPattern")} from $(quoted(format!("{dependencies_prefix}prelude.js")))
         // Dependencies
         //
         // for `AsName`: import * as $name from "$module"
@@ -305,13 +305,13 @@ pub fn gen_module(name: &EcoString, module: &IrModule) -> js::Tokens {
 pub fn gen_prelude() -> js::Tokens {
     quote! {
         // EnumEquals$fn
-        function $("$$")enum_equals(a, b) {
+        function $("$$enum_equals")(a, b) {
             // Gettting keys
             let a_keys = Object.keys(a);
             let b_keys = Object.keys(b);
             // Checking length
             if (a_keys.length != b_keys.length) {
-                return false
+                return false;
             }
             // Checking entries
             for (const k1 of a_keys) {
@@ -319,7 +319,7 @@ pub fn gen_prelude() -> js::Tokens {
                 if (b_keys.includes(k1)) {
                     // Comparing values
                     if ($("$")equals(a[k1], b[k1]) == false) {
-                        return false
+                        return false;
                     }
                 }
                 // Otherwise
@@ -331,7 +331,7 @@ pub fn gen_prelude() -> js::Tokens {
         }
 
         // Equals$Fn
-        export function $("$$")equals(a, b) {
+        export function $("$$equals")(a, b) {
             // If both not objects
             if (typeof(a) !== "object" || typeof(b) !== "object") {
                 return a == b;
@@ -342,18 +342,18 @@ pub fn gen_prelude() -> js::Tokens {
                 if ("$meta" in a) {
                     if ("$meta" in b) {
                         // Getting meta, if it exists
-                        let a_meta = a.$("$")meta;
-                        let b_meta = b.$("$")meta;
+                        let a_meta = a.$("$meta");
+                        let b_meta = b.$("$meta");
                         // If meta is different
                         if (a_meta != b_meta) {
-                            return false
+                            return false;
                         } else {
                             // Meta
                             let meta = a_meta;
                             // If meta is $Enum
                             if (meta == "Enum") {
                                 // Comparing enums
-                                return $("$")enum_equals(a, b)
+                                return $("$$")enum_equals(a, b);
                             }
                             return a === b;
                         }
@@ -364,9 +364,63 @@ pub fn gen_prelude() -> js::Tokens {
             }
         }
 
-        // Match$Fn
-        export function $("$$")match() {
+        // UnwrapPattern$Class
+        export class $("$$UnwrapPattern") {
+            constructor(fields, unwrap_fn) {
+                this.fields = fields;
+                this.unwrap_fn = unwrap_fn;
+            }
+            evaluate(value) {
+                // Checking meta existence
+                if ("$meta" in value) {
+                    // Meta
+                    let meta = value.$("$meta");
+                    // Checking it's an enum
+                    if (meta == "Enum") {
+                        // Retrieving keys
+                        let keys = Object.keys(value);
+                        // Checking for fields
+                        for (const field of this.fields) {
+                            // If keys isn't includes a field
+                            if (!keys.includes(field)) {
+                                return [false, null];
+                            }
+                        };
+                        // Unwrap
+                        return [true, this.unwrap_fn(value)];
+                    } else {
+                        return [false, null];
+                    }
+                } else {
+                    return [false, null];
+                }
+            }
+        }
 
+        // EqPattern$Class
+        export class $("$$EqPattern") {
+            constructor(value, eq_fn) {
+                this.value = value;
+                this.eq_fn = eq_fn;
+            }
+            evaluate(value) {
+                if ($("$$equals")(this.value, value)) {
+                    return [true, this.eq_fn()];
+                } else {
+                    return [false, null];
+                }
+            }
+        }
+
+        // Match$Fn
+        export function $("$$match")(value, patterns) {
+            for (const pat of patterns) {
+                let result = pat.evaluate(value);
+                if (result[0] == true) {
+                    return result[1];
+                }
+            }
+            return null;
         }
     }
 }

@@ -1,26 +1,43 @@
-import {$$match, $$equals} from "../prelude.js"
+import {$$match, $$equals, $$EqPattern, $$UnwrapPattern} from "../prelude.js"
 
 import * as io from "../std/io.js"
-import * as conv from "../std/convert.js"
-import * as rt from "../std/rt.js"
 
-export class $Juice {
-    constructor(multiplier, juice) {
-        this.$meta = "Juice";
-        this.multiplier = multiplier;
-        this.juice = 0;
+export class $Flower {
+    constructor(water_level) {
+        this.$meta = "Flower";
+        this.water_level = water_level;
     }
-    apply(amount) {
+    water(amount) {
         let self = this;
-        self.juice = self.juice + self.multiplier * amount;
+        self.water_level = self.water_level + amount;
     }
 }
-export function Juice(multiplier, juice) {
-    return new $Juice(multiplier, juice);
+export function Flower(water_level) {
+    return new $Flower(water_level);
 }
+
+export const Pot = {
+    Full: (flower) => ({
+        $meta: "Enum",
+        $enum: "Pot",
+        flower: flower
+    }),
+    Empty: () => ({
+        $meta: "Enum",
+        $enum: "Pot",
+    })
+};
 
 export function main() {
-    let juice = Juice(3);
-    juice.apply(conv.int(io.readln()));
-    io.println(juice.juice);
+    let pot = Pot.Full(Flower(15));
+    $$match(pot, [
+        new $$UnwrapPattern(["flower"], function($$fields) {
+            let flower = $$fields.flower;
+            let cast = flower;
+            io.println(cast);
+        }),
+        new $$EqPattern(Pot.Empty(), function() {
+            io.println("empty");
+        })
+    ])
 }

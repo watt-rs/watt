@@ -1,4 +1,4 @@
-import {$$match, $$equals} from "../prelude.js"
+import {$$match, $$equals, $$EqPattern, $$UnwrapPattern} from "../prelude.js"
 
 export const Option = {
     Some: (element) => ({
