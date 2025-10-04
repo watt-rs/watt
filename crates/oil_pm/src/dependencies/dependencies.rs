@@ -99,7 +99,7 @@ pub fn url_to_pkg_name(url: &String) -> String {
         Ok(ok) => match ok.path_segments().and_then(|segments| segments.last()) {
             Some(segment) => match segment.strip_suffix(".git") {
                 Some(name) => name.to_string(),
-                None => bail!(PackageError::InvalidUrl { url: url.clone() }),
+                None => segment.to_string(),
             },
             None => bail!(PackageError::InvalidUrl { url: url.clone() }),
         },

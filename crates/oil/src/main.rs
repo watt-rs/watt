@@ -3,7 +3,7 @@ pub(crate) mod commands;
 pub(crate) mod errors;
 
 /// Imports
-use crate::commands::run;
+use crate::commands::{init, run};
 use clap::{Parser, Subcommand};
 
 /*
@@ -40,21 +40,24 @@ enum SubCommand {
     /// Clears cache of packages
     Clean,
     /// Initializes new project in current folder
-    Init,
+    Init {
+        #[arg(value_parser = ["app", "lib"])]
+        ty: Option<String>,
+    },
 }
 
 /// Cli commands handler
 pub fn cli() {
     // Parsing arguments
     match Cli::parse().command {
-        SubCommand::Add { url } => todo!(),
-        SubCommand::Remove { url } => todo!(),
+        SubCommand::Add { url: _ } => todo!(),
+        SubCommand::Remove { url: _ } => todo!(),
         SubCommand::Run { rt } => run::execute(rt),
         SubCommand::Analyze => todo!(),
         SubCommand::Compile => todo!(),
-        SubCommand::New { name } => todo!(),
+        SubCommand::New { name: _ } => todo!(),
         SubCommand::Clean => todo!(),
-        SubCommand::Init => todo!(),
+        SubCommand::Init { ty } => init::execute(ty),
     }
 }
 

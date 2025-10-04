@@ -16,12 +16,14 @@ pub enum IoError {
     )]
     FailedToRead { path: Utf8PathBuf },
     #[error("failed to write in file: {path}.")]
-    #[diagnostic(
-        code(io::failed_to_write),
-        help("please, file an issue on github."),
-        url("https://github.com/oillanguage/oil")
-    )]
+    #[diagnostic(code(io::failed_to_write))]
     FailedToWrite { path: Utf8PathBuf },
+    #[error("failed to make directory: {path}.")]
+    #[diagnostic(code(io::failed_to_mkdir))]
+    FailedToMkdir { path: Utf8PathBuf },
+    #[error("failed to make directory tree: {path}.")]
+    #[diagnostic(code(io::failed_to_mkdir_all))]
+    FailedToMkdirAll { path: Utf8PathBuf },
     #[error("entry error inside children of: {path}.")]
     #[diagnostic(
         code(io::failed_to_read),

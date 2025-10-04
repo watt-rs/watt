@@ -3,5 +3,5 @@ pkg = "app"
 name = "test"
 main = "test/main"
 dependencies = [
-    "https://github.com/oil-rs/std.git"
+    "https://github.com/oil-rs/std"
 ]

@@ -1,5 +1,5 @@
 /// Imports
-use crate::{compile::path_to_pkg_name, errors::PackageError};
+use crate::errors::PackageError;
 use camino::Utf8PathBuf;
 use oil_common::bail;
 use oil_compile::io::io;
@@ -41,8 +41,7 @@ pub fn parse(path: &Utf8PathBuf, text: String) -> OilConfig {
 
 /// Locates and reads config file
 pub fn locate(path: &Utf8PathBuf) -> Result<String, PackageError> {
-    let mut config_path = path.clone();
-    config_path.push("oil.toml");
+    let config_path = path.join("oil.toml");
     match fs::read_to_string(&config_path) {
         Ok(text) => Ok(text),
         Err(_) => Err(PackageError::FailedToFindConfig { path: path.clone() }),
@@ -62,14 +61,14 @@ pub fn retrieve_config(path: &Utf8PathBuf) -> OilConfig {
 
 /// Generates config
 /// saves into `oil.toml` file in `path`
-pub fn generate(path: Utf8PathBuf, ty: PackageType, main: Option<String>) {
+pub fn generate(path: Utf8PathBuf, name: &String, ty: PackageType, main: Option<String>) {
     match locate(&path) {
         Ok(_) => bail!(PackageError::FailedToGenConfig { path }),
         Err(_) => {
             let config = OilConfig {
                 pkg: PackageConfig {
                     pkg: ty,
-                    name: path_to_pkg_name(&path),
+                    name: name.clone(),
                     main,
                     dependencies: vec![],
                 },
@@ -78,8 +77,7 @@ pub fn generate(path: Utf8PathBuf, ty: PackageType, main: Option<String>) {
                 Ok(text) => text,
                 Err(_) => bail!(PackageError::FailedToSerializeConfig { path }),
             };
-            let mut config_path = path.clone();
-            config_path.push("oil.toml");
+            let config_path = path.join("oil.toml");
             io::write(config_path, serialized);
         }
     }

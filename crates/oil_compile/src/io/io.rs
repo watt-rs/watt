@@ -132,3 +132,25 @@ pub fn write(path: Utf8PathBuf, text: String) {
         }
     }
 }
+
+/// Creates directory
+pub fn mkdir(path: &Utf8PathBuf) {
+    // Creating directory, if not exists
+    match fs::create_dir(path) {
+        Ok(_) => {}
+        Err(_) => {
+            bail!(IoError::FailedToMkdir { path: path.clone() })
+        }
+    }
+}
+
+/// Creates all directory
+pub fn mkdir_all(path: &Utf8PathBuf) {
+    // Creating directory, if not exists
+    match fs::create_dir_all(path) {
+        Ok(_) => {}
+        Err(_) => {
+            bail!(IoError::FailedToMkdirAll { path: path.clone() })
+        }
+    }
+}
