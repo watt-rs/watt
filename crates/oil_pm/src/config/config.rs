@@ -50,10 +50,10 @@ pub fn locate(path: &Utf8PathBuf) -> Result<String, PackageError> {
 }
 
 /// Locates and parses config
-pub fn retrieve_config(path: Utf8PathBuf) -> OilConfig {
+pub fn retrieve_config(path: &Utf8PathBuf) -> OilConfig {
     parse(
-        &path,
-        match locate(&path) {
+        path,
+        match locate(path) {
             Ok(text) => text,
             Err(error) => bail!(error),
         },

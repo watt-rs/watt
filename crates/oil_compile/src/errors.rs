@@ -6,7 +6,7 @@ use thiserror::Error;
 /// Compile error
 #[derive(Debug, Error, Diagnostic)]
 pub enum CompileError {
-    #[error("found an import cycle {a} <> {b}.")]
+    #[error("found an import cycle \"{a}\" <> \"{b}\".")]
     #[diagnostic(code(compile::found_import_cycle))]
     FoundImportCycle { a: EcoString, b: EcoString },
     #[error("import cycle path has wrong length {len}.")]

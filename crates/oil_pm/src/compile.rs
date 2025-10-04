@@ -128,7 +128,7 @@ pub fn compile(path: Utf8PathBuf) -> Utf8PathBuf {
     let mut cache_path = path.clone();
     cache_path.push(".cache");
     // Config
-    let config = config::retrieve_config(path.clone());
+    let config = config::retrieve_config(&path);
     // Retrieving project name
     let name = path_to_pkg_name(&path);
     info!("Crawled project name {name} from {path}.");

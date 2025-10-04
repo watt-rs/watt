@@ -1,6 +1,6 @@
 /// Imports
 use crate::{
-    config::config::{self, PackageConfig},
+    config::config::{self, PackageConfig, PackageType},
     dependencies::dependencies,
     errors::PackageError,
 };
@@ -172,16 +172,27 @@ fn resolve_packages<'cfg, 'solved>(
         // Dependencies
         for dependency in &config.dependencies {
             // Downloading dependency if not already downloaded
-            let downloaded = dependencies::download(&dependency, cache.clone());
-            let config = config::retrieve_config(downloaded.0);
-            info!("+ Found dependency {} of {name}", &downloaded.1);
-            // Adding dependency
-            match solved.get_mut(&name) {
-                Some(vector) => vector.push(downloaded.1.clone()),
-                None => bail!(PackageError::NoSolvedKeyFound { key: name }),
+            let pkg = dependencies::download(&dependency, cache.clone());
+            let pkg_path = pkg.0;
+            let pkg_name = pkg.1;
+            let pkg_config = config::retrieve_config(&pkg_path);
+            info!("+ Found dependency {} of {name}", &pkg_name);
+            // Checking it's an `lib` pkg
+            match pkg_config.pkg.pkg {
+                PackageType::Lib => {
+                    // Adding dependency
+                    match solved.get_mut(&name) {
+                        Some(vector) => vector.push(pkg_name.clone()),
+                        None => bail!(PackageError::NoSolvedKeyFound { key: name }),
+                    }
+                    // Resolving dependency packages
+                    resolve_packages(cache.clone(), solved, pkg_name, &pkg_config.pkg);
+                }
+                PackageType::App => bail!(PackageError::UseOfAppPackageAsDependency {
+                    name: name,
+                    path: pkg_path
+                }),
             }
-            // Resolving dependency packages
-            resolve_packages(cache.clone(), solved, downloaded.1, &config.pkg);
         }
         solved
     }

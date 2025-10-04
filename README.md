@@ -42,4 +42,4 @@ fn main() {
 - [ ] add invalid names as js keywords, such as `class`, `function`, etc...
 - [x] foreign functions mechanism
 - [x] different runtimes
-- [ ] add pkg::could_not_use_app_package_as_dependency error
+- [x] add pkg::use_of_app_package_as_dependency error
