@@ -1,9 +1,40 @@
-import {$$match, $$equals} from "../prelude.js"
+import {$$match, $$equals, $$EqPattern, $$UnwrapPattern} from "../prelude.js"
+
+import {Result} from "../std/result.js"
+
+export const ConvertError = {
+    FailedToParseInt: (val) => ({
+        $meta: "Enum",
+        $enum: "ConvertError",
+        val: val
+    }),
+    FailedToParseFloat: (val) => ({
+        $meta: "Enum",
+        $enum: "ConvertError",
+        val: val
+    })
+};
 
 export function int(val) {
-    return parseInt(val)
+    
+  let int = parseInt(val);
+  if (int == NaN) {
+    return Result.Err(ConvertError.FailedToParseInt(val));
+  }
+  return Result.Ok(int);
+
 }
 
 export function float(val) {
-    return parseFloat(val)
+    
+  let float = parseFloat(val);
+  if (float == NaN) {
+    return Result.Err(ConvertError.FailedToParseInt(val));
+  }
+  return Result.Ok(float);
+
+}
+
+export function string(val) {
+    return val.toString()
 }

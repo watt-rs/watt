@@ -1,8 +1,9 @@
-import {$$match, $$equals} from "../prelude.js"
+import {$$match, $$equals, $$EqPattern, $$UnwrapPattern} from "../prelude.js"
 
 import * as io from "../std/io.js"
 import * as conv from "../std/convert.js"
 import * as rt from "../std/rt.js"
+import * as result from "../std/result.js"
 
 export class $Juice {
     constructor(multiplier, juice) {
@@ -21,6 +22,6 @@ export function Juice(multiplier, juice) {
 
 export function main() {
     let juice = Juice(3);
-    juice.apply(conv.int(io.readln()));
+    juice.apply(result.unwrap(conv.int(io.readln())));
     io.println(juice.juice);
 }

@@ -72,6 +72,37 @@ pub fn gen_expression(expr: IrExpression) -> js::Tokens {
             }
         }
         IrExpression::Range { .. } => todo!(),
+        IrExpression::Match {
+            location: _,
+            value,
+            cases,
+        } => {
+            quote! {
+                $("$$match")($(gen_expression(*value)), [
+                    $['\r']
+                    $(for case in cases join (,$['\r']) {
+                        $(match case.pattern {
+                            // Value pattern / eq pattern
+                            IrPattern::Value(val) => {
+                                new $("$$")EqPattern($(gen_expression(val)), function() {
+                                    $(gen_block(case.body))
+                                })
+                            },
+                            // Unwrap pattern of fields {field, field, n..}
+                            IrPattern::Unwrap { en: _, fields } => {
+                                new $("$$")UnwrapPattern([$(for field in fields.clone() join (, ) => $(quoted(field.as_str())))], function($("$$fields")) {
+                                    $(for field in fields => let $(field.clone().to_string()) = $("$$fields").$(field.as_str());$['\r'])
+                                    $(gen_block(case.body))
+                                })
+                            },
+                            // Range pattern
+                            IrPattern::Range { .. } => todo!()
+                        })
+                    })
+                    $['\r']
+                ]);
+            }
+        }
     }
 }
 
@@ -154,7 +185,7 @@ pub fn gen_statement(stmt: IrStatement) -> js::Tokens {
         } => {
             // Pattern matching
             quote! {
-                $("$$match")($(gen_expression(value)), [
+                let $("$$match_result") = $("$$match")($(gen_expression(value)), [
                     $['\r']
                     $(for case in cases join (,$['\r']) {
                         $(match case.pattern {
@@ -176,7 +207,10 @@ pub fn gen_statement(stmt: IrStatement) -> js::Tokens {
                         })
                     })
                     $['\r']
-                ])
+                ]);
+                if ($("$$match_result") != null && $("$$match_result") != undefined) {
+                    return $("$$match_result")
+                }
             }
         }
         IrStatement::For { .. } => todo!(),
@@ -266,7 +300,7 @@ pub fn gen_declaration(decl: IrDeclaration) -> js::Tokens {
 pub fn gen_block(block: IrBlock) -> js::Tokens {
     // Block of statement
     quote! {
-        $(for stmt in block.nodes join ($['\r']) => $(gen_statement(stmt)))
+        $(for stmt in block.statements join ($['\r']) => $(gen_statement(stmt)))
     }
 }
 
@@ -417,7 +451,7 @@ pub fn gen_prelude() -> js::Tokens {
             for (const pat of patterns) {
                 let result = pat.evaluate(value);
                 if (result[0] == true) {
-                    return result[1];
+                    return result[1]
                 }
             }
             return null;

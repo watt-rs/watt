@@ -428,6 +428,7 @@ impl<'file_path> Parser<'file_path> {
             },
             TokenKind::Lparen => self.grouping_expr(),
             TokenKind::Fn => self.anonymous_fn_expr(),
+            TokenKind::Match => self.pattern_matching(),
             _ => {
                 let token = self.peek().clone();
                 bail!(ParseError::UnexpectedExpressionToken {
@@ -764,13 +765,13 @@ impl<'file_path> Parser<'file_path> {
         if self.check(TokenKind::Lbrace) {
             // { .., n fields }
             self.consume(TokenKind::Lbrace);
+            let mut fields = Vec::new();
             // Checking for close of braces
             if self.check(TokenKind::Rbrace) {
                 self.advance();
-                return Pattern::Value(value);
+                return Pattern::Unwrap { en: value, fields };
             }
             // Parsing field names
-            let mut fields = Vec::new();
             fields.push(self.consume(TokenKind::Id).clone());
             while self.check(TokenKind::Comma) {
                 self.advance();

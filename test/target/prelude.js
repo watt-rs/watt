@@ -106,7 +106,7 @@ export function $$match(value, patterns) {
     for (const pat of patterns) {
         let result = pat.evaluate(value);
         if (result[0] == true) {
-            return result[1];
+            return result[1]
         }
     }
     return null;

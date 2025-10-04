@@ -1,6 +1,7 @@
 use std/io as io
 use std/convert as conv
 use std/rt as rt
+use std/result as result
 
 type Juice(multiplier: int) {
   let multiplier: int = multiplier
@@ -13,7 +14,6 @@ type Juice(multiplier: int) {
 
 fn main() {
   let juice: Juice = Juice(3)
-  juice.apply(conv.int(io.readln()))
-
+  juice.apply(result.unwrap(conv.int(io.readln())))
   io.println(juice.juice)
 }

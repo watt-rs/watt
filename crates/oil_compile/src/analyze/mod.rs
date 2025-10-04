@@ -1,5 +1,5 @@
-pub mod analyze;
 pub mod errors;
+pub mod module;
 pub mod rc_ptr;
 mod res;
 mod resolve;

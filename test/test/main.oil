@@ -1,26 +1,10 @@
-use std/io as io
-
-type Flower(water_level: int) {
-    pub let water_level = water_level
-    pub fn water(amount: int) {
-        self.water_level += amount
-    }
-}
-
-enum Pot {
-    Full(flower: Flower),
-    Empty
-}
-
 fn main() {
-    let pot = Pot.Full(Flower(15))
-    match pot {
-        Pot.Full { flower } -> {
-            let cast: dyn = flower
-            io.println(cast)
+    let a = 5
+    a = match a {
+        5 -> {
+            return 5
         }
-        Pot.Empty() -> {
-            io.println("empty")
+        2 -> {
         }
     }
 }

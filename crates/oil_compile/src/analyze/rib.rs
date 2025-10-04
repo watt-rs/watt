@@ -12,7 +12,7 @@ use std::{cell::RefCell, collections::HashMap, sync::Arc};
 /// Rib kind
 #[derive(PartialEq)]
 pub enum RibKind {
-    Function(Typ),
+    Function,
     Loop,
     Conditional,
     ConstructorParams,
@@ -87,17 +87,6 @@ impl RibsStack {
             }
         }
         false
-    }
-
-    /// Checks function exists in hierarchy
-    pub fn contains_function(&self) -> Option<&Typ> {
-        for env in self.stack.iter().rev() {
-            match &env.0 {
-                RibKind::Function(typ) => return Some(typ),
-                _ => continue,
-            }
-        }
-        None
     }
 
     /// Checks type exists in hierarchy

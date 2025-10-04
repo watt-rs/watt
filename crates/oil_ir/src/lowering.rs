@@ -169,7 +169,7 @@ pub fn node_to_ir_declaration(source: &NamedSource<Arc<String>>, node: Node) -> 
 pub fn node_to_ir_block(source: &NamedSource<Arc<String>>, node: Node) -> IrBlock {
     match node {
         Node::Block { body } => IrBlock {
-            nodes: body
+            statements: body
                 .into_iter()
                 .map(|n| node_to_ir_statement(source, n))
                 .collect(),
@@ -250,7 +250,7 @@ pub fn node_to_ir_expression(source: &NamedSource<Arc<String>>, node: Node) -> I
                 left: Box::new(node_to_ir_expression(source, *left)),
                 right: Box::new(node_to_ir_expression(source, *right)),
                 op: IrBinaryOp::Concat,
-            },            
+            },
             _ => bail!(IrError::UnknownOp {
                 src: source.clone(),
                 span: op.address.span.into()
@@ -375,6 +375,34 @@ pub fn node_to_ir_expression(source: &NamedSource<Arc<String>>, node: Node) -> I
                 .collect(),
             body: node_to_ir_block(source, *body),
             typ,
+        },
+        Node::Match {
+            location,
+            value,
+            cases,
+        } => IrExpression::Match {
+            location: location,
+            value: Box::new(node_to_ir_expression(source, *value)),
+            cases: cases
+                .into_iter()
+                .map(|case| IrCase {
+                    location: case.address,
+                    pattern: match case.pattern {
+                        Pattern::Unwrap { en, fields } => IrPattern::Unwrap {
+                            en: node_to_ir_expression(source, en),
+                            fields: fields.into_iter().map(|field| field.value).collect(),
+                        },
+                        Pattern::Value(value) => {
+                            IrPattern::Value(node_to_ir_expression(source, value))
+                        }
+                        Pattern::Range { start, end } => IrPattern::Range {
+                            start: node_to_ir_expression(source, start),
+                            end: node_to_ir_expression(source, end),
+                        },
+                    },
+                    body: node_to_ir_block(source, case.body),
+                })
+                .collect(),
         },
         unexpected => bail!(IrError::UnexpectedExpressionNode { unexpected }),
     }

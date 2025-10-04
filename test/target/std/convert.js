@@ -7,3 +7,7 @@ export function int(val) {
 export function float(val) {
     return parseFloat(val)
 }
+
+export function string(val) {
+    return val.toString()
+}

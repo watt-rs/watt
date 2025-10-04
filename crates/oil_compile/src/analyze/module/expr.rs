@@ -1,57 +1,22 @@
 /// Imports
 use crate::analyze::{
     errors::AnalyzeError,
+    module::analyze::{CallResult, ModuleAnalyzer},
     rc_ptr::RcPtr,
     res::Res,
-    resolve::{Def, ModDef, ModuleResolver},
+    resolve::{Def, ModDef},
     rib::RibKind,
-    typ::{CustomType, Enum, EnumVariant, Function, Module, PreludeType, Typ, Type, WithPublicity},
+    typ::{CustomType, Enum, Function, PreludeType, Typ, Type},
     warnings::AnalyzeWarning,
 };
 use ecow::EcoString;
 use oil_ast::ast::{Publicity, TypePath};
 use oil_common::{address::Address, bail, warn};
-use oil_ir::ir::{
-    IrBinaryOp, IrBlock, IrCase, IrDeclaration, IrDependency, IrDependencyKind, IrEnumConstructor,
-    IrExpression, IrFunction, IrModule, IrParameter, IrPattern, IrStatement, IrUnaryOp, IrVariable,
-};
+use oil_ir::ir::{IrBinaryOp, IrBlock, IrCase, IrExpression, IrParameter, IrPattern, IrUnaryOp};
 use std::{cell::RefCell, collections::HashMap};
 
-/// Call result
-pub enum CallResult {
-    FromFunction(Typ, RcPtr<Function>),
-    FromType(Typ),
-    FromEnum(Typ),
-    FromDyn,
-}
-
-/// Module analyzer
-pub struct ModuleAnalyzer<'pkg> {
-    /// Current analyzing module info
-    module: &'pkg IrModule,
-    module_name: &'pkg EcoString,
-    /// Resolver
-    resolver: ModuleResolver,
-    /// Modules available to import
-    modules: &'pkg HashMap<EcoString, RcPtr<Module>>,
-}
-
-/// Implementation
+/// Expression inferring
 impl<'pkg> ModuleAnalyzer<'pkg> {
-    /// Creates new module analyzer
-    pub fn new(
-        module: &'pkg IrModule,
-        module_name: &'pkg EcoString,
-        modules: &'pkg HashMap<EcoString, RcPtr<Module>>,
-    ) -> Self {
-        Self {
-            module,
-            module_name,
-            resolver: ModuleResolver::new(),
-            modules,
-        }
-    }
-
     /// Infers binary
     fn infer_binary(
         &mut self,
@@ -436,7 +401,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     }
 
     /// Infers call
-    fn infer_call(
+    pub(crate) fn infer_call(
         &mut self,
         location: Address,
         what: IrExpression,
@@ -520,7 +485,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     }
 
     /// Infers type annotation
-    fn infer_type_annotation(&mut self, path: TypePath) -> Typ {
+    pub(crate) fn infer_type_annotation(&mut self, path: TypePath) -> Typ {
         match path {
             TypePath::Local { location, name } => match name.as_str() {
                 "int" => Typ::Prelude(PreludeType::Int),
@@ -656,7 +621,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         };
 
         // pushing new scope
-        self.resolver.push_rib(RibKind::Function(ret.clone()));
+        self.resolver.push_rib(RibKind::Function);
 
         // defining params in new scope
         params.iter().for_each(|p| {
@@ -665,198 +630,25 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         });
 
         // inferring body
-        self.analyze_block(body);
+        let inferred = self.infer_block(&location, body);
+        self.unify(&location, &ret, &inferred);
         self.resolver.pop_rib();
 
         // result
         Typ::Function(RcPtr::new(function))
     }
 
-    /// Infers expression
-    fn infer_expr(&mut self, expr: IrExpression) -> Typ {
-        match expr {
-            IrExpression::Float { .. } => Typ::Prelude(PreludeType::Float),
-            IrExpression::Int { .. } => Typ::Prelude(PreludeType::Int),
-            IrExpression::String { .. } => Typ::Prelude(PreludeType::String),
-            IrExpression::Bool { .. } => Typ::Prelude(PreludeType::Bool),
-            IrExpression::Bin {
-                location,
-                left,
-                right,
-                op,
-            } => self.infer_binary(location, op, *left, *right),
-            IrExpression::Unary {
-                location,
-                value,
-                op,
-            } => self.infer_unary(location, op, *value),
-            IrExpression::Get { location, name } => self
-                .infer_get(location.clone(), name)
-                .unwrap_typ(&self.module.source, &location),
-            IrExpression::FieldAccess {
-                location,
-                container,
-                name,
-            } => self
-                .infer_field_access(location.clone(), *container, name)
-                .unwrap_typ(&self.module.source, &location),
-            IrExpression::Call {
-                location,
-                what,
-                args,
-            } => match self.infer_call(location.clone(), *what, args) {
-                CallResult::FromFunction(typ, function) => {
-                    if typ == Typ::Void {
-                        bail!(AnalyzeError::CallExprReturnTypeIsVoid {
-                            fn_src: function.source.clone(),
-                            definition_span: function.location.span.clone().into(),
-                            call_src: self.module.source.clone(),
-                            span: location.span.into()
-                        })
-                    } else {
-                        typ
-                    }
-                }
-                CallResult::FromType(t) => t,
-                CallResult::FromEnum(e) => e,
-                CallResult::FromDyn => Typ::Dyn,
-            },
-            IrExpression::Range { .. } => todo!(),
-            IrExpression::AnFn {
-                location,
-                params,
-                body,
-                typ,
-            } => self.infer_anonymous_fn(location, params, body, typ),
-        }
-    }
-
-    /// Analyzes block
-    fn analyze_block(&mut self, block: IrBlock) {
-        for statement in block.nodes {
-            self.analyze_statement(statement);
-        }
-    }
-
-    /// Analyzes define
-    fn analyze_define(
-        &mut self,
-        location: Address,
-        name: EcoString,
-        value: IrExpression,
-        typ: Option<TypePath>,
-    ) {
-        let inferred_value = self.infer_expr(value);
-        match typ {
-            Some(annotated_path) => {
-                let annotated = self.infer_type_annotation(annotated_path);
-                if inferred_value == annotated {
-                    // defining by annotated type, because:
-                    //
-                    // 1. we can get
-                    // non-dyn value, but annotation will be `dyn`
-                    //
-                    // 2. we can get
-                    // dyn value, but annotation will not be `dyn`
-                    //
-                    self.resolver.define(
-                        &self.module.source,
-                        &location,
-                        &name,
-                        Def::Local(annotated),
-                    )
-                } else {
-                    bail!(AnalyzeError::MissmatchedTypeAnnotation {
-                        src: self.module.source.clone(),
-                        span: location.span.into(),
-                        expected: annotated,
-                        got: inferred_value
-                    })
-                }
-            }
-            None => self.resolver.define(
-                &self.module.source,
-                &location,
-                &name,
-                Def::Local(inferred_value),
-            ),
-        }
-    }
-
-    /// Analyzes assignment
-    fn analyze_assignment(&mut self, location: Address, what: IrExpression, value: IrExpression) {
-        let inferred_what = self.infer_expr(what);
-        let inferred_value = self.infer_expr(value);
-        if inferred_what != inferred_value {
-            bail!(AnalyzeError::TypesMissmatch {
-                src: self.module.source.clone(),
-                span: location.span.into(),
-                expected: inferred_what,
-                got: inferred_value
-            })
-        }
-    }
-
-    /// Analyzes funciton statement
-    fn analyze_function_stmt(
-        &mut self,
-        location: Address,
-        name: EcoString,
-        params: Vec<IrParameter>,
-        body: IrBlock,
-        ret_type: Option<TypePath>,
-    ) {
-        // inferring return type
-        let ret = ret_type.map_or(Typ::Void, |t| self.infer_type_annotation(t));
-
-        // inferring params
-        let params = params
-            .into_iter()
-            .map(|p| (p.name, self.infer_type_annotation(p.typ.clone())))
-            .collect::<HashMap<EcoString, Typ>>();
-
-        // creating and defining function
-        let function = Function {
-            source: self.module.source.clone(),
-            location: location.clone(),
-            name: name.clone(),
-            params: params
-                .clone()
-                .into_iter()
-                .map(|(_, v)| v)
-                .collect::<Vec<Typ>>(),
-            ret: ret.clone(),
-        };
-        self.resolver.define(
-            &self.module.source.clone(),
-            &location,
-            &name,
-            Def::Local(Typ::Function(RcPtr::new(function))),
-        );
-
-        // pushing new scope
-        self.resolver.push_rib(RibKind::Function(ret.clone()));
-
-        // defining params in new scope
-        params.iter().for_each(|p| {
-            self.resolver
-                .define(&self.module.source, &location, p.0, Def::Local(p.1.clone()))
-        });
-
-        // inferring body
-        self.analyze_block(body);
-        self.resolver.pop_rib();
-    }
-
-    /// Analyzes pattern matching
-    fn analyze_pattern_matching(
+    /// Infers pattern matching
+    pub(crate) fn infer_pattern_matching(
         &mut self,
         location: Address,
         what: IrExpression,
         cases: Vec<IrCase>,
-    ) {
+    ) -> Typ {
         // inferring matchable
         let inferred_what = self.infer_expr(what);
+        // expected return type
+        let mut expected: Option<Typ> = None;
         // analyzing cases
         for case in cases {
             // Pattern scope start
@@ -923,519 +715,83 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 IrPattern::Range { start: _, end: _ } => todo!(),
             }
             // Analyzing body
-            self.analyze_block(case.body);
+            match &expected {
+                Some(expected) => {
+                    let inferred = self.infer_block(&case.location, case.body);
+                    self.unify(&case.location, &expected, &inferred);
+                }
+                None => {
+                    let inferred = self.infer_block(&case.location, case.body);
+                    expected = Some(inferred);
+                }
+            }
             // Pattern scope end
             self.resolver.pop_rib();
         }
+        expected.unwrap_or(Typ::Void)
     }
 
-    /// Analyzes statement
-    fn analyze_statement(&mut self, statement: IrStatement) {
-        match statement {
-            IrStatement::If {
+    /// Infers expression
+    pub(crate) fn infer_expr(&mut self, expr: IrExpression) -> Typ {
+        match expr {
+            IrExpression::Float { .. } => Typ::Prelude(PreludeType::Float),
+            IrExpression::Int { .. } => Typ::Prelude(PreludeType::Int),
+            IrExpression::String { .. } => Typ::Prelude(PreludeType::String),
+            IrExpression::Bool { .. } => Typ::Prelude(PreludeType::Bool),
+            IrExpression::Bin {
                 location,
-                logical,
-                body,
-                elseif,
-            } => {
-                // pushing rib
-                self.resolver.push_rib(RibKind::Conditional);
-                // inferring logical
-                let inferred_logical = self.infer_expr(logical);
-                match inferred_logical {
-                    Typ::Prelude(prelude) => match prelude {
-                        PreludeType::Bool => {}
-                        _ => bail!(AnalyzeError::ExpectedLogicalInIf {
-                            src: self.module.source.clone(),
-                            span: location.span.into()
-                        }),
-                    },
-                    _ => bail!(AnalyzeError::ExpectedLogicalInIf {
-                        src: self.module.source.clone(),
-                        span: location.span.into()
-                    }),
-                }
-                // analyzing block
-                self.analyze_block(body);
-                // popping rib
-                self.resolver.pop_rib();
-                // analyzing elseif
-                match elseif {
-                    Some(elseif) => self.analyze_statement(*elseif),
-                    None => {}
-                }
-            }
-            IrStatement::While {
+                left,
+                right,
+                op,
+            } => self.infer_binary(location, op, *left, *right),
+            IrExpression::Unary {
                 location,
-                logical,
-                body,
-            } => {
-                // pushing rib
-                self.resolver.push_rib(RibKind::Loop);
-                // inferring logical
-                let inferred_logical = self.infer_expr(logical);
-                match inferred_logical {
-                    Typ::Prelude(prelude) => match prelude {
-                        PreludeType::Bool => {}
-                        _ => bail!(AnalyzeError::ExpectedLogicalInWhile {
-                            src: self.module.source.clone(),
-                            span: location.span.into()
-                        }),
-                    },
-                    _ => bail!(AnalyzeError::ExpectedLogicalInWhile {
-                        src: self.module.source.clone(),
-                        span: location.span.into()
-                    }),
-                }
-                // analyzing block
-                self.analyze_block(body);
-                // popping rib
-                self.resolver.pop_rib();
-            }
-            IrStatement::Define {
+                value,
+                op,
+            } => self.infer_unary(location, op, *value),
+            IrExpression::Get { location, name } => self
+                .infer_get(location.clone(), name)
+                .unwrap_typ(&self.module.source, &location),
+            IrExpression::FieldAccess {
                 location,
+                container,
                 name,
-                value,
-                typ,
-            } => self.analyze_define(location, name, value, typ),
-            IrStatement::Assign {
-                location,
-                what,
-                value,
-            } => self.analyze_assignment(location, what, value),
-            IrStatement::Call {
+            } => self
+                .infer_field_access(location.clone(), *container, name)
+                .unwrap_typ(&self.module.source, &location),
+            IrExpression::Call {
                 location,
                 what,
                 args,
-            } => {
-                self.infer_call(location, what, args);
-            }
-            IrStatement::Fn {
+            } => match self.infer_call(location.clone(), *what, args) {
+                CallResult::FromFunction(typ, function) => {
+                    if typ == Typ::Void {
+                        bail!(AnalyzeError::CallExprReturnTypeIsVoid {
+                            fn_src: function.source.clone(),
+                            definition_span: function.location.span.clone().into(),
+                            call_src: self.module.source.clone(),
+                            span: location.span.into()
+                        })
+                    } else {
+                        typ
+                    }
+                }
+                CallResult::FromType(t) => t,
+                CallResult::FromEnum(e) => e,
+                CallResult::FromDyn => Typ::Dyn,
+            },
+            IrExpression::Range { .. } => todo!(),
+            IrExpression::AnFn {
                 location,
-                name,
                 params,
                 body,
                 typ,
-            } => self.analyze_function_stmt(location, name, params, body, typ),
-            IrStatement::Break { location } => {
-                if !self.resolver.contains_rib(RibKind::Loop) {
-                    bail!(AnalyzeError::BreakWithoutLoop {
-                        src: self.module.source.clone(),
-                        span: location.span.into(),
-                    })
-                }
-            }
-            IrStatement::Continue { location } => {
-                if !self.resolver.contains_rib(RibKind::Loop) {
-                    bail!(AnalyzeError::ContinueWithoutLoop {
-                        src: self.module.source.clone(),
-                        span: location.span.into(),
-                    })
-                }
-            }
-            IrStatement::Return { location, value } => {
-                let inferred_value = self.infer_expr(value);
-                match self.resolver.contains_fn_rib() {
-                    Some(ret_type) => {
-                        if &inferred_value != ret_type {
-                            bail!(AnalyzeError::WrongReturnType {
-                                src: self.module.source.clone(),
-                                span: location.span.into(),
-                                expected: ret_type.clone(),
-                                got: inferred_value
-                            })
-                        }
-                    }
-                    None => bail!(AnalyzeError::ReturnWithoutFunction {
-                        src: self.module.source.clone(),
-                        span: location.span.into(),
-                    }),
-                }
-            }
-            IrStatement::For { .. } => todo!(),
-            IrStatement::Match {
+            } => self.infer_anonymous_fn(location, params, body, typ),
+            IrExpression::Match {
                 location,
                 value,
                 cases,
-            } => self.analyze_pattern_matching(location, value, cases),
-        }
-    }
-
-    /// Analyzes method
-    fn analyze_method(
-        &mut self,
-        location: Address,
-        name: EcoString,
-        type_: RcPtr<RefCell<Type>>,
-        publicity: Publicity,
-        params: Vec<IrParameter>,
-        body: IrBlock,
-        ret_type: Option<TypePath>,
-    ) {
-        // inferring return type
-        let ret = ret_type.map_or(Typ::Void, |t| self.infer_type_annotation(t));
-        self.resolver.push_rib(RibKind::Function(ret.clone()));
-
-        // inferring params
-        let params = params
-            .into_iter()
-            .map(|p| (p.name, self.infer_type_annotation(p.typ.clone())))
-            .collect::<HashMap<EcoString, Typ>>();
-
-        params.iter().for_each(|p| {
-            self.resolver
-                .define(&self.module.source, &location, p.0, Def::Local(p.1.clone()))
-        });
-
-        self.resolver.define(
-            &self.module.source,
-            &location,
-            &"self".into(),
-            Def::Local(Typ::Custom(type_.clone())),
-        );
-
-        // inferring body
-        self.analyze_block(body);
-        self.resolver.pop_rib();
-
-        // creating and defining function
-        let function = Function {
-            source: self.module.source.clone(),
-            location: location.clone(),
-            name: name.clone(),
-            params: params.into_iter().map(|(_, v)| v).collect::<Vec<Typ>>(),
-            ret,
-        };
-
-        // defining function, if not already defined
-        if let Some(_) = type_.borrow().env.get(&name).cloned() {
-            bail!(AnalyzeError::MethodIsAlreadyDefined {
-                src: self.module.source.clone(),
-                span: location.span.into(),
-                m: name
-            })
-        } else {
-            type_.borrow_mut().env.insert(
-                name,
-                WithPublicity {
-                    publicity,
-                    value: Typ::Function(RcPtr::new(function)),
-                },
-            );
-        }
-    }
-
-    /// Analyzes type
-    fn analyze_type(
-        &mut self,
-        location: Address,
-        name: EcoString,
-        publicity: Publicity,
-        params: Vec<IrParameter>,
-        fields: Vec<IrVariable>,
-        functions: Vec<IrFunction>,
-    ) {
-        // inferred params
-        let inferred_params = params
-            .into_iter()
-            .map(|p| (p.name, (p.location, self.infer_type_annotation(p.typ))))
-            .collect::<HashMap<EcoString, (Address, Typ)>>();
-
-        // construction type
-        let type_ = RcPtr::new(RefCell::new(Type {
-            source: self.module.source.clone(),
-            location: location.clone(),
-            name: name.clone(),
-            params: inferred_params.iter().map(|p| p.1.1.clone()).collect(),
-            env: HashMap::new(),
-        }));
-
-        // params env start
-        self.resolver.push_rib(RibKind::ConstructorParams);
-
-        // params
-        inferred_params.into_iter().for_each(|p| {
-            self.resolver
-                .define(&self.module.source, &p.1.0, &p.0, Def::Local(p.1.1));
-        });
-
-        // fields env start
-        self.resolver.push_rib(RibKind::Fields);
-
-        // fields
-        fields.clone().into_iter().for_each(|f| {
-            self.analyze_define(f.location, f.name, f.value, f.typ);
-        });
-
-        // fields env end
-        let analyzed_fields = match self.resolver.pop_rib() {
-            Some(fields) => fields.1,
-            None => bail!(AnalyzeError::EnvironmentsStackIsEmpty),
-        };
-
-        // params env end
-        self.resolver.pop_rib();
-
-        // adding fields to type env
-        let mut borrowed = type_.borrow_mut();
-        fields.into_iter().for_each(|f| {
-            borrowed.env.insert(
-                f.name.clone(),
-                WithPublicity {
-                    publicity: f.publicity,
-                    value: analyzed_fields.get(&f.name).unwrap().clone(),
-                },
-            );
-        });
-        drop(borrowed);
-
-        // type env start
-        self.resolver.push_rib(RibKind::Type(type_.clone()));
-
-        // adding functions
-        functions.into_iter().for_each(|f| {
-            self.analyze_method(
-                f.location,
-                f.name,
-                type_.clone(),
-                f.publicity,
-                f.params,
-                f.body,
-                f.typ,
-            );
-        });
-
-        // type env end
-        self.resolver.pop_rib();
-
-        // defining type, if not already defined
-        self.resolver.define(
-            &self.module.source,
-            &location,
-            &name,
-            Def::Module(ModDef::CustomType(WithPublicity {
-                publicity,
-                value: CustomType::Type(type_),
-            })),
-        );
-    }
-
-    /// Analyzes enum
-    fn analyze_enum(
-        &mut self,
-        location: Address,
-        name: EcoString,
-        publicity: Publicity,
-        variants: Vec<IrEnumConstructor>,
-    ) {
-        // inferred variants
-        let inferred_variants = variants
-            .into_iter()
-            .map(|v| EnumVariant {
-                location: v.location,
-                name: v.name,
-                params: v
-                    .params
-                    .into_iter()
-                    .map(|param| (param.name, self.infer_type_annotation(param.typ)))
-                    .collect(),
-            })
-            .collect::<Vec<EnumVariant>>();
-
-        // construction enum
-        let enum_ = RcPtr::new(Enum {
-            source: self.module.source.clone(),
-            location: location.clone(),
-            name: name.clone(),
-            variants: inferred_variants,
-        });
-
-        // defining enum, if not already defined
-        self.resolver.define(
-            &self.module.source,
-            &location,
-            &name,
-            Def::Module(ModDef::CustomType(WithPublicity {
-                publicity,
-                value: CustomType::Enum(enum_),
-            })),
-        );
-    }
-
-    /// Analyzes funciton declaration
-    fn analyze_function_decl(
-        &mut self,
-        location: Address,
-        publicity: Publicity,
-        name: EcoString,
-        params: Vec<IrParameter>,
-        body: IrBlock,
-        ret_type: Option<TypePath>,
-    ) {
-        // inferring return type
-        let ret = ret_type.map_or(Typ::Void, |t| self.infer_type_annotation(t));
-
-        // inferring params
-        let params = params
-            .into_iter()
-            .map(|p| (p.name, self.infer_type_annotation(p.typ.clone())))
-            .collect::<HashMap<EcoString, Typ>>();
-
-        // creating and defining function
-        let function = Function {
-            source: self.module.source.clone(),
-            location: location.clone(),
-            name: name.clone(),
-            params: params
-                .clone()
-                .into_iter()
-                .map(|(_, v)| v)
-                .collect::<Vec<Typ>>(),
-            ret: ret.clone(),
-        };
-        self.resolver.define(
-            &self.module.source.clone(),
-            &location,
-            &name,
-            Def::Module(ModDef::Variable(WithPublicity {
-                publicity,
-                value: Typ::Function(RcPtr::new(function)),
-            })),
-        );
-
-        // pushing new scope
-        self.resolver.push_rib(RibKind::Function(ret.clone()));
-
-        // defining params in new scope
-        params.iter().for_each(|p| {
-            self.resolver
-                .define(&self.module.source, &location, p.0, Def::Local(p.1.clone()))
-        });
-
-        // inferring body
-        self.analyze_block(body);
-        self.resolver.pop_rib();
-    }
-
-    /// Analyzes extern function declaration
-    fn analyze_extern(
-        &mut self,
-        location: Address,
-        publicity: Publicity,
-        name: EcoString,
-        params: Vec<IrParameter>,
-        ret_type: Option<TypePath>,
-    ) {
-        // inferring return type
-        let ret = ret_type.map_or(Typ::Void, |t| self.infer_type_annotation(t));
-
-        // inferring params
-        let params = params
-            .into_iter()
-            .map(|p| (p.name, self.infer_type_annotation(p.typ.clone())))
-            .collect::<HashMap<EcoString, Typ>>();
-
-        // creating and defining function
-        let function = Function {
-            source: self.module.source.clone(),
-            location: location.clone(),
-            name: name.clone(),
-            params: params
-                .clone()
-                .into_iter()
-                .map(|(_, v)| v)
-                .collect::<Vec<Typ>>(),
-            ret: ret.clone(),
-        };
-        self.resolver.define(
-            &self.module.source.clone(),
-            &location,
-            &name,
-            Def::Module(ModDef::Variable(WithPublicity {
-                publicity,
-                value: Typ::Function(RcPtr::new(function)),
-            })),
-        );
-    }
-
-    /// Analyzes declaration
-    pub fn analyze_declaration(&mut self, declaration: IrDeclaration) {
-        match declaration {
-            IrDeclaration::Function(ir_function) => self.analyze_function_decl(
-                ir_function.location,
-                ir_function.publicity,
-                ir_function.name,
-                ir_function.params,
-                ir_function.body,
-                ir_function.typ,
-            ),
-            IrDeclaration::Variable(ir_variable) => self.analyze_define(
-                ir_variable.location,
-                ir_variable.name,
-                ir_variable.value,
-                ir_variable.typ,
-            ),
-            IrDeclaration::Type(ir_type) => self.analyze_type(
-                ir_type.location,
-                ir_type.name,
-                ir_type.publicity,
-                ir_type.constructor,
-                ir_type.fields,
-                ir_type.functions,
-            ),
-            IrDeclaration::Enum(ir_enum) => self.analyze_enum(
-                ir_enum.location,
-                ir_enum.name,
-                ir_enum.publicity,
-                ir_enum.variants,
-            ),
-            IrDeclaration::Extern(ir_extern) => self.analyze_extern(
-                ir_extern.location,
-                ir_extern.publicity,
-                ir_extern.name,
-                ir_extern.params,
-                ir_extern.typ,
-            ),
-        }
-    }
-
-    /// Performs import
-    pub fn perform_import(&mut self, import: IrDependency) {
-        match self.modules.get(&import.path) {
-            Some(module) => match import.kind {
-                IrDependencyKind::AsName(name) => self.resolver.import_as(
-                    &self.module.source,
-                    &import.location,
-                    name,
-                    module.clone(),
-                ),
-                IrDependencyKind::ForNames(names) => self.resolver.import_for(
-                    &self.module.source,
-                    &import.location,
-                    names,
-                    module.clone(),
-                ),
-            },
-            None => bail!(AnalyzeError::ImportOfUnknownModule {
-                src: self.module.source.clone(),
-                span: import.location.span.into(),
-                m: import.path
-            }),
-        };
-    }
-
-    /// Performs analyze of module
-    pub fn analyze(&mut self) -> Module {
-        for import in self.module.dependencies.clone() {
-            self.perform_import(import)
-        }
-        for definition in self.module.definitions.clone() {
-            self.analyze_declaration(definition)
-        }
-        Module {
-            source: self.module.source.clone(),
-            name: self.module_name.clone(),
-            fields: self.resolver.collect(),
+            } => self.infer_pattern_matching(location, *value, cases),
         }
     }
 }

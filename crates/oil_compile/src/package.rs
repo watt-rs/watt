@@ -1,6 +1,6 @@
 /// Imports
 use crate::{
-    analyze::{analyze::ModuleAnalyzer, rc_ptr::RcPtr, typ::Module},
+    analyze::{module::analyze::ModuleAnalyzer, rc_ptr::RcPtr, typ::Module},
     errors::CompileError,
     io::io::{self, OilFile},
 };

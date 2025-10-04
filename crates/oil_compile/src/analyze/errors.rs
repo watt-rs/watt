@@ -33,6 +33,16 @@ pub enum AnalyzeError {
         span: SourceSpan,
         name: EcoString,
     },
+    #[error("could not unify {t1:?} and {t2:?}.")]
+    #[diagnostic(code(analyze::could_not_unify))]
+    CouldNotUnify {
+        #[source_code]
+        src: NamedSource<Arc<String>>,
+        #[label("could not unify.")]
+        span: SourceSpan,
+        t1: Typ,
+        t2: Typ,
+    },
     #[error("could not use value {v} as type.")]
     #[diagnostic(code(analyze::could_not_use_value_as_type))]
     CouldNotUseValueAsType {
@@ -256,16 +266,6 @@ pub enum AnalyzeError {
         #[label("expected logical expression in while.")]
         span: SourceSpan,
     },
-    #[error("missmatched type annotation. expected {expected:?}, got {got:?}.")]
-    #[diagnostic(code(analyze::missmatched_type_annotation))]
-    MissmatchedTypeAnnotation {
-        #[source_code]
-        src: NamedSource<Arc<String>>,
-        #[label("type annotation missmatched here.")]
-        span: SourceSpan,
-        expected: Typ,
-        got: Typ,
-    },
     #[error("types missmatch. expected {expected:?}, got {got:?}.")]
     #[diagnostic(code(analyze::types_missmatch))]
     TypesMissmatch {
@@ -303,24 +303,6 @@ pub enum AnalyzeError {
         src: NamedSource<Arc<String>>,
         #[label("not available here.")]
         span: SourceSpan,
-    },
-    #[error("return used outside function.")]
-    #[diagnostic(code(analyze::return_without_function))]
-    ReturnWithoutFunction {
-        #[source_code]
-        src: NamedSource<Arc<String>>,
-        #[label("not available here.")]
-        span: SourceSpan,
-    },
-    #[error("wrong return type. expected {expected:?}, got {got:?}")]
-    #[diagnostic(code(analyze::wrong_return_type))]
-    WrongReturnType {
-        #[source_code]
-        src: NamedSource<Arc<String>>,
-        #[label("this return seems to be wrong.")]
-        span: SourceSpan,
-        expected: Typ,
-        got: Typ,
     },
     #[error("wrong unwrap pattern. expected variant of enum, got {got:?}")]
     #[diagnostic(code(analyze::wrong_unwrap_pattern))]

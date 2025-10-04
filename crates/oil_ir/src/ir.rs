@@ -162,6 +162,11 @@ pub enum IrExpression {
         body: IrBlock,
         typ: Option<TypePath>,
     },
+    Match {
+        location: Address,
+        value: Box<IrExpression>,
+        cases: Vec<IrCase>,
+    },
 }
 
 /// Binary operator
@@ -196,7 +201,7 @@ pub enum IrUnaryOp {
 /// Ir block
 #[derive(Debug, Clone, PartialEq)]
 pub struct IrBlock {
-    pub nodes: Vec<IrStatement>,
+    pub statements: Vec<IrStatement>,
 }
 
 /// Ir function

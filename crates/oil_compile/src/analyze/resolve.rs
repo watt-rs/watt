@@ -203,12 +203,7 @@ impl ModuleResolver {
     pub fn contains_type_rib(&self) -> Option<&RcPtr<RefCell<Type>>> {
         return self.ribs_stack.contains_type();
     }
-
-    /// Contains fn rib
-    pub fn contains_fn_rib(&self) -> Option<&Typ> {
-        return self.ribs_stack.contains_function();
-    }
-
+    
     /// Contains rib with specifix kind
     pub fn contains_rib(&self, kind: RibKind) -> bool {
         return self.ribs_stack.contains_rib(kind);
