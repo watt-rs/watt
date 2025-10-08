@@ -46,3 +46,4 @@ fn main() {
 - [ ] implement `done` keyword
 - [ ] allow using expressions in match clauses (in match expressions only)
 - [ ] implement `default` case in match
+- [ ] implement [lint] in `oil.toml`
