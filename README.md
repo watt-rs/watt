@@ -37,11 +37,12 @@ fn main() {
 - [x] make anonymous founctions expressions
 	- [x] make type annotations for functions: ```let a: fn(): int = f```
 - [x] make check for main function and module in project
-- [ ] make for loop
-    - [ ] make analyze and compilation for range
+- [ ] implement `for` loop
+    - [ ] implement `range` expression 
 - [ ] add invalid names as js keywords, such as `class`, `function`, etc...
 - [x] foreign functions mechanism
 - [x] different runtimes
 - [x] add pkg::use_of_app_package_as_dependency error
 - [ ] implement done keyword
-- [ ] allow using expressions in match clauses
+- [ ] allow using expressions in match clauses (in match expressions only)
+- [ ] implement default case in match
