@@ -43,3 +43,5 @@ fn main() {
 - [x] foreign functions mechanism
 - [x] different runtimes
 - [x] add pkg::use_of_app_package_as_dependency error
+- [ ] implement done keyword
+- [ ] allow using expressions in match clauses
