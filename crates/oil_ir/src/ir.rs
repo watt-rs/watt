@@ -98,13 +98,32 @@ pub enum IrStatement {
     },
     Return {
         location: Address,
-        value: IrExpression,
+        value: Option<IrExpression>,
     },
     Match {
         location: Address,
         value: IrExpression,
         cases: Vec<IrCase>,
     },
+}
+
+/// Implementation
+impl IrStatement {
+    pub fn get_location(&self) -> Address {
+        match self {
+            IrStatement::If { location, .. } => location.to_owned(),
+            IrStatement::While { location, .. } => location.to_owned(),
+            IrStatement::Define { location, .. } => location.to_owned(),
+            IrStatement::Assign { location, .. } => location.to_owned(),
+            IrStatement::Call { location, .. } => location.to_owned(),
+            IrStatement::Fn { location, .. } => location.to_owned(),
+            IrStatement::Break { location } => location.to_owned(),
+            IrStatement::Continue { location } => location.to_owned(),
+            IrStatement::For { location, .. } => location.to_owned(),
+            IrStatement::Return { location, .. } => location.to_owned(),
+            IrStatement::Match { location, .. } => location.to_owned(),
+        }
+    }
 }
 
 /// Ir Expression
@@ -169,6 +188,26 @@ pub enum IrExpression {
     },
 }
 
+/// Implementation
+impl IrExpression {
+    pub fn get_location(&self) -> Address {
+        match self {
+            IrExpression::Float { location, .. } => location.clone(),
+            IrExpression::Int { location, .. } => location.clone(),
+            IrExpression::String { location, .. } => location.clone(),
+            IrExpression::Bool { location, .. } => location.clone(),
+            IrExpression::Bin { location, .. } => location.clone(),
+            IrExpression::Unary { location, .. } => location.clone(),
+            IrExpression::Get { location, .. } => location.clone(),
+            IrExpression::FieldAccess { location, .. } => location.clone(),
+            IrExpression::Call { location, .. } => location.clone(),
+            IrExpression::Range { location, .. } => location.clone(),
+            IrExpression::AnFn { location, .. } => location.clone(),
+            IrExpression::Match { location, .. } => location.clone(),
+        }
+    }
+}
+
 /// Binary operator
 #[derive(Debug, Clone, PartialEq)]
 pub enum IrBinaryOp {
@@ -201,7 +240,15 @@ pub enum IrUnaryOp {
 /// Ir block
 #[derive(Debug, Clone, PartialEq)]
 pub struct IrBlock {
+    pub location: Address,
     pub statements: Vec<IrStatement>,
+}
+
+/// Implementation
+impl IrBlock {
+    pub fn get_location(&self) -> Address {
+        self.location.clone()
+    }
 }
 
 /// Ir function

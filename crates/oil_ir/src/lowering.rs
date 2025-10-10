@@ -168,7 +168,8 @@ pub fn node_to_ir_declaration(source: &NamedSource<Arc<String>>, node: Node) -> 
 /// Node to ir block
 pub fn node_to_ir_block(source: &NamedSource<Arc<String>>, node: Node) -> IrBlock {
     match node {
-        Node::Block { body } => IrBlock {
+        Node::Block { location, body } => IrBlock {
+            location,
             statements: body
                 .into_iter()
                 .map(|n| node_to_ir_statement(source, n))
@@ -492,14 +493,15 @@ pub fn node_to_ir_statement(source: &NamedSource<Arc<String>>, node: Node) -> Ir
         Node::Continue { location } => IrStatement::Continue { location: location },
         Node::Return { location, value } => IrStatement::Return {
             location: location,
-            value: node_to_ir_expression(source, *value),
+            value: value.map(|value| node_to_ir_expression(source, *value)),
         },
         Node::For {
+            location,
             iterable,
             variable,
             body,
         } => IrStatement::For {
-            location: variable.address,
+            location,
             iterable: node_to_ir_expression(source, *iterable),
             variable: variable.value,
             body: node_to_ir_block(source, *body),

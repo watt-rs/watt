@@ -1,5 +1,15 @@
 use std/io as io
 
+fn test(): int {
+    if 3 > 5 {
+        while true {
+            return true
+        }
+    } else {
+        return "hello"
+    }
+}
+
 fn main() {
     io.println("Hello, world!")
 }

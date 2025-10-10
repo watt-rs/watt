@@ -1,13 +1,4 @@
-use std::{cell::RefCell, collections::HashMap};
-
-use ecow::EcoString;
-use oil_ast::ast::{Publicity, TypePath};
-use oil_common::{address::Address, bail};
-use oil_ir::ir::{
-    IrBlock, IrDeclaration, IrDependency, IrDependencyKind, IrEnumConstructor, IrFunction,
-    IrParameter, IrVariable,
-};
-
+/// Imports
 use crate::analyze::{
     errors::AnalyzeError,
     module::analyze::ModuleAnalyzer,
@@ -16,7 +7,16 @@ use crate::analyze::{
     rib::RibKind,
     typ::{CustomType, Enum, EnumVariant, Function, Typ, Type, WithPublicity},
 };
+use ecow::EcoString;
+use oil_ast::ast::{Publicity, TypePath};
+use oil_common::{address::Address, bail};
+use oil_ir::ir::{
+    IrBlock, IrDeclaration, IrDependency, IrDependencyKind, IrEnumConstructor, IrFunction,
+    IrParameter, IrVariable,
+};
+use std::{cell::RefCell, collections::HashMap};
 
+/// Declaraton analyze
 impl<'pkg> ModuleAnalyzer<'pkg> {
     /// Analyzes method
     fn analyze_method(
@@ -52,8 +52,9 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         );
 
         // inferring body
-        let inferred_block = self.infer_block(&location, body);
-        self.unify(&location, &ret, &inferred_block);
+        let block_location = body.get_location();
+        let inferred_block = self.infer_block(body);
+        self.unify(&location, &ret, &block_location, &inferred_block);
         self.resolver.pop_rib();
 
         // creating and defining function
@@ -271,8 +272,9 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         });
 
         // inferring body
-        let inferred_block = self.infer_block(&location, body);
-        self.unify(&location, &ret, &inferred_block);
+        let block_location = body.get_location();
+        let inferred_block = self.infer_block(body);
+        self.unify(&location, &ret, &block_location, &inferred_block);
         self.resolver.pop_rib();
     }
 

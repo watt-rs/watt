@@ -37,6 +37,7 @@ pub enum TokenKind {
     Id,            // variable id
     Comma,         // ,
     Ret,           // return
+    Done,          // done
     If,            // if
     Bool,          // bool
     While,         // while

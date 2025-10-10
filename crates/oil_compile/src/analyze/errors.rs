@@ -38,9 +38,11 @@ pub enum AnalyzeError {
     CouldNotUnify {
         #[source_code]
         src: NamedSource<Arc<String>>,
-        #[label("could not unify.")]
-        span: SourceSpan,
+        #[label("could not unify this...")]
+        first_span: SourceSpan,
         t1: Typ,
+        #[label("with this")]
+        second_span: SourceSpan,
         t2: Typ,
     },
     #[error("could not use value {v} as type.")]

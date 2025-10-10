@@ -1,10 +1,3 @@
-use std::collections::HashMap;
-
-use ecow::EcoString;
-use oil_ast::ast::TypePath;
-use oil_common::{address::Address, bail};
-use oil_ir::ir::{IrBlock, IrExpression, IrParameter, IrStatement};
-
 /// Imports
 use crate::analyze::{
     errors::AnalyzeError,
@@ -14,9 +7,11 @@ use crate::analyze::{
     rib::RibKind,
     typ::{Function, PreludeType, Typ},
 };
-
-/// Statement inference result
-type StmtInferResult = Option<Typ>;
+use ecow::EcoString;
+use oil_ast::ast::TypePath;
+use oil_common::{address::Address, bail};
+use oil_ir::ir::{IrBlock, IrExpression, IrParameter, IrStatement};
+use std::collections::HashMap;
 
 /// Infer macro
 macro_rules! infer {
@@ -37,7 +32,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         logical: IrExpression,
         body: IrBlock,
         elseif: Option<Box<IrStatement>>,
-    ) -> StmtInferResult {
+    ) -> Option<Typ> {
         // pushing rib
         self.resolver.push_rib(RibKind::Conditional);
         // inferring logical
@@ -56,15 +51,16 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             }),
         }
         // inferring block
-        let inferred = self.infer_block(&location, body);
+        let inferred = self.infer_block(body);
         // popping rib
         self.resolver.pop_rib();
         // analyzing elseif
         match elseif {
             Some(elseif) => {
                 // unifying types
+                let elif_location = (*elseif).get_location();
                 let inferred_elif = self.infer_stmt(*elseif)?;
-                Some(self.unify(&location, &inferred, &inferred_elif))
+                Some(self.unify(&location, &inferred, &elif_location, &inferred_elif))
             }
             None => Some(inferred),
         }
@@ -76,7 +72,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         location: Address,
         logical: IrExpression,
         body: IrBlock,
-    ) -> StmtInferResult {
+    ) -> Option<Typ> {
         // pushing rib
         self.resolver.push_rib(RibKind::Loop);
         // inferring logical
@@ -95,7 +91,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             }),
         }
         // inferring block
-        let inferred = Some(self.infer_block(&location, body));
+        let inferred = Some(self.infer_block(body));
         // popping rib
         self.resolver.pop_rib();
         inferred
@@ -112,8 +108,9 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         let inferred_value = self.infer_expr(value);
         match typ {
             Some(annotated_path) => {
+                let annotated_location = annotated_path.get_location();
                 let annotated = self.infer_type_annotation(annotated_path);
-                self.unify(&location, &inferred_value, &annotated);
+                self.unify(&location, &inferred_value, &annotated_location, &annotated);
                 self.resolver.define(
                     &self.module.source,
                     &location,
@@ -133,8 +130,9 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     /// Analyzes assignment
     fn analyze_assignment(&mut self, location: Address, what: IrExpression, value: IrExpression) {
         let inferred_what = self.infer_expr(what);
+        let value_location = value.get_location();
         let inferred_value = self.infer_expr(value);
-        self.unify(&location, &inferred_what, &inferred_value);
+        self.unify(&location, &inferred_what, &value_location, &inferred_value);
     }
 
     /// Analyzes call
@@ -189,13 +187,14 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         });
 
         // inferring body
-        let inferred_block = self.infer_block(&location, body);
-        self.unify(&location, &ret, &inferred_block);
+        let block_location = body.get_location();
+        let inferred_block = self.infer_block(body);
+        self.unify(&location, &ret, &block_location, &inferred_block);
         self.resolver.pop_rib();
     }
 
     /// Infers statement
-    fn infer_stmt(&mut self, statement: IrStatement) -> StmtInferResult {
+    fn infer_stmt(&mut self, statement: IrStatement) -> Option<Typ> {
         match statement {
             IrStatement::If {
                 location,
@@ -261,7 +260,11 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 }
                 None
             }
-            IrStatement::Return { value, .. } => Some(self.infer_expr(value)),
+            IrStatement::Return { value, .. } => Some(
+                value
+                    .map(|value| self.infer_expr(value))
+                    .unwrap_or(Typ::Void),
+            ),
             IrStatement::For { .. } => todo!(),
             IrStatement::Match {
                 location,
@@ -272,19 +275,22 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     }
 
     /// Infers block
-    pub(crate) fn infer_block(&mut self, location: &Address, block: IrBlock) -> Typ {
+    pub(crate) fn infer_block(&mut self, block: IrBlock) -> Typ {
         // Epxected type, used to
         // unify type of all block statements
-        let mut expected = StmtInferResult::None;
+        let mut expected = None;
+        let mut location = block.get_location();
         // Inferring each statement
         // and unifying them.
         for stmt in block.statements {
+            let stmt_location = stmt.get_location();
             match &expected {
                 Some(expected_typ) => {
                     let inferred = &infer!(self, stmt);
-                    expected = Some(self.unify(&location, expected_typ, inferred));
+                    expected = Some(self.unify(&location, expected_typ, &stmt_location, inferred));
                 }
                 _ => {
+                    location = stmt.get_location();
                     expected = Some(infer!(self, stmt));
                 }
             }

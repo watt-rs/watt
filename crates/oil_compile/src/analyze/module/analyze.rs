@@ -62,7 +62,13 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
 
     /// Unifies two of types, raises error,
     /// if types can't be unified
-    pub fn unify(&mut self, location: &Address, t1: &Typ, t2: &Typ) -> Typ {
+    pub fn unify(
+        &mut self,
+        t1_location: &Address,
+        t1: &Typ,
+        t2_location: &Address,
+        t2: &Typ,
+    ) -> Typ {
         if t1 != t2 {
             match (t1, t2) {
                 (Typ::Prelude(a), Typ::Prelude(b)) => match (a, b) {
@@ -70,24 +76,27 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     (PreludeType::Float, PreludeType::Int) => Typ::Prelude(PreludeType::Float),
                     _ => bail!(AnalyzeError::CouldNotUnify {
                         src: self.module.source.clone(),
-                        span: location.span.clone().into(),
+                        first_span: t1_location.span.clone().into(),
                         t1: t1.clone(),
+                        second_span: t2_location.span.clone().into(),
                         t2: t2.clone()
                     }),
                 },
                 (Typ::Dyn, t) | (t, Typ::Dyn) => match t {
                     Typ::Void => bail!(AnalyzeError::CouldNotUnify {
                         src: self.module.source.clone(),
-                        span: location.span.clone().into(),
+                        first_span: t1_location.span.clone().into(),
                         t1: t1.clone(),
+                        second_span: t2_location.span.clone().into(),
                         t2: t2.clone()
                     }),
                     _ => Typ::Dyn,
                 },
                 _ => bail!(AnalyzeError::CouldNotUnify {
                     src: self.module.source.clone(),
-                    span: location.span.clone().into(),
+                    first_span: t1_location.span.clone().into(),
                     t1: t1.clone(),
+                    second_span: t2_location.span.clone().into(),
                     t2: t2.clone()
                 }),
             }

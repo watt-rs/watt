@@ -41,6 +41,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
             ("true", TokenKind::Bool),
             ("false", TokenKind::Bool),
             ("return", TokenKind::Ret),
+            ("done", TokenKind::Done),
             ("as", TokenKind::As),
             ("let", TokenKind::Let),
             ("use", TokenKind::Use),

@@ -29,6 +29,17 @@ pub enum TypePath {
     },
 }
 
+/// Type path implementation
+impl TypePath {
+    pub fn get_location(&self) -> Address {
+        match self {
+            TypePath::Local { location, .. } => location.clone(),
+            TypePath::Module { location, .. } => location.clone(),
+            TypePath::Function { location, .. } => location.clone(),
+        }
+    }
+}
+
 /// Parameter
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Parameter {
@@ -99,6 +110,7 @@ pub enum UseKind {
 #[allow(dead_code)]
 pub enum Node {
     Block {
+        location: Address,
         body: Vec<Node>,
     },
     Number {
@@ -189,7 +201,7 @@ pub enum Node {
     },
     Return {
         location: Address,
-        value: Box<Node>,
+        value: Option<Box<Node>>,
     },
     TypeDeclaration {
         location: Address,
@@ -206,6 +218,7 @@ pub enum Node {
         variants: Vec<EnumConstructor>,
     },
     For {
+        location: Address,
         iterable: Box<Node>,
         variable: Token,
         body: Box<Node>,

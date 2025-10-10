@@ -630,8 +630,9 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         });
 
         // inferring body
-        let inferred = self.infer_block(&location, body);
-        self.unify(&location, &ret, &inferred);
+        let block_location = &body.get_location();
+        let inferred_block = self.infer_block(body);
+        self.unify(&location, &ret, &block_location, &inferred_block);
         self.resolver.pop_rib();
 
         // result
@@ -717,11 +718,12 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             // Analyzing body
             match &expected {
                 Some(expected) => {
-                    let inferred = self.infer_block(&case.location, case.body);
-                    self.unify(&case.location, &expected, &inferred);
+                    let block_location = &case.location;
+                    let inferred_block = self.infer_block(case.body);
+                    self.unify(&case.location, &expected, &block_location, &inferred_block);
                 }
                 None => {
-                    let inferred = self.infer_block(&case.location, case.body);
+                    let inferred = self.infer_block(case.body);
                     expected = Some(inferred);
                 }
             }
