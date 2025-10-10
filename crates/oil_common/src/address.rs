@@ -14,6 +14,6 @@ impl Address {
     }
     /// New address with span
     pub fn span(span: Range<usize>) -> Address {
-        Address { span: span }
+        Address { span }
     }
 }

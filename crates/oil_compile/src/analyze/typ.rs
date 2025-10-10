@@ -101,8 +101,8 @@ pub enum CustomType {
 impl Debug for CustomType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CustomType::Enum(en) => write!(f, "Custom({:?})", en),
-            CustomType::Type(ty) => write!(f, "Custom({:?})", ty),
+            CustomType::Enum(en) => write!(f, "Custom({en:?})"),
+            CustomType::Type(ty) => write!(f, "Custom({ty:?})"),
         }
     }
 }

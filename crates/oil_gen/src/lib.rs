@@ -314,7 +314,7 @@ pub fn gen_module(name: &EcoString, module: &IrModule) -> js::Tokens {
     // Dependencies prefix
     let dependencies_prefix = match name_segments_amount {
         1 => String::from("./"),
-        _ => String::from("../".repeat(name_segments_amount - 1)),
+        _ => "../".repeat(name_segments_amount - 1),
     };
     // Gen
     quote! {
@@ -465,7 +465,7 @@ pub fn gen_prelude() -> js::Tokens {
 /// Generates index file
 pub fn gen_index(main_module: String) -> js::Tokens {
     quote! {
-        import { main } from $(quoted(format!("./{}.js", main_module)))
+        import { main } from $(quoted(format!("./{main_module}.js")))
         main();
     }
 }

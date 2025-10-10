@@ -38,13 +38,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         // inferring logical
         let inferred_logical = self.infer_expr(logical);
         match inferred_logical {
-            Typ::Prelude(prelude) => match prelude {
-                PreludeType::Bool => {}
-                _ => bail!(AnalyzeError::ExpectedLogicalInIf {
-                    src: self.module.source.clone(),
-                    span: location.span.into()
-                }),
-            },
+            Typ::Prelude(PreludeType::Bool) => {}
             _ => bail!(AnalyzeError::ExpectedLogicalInIf {
                 src: self.module.source.clone(),
                 span: location.span.into()
@@ -78,13 +72,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         // inferring logical
         let inferred_logical = self.infer_expr(logical);
         match inferred_logical {
-            Typ::Prelude(prelude) => match prelude {
-                PreludeType::Bool => {}
-                _ => bail!(AnalyzeError::ExpectedLogicalInWhile {
-                    src: self.module.source.clone(),
-                    span: location.span.into()
-                }),
-            },
+            Typ::Prelude(PreludeType::Bool) => {}
             _ => bail!(AnalyzeError::ExpectedLogicalInWhile {
                 src: self.module.source.clone(),
                 span: location.span.into()
@@ -163,11 +151,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             source: self.module.source.clone(),
             location: location.clone(),
             name: name.clone(),
-            params: params
-                .clone()
-                .into_iter()
-                .map(|(_, v)| v)
-                .collect::<Vec<Typ>>(),
+            params: params.clone().into_values().collect::<Vec<Typ>>(),
             ret: ret.clone(),
         };
         self.resolver.define(
@@ -295,6 +279,6 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 }
             }
         }
-        return expected.unwrap_or(Typ::Void);
+        expected.unwrap_or(Typ::Void)
     }
 }

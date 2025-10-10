@@ -1,10 +1,10 @@
 /// Imports
 use crate::{
     compile::path_to_pkg_name,
-    config::config::{self, PackageType},
+    config::{self, PackageType},
 };
 use camino::Utf8PathBuf;
-use oil_compile::io::io;
+use oil_compile::io;
 
 /// Generates project
 pub fn gen_project(path: Utf8PathBuf, ty: PackageType) {

@@ -1,7 +1,7 @@
 /// Imports
 use crate::{
     analyze::{rc_ptr::RcPtr, typ::Module},
-    io::io,
+    io,
     package::{CompletedPackage, PackageCompiler},
 };
 use camino::Utf8PathBuf;

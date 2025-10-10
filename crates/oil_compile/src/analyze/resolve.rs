@@ -164,7 +164,7 @@ impl ModuleResolver {
         // Checking existence in module definitions
         match self.mod_defs.get(name) {
             Some(typ) => match typ {
-                ModDef::CustomType(ty) => return ty.value.clone(),
+                ModDef::CustomType(ty) => ty.value.clone(),
                 ModDef::Variable(_) => bail!(AnalyzeError::CouldNotUseValueAsType {
                     src: named_source.clone(),
                     span: address.clone().span.into(),
@@ -174,7 +174,7 @@ impl ModuleResolver {
             None => match self.imported_defs.get(name) {
                 // Checking existence in imported defs
                 Some(typ) => match typ {
-                    ModDef::CustomType(ty) => return ty.value.clone(),
+                    ModDef::CustomType(ty) => ty.value.clone(),
                     ModDef::Variable(_) => bail!(AnalyzeError::CouldNotUseValueAsType {
                         src: named_source.clone(),
                         span: address.clone().span.into(),
@@ -201,12 +201,12 @@ impl ModuleResolver {
 
     /// Contains type rib
     pub fn contains_type_rib(&self) -> Option<&RcPtr<RefCell<Type>>> {
-        return self.ribs_stack.contains_type();
+        self.ribs_stack.contains_type()
     }
     
     /// Contains rib with specifix kind
     pub fn contains_rib(&self, kind: RibKind) -> bool {
-        return self.ribs_stack.contains_rib(kind);
+        self.ribs_stack.contains_rib(kind)
     }
 
     /// Pushes rib
@@ -216,7 +216,7 @@ impl ModuleResolver {
 
     /// Pops rib
     pub fn pop_rib(&mut self) -> Option<Rib> {
-        return self.ribs_stack.pop();
+        self.ribs_stack.pop()
     }
 
     /// Collects fields from resolver

@@ -382,7 +382,7 @@ pub fn node_to_ir_expression(source: &NamedSource<Arc<String>>, node: Node) -> I
             value,
             cases,
         } => IrExpression::Match {
-            location: location,
+            location,
             value: Box::new(node_to_ir_expression(source, *value)),
             cases: cases
                 .into_iter()
@@ -419,13 +419,13 @@ pub fn node_to_ir_statement(source: &NamedSource<Arc<String>>, node: Node) -> Ir
             elseif,
         } => match elseif {
             Some(elseif) => IrStatement::If {
-                location: location,
+                location,
                 logical: node_to_ir_expression(source, *logical),
                 body: node_to_ir_block(source, *body),
                 elseif: Some(Box::new(node_to_ir_statement(source, *elseif))),
             },
             None => IrStatement::If {
-                location: location,
+                location,
                 logical: node_to_ir_expression(source, *logical),
                 body: node_to_ir_block(source, *body),
                 elseif: None,
@@ -436,7 +436,7 @@ pub fn node_to_ir_statement(source: &NamedSource<Arc<String>>, node: Node) -> Ir
             logical,
             body,
         } => IrStatement::While {
-            location: location,
+            location,
             logical: node_to_ir_expression(source, *logical),
             body: node_to_ir_block(source, *body),
         },
@@ -489,10 +489,10 @@ pub fn node_to_ir_statement(source: &NamedSource<Arc<String>>, node: Node) -> Ir
             body: node_to_ir_block(source, *body),
             typ,
         },
-        Node::Break { location } => IrStatement::Break { location: location },
-        Node::Continue { location } => IrStatement::Continue { location: location },
+        Node::Break { location } => IrStatement::Break { location },
+        Node::Continue { location } => IrStatement::Continue { location },
         Node::Return { location, value } => IrStatement::Return {
-            location: location,
+            location,
             value: value.map(|value| node_to_ir_expression(source, *value)),
         },
         Node::For {
@@ -511,7 +511,7 @@ pub fn node_to_ir_statement(source: &NamedSource<Arc<String>>, node: Node) -> Ir
             value,
             cases,
         } => IrStatement::Match {
-            location: location,
+            location,
             value: node_to_ir_expression(source, *value),
             cases: cases
                 .into_iter()

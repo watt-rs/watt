@@ -1,4 +1,4 @@
-//// Imports
+/// Imports
 use crate::cursor::Cursor;
 use crate::errors::LexError;
 use crate::tokens::*;
@@ -60,6 +60,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
 
     /// Converts source code represented as `&'cursor [char]`
     /// To a `Vec<Token>` - tokens list.
+    #[allow(clippy::nonminimal_bool)]
     pub fn lex(mut self) -> Vec<Token> {
         if !self.tokens.is_empty() {
             bail!(LexError::TokensListsNotEmpty);

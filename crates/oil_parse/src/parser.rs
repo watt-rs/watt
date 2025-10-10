@@ -135,7 +135,7 @@ impl<'file_path> Parser<'file_path> {
             // function type path
             TypePath::Function {
                 location: Address::span(span_start.span.start..span_end.span.end),
-                params: params,
+                params,
                 ret,
             }
         }
@@ -208,17 +208,16 @@ impl<'file_path> Parser<'file_path> {
         }
 
         // return type
-        let typ;
         // if type specified
-        if self.check(TokenKind::Colon) {
+        let typ = if self.check(TokenKind::Colon) {
             // `: $type`
             self.consume(TokenKind::Colon);
-            typ = Some(self.type_annotation());
+            Some(self.type_annotation())
         }
         // else
         else {
-            typ = None
-        }
+            None
+        };
         // end span `fn (): ... {}`
         let end_span = self.peek().address.clone();
 
@@ -381,31 +380,28 @@ impl<'file_path> Parser<'file_path> {
         self.consume(TokenKind::Let);
         let name = self.consume(TokenKind::Id).clone();
 
-        // type
-        let typ;
-
-        // if specified
-        if self.check(TokenKind::Colon) {
+        // if type specified
+        let typ = if self.check(TokenKind::Colon) {
             // `: $type`
             self.consume(TokenKind::Colon);
-            typ = Option::Some(self.type_annotation());
+            Option::Some(self.type_annotation())
         }
         // else
         else {
             // setting type to None
-            typ = Option::None
-        }
+            Option::None
+        };
 
         // `= $value`
         self.consume(TokenKind::Assign);
         let value = self.expr();
 
-        return Node::Define {
+        Node::Define {
             publicity,
             name,
             typ,
             value: Box::new(value),
-        };
+        }
     }
 
     /// Grouping expr `( expr )`
@@ -812,17 +808,16 @@ impl<'file_path> Parser<'file_path> {
         }
 
         // return type
-        let typ;
         // if type specified
-        if self.check(TokenKind::Colon) {
+        let typ = if self.check(TokenKind::Colon) {
             // `: $type`
             self.consume(TokenKind::Colon);
-            typ = Some(self.type_annotation());
+            Some(self.type_annotation())
         }
         // else
         else {
-            typ = None
-        }
+            None
+        };
 
         // body
         let body = self.block();
@@ -854,17 +849,16 @@ impl<'file_path> Parser<'file_path> {
         }
 
         // return type
-        let typ;
         // if type specified
-        if self.check(TokenKind::Colon) {
+        let typ = if self.check(TokenKind::Colon) {
             // `: $type`
             self.consume(TokenKind::Colon);
-            typ = Some(self.type_annotation());
+            Some(self.type_annotation())
         }
         // else
         else {
-            typ = None
-        }
+            None
+        };
 
         // body
         self.consume(TokenKind::Assign);
@@ -1014,10 +1008,9 @@ impl<'file_path> Parser<'file_path> {
 
         // `path/to/module`
         let path = self.dependency_path();
-        let kind;
 
         // `for $name, $name, n...`
-        if self.check(TokenKind::For) {
+        let kind = if self.check(TokenKind::For) {
             self.consume(TokenKind::For);
             // Parsing names
             let mut names = Vec::new();
@@ -1026,13 +1019,13 @@ impl<'file_path> Parser<'file_path> {
                 self.advance();
                 names.push(self.consume(TokenKind::Id).clone());
             }
-            kind = UseKind::ForNames(names);
+            UseKind::ForNames(names)
         }
         // `as $id`
         else {
             self.consume(TokenKind::As);
-            kind = UseKind::AsName(self.consume(TokenKind::Id).clone());
-        }
+            UseKind::AsName(self.consume(TokenKind::Id).clone())
+        };
 
         // end of span `use ... as ...`
         let span_end = self.previous().clone();

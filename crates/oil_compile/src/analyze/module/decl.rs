@@ -19,6 +19,7 @@ use std::{cell::RefCell, collections::HashMap};
 /// Declaraton analyze
 impl<'pkg> ModuleAnalyzer<'pkg> {
     /// Analyzes method
+    #[allow(clippy::too_many_arguments)]
     fn analyze_method(
         &mut self,
         location: Address,
@@ -62,12 +63,12 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             source: self.module.source.clone(),
             location: location.clone(),
             name: name.clone(),
-            params: params.into_iter().map(|(_, v)| v).collect::<Vec<Typ>>(),
+            params: params.into_values().collect::<Vec<Typ>>(),
             ret,
         };
 
         // defining function, if not already defined
-        if let Some(_) = type_.borrow().env.get(&name).cloned() {
+        if type_.borrow().env.contains_key(&name) {
             bail!(AnalyzeError::MethodIsAlreadyDefined {
                 src: self.module.source.clone(),
                 span: location.span.into(),
@@ -245,11 +246,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             source: self.module.source.clone(),
             location: location.clone(),
             name: name.clone(),
-            params: params
-                .clone()
-                .into_iter()
-                .map(|(_, v)| v)
-                .collect::<Vec<Typ>>(),
+            params: params.clone().into_values().collect::<Vec<Typ>>(),
             ret: ret.clone(),
         };
         self.resolver.define(
@@ -301,11 +298,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             source: self.module.source.clone(),
             location: location.clone(),
             name: name.clone(),
-            params: params
-                .clone()
-                .into_iter()
-                .map(|(_, v)| v)
-                .collect::<Vec<Typ>>(),
+            params: params.clone().into_values().collect::<Vec<Typ>>(),
             ret: ret.clone(),
         };
         self.resolver.define(

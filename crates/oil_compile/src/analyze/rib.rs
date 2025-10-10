@@ -76,7 +76,7 @@ impl RibsStack {
                 return Some(env.1.get(name).unwrap().clone());
             }
         }
-        return None;
+        None
     }
 
     /// Checks rib with provided env type exists in hierarchy

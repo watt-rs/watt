@@ -15,7 +15,7 @@ use oil_common::{address::Address, bail, warn};
 use oil_ir::ir::{IrBinaryOp, IrBlock, IrCase, IrExpression, IrParameter, IrPattern, IrUnaryOp};
 use std::{cell::RefCell, collections::HashMap};
 
-/// Expression inferring
+/// Expressions inferring
 impl<'pkg> ModuleAnalyzer<'pkg> {
     /// Infers binary
     fn infer_binary(
@@ -43,19 +43,19 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     }
                     _ => bail!(AnalyzeError::InvalidBinaryOp {
                         src: self.module.source.clone(),
-                        span: (location.span.start..location.span.end).into(),
+                        span: location.span.into(),
                         a: inferred_left,
                         b: inferred_right,
-                        op: op.into()
+                        op
                     }),
                 }
             }
             _ => bail!(AnalyzeError::InvalidBinaryOp {
                 src: self.module.source.clone(),
-                span: (location.span.start..location.span.end).into(),
+                span: location.span.into(),
                 a: inferred_left,
                 b: inferred_right,
-                op: op.into()
+                op
             }),
         }
 
@@ -69,7 +69,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                         PreludeType::String => Typ::Prelude(PreludeType::String),
                         _ => bail!(AnalyzeError::InvalidBinaryOp {
                             src: self.module.source.clone(),
-                            span: (location.span.start..location.span.end).into(),
+                            span: location.span.into(),
                             a: inferred_left,
                             b: inferred_right,
                             op
@@ -77,7 +77,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     },
                     _ => bail!(AnalyzeError::InvalidBinaryOp {
                         src: self.module.source.clone(),
-                        span: (location.span.start..location.span.end).into(),
+                        span: location.span.into(),
                         a: inferred_left,
                         b: inferred_right,
                         op
@@ -99,7 +99,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                         PreludeType::Float => Typ::Prelude(PreludeType::Float),
                         _ => bail!(AnalyzeError::InvalidBinaryOp {
                             src: self.module.source.clone(),
-                            span: (location.span.start..location.span.end).into(),
+                            span: location.span.into(),
                             a: inferred_left,
                             b: inferred_right,
                             op
@@ -110,7 +110,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                         PreludeType::Float => Typ::Prelude(PreludeType::Float),
                         _ => bail!(AnalyzeError::InvalidBinaryOp {
                             src: self.module.source.clone(),
-                            span: (location.span.start..location.span.end).into(),
+                            span: location.span.into(),
                             a: inferred_left,
                             b: inferred_right,
                             op
@@ -118,7 +118,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     },
                     _ => bail!(AnalyzeError::InvalidBinaryOp {
                         src: self.module.source.clone(),
-                        span: (location.span.start..location.span.end).into(),
+                        span: location.span.into(),
                         a: inferred_left,
                         b: inferred_right,
                         op
@@ -133,7 +133,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                         PreludeType::Bool => Typ::Prelude(PreludeType::Bool),
                         _ => bail!(AnalyzeError::InvalidBinaryOp {
                             src: self.module.source.clone(),
-                            span: (location.span.start..location.span.end).into(),
+                            span: location.span.into(),
                             a: inferred_left,
                             b: inferred_right,
                             op
@@ -141,7 +141,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     },
                     _ => bail!(AnalyzeError::InvalidBinaryOp {
                         src: self.module.source.clone(),
-                        span: (location.span.start..location.span.end).into(),
+                        span: location.span.into(),
                         a: inferred_left,
                         b: inferred_right,
                         op
@@ -156,7 +156,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                         PreludeType::Int | PreludeType::Float => Typ::Prelude(PreludeType::Bool),
                         _ => bail!(AnalyzeError::InvalidBinaryOp {
                             src: self.module.source.clone(),
-                            span: (location.span.start..location.span.end).into(),
+                            span: location.span.into(),
                             a: inferred_left,
                             b: inferred_right,
                             op
@@ -164,7 +164,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     },
                     _ => bail!(AnalyzeError::InvalidBinaryOp {
                         src: self.module.source.clone(),
-                        span: (location.span.start..location.span.end).into(),
+                        span: location.span.into(),
                         a: inferred_left,
                         b: inferred_right,
                         op
@@ -181,21 +181,16 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         // Inferred value `Typ`
         let inferred_value = self.infer_expr(value);
 
-        // Value `PreludeType`
-        let value_typ;
-
         // Checking type is prelude
-        match &inferred_value {
-            Typ::Prelude(t) => {
-                value_typ = t;
-            }
+        let value_typ = match &inferred_value {
+            Typ::Prelude(t) => t,
             _ => bail!(AnalyzeError::InvalidUnaryOp {
                 src: self.module.source.clone(),
-                span: (location.span.start..location.span.end).into(),
+                span: location.span.into(),
                 t: inferred_value,
                 op
             }),
-        }
+        };
 
         // Matching operator
         match op {
@@ -204,7 +199,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 PreludeType::Float => Typ::Prelude(PreludeType::Float),
                 _ => bail!(AnalyzeError::InvalidUnaryOp {
                     src: self.module.source.clone(),
-                    span: (location.span.start..location.span.end).into(),
+                    span: location.span.into(),
                     t: inferred_value,
                     op
                 }),
@@ -213,7 +208,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 PreludeType::Bool => Typ::Prelude(PreludeType::Bool),
                 _ => bail!(AnalyzeError::InvalidUnaryOp {
                     src: self.module.source.clone(),
-                    span: (location.span.start..location.span.end).into(),
+                    span: location.span.into(),
                     t: inferred_value,
                     op
                 }),
@@ -229,8 +224,8 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     /// Infers module field access
     fn infer_module_field_access(
         &self,
-        field_location: Address,
         field_module: EcoString,
+        field_location: Address,
         field_name: EcoString,
     ) -> Res {
         // Getting module
@@ -281,8 +276,8 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     /// Infers enum field access
     fn infer_enum_field_access(
         &self,
-        field_location: Address,
         en: RcPtr<Enum>,
+        field_location: Address,
         field_name: EcoString,
     ) -> Res {
         // Finding variant
@@ -300,8 +295,8 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     /// Infers type field access
     fn infer_type_field_access(
         &self,
-        field_location: Address,
         ty: RcPtr<RefCell<Type>>,
+        field_location: Address,
         field_name: EcoString,
     ) -> Res {
         // Finding field
@@ -355,24 +350,17 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         match &container_inferred {
             // Module field access
             Res::Module(name) => {
-                self.infer_module_field_access(field_location, name.clone(), field_name)
+                self.infer_module_field_access(name.clone(), field_location, field_name)
             }
             // Enum field access
-            Res::Custom(custom) => match custom {
-                CustomType::Enum(en) => {
-                    self.infer_enum_field_access(field_location, en.clone(), field_name)
-                }
-                _ => bail!(AnalyzeError::CouldNotResolveFieldsIn {
-                    src: self.module.source.clone(),
-                    span: field_location.span.into(),
-                    res: container_inferred
-                }),
-            },
+            Res::Custom(CustomType::Enum(en)) => {
+                self.infer_enum_field_access(en.clone(), field_location, field_name)
+            }
             // Type field access
             Res::Value(typ) => match typ {
                 // Custom Type
-                Typ::Custom(t) => {
-                    self.infer_type_field_access(field_location, t.clone(), field_name)
+                Typ::Custom(ty) => {
+                    self.infer_type_field_access(ty.clone(), field_location, field_name)
                 }
                 // Dyn
                 Typ::Dyn => {
@@ -414,25 +402,18 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             .collect::<Vec<Typ>>();
         match &function {
             // Custom type
-            Res::Custom(t) => match t {
-                CustomType::Type(ty) => {
-                    let borrowed = ty.borrow();
-                    if borrowed.params != args {
-                        bail!(AnalyzeError::InvalidArgs {
-                            src: self.module.source.clone(),
-                            params_span: borrowed.location.span.clone().into(),
-                            span: location.span.into()
-                        })
-                    } else {
-                        return CallResult::FromType(Typ::Custom(ty.clone()));
-                    }
+            Res::Custom(CustomType::Type(ty)) => {
+                let borrowed = ty.borrow();
+                if borrowed.params != args {
+                    bail!(AnalyzeError::InvalidArgs {
+                        src: self.module.source.clone(),
+                        params_span: borrowed.location.span.clone().into(),
+                        span: location.span.into()
+                    })
+                } else {
+                    CallResult::FromType(Typ::Custom(ty.clone()))
                 }
-                _ => bail!(AnalyzeError::CouldNotCall {
-                    src: self.module.source.clone(),
-                    span: location.span.into(),
-                    res: function
-                }),
-            },
+            }
             // Value
             Res::Value(t) => match t {
                 // Function
@@ -444,7 +425,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                             span: location.span.into()
                         })
                     } else {
-                        return CallResult::FromFunction(f.ret.clone(), f.clone());
+                        CallResult::FromFunction(f.ret.clone(), f.clone())
                     }
                 }
                 // Dyn
@@ -473,7 +454,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                         span: location.span.into()
                     })
                 } else {
-                    return CallResult::FromEnum(Typ::Enum(en.clone()));
+                    CallResult::FromEnum(Typ::Enum(en.clone()))
                 }
             }
             _ => bail!(AnalyzeError::CouldNotCall {
@@ -507,7 +488,8 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 name,
             } => {
                 let m = self.resolver.resolve_module(&module);
-                let typ = match m.fields.get(&name) {
+
+                match m.fields.get(&name) {
                     Some(field) => match field {
                         ModDef::CustomType(t) => {
                             if t.publicity != Publicity::Private {
@@ -532,10 +514,9 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     None => bail!(AnalyzeError::TypeIsNotDefined {
                         src: self.module.source.clone(),
                         span: location.span.into(),
-                        t: format!("{}.{}", module, name).into()
+                        t: format!("{module}.{name}").into()
                     }),
-                };
-                typ
+                }
             }
             TypePath::Function {
                 location,
@@ -585,7 +566,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 CallResult::FromDyn => Res::Value(Typ::Dyn),
             },
             expr => bail!(AnalyzeError::UnexpectedExprInResolution {
-                expr: format!("{:?}", expr).into()
+                expr: format!("{expr:?}").into()
             }),
         }
     }
@@ -612,11 +593,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             source: self.module.source.clone(),
             location: location.clone(),
             name: EcoString::from("$anonymous"),
-            params: params
-                .clone()
-                .into_iter()
-                .map(|(_, v)| v)
-                .collect::<Vec<Typ>>(),
+            params: params.clone().into_values().collect::<Vec<Typ>>(),
             ret: ret.clone(),
         };
 
@@ -632,7 +609,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         // inferring body
         let block_location = &body.get_location();
         let inferred_block = self.infer_block(body);
-        self.unify(&location, &ret, &block_location, &inferred_block);
+        self.unify(&location, &ret, block_location, &inferred_block);
         self.resolver.pop_rib();
 
         // result
@@ -720,7 +697,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 Some(expected) => {
                     let block_location = &case.location;
                     let inferred_block = self.infer_block(case.body);
-                    self.unify(&case.location, &expected, &block_location, &inferred_block);
+                    self.unify(&case.location, expected, block_location, &inferred_block);
                 }
                 None => {
                     let inferred = self.infer_block(case.body);

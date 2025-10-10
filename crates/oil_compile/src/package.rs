@@ -2,7 +2,7 @@
 use crate::{
     analyze::{module::analyze::ModuleAnalyzer, rc_ptr::RcPtr, typ::Module},
     errors::CompileError,
-    io::io::{self, OilFile},
+    io::{self, OilFile},
 };
 use camino::{Utf8Path, Utf8PathBuf};
 use ecow::EcoString;
@@ -77,8 +77,8 @@ impl<'modules> PackageCompiler<'modules> {
         let mut parser = Parser::new(tokens, &named_source);
         let tree = parser.parse();
         // Untyped ir
-        let untyped_ir = lowering::tree_to_ir(named_source, tree);
-        return untyped_ir;
+
+        lowering::tree_to_ir(named_source, tree)
     }
 
     /// Collects all .oil files of package
@@ -146,7 +146,7 @@ impl<'modules> PackageCompiler<'modules> {
                 if Self::find_cycle(origin, origin, &deps_graph, &mut path, &mut HashSet::new()) {
                     path.reverse();
                     bail!(CompileError::FoundImportCycle {
-                        a: match path.get(0) {
+                        a: match path.first() {
                             Some(some) => (*some).clone(),
                             None =>
                                 bail!(CompileError::CyclePathHasWrongLength { len: path.len() }),
@@ -175,7 +175,7 @@ impl<'modules> PackageCompiler<'modules> {
             let module_name = io::module_name(&self.path, &source);
             let module = self.load_module(&module_name, &source);
             loaded_modules.insert(module_name.clone(), module);
-            info!("Loaded module {:?} with name {:?}", source, module_name);
+            info!("Loaded module {source:?} with name {module_name:?}");
         }
 
         // Building dependencies tree
@@ -191,11 +191,11 @@ impl<'modules> PackageCompiler<'modules> {
                     .collect(),
             );
         });
-        info!("Found dependencies {:#?}", dep_tree);
+        info!("Found dependencies {dep_tree:#?}");
 
         // Performing toposort
         let sorted = self.toposort(dep_tree);
-        info!("Performed toposort {:#?}", sorted);
+        info!("Performed toposort {sorted:#?}");
 
         // Performing analyze
         info!("Analyzing modules...");
@@ -203,7 +203,7 @@ impl<'modules> PackageCompiler<'modules> {
         for name in sorted {
             info!("Analyzing module {name}");
             let module = loaded_modules.get(name).unwrap();
-            let mut analyzer = ModuleAnalyzer::new(module, name, &self.analyzed_modules);
+            let mut analyzer = ModuleAnalyzer::new(module, name, self.analyzed_modules);
             let analyzed_module = RcPtr::new(analyzer.analyze());
             self.analyzed_modules
                 .insert(name.clone(), analyzed_module.clone());
@@ -215,7 +215,7 @@ impl<'modules> PackageCompiler<'modules> {
         let mut generated_modules = HashMap::new();
         for module in analyzed_modules.iter() {
             info!("Performing codegen for {}", module.0);
-            let generated = gen_module(&module.0, loaded_modules.get(module.0).unwrap())
+            let generated = gen_module(module.0, loaded_modules.get(module.0).unwrap())
                 .to_file_string()
                 .unwrap();
             generated_modules.insert(module.0.clone(), generated);
@@ -226,14 +226,14 @@ impl<'modules> PackageCompiler<'modules> {
         let mut completed_modules = HashMap::new();
         for module in generated_modules {
             // Target path
-            let mut target_path = Utf8PathBuf::from(self.outcome.clone());
+            let mut target_path = self.outcome.clone();
             target_path.push(Utf8Path::new(&format!("{}.js", &module.0)));
             completed_modules.insert(module.0, target_path.clone());
             // Creating directory
             if let Some(path) = target_path.parent() {
                 // Catching error
                 if let Err(error) = fs::create_dir_all(path) {
-                    error!("{:?}", error);
+                    error!("{error:?}");
                 }
             }
             // Creating file

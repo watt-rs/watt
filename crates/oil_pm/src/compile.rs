@@ -1,7 +1,7 @@
 /// Imports
 use crate::{
-    config::config::{self, OilConfig},
-    dependencies::dependencies,
+    config::{self, OilConfig},
+    dependencies,
     errors::PackageError,
     runtime::JsRuntime,
 };
@@ -9,7 +9,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use console::style;
 use log::info;
 use oil_common::bail;
-use oil_compile::{io::io, package::CompletedPackage, project::ProjectCompiler};
+use oil_compile::{io, package::CompletedPackage, project::ProjectCompiler};
 use std::process::Command;
 
 /// Runs using runtime
@@ -21,32 +21,29 @@ fn run_by_rt(index: Utf8PathBuf, rt: JsRuntime) {
     match rt {
         JsRuntime::Deno => {
             // `deno init $path`
-            match Command::new("deno").args(&["run", index.as_str()]).status() {
-                Err(error) => bail!(PackageError::FailedToRunProject {
+            if let Err(error) = Command::new("deno").args(["run", index.as_str()]).status() {
+                bail!(PackageError::FailedToRunProject {
                     rt,
                     error: error.to_string()
-                }),
-                _ => {}
+                })
             }
         }
         JsRuntime::Node => {
             // `npm init -y` in target path
-            match Command::new("node").args(&[index.as_str()]).status() {
-                Err(error) => bail!(PackageError::FailedToRunProject {
+            if let Err(error) = Command::new("node").args([index.as_str()]).status() {
+                bail!(PackageError::FailedToRunProject {
                     rt,
                     error: error.to_string()
-                }),
-                _ => {}
+                })
             }
         }
         JsRuntime::Bun => {
             // `bun init -y` in target path
-            match Command::new("bun").arg(index.as_str()).status() {
-                Err(error) => bail!(PackageError::FailedToRunProject {
+            if let Err(error) = Command::new("bun").arg(index.as_str()).status() {
+                bail!(PackageError::FailedToRunProject {
                     rt,
                     error: error.to_string()
-                }),
-                _ => {}
+                })
             }
         }
         JsRuntime::Common => {}
@@ -56,14 +53,14 @@ fn run_by_rt(index: Utf8PathBuf, rt: JsRuntime) {
 /// Writes `index.js`
 /// returns path to it
 fn write_index(
-    completed_packages: &Vec<CompletedPackage>,
+    completed_packages: &[CompletedPackage],
     project_path: Utf8PathBuf,
     target_path: &Utf8PathBuf,
     config: &OilConfig,
 ) -> Utf8PathBuf {
     // Retrieving main package from completed packages
     let main_package = match completed_packages
-        .into_iter()
+        .iter()
         .find(|package| package.path == project_path)
     {
         Some(package) => package,
@@ -90,7 +87,7 @@ fn write_index(
     };
 
     // Checking for main function
-    if let None = main_module.analyzed.fields.get("main") {
+    if !main_module.analyzed.fields.contains_key("main") {
         bail!(PackageError::NoMainFnFound {
             module: main_module_name.clone()
         });
@@ -166,7 +163,7 @@ pub fn compile(path: Utf8PathBuf) -> Utf8PathBuf {
     let index_path = write_index(&completed_packages, path, &target_path, &config);
     // Done
     println!("{} Done.", style("[✓]").bold().yellow());
-    return index_path;
+    index_path
 }
 
 /// Runs project

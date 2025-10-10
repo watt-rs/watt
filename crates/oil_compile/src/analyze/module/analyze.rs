@@ -11,6 +11,7 @@ use oil_ir::ir::IrModule;
 use std::collections::HashMap;
 
 /// Call result
+#[allow(clippy::enum_variant_names)]
 pub enum CallResult {
     FromFunction(Typ, RcPtr<Function>),
     FromType(Typ),
@@ -101,7 +102,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 }),
             }
         } else {
-            return t1.clone();
+            t1.clone()
         }
     }
 }

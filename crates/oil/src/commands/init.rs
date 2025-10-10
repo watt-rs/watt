@@ -2,7 +2,7 @@
 use crate::errors::CliError;
 use camino::Utf8PathBuf;
 use oil_common::bail;
-use oil_pm::{config::config::PackageType, generate};
+use oil_pm::{config::PackageType, generate};
 use std::env;
 
 /// Executes command
