@@ -39,7 +39,7 @@ fn main() {
 - [x] make check for main function and module in project
 - [ ] implement `for` loop
     - [ ] implement `range` expression
-- [ ] add invalid names as js keywords, such as `class`, `function`, etc...
+- [x] add invalid names as js keywords, such as `class`, `function`, etc...
 - [x] foreign functions mechanism
 - [x] different runtimes
 - [x] add pkg::use_of_app_package_as_dependency error
@@ -47,4 +47,4 @@ fn main() {
 - [ ] allow using expressions in match clauses (in match expressions only)
 - [ ] implement `default` case in match
 - [x] implement better span selection in unify errors.
-- [ ] implement [lint] in `oil.toml`
+- [x] implement [lints] in `oil.toml`

@@ -38,26 +38,42 @@ pub struct CompletedPackage {
     pub modules: Vec<CompletedModule>,
 }
 
+/// Draft package lints
+#[derive(Clone)]
+pub struct DraftPackageLints {
+    /// Disabled lints
+    pub disabled: Vec<String>,
+}
+
+/// Draft package
+#[derive(Clone)]
+pub struct DraftPackage {
+    /// Path to package
+    pub path: Utf8PathBuf,
+    /// Lints config
+    pub lints: DraftPackageLints,
+}
+
 /// Package compiler
 pub struct PackageCompiler<'modules> {
-    /// Path to package
-    path: Utf8PathBuf,
+    /// Draft package
+    pub(crate) draft: DraftPackage,
     /// Compilation outcome path
     outcome: Utf8PathBuf,
     /// Analyzed modules
-    analyzed_modules: &'modules mut HashMap<EcoString, RcPtr<Module>>,
+    pub(crate) analyzed_modules: &'modules mut HashMap<EcoString, RcPtr<Module>>,
 }
 
 /// Package compiler implementation
 impl<'modules> PackageCompiler<'modules> {
     /// Creates new package compiler
     pub fn new(
-        path: Utf8PathBuf,
+        draft: DraftPackage,
         outcome: Utf8PathBuf,
         analyzed_modules: &'modules mut HashMap<EcoString, RcPtr<Module>>,
     ) -> Self {
         Self {
-            path,
+            draft,
             outcome,
             analyzed_modules,
         }
@@ -77,13 +93,12 @@ impl<'modules> PackageCompiler<'modules> {
         let mut parser = Parser::new(tokens, &named_source);
         let tree = parser.parse();
         // Untyped ir
-
         lowering::tree_to_ir(named_source, tree)
     }
 
     /// Collects all .oil files of package
     fn collect_sources(&self) -> Vec<OilFile> {
-        io::collect_sources(&self.path)
+        io::collect_sources(&self.draft.path)
     }
 
     /// Finds cycle in a graph
@@ -167,12 +182,12 @@ impl<'modules> PackageCompiler<'modules> {
     /// Compiles package
     /// returns analyzed modules
     pub fn compile(&mut self) -> CompletedPackage {
-        trace!("Compiling package: {}", self.path);
+        trace!("Compiling package: {}", self.draft.path);
 
         // Collecting sources
         let mut loaded_modules = HashMap::new();
         for source in self.collect_sources() {
-            let module_name = io::module_name(&self.path, &source);
+            let module_name = io::module_name(&self.draft.path, &source);
             let module = self.load_module(&module_name, &source);
             loaded_modules.insert(module_name.clone(), module);
             info!("Loaded module {source:?} with name {module_name:?}");
@@ -203,7 +218,7 @@ impl<'modules> PackageCompiler<'modules> {
         for name in sorted {
             info!("Analyzing module {name}");
             let module = loaded_modules.get(name).unwrap();
-            let mut analyzer = ModuleAnalyzer::new(module, name, self.analyzed_modules);
+            let mut analyzer = ModuleAnalyzer::new(module, name, self);
             let analyzed_module = RcPtr::new(analyzer.analyze());
             self.analyzed_modules
                 .insert(name.clone(), analyzed_module.clone());
@@ -242,7 +257,7 @@ impl<'modules> PackageCompiler<'modules> {
 
         // Returning analyzed modules
         CompletedPackage {
-            path: self.path.clone(),
+            path: self.draft.path.clone(),
             modules: analyzed_modules
                 .into_iter()
                 .map(|(name, module)| CompletedModule {

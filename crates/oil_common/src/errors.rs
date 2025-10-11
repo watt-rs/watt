@@ -12,8 +12,11 @@ macro_rules! bail {
 /// Prints warning
 #[macro_export]
 macro_rules! warn {
-    ($report:expr) => {{
+    ($pkg:expr, $report:expr) => {{
         let report: miette::Report = $report.into();
-        eprintln!("{report:?}");
+        let report_code = report.code().unwrap().to_string();
+        if !$pkg.draft.lints.disabled.contains(&report_code) {
+            eprintln!("{report:?}");
+        }
     }};
 }

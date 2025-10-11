@@ -355,7 +355,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
 
     /// Performs import
     pub fn perform_import(&mut self, import: IrDependency) {
-        match self.modules.get(&import.path) {
+        match self.package.analyzed_modules.get(&import.path) {
             Some(module) => match import.kind {
                 IrDependencyKind::AsName(name) => self.resolver.import_as(
                     &self.module.source,

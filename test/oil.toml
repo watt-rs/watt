@@ -5,3 +5,8 @@ main = "test/main"
 dependencies = [
     "https://github.com/oil-rs/std"
 ]
+
+[lints]
+disabled = [
+    "analyze::warn::access_of_dyn_field"
+]

@@ -6,6 +6,79 @@ use oil_ir::ir::{
     IrStatement, IrUnaryOp,
 };
 
+/// Replaces js identifiers equal
+/// to some js keywords with `{indentifier}$`
+pub fn try_escape_js(identifier: &str) -> String {
+    if matches!(
+        identifier,
+        // Keywords and reserved words
+        // Info can be found here:
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar
+        "await"
+            | "arguments"
+            | "break"
+            | "case"
+            | "catch"
+            | "class"
+            | "const"
+            | "continue"
+            | "debugger"
+            | "default"
+            | "delete"
+            | "do"
+            | "else"
+            | "enum"
+            | "export"
+            | "extends"
+            | "eval"
+            | "false"
+            | "finally"
+            | "for"
+            | "function"
+            | "if"
+            | "implements"
+            | "import"
+            | "in"
+            | "instanceof"
+            | "interface"
+            | "let"
+            | "new"
+            | "null"
+            | "package"
+            | "private"
+            | "protected"
+            | "public"
+            | "return"
+            | "static"
+            | "super"
+            | "switch"
+            | "this"
+            | "throw"
+            | "true"
+            | "try"
+            | "typeof"
+            | "var"
+            | "void"
+            | "while"
+            | "with"
+            | "yield"
+            | "undefined"
+            | "constructor"
+            | "prototype"
+            | "__proto__"
+            | "async"
+            | "from"
+            | "of"
+            | "set"
+            | "get"
+            | "as"
+    ) {
+        format!("{identifier}$")
+    } else {
+        identifier.to_owned()
+    }
+}
+
 /// Generates expression code
 pub fn gen_expression(expr: IrExpression) -> js::Tokens {
     match expr {
@@ -50,12 +123,12 @@ pub fn gen_expression(expr: IrExpression) -> js::Tokens {
             IrUnaryOp::Negate => quote!( -$(gen_expression(*value)) ),
             IrUnaryOp::Bang => quote!( !$(gen_expression(*value)) ),
         },
-        IrExpression::Get { name, .. } => quote!($(name.as_str())),
+        IrExpression::Get { name, .. } => quote!($(try_escape_js(&name))),
         IrExpression::FieldAccess {
             location: _,
             container,
             name,
-        } => quote!($(gen_expression(*container)).$(name.as_str())),
+        } => quote!($(gen_expression(*container)).$(try_escape_js(&name))),
         IrExpression::Call {
             location: _,
             what,
@@ -152,7 +225,7 @@ pub fn gen_statement(stmt: IrStatement) -> js::Tokens {
         },
         // Define statement
         IrStatement::Define { name, value, .. } => quote! {
-            let $(name.to_string()) = $(gen_expression(value));
+            let $(try_escape_js(&name)) = $(gen_expression(value));
         },
         // Assing statement
         IrStatement::Assign { what, value, .. } => quote! {
@@ -167,7 +240,7 @@ pub fn gen_statement(stmt: IrStatement) -> js::Tokens {
             name, params, body, ..
         } => quote! {
             // function $name($param, $param, n...)
-            function $(name.to_string())($(for param in params join (, ) => $(param.name.to_string()))) {
+            function $(try_escape_js(&name))($(for param in params join (, ) => $(param.name.to_string()))) {
                 $(gen_block(body))
             }
         },
@@ -216,6 +289,7 @@ pub fn gen_statement(stmt: IrStatement) -> js::Tokens {
                 }
             }
         }
+        // For statement
         IrStatement::For { .. } => todo!(),
     }
 }
@@ -226,19 +300,19 @@ pub fn gen_declaration(decl: IrDeclaration) -> js::Tokens {
         IrDeclaration::Function(ir_function) => {
             // function $name($param, $param, n...)
             quote! {
-                export function $(ir_function.name.to_string())($(for param in ir_function.params join (, ) => $(param.name.to_string()))) {
+                export function $(try_escape_js(&ir_function.name))($(for param in ir_function.params join (, ) => $(param.name.to_string()))) {
                     $(gen_block(ir_function.body))
                 }
             }
         }
         IrDeclaration::Variable(ir_variable) => quote! {
-            export let $(ir_variable.name.to_string()) = $(gen_expression(ir_variable.value));
+            export let $(try_escape_js(&ir_variable.name)) = $(gen_expression(ir_variable.value));
         },
         IrDeclaration::Type(ir_type) => {
             // Methods
             let methods = quote! {
                 $(for function in ir_type.functions =>
-                    $(function.name.to_string())($(for param in function.params join (, ) => $(param.name.to_string()))) {
+                    $(try_escape_js(&function.name))($(for param in function.params join (, ) => $(param.name.to_string()))) {
                         let self = this;
                         $(gen_block(function.body))
                     }
@@ -248,21 +322,21 @@ pub fn gen_declaration(decl: IrDeclaration) -> js::Tokens {
             // constructor($field, $field, n...)
             // with meta type field as `type_name`
             let constructor = quote! {
-                constructor($(for field in ir_type.fields.clone() join (, ) => $(field.name.to_string()))) {
+                constructor($(for field in ir_type.fields.clone() join (, ) => $(try_escape_js(&field.name)))) {
                     this.$("$")meta = $(quoted(ir_type.name.to_string()));
-                    $(for field in ir_type.fields.clone() join ($['\r']) => this.$(field.name.to_string()) = $(gen_expression(field.value));)
+                    $(for field in ir_type.fields.clone() join ($['\r']) => this.$(try_escape_js(&field.name)) = $(gen_expression(field.value));)
                 }
             };
 
             // Class of `Type` named as $type_name
             // and class fabric named as `type_name`
             quote! {
-                export class $("$")$(ir_type.name.to_string()) {
+                export class $("$")$(try_escape_js(&ir_type.name)) {
                     $constructor
                     $methods
                 }
-                export function $(ir_type.name.to_string())($(for field in ir_type.fields.clone() join (, ) => $(field.name.to_string()))) {
-                    return new $("$")$(ir_type.name.to_string())($(for field in ir_type.fields join (, ) => $(field.name.to_string())));
+                export function $(try_escape_js(&ir_type.name))($(for field in ir_type.fields.clone() join (, ) => $(field.name.to_string()))) {
+                    return new $("$")$(try_escape_js(&ir_type.name))($(for field in ir_type.fields join (, ) => $(field.name.to_string())));
                 }
             }
         }
@@ -284,14 +358,14 @@ pub fn gen_declaration(decl: IrDeclaration) -> js::Tokens {
 
             // constr $name = {}
             quote! {
-                export const $(ir_enum.name.to_string()) = {
+                export const $(try_escape_js(&ir_enum.name)) = {
                     $variants
                 };
             }
         }
         IrDeclaration::Extern(ir_extern) => {
             quote! {
-                export function $(ir_extern.name.to_string())($(for param in ir_extern.params join (, ) => $(param.name.to_string()))) {
+                export function $(try_escape_js(&ir_extern.name))($(for param in ir_extern.params join (, ) => $(param.name.to_string()))) {
                     $(ir_extern.body.to_string())
                 }
             }

@@ -1,6 +1,6 @@
 import {$$match, $$equals, $$EqPattern, $$UnwrapPattern} from "../prelude.js"
 
-import * as rt from "../std/rt.js"
+import {panic} from "../std/rt.js"
 import {unreachable} from "../std/unreachable.js"
 
 export const Result = {
@@ -23,8 +23,8 @@ export function unwrap(result) {
             return value;
         }),
         new $$UnwrapPattern([], function($$fields) {
-            rt.panic("unwrap on error result.");
-            return unreachable;
+            panic("unwrap on error result.");
+            return unreachable();
         })
     ]);
     if ($$match_result != null && $$match_result != undefined) {

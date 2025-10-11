@@ -9,7 +9,11 @@ use camino::{Utf8Path, Utf8PathBuf};
 use console::style;
 use log::info;
 use oil_common::bail;
-use oil_compile::{io, package::CompletedPackage, project::ProjectCompiler};
+use oil_compile::{
+    io,
+    package::{CompletedPackage, DraftPackage, DraftPackageLints},
+    project::ProjectCompiler,
+};
 use std::process::Command;
 
 /// Runs using runtime
@@ -135,15 +139,24 @@ pub fn compile(path: Utf8PathBuf) -> Utf8PathBuf {
     println!("{} Packages resolved.", style("[✓]").bold().cyan());
     info!("Resolved packages: {resolved:?}");
     // Packages paths
-    let packages_paths = {
+    let packages = {
         resolved.iter().map(|pkg| {
-            // If it's our package
-            if &name == pkg {
+            // Path to package
+            let path = if &name == pkg {
                 path.clone()
             } else {
                 let mut pkg_path = cache_path.clone();
                 pkg_path.push(pkg);
                 pkg_path
+            };
+            // Package config
+            let config = config::retrieve_config(&path);
+            // Generating draft package
+            DraftPackage {
+                path: path,
+                lints: DraftPackageLints {
+                    disabled: config.lints.disabled,
+                },
             }
         })
     }
@@ -157,7 +170,7 @@ pub fn compile(path: Utf8PathBuf) -> Utf8PathBuf {
     };
     // Compiling
     println!("{} Compiling...", style("[🚚]").bold().yellow());
-    let mut project_compiler = ProjectCompiler::new(packages_paths, &target_path);
+    let mut project_compiler = ProjectCompiler::new(packages, &target_path);
     let completed_packages = project_compiler.compile();
     // Writing `index.js`
     let index_path = write_index(&completed_packages, path, &target_path, &config);

@@ -6,8 +6,7 @@ use crate::analyze::{
     res::Res,
     resolve::{Def, ModDef},
     rib::RibKind,
-    typ::{CustomType, Enum, Function, PreludeType, Typ, Type},
-    warnings::AnalyzeWarning,
+    typ::{CustomType, Enum, Function, PreludeType, Typ, Type}, warnings::AnalyzeWarning,
 };
 use ecow::EcoString;
 use oil_ast::ast::{Publicity, TypePath};
@@ -366,10 +365,13 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 Typ::Dyn => {
                     // Returning `dyn` like field type,
                     // but emitting warning
-                    warn!(AnalyzeWarning::AccessOfDynField {
-                        src: self.module.source.clone(),
-                        span: field_location.span.into()
-                    });
+                    warn!(
+                        self.package,
+                        AnalyzeWarning::AccessOfDynField {
+                            src: self.module.source.clone(),
+                            span: field_location.span.into()
+                        }
+                    );
                     Res::Value(Typ::Dyn)
                 }
                 // Else
@@ -432,10 +434,13 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 Typ::Dyn => {
                     // Returning `dyn` call result,
                     // but emitting warning
-                    warn!(AnalyzeWarning::CallOfDyn {
-                        src: self.module.source.clone(),
-                        span: location.span.into()
-                    });
+                    warn!(
+                        self.package,
+                        AnalyzeWarning::CallOfDyn {
+                            src: self.module.source.clone(),
+                            span: location.span.into()
+                        }
+                    );
                     CallResult::FromDyn
                 }
                 // Else

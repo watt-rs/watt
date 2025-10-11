@@ -1,15 +1,20 @@
 use std/io as io
 
-fn test(): int {
-    if 3 > 5 {
-        while true {
-            return true
-        }
-    } else {
-        return "hello"
-    }
+type A {
+    let a = 5
+}
+
+fn function() {
+}
+
+type class {
+}
+
+fn test(a: dyn) {
+    io.println(a.a)
 }
 
 fn main() {
-    io.println("Hello, world!")
+    class()
+    test(A())
 }

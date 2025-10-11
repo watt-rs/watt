@@ -1,14 +1,16 @@
 /// Imports
-use crate::analyze::{
-    errors::AnalyzeError,
-    rc_ptr::RcPtr,
-    resolve::ModuleResolver,
-    typ::{Function, Module, PreludeType, Typ},
+use crate::{
+    analyze::{
+        errors::AnalyzeError,
+        rc_ptr::RcPtr,
+        resolve::ModuleResolver,
+        typ::{Function, Module, PreludeType, Typ},
+    },
+    package::PackageCompiler,
 };
 use ecow::EcoString;
 use oil_common::{address::Address, bail};
 use oil_ir::ir::IrModule;
-use std::collections::HashMap;
 
 /// Call result
 #[allow(clippy::enum_variant_names)]
@@ -26,8 +28,8 @@ pub struct ModuleAnalyzer<'pkg> {
     pub(crate) module_name: &'pkg EcoString,
     /// Resolver
     pub(crate) resolver: ModuleResolver,
-    /// Modules available to import
-    pub(crate) modules: &'pkg HashMap<EcoString, RcPtr<Module>>,
+    /// Package compiler
+    pub(crate) package: &'pkg PackageCompiler<'pkg>,
 }
 
 /// Implementation
@@ -36,13 +38,13 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     pub fn new(
         module: &'pkg IrModule,
         module_name: &'pkg EcoString,
-        modules: &'pkg HashMap<EcoString, RcPtr<Module>>,
+        package: &'pkg PackageCompiler<'pkg>,
     ) -> Self {
         Self {
             module,
             module_name,
             resolver: ModuleResolver::new(),
-            modules,
+            package,
         }
     }
 

@@ -2,7 +2,7 @@
 use crate::{
     analyze::{rc_ptr::RcPtr, typ::Module},
     io,
-    package::{CompletedPackage, PackageCompiler},
+    package::{CompletedPackage, DraftPackage, PackageCompiler},
 };
 use camino::Utf8PathBuf;
 use ecow::EcoString;
@@ -12,7 +12,7 @@ use std::collections::HashMap;
 /// Project compiler
 pub struct ProjectCompiler<'out> {
     /// Sources
-    pub packages: Vec<Utf8PathBuf>,
+    pub packages: Vec<DraftPackage>,
     /// Outcome
     pub outcome: &'out Utf8PathBuf,
     /// Completed modules map
@@ -22,7 +22,7 @@ pub struct ProjectCompiler<'out> {
 /// Project compiler implementation
 impl<'out> ProjectCompiler<'out> {
     /// Creates new project compiler
-    pub fn new(packages: Vec<Utf8PathBuf>, outcome: &'out Utf8PathBuf) -> Self {
+    pub fn new(packages: Vec<DraftPackage>, outcome: &'out Utf8PathBuf) -> Self {
         Self {
             packages,
             outcome,
@@ -48,10 +48,10 @@ impl<'out> ProjectCompiler<'out> {
         trace!("Compiling project...");
         // Compiling packages
         let mut completed_packages = Vec::new();
-        for package_path in &self.packages {
+        for package in &self.packages {
             completed_packages.push(
                 PackageCompiler::new(
-                    package_path.clone(),
+                    package.clone(),
                     self.outcome.clone(),
                     &mut self.modules,
                 )

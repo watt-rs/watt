@@ -25,10 +25,18 @@ pub struct PackageConfig {
     pub dependencies: Vec<String>,
 }
 
+/// Lints config
+#[derive(Deserialize, Serialize)]
+#[allow(dead_code)]
+pub struct LintsConfig {
+    pub disabled: Vec<String>,
+}
+
 /// Oil.toml
 #[derive(Deserialize, Serialize)]
 pub struct OilConfig {
     pub pkg: PackageConfig,
+    pub lints: LintsConfig,
 }
 
 /// Parses config
@@ -72,6 +80,7 @@ pub fn generate(path: Utf8PathBuf, name: &str, ty: PackageType, main: Option<Str
                     main,
                     dependencies: vec![],
                 },
+                lints: LintsConfig { disabled: vec![] },
             };
             let serialized = match toml::to_string(&config) {
                 Ok(text) => text,
