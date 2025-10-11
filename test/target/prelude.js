@@ -11,7 +11,7 @@ function $$enum_equals(a, b) {
 
         if (b_keys.includes(k1)) {
 
-            if ($equals(a[k1], b[k1]) == false) {
+            if ($$equals(a[k1], b[k1]) == false) {
                 return false;
             }
         }

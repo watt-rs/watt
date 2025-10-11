@@ -13,16 +13,6 @@ use oil_common::{address::Address, bail};
 use oil_ir::ir::{IrBlock, IrExpression, IrParameter, IrStatement};
 use std::collections::HashMap;
 
-/// Infer macro
-macro_rules! infer {
-    ($self:expr, $stmt:expr) => {
-        match $self.infer_stmt($stmt) {
-            Some(inferred) => inferred,
-            None => continue,
-        }
-    };
-}
-
 /// Statements iferring
 impl<'pkg> ModuleAnalyzer<'pkg> {
     /// Infers if
@@ -32,7 +22,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         logical: IrExpression,
         body: IrBlock,
         elseif: Option<Box<IrStatement>>,
-    ) -> Option<Typ> {
+    ) -> Typ {
         // pushing rib
         self.resolver.push_rib(RibKind::Conditional);
         // inferring logical
@@ -53,20 +43,23 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             Some(elseif) => {
                 // unifying types
                 let elif_location = (*elseif).get_location();
-                let inferred_elif = self.infer_stmt(*elseif)?;
-                Some(self.unify(&location, &inferred, &elif_location, &inferred_elif))
+                let inferred_elif = match *elseif {
+                    IrStatement::If {
+                        location,
+                        logical,
+                        body,
+                        elseif,
+                    } => self.infer_if(location, logical, body, elseif),
+                    _ => panic!(),
+                };
+                self.unify(&location, &inferred, &elif_location, &inferred_elif)
             }
-            None => Some(inferred),
+            None => inferred,
         }
     }
 
     /// Infers while
-    fn infer_while(
-        &mut self,
-        location: Address,
-        logical: IrExpression,
-        body: IrBlock,
-    ) -> Option<Typ> {
+    fn infer_while(&mut self, location: Address, logical: IrExpression, body: IrBlock) -> Typ {
         // pushing rib
         self.resolver.push_rib(RibKind::Loop);
         // inferring logical
@@ -79,7 +72,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             }),
         }
         // inferring block
-        let inferred = Some(self.infer_block(body));
+        let inferred = self.infer_block(body);
         // popping rib
         self.resolver.pop_rib();
         inferred
@@ -178,7 +171,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     }
 
     /// Infers statement
-    fn infer_stmt(&mut self, statement: IrStatement) -> Option<Typ> {
+    fn infer_stmt(&mut self, statement: IrStatement) -> Typ {
         match statement {
             IrStatement::If {
                 location,
@@ -270,12 +263,18 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             let stmt_location = stmt.get_location();
             match &expected {
                 Some(expected_typ) => {
-                    let inferred = &infer!(self, stmt);
-                    expected = Some(self.unify(&location, expected_typ, &stmt_location, inferred));
+                    let inferred = match self.infer_stmt(stmt) {
+                        None | Some(Typ::Void) => continue,
+                        Some(typ) => typ,
+                    };
+                    expected = Some(self.unify(&location, expected_typ, &stmt_location, &inferred));
                 }
                 _ => {
                     location = stmt.get_location();
-                    expected = Some(infer!(self, stmt));
+                    expected = Some(match self.infer_stmt(stmt) {
+                        None => continue,
+                        Some(typ) => typ,
+                    });
                 }
             }
         }

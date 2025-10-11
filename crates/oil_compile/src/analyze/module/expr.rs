@@ -6,7 +6,8 @@ use crate::analyze::{
     res::Res,
     resolve::{Def, ModDef},
     rib::RibKind,
-    typ::{CustomType, Enum, Function, PreludeType, Typ, Type}, warnings::AnalyzeWarning,
+    typ::{CustomType, Enum, Function, PreludeType, Typ, Type},
+    warnings::AnalyzeWarning,
 };
 use ecow::EcoString;
 use oil_ast::ast::{Publicity, TypePath};
@@ -25,38 +26,8 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         right: IrExpression,
     ) -> Typ {
         // Inferred left and right `Typ`
-        let inferred_left = self.infer_expr(left);
-        let inferred_right = self.infer_expr(right);
-
-        // Left and right `PreludeType`
-        let left_typ;
-        let right_typ;
-
-        // Checking, both types are prelude
-        match &inferred_left {
-            Typ::Prelude(l) => {
-                left_typ = l;
-                match &inferred_right {
-                    Typ::Prelude(r) => {
-                        right_typ = r;
-                    }
-                    _ => bail!(AnalyzeError::InvalidBinaryOp {
-                        src: self.module.source.clone(),
-                        span: location.span.into(),
-                        a: inferred_left,
-                        b: inferred_right,
-                        op
-                    }),
-                }
-            }
-            _ => bail!(AnalyzeError::InvalidBinaryOp {
-                src: self.module.source.clone(),
-                span: location.span.into(),
-                a: inferred_left,
-                b: inferred_right,
-                op
-            }),
-        }
+        let left_typ = self.infer_expr(left);
+        let right_typ = self.infer_expr(right);
 
         // Matching operator
         match op {
@@ -64,21 +35,21 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             IrBinaryOp::Concat => {
                 // Checking prelude types
                 match left_typ {
-                    PreludeType::String => match right_typ {
-                        PreludeType::String => Typ::Prelude(PreludeType::String),
+                    Typ::Prelude(PreludeType::String) => match right_typ {
+                        Typ::Prelude(PreludeType::String) => Typ::Prelude(PreludeType::String),
                         _ => bail!(AnalyzeError::InvalidBinaryOp {
                             src: self.module.source.clone(),
                             span: location.span.into(),
-                            a: inferred_left,
-                            b: inferred_right,
+                            a: left_typ,
+                            b: right_typ,
                             op
                         }),
                     },
                     _ => bail!(AnalyzeError::InvalidBinaryOp {
                         src: self.module.source.clone(),
                         span: location.span.into(),
-                        a: inferred_left,
-                        b: inferred_right,
+                        a: left_typ,
+                        b: right_typ,
                         op
                     }),
                 }
@@ -93,33 +64,33 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             | IrBinaryOp::Mod => {
                 // Checking prelude types
                 match left_typ {
-                    PreludeType::Int => match right_typ {
-                        PreludeType::Int => Typ::Prelude(PreludeType::Int),
-                        PreludeType::Float => Typ::Prelude(PreludeType::Float),
+                    Typ::Prelude(PreludeType::Int) => match right_typ {
+                        Typ::Prelude(PreludeType::Int) => Typ::Prelude(PreludeType::Int),
+                        Typ::Prelude(PreludeType::Float) => Typ::Prelude(PreludeType::Float),
                         _ => bail!(AnalyzeError::InvalidBinaryOp {
                             src: self.module.source.clone(),
                             span: location.span.into(),
-                            a: inferred_left,
-                            b: inferred_right,
+                            a: left_typ,
+                            b: right_typ,
                             op
                         }),
                     },
-                    PreludeType::Float => match right_typ {
-                        PreludeType::Int => Typ::Prelude(PreludeType::Float),
-                        PreludeType::Float => Typ::Prelude(PreludeType::Float),
+                    Typ::Prelude(PreludeType::Float) => match right_typ {
+                        Typ::Prelude(PreludeType::Int) => Typ::Prelude(PreludeType::Float),
+                        Typ::Prelude(PreludeType::Float) => Typ::Prelude(PreludeType::Float),
                         _ => bail!(AnalyzeError::InvalidBinaryOp {
                             src: self.module.source.clone(),
                             span: location.span.into(),
-                            a: inferred_left,
-                            b: inferred_right,
+                            a: left_typ,
+                            b: right_typ,
                             op
                         }),
                     },
                     _ => bail!(AnalyzeError::InvalidBinaryOp {
                         src: self.module.source.clone(),
                         span: location.span.into(),
-                        a: inferred_left,
-                        b: inferred_right,
+                        a: left_typ,
+                        b: right_typ,
                         op
                     }),
                 }
@@ -128,21 +99,21 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             IrBinaryOp::Xor | IrBinaryOp::And | IrBinaryOp::Or => {
                 // Checking prelude types
                 match left_typ {
-                    PreludeType::Bool => match right_typ {
-                        PreludeType::Bool => Typ::Prelude(PreludeType::Bool),
+                    Typ::Prelude(PreludeType::Bool) => match right_typ {
+                        Typ::Prelude(PreludeType::Bool) => Typ::Prelude(PreludeType::Bool),
                         _ => bail!(AnalyzeError::InvalidBinaryOp {
                             src: self.module.source.clone(),
                             span: location.span.into(),
-                            a: inferred_left,
-                            b: inferred_right,
+                            a: left_typ,
+                            b: right_typ,
                             op
                         }),
                     },
                     _ => bail!(AnalyzeError::InvalidBinaryOp {
                         src: self.module.source.clone(),
                         span: location.span.into(),
-                        a: inferred_left,
-                        b: inferred_right,
+                        a: left_typ,
+                        b: right_typ,
                         op
                     }),
                 }
@@ -151,21 +122,25 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             IrBinaryOp::Le | IrBinaryOp::Lt | IrBinaryOp::Ge | IrBinaryOp::Gt => {
                 // Checking prelude types
                 match left_typ {
-                    PreludeType::Int | PreludeType::Float => match right_typ {
-                        PreludeType::Int | PreludeType::Float => Typ::Prelude(PreludeType::Bool),
-                        _ => bail!(AnalyzeError::InvalidBinaryOp {
-                            src: self.module.source.clone(),
-                            span: location.span.into(),
-                            a: inferred_left,
-                            b: inferred_right,
-                            op
-                        }),
-                    },
+                    Typ::Prelude(PreludeType::Int) | Typ::Prelude(PreludeType::Float) => {
+                        match right_typ {
+                            Typ::Prelude(PreludeType::Int) | Typ::Prelude(PreludeType::Float) => {
+                                Typ::Prelude(PreludeType::Bool)
+                            }
+                            _ => bail!(AnalyzeError::InvalidBinaryOp {
+                                src: self.module.source.clone(),
+                                span: location.span.into(),
+                                a: left_typ,
+                                b: right_typ,
+                                op
+                            }),
+                        }
+                    }
                     _ => bail!(AnalyzeError::InvalidBinaryOp {
                         src: self.module.source.clone(),
                         span: location.span.into(),
-                        a: inferred_left,
-                        b: inferred_right,
+                        a: left_typ,
+                        b: right_typ,
                         op
                     }),
                 }
@@ -541,7 +516,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
     }
 
     /// Infers resolution
-    fn infer_resolution(&mut self, expr: IrExpression) -> Res {
+    pub(crate) fn infer_resolution(&mut self, expr: IrExpression) -> Res {
         match expr {
             IrExpression::Get { location, name } => self.infer_get(location, name),
             IrExpression::FieldAccess {

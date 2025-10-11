@@ -1,20 +1,111 @@
 use std/io as io
+use std/option for Option
+use std/convert as conv
 
-type A {
-    let a = 5
+/// Represents linked list node
+type Node(value: dyn) {
+    /// Next node
+    let next: Option = Option.None()
+    /// Value
+    let value: dyn = value
+    /// Gets last node
+    pub fn last(): Node {
+        match self.next {
+            Option.None() -> {
+                return self
+            }
+            Option.Some { element } -> {
+                return element.last()
+            }
+        }
+    }
+    /// Inserts new Node
+    pub fn insert(value: dyn) {
+        self.next = Option.Some(Node(value))
+    }
+    /// Deletes node
+    pub fn delete(value: dyn): Option {
+        if self.value == value {
+            return self.next
+        }
+        match self.next {
+            Option.Some { element } -> {
+                if element.value == value {
+                    self.next = element.next
+                } else {
+                    self.next = element.delete(value)
+                }
+            }
+        }
+        return Option.Some(self)
+    }
+    /// To string
+    pub fn to_string(): string {
+        let string = conv.string(self.value)
+        match self.next {
+            Option.None() -> {
+                return string
+            }
+            Option.Some { element } -> {
+                return string <> ", " <> conv.string(element.to_string()) // todo
+            }
+        }
+    }
 }
 
-fn function() {
-}
+/// Represents list type
+pub type List {
+    /// Head
+    let head: Option = Option.None()
 
-type class {
-}
+    /// Appends element
+    pub fn push(value: dyn) {
+        match self.head {
+            Option.None() -> {
+                self.head = Option.Some(Node(value))
+            }
+            Option.Some { element } -> {
+                element.last().insert(value)
+            }
+        }
+    }
 
-fn test(a: dyn) {
-    io.println(a.a)
+    /// Deletes element
+    pub fn delete(value: dyn) {
+        match self.head {
+            Option.None() -> {
+                done
+            }
+            Option.Some { element } -> {
+                self.head = element.delete(value)
+            }
+        }
+    }
+
+    /// To string
+    pub fn to_string(): string {
+        match self.head {
+            Option.None() -> {
+                return "[]"
+            }
+            Option.Some { element } -> {
+                return "[" <> conv.string(element.to_string()) <> "]"
+            }
+        }
+    }
 }
 
 fn main() {
-    class()
-    test(A())
+    let list = List()
+    list.push(1)
+    list.push("hello")
+    list.push(true)
+    list.push(false)
+    io.println(list.to_string())
+    list.delete("hello")
+    io.println(list.to_string())
+    list.delete(false)
+    io.println(list.to_string())
+    list.delete(1)
+    io.println(list.to_string())
 }

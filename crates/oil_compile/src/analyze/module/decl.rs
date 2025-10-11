@@ -45,26 +45,13 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 .define(&self.module.source, &location, p.0, Def::Local(p.1.clone()))
         });
 
-        self.resolver.define(
-            &self.module.source,
-            &location,
-            &"self".into(),
-            Def::Local(Typ::Custom(type_.clone())),
-        );
-
-        // inferring body
-        let block_location = body.get_location();
-        let inferred_block = self.infer_block(body);
-        self.unify(&location, &ret, &block_location, &inferred_block);
-        self.resolver.pop_rib();
-
         // creating and defining function
         let function = Function {
             source: self.module.source.clone(),
             location: location.clone(),
             name: name.clone(),
             params: params.into_values().collect::<Vec<Typ>>(),
-            ret,
+            ret: ret.clone(),
         };
 
         // defining function, if not already defined
@@ -83,6 +70,19 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 },
             );
         }
+
+        self.resolver.define(
+            &self.module.source,
+            &location,
+            &"self".into(),
+            Def::Local(Typ::Custom(type_.clone())),
+        );
+
+        // inferring body
+        let block_location = body.get_location();
+        let inferred_block = self.infer_block(body);
+        self.unify(&location, &ret, &block_location, &inferred_block);
+        self.resolver.pop_rib();
     }
 
     /// Analyzes type
@@ -109,6 +109,17 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             params: inferred_params.iter().map(|p| p.1.1.clone()).collect(),
             env: HashMap::new(),
         }));
+
+        // defining type, if not already defined
+        self.resolver.define(
+            &self.module.source,
+            &location,
+            &name,
+            Def::Module(ModDef::CustomType(WithPublicity {
+                publicity,
+                value: CustomType::Type(type_.clone()),
+            })),
+        );
 
         // params env start
         self.resolver.push_rib(RibKind::ConstructorParams);
@@ -167,17 +178,6 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
 
         // type env end
         self.resolver.pop_rib();
-
-        // defining type, if not already defined
-        self.resolver.define(
-            &self.module.source,
-            &location,
-            &name,
-            Def::Module(ModDef::CustomType(WithPublicity {
-                publicity,
-                value: CustomType::Type(type_),
-            })),
-        );
     }
 
     /// Analyzes enum

@@ -322,7 +322,7 @@ pub fn gen_declaration(decl: IrDeclaration) -> js::Tokens {
             // constructor($field, $field, n...)
             // with meta type field as `type_name`
             let constructor = quote! {
-                constructor($(for field in ir_type.fields.clone() join (, ) => $(try_escape_js(&field.name)))) {
+                constructor($(for field in ir_type.constructor.clone() join (, ) => $(try_escape_js(&field.name)))) {
                     this.$("$")meta = $(quoted(ir_type.name.to_string()));
                     $(for field in ir_type.fields.clone() join ($['\r']) => this.$(try_escape_js(&field.name)) = $(gen_expression(field.value));)
                 }
@@ -429,7 +429,7 @@ pub fn gen_prelude() -> js::Tokens {
                 // If b keys includes a key
                 if (b_keys.includes(k1)) {
                     // Comparing values
-                    if ($("$")equals(a[k1], b[k1]) == false) {
+                    if ($("$$")equals(a[k1], b[k1]) == false) {
                         return false;
                     }
                 }
