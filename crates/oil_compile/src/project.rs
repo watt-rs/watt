@@ -1,12 +1,13 @@
 /// Imports
 use crate::{
-    analyze::{rc_ptr::RcPtr, typ::Module},
     io,
-    package::{CompletedPackage, DraftPackage, PackageCompiler},
+    package::{CompletedPackage, PackageCompiler},
 };
 use camino::Utf8PathBuf;
 use ecow::EcoString;
 use log::{info, trace};
+use oil_common::{package::DraftPackage, rc_ptr::RcPtr};
+use oil_typeck::{cx::root::RootCx, typ::Module};
 use std::collections::HashMap;
 
 /// Project compiler
@@ -46,16 +47,15 @@ impl<'out> ProjectCompiler<'out> {
     pub fn compile(&mut self) -> Vec<CompletedPackage> {
         // Compiling
         trace!("Compiling project...");
+        // Context
+        let mut root_cx = RootCx {
+            modules: HashMap::new(),
+        };
         // Compiling packages
         let mut completed_packages = Vec::new();
         for package in &self.packages {
             completed_packages.push(
-                PackageCompiler::new(
-                    package.clone(),
-                    self.outcome.clone(),
-                    &mut self.modules,
-                )
-                .compile(),
+                PackageCompiler::new(package.clone(), self.outcome.clone(), &mut root_cx).compile(),
             );
         }
         // Writing prelude

@@ -1,5 +1,5 @@
 /// Imports
-use std::ops::Range;
+use std::ops::{Add, Range};
 
 /// Address structure
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -15,5 +15,13 @@ impl Address {
     /// New address with span
     pub fn span(span: Range<usize>) -> Address {
         Address { span }
+    }
+}
+/// Add implementation
+impl Add for Address {
+    type Output = Address;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        return Address::span(self.span.start..rhs.span.end);
     }
 }

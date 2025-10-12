@@ -1,6 +1,7 @@
 use std/io as io
 use std/option for Option
 use std/convert as conv
+use std/unreachable for unreachable
 
 /// Represents linked list node
 type Node(value: dyn) {
@@ -16,6 +17,9 @@ type Node(value: dyn) {
             }
             Option.Some { element } -> {
                 return element.last()
+            }
+            _ -> {
+                return unreachable()
             }
         }
     }
@@ -36,6 +40,7 @@ type Node(value: dyn) {
                     self.next = element.delete(value)
                 }
             }
+            _ -> {}
         }
         return Option.Some(self)
     }
@@ -48,6 +53,9 @@ type Node(value: dyn) {
             }
             Option.Some { element } -> {
                 return string <> ", " <> conv.string(element.to_string()) // todo
+            }
+            _ -> {
+                return unreachable()
             }
         }
     }
@@ -67,6 +75,9 @@ pub type List {
             Option.Some { element } -> {
                 element.last().insert(value)
             }
+            _ -> {
+                return unreachable()
+            }
         }
     }
 
@@ -78,6 +89,9 @@ pub type List {
             }
             Option.Some { element } -> {
                 self.head = element.delete(value)
+            }
+            _ -> {
+                return unreachable()
             }
         }
     }
@@ -91,8 +105,23 @@ pub type List {
             Option.Some { element } -> {
                 return "[" <> conv.string(element.to_string()) <> "]"
             }
+            _ -> {
+                return unreachable()
+            }
         }
     }
+}
+
+
+fn a(): int {
+    while true {
+        if 3 == 3 {
+             return 1
+        } elif 3 > 4 {
+             break
+        }
+    }
+    return 3
 }
 
 fn main() {

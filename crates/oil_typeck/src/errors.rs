@@ -1,7 +1,6 @@
 /// Imports
-use crate::analyze::{
-    res::Res,
-    resolve::ModDef,
+use crate::{
+    resolve::{res::Res, resolve::ModDef},
     typ::{CustomType, Typ},
 };
 use ecow::EcoString;
@@ -18,12 +17,12 @@ unsafe impl Sync for Res {}
 unsafe impl Send for CustomType {}
 unsafe impl Sync for CustomType {}
 
-/// Analyze error
+/// Typechecking error
 #[derive(Debug, Error, Diagnostic)]
-pub enum AnalyzeError {
+pub enum TypeckError {
     #[error("could not resolve {name}.")]
     #[diagnostic(
-        code(analyze::could_not_resolve),
+        code(typeck::could_not_resolve),
         help("check symbol/variable existence.")
     )]
     CouldNotResolve {
@@ -34,7 +33,7 @@ pub enum AnalyzeError {
         name: EcoString,
     },
     #[error("could not unify {t1:?} and {t2:?}.")]
-    #[diagnostic(code(analyze::could_not_unify))]
+    #[diagnostic(code(typeck::could_not_unify))]
     CouldNotUnify {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -46,7 +45,7 @@ pub enum AnalyzeError {
         t2: Typ,
     },
     #[error("could not use value {v} as type.")]
-    #[diagnostic(code(analyze::could_not_use_value_as_type))]
+    #[diagnostic(code(typeck::could_not_use_value_as_type))]
     CouldNotUseValueAsType {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -56,7 +55,7 @@ pub enum AnalyzeError {
     },
     #[error("variable is already defined.")]
     #[diagnostic(
-        code(analyze::variable_is_already_defined),
+        code(typeck::variable_is_already_defined),
         help("you can not create two variables with same name.")
     )]
     VariableIsAlreadyDefined {
@@ -66,7 +65,7 @@ pub enum AnalyzeError {
         span: SourceSpan,
     },
     #[error("invalid binary operation {op:?} with types {a:?} & {b:?}.")]
-    #[diagnostic(code(analyze::invalid_binary_op))]
+    #[diagnostic(code(typeck::invalid_binary_op))]
     InvalidBinaryOp {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -77,7 +76,7 @@ pub enum AnalyzeError {
         op: IrBinaryOp,
     },
     #[error("invalid unary operation {op:?} with type {t:?}.")]
-    #[diagnostic(code(analyze::invalid_unary_op))]
+    #[diagnostic(code(typeck::invalid_unary_op))]
     InvalidUnaryOp {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -87,7 +86,7 @@ pub enum AnalyzeError {
         op: IrUnaryOp,
     },
     #[error("field \"{field}\" is not defined in type {t}.")]
-    #[diagnostic(code(analyze::field_is_not_defined))]
+    #[diagnostic(code(typeck::field_is_not_defined))]
     FieldIsNotDefined {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -97,7 +96,7 @@ pub enum AnalyzeError {
         field: EcoString,
     },
     #[error("variant \"{variant}\" is not defined in enum \"{e}\".")]
-    #[diagnostic(code(analyze::enum_variant_is_not_defined))]
+    #[diagnostic(code(typeck::enum_variant_is_not_defined))]
     EnumVariantIsNotDefined {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -107,7 +106,7 @@ pub enum AnalyzeError {
         variant: EcoString,
     },
     #[error("field \"{field}\" is not defined in {res:?}")]
-    #[diagnostic(code(analyze::enum_variant_field_is_not_defined))]
+    #[diagnostic(code(typeck::enum_variant_field_is_not_defined))]
     EnumVariantFieldIsNotDefined {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -117,7 +116,7 @@ pub enum AnalyzeError {
         field: EcoString,
     },
     #[error("field \"{field}\" is not defined in module \"{m}\".")]
-    #[diagnostic(code(analyze::module_field_is_not_defined))]
+    #[diagnostic(code(typeck::module_field_is_not_defined))]
     ModuleFieldIsNotDefined {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -127,7 +126,7 @@ pub enum AnalyzeError {
         field: EcoString,
     },
     #[error("field \"{field}\" is private in type \"{t}\".")]
-    #[diagnostic(code(analyze::field_is_private))]
+    #[diagnostic(code(typeck::field_is_private))]
     FieldIsPrivate {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -137,7 +136,7 @@ pub enum AnalyzeError {
         field: EcoString,
     },
     #[error("type \"{t:?}\" is private.")]
-    #[diagnostic(code(analyze::type_is_private))]
+    #[diagnostic(code(typeck::type_is_private))]
     TypeIsPrivate {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -146,7 +145,7 @@ pub enum AnalyzeError {
         t: CustomType,
     },
     #[error("module field \"{name}\" is private.")]
-    #[diagnostic(code(analyze::module_field_is_private))]
+    #[diagnostic(code(typeck::module_field_is_private))]
     ModuleFieldIsPrivate {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -156,13 +155,13 @@ pub enum AnalyzeError {
     },
     #[error("environments stack is empty. it`s a bug!")]
     #[diagnostic(
-        code(analyze::environments_stack_is_empty),
+        code(typeck::environments_stack_is_empty),
         help("please, file an issue on github."),
         url("https://github.com/oillanguage/oil")
     )]
     EnvironmentsStackIsEmpty,
     #[error("could not call {res:?}.")]
-    #[diagnostic(code(analyze::could_not_call))]
+    #[diagnostic(code(typeck::could_not_call))]
     CouldNotCall {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -171,7 +170,7 @@ pub enum AnalyzeError {
         res: Res,
     },
     #[error("could not resolve fields in {res:?}.")]
-    #[diagnostic(code(analyze::could_not_resolve_fileds_in))]
+    #[diagnostic(code(typeck::could_not_resolve_fileds_in))]
     CouldNotResolveFieldsIn {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -180,7 +179,7 @@ pub enum AnalyzeError {
         res: Res,
     },
     #[error("type \"{t}\" is not defined.")]
-    #[diagnostic(code(analyze::type_is_not_defined))]
+    #[diagnostic(code(typeck::type_is_not_defined))]
     TypeIsNotDefined {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -190,13 +189,13 @@ pub enum AnalyzeError {
     },
     #[error("module \"{m}\" is not defined.")]
     #[diagnostic(
-        code(analyze::module_is_not_defined),
+        code(typeck::module_is_not_defined),
         help("please, file an issue on github."),
         url("https://github.com/oillanguage/oil")
     )]
     ModuleIsNotDefined { m: EcoString },
     #[error("module \"{m}\" is unknown and can't be imported.")]
-    #[diagnostic(code(analyze::import_of_unknown_module))]
+    #[diagnostic(code(typeck::import_of_unknown_module))]
     ImportOfUnknownModule {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -205,7 +204,7 @@ pub enum AnalyzeError {
         m: EcoString,
     },
     #[error("type named \"{t}\" is already defined.")]
-    #[diagnostic(code(analyze::type_is_already_defined))]
+    #[diagnostic(code(typeck::type_is_already_defined))]
     TypeIsAlreadyDefined {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -214,7 +213,7 @@ pub enum AnalyzeError {
         t: EcoString,
     },
     #[error("method named \"{m}\" is already defined.")]
-    #[diagnostic(code(analyze::method_is_already_defined))]
+    #[diagnostic(code(typeck::method_is_already_defined))]
     MethodIsAlreadyDefined {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -223,7 +222,7 @@ pub enum AnalyzeError {
         m: EcoString,
     },
     #[error("module \"{m}\" is already imported as \"{name}\".")]
-    #[diagnostic(code(analyze::module_is_already_imported))]
+    #[diagnostic(code(typeck::module_is_already_imported))]
     ModuleIsAlreadyImportedAs {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -233,7 +232,7 @@ pub enum AnalyzeError {
         name: EcoString,
     },
     #[error("name \"{name}\" is already imported as {def:?}.")]
-    #[diagnostic(code(analyze::def_is_already_imported))]
+    #[diagnostic(code(typeck::def_is_already_imported))]
     DefIsAlreadyImported {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -243,7 +242,7 @@ pub enum AnalyzeError {
         def: ModDef,
     },
     #[error("invalid arguments.")]
-    #[diagnostic(code(analyze::invalid_args))]
+    #[diagnostic(code(typeck::invalid_args))]
     InvalidArgs {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -253,7 +252,7 @@ pub enum AnalyzeError {
         span: SourceSpan,
     },
     #[error("expected a logical epxression in if.")]
-    #[diagnostic(code(analyze::expected_logical_in_if))]
+    #[diagnostic(code(typeck::expected_logical_in_if))]
     ExpectedLogicalInIf {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -261,7 +260,7 @@ pub enum AnalyzeError {
         span: SourceSpan,
     },
     #[error("expected a logical epxression in while.")]
-    #[diagnostic(code(analyze::expected_logical_in_while))]
+    #[diagnostic(code(typeck::expected_logical_in_while))]
     ExpectedLogicalInWhile {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -269,7 +268,7 @@ pub enum AnalyzeError {
         span: SourceSpan,
     },
     #[error("types missmatch. expected {expected:?}, got {got:?}.")]
-    #[diagnostic(code(analyze::types_missmatch))]
+    #[diagnostic(code(typeck::types_missmatch))]
     TypesMissmatch {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -279,7 +278,7 @@ pub enum AnalyzeError {
         got: Typ,
     },
     #[error("call expression return type is void.")]
-    #[diagnostic(code(analyze::call_expr_return_type_is_void))]
+    #[diagnostic(code(typeck::call_expr_return_type_is_void))]
     CallExprReturnTypeIsVoid {
         #[source_code]
         fn_src: NamedSource<Arc<String>>,
@@ -290,24 +289,8 @@ pub enum AnalyzeError {
         #[label("function call occured here.")]
         span: SourceSpan,
     },
-    #[error("break used outside loop.")]
-    #[diagnostic(code(analyze::break_without_loop))]
-    BreakWithoutLoop {
-        #[source_code]
-        src: NamedSource<Arc<String>>,
-        #[label("not available here.")]
-        span: SourceSpan,
-    },
-    #[error("continue used outside loop.")]
-    #[diagnostic(code(analyze::continue_without_loop))]
-    ContinueWithoutLoop {
-        #[source_code]
-        src: NamedSource<Arc<String>>,
-        #[label("not available here.")]
-        span: SourceSpan,
-    },
     #[error("wrong unwrap pattern. expected variant of enum, got {got:?}")]
-    #[diagnostic(code(analyze::wrong_unwrap_pattern))]
+    #[diagnostic(code(typeck::wrong_unwrap_pattern))]
     WrongUnwrapPattern {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -316,7 +299,7 @@ pub enum AnalyzeError {
         got: Res,
     },
     #[error("unexpected resolution {res:?}.")]
-    #[diagnostic(code(analyze::unexpected_resolution), help("can't use {res:?} here."))]
+    #[diagnostic(code(typeck::unexpected_resolution), help("can't use {res:?} here."))]
     UnexpectedResolution {
         #[source_code]
         src: NamedSource<Arc<String>>,
@@ -326,7 +309,7 @@ pub enum AnalyzeError {
     },
     #[error("unexpected expr in resolution {expr:?}.")]
     #[diagnostic(
-        code(analyze::unexpected_expr_in_resolution),
+        code(typeck::unexpected_expr_in_resolution),
         help("please, file an issue on github."),
         url("https://github.com/oillanguage/oil")
     )]

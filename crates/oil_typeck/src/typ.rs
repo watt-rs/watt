@@ -1,9 +1,9 @@
 /// Imports
-use crate::analyze::{rc_ptr::RcPtr, resolve::ModDef};
+use crate::resolve::resolve::ModDef;
 use ecow::EcoString;
 use miette::NamedSource;
 use oil_ast::ast::Publicity;
-use oil_common::address::Address;
+use oil_common::{address::Address, rc_ptr::RcPtr};
 use std::{cell::RefCell, collections::HashMap, fmt::Debug, sync::Arc};
 
 /// Prelude type

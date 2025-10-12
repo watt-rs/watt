@@ -2,8 +2,8 @@
 use ecow::EcoString;
 use genco::{lang::js, quote, quote_in, tokens::quoted};
 use oil_ir::ir::{
-    IrBinaryOp, IrBlock, IrDeclaration, IrDependencyKind, IrExpression, IrModule, IrPattern,
-    IrStatement, IrUnaryOp,
+    IrBinaryOp, IrBlock, IrDeclaration, IrDependencyKind, IrElseBranch, IrExpression, IrModule,
+    IrPattern, IrStatement, IrUnaryOp,
 };
 
 /// Replaces js identifiers equal
@@ -169,7 +169,13 @@ pub fn gen_expression(expr: IrExpression) -> js::Tokens {
                                 })
                             },
                             // Range pattern
-                            IrPattern::Range { .. } => todo!()
+                            IrPattern::Range { .. } => todo!(),
+                            // Default pattern
+                            IrPattern::Default => {
+                                new $("$$")DefPattern(function() {
+                                    $(gen_block(case.body))
+                                })
+                            }
                         })
                     })
                     $['\r']
@@ -186,7 +192,7 @@ pub fn gen_statement(stmt: IrStatement) -> js::Tokens {
         IrStatement::If {
             logical,
             body,
-            elseif,
+            else_branches,
             ..
         } => {
             // Generating base if
@@ -196,30 +202,34 @@ pub fn gen_statement(stmt: IrStatement) -> js::Tokens {
                 }
                 $['\r']
             };
-            // Generating else cases
-            let mut last = elseif;
-            while let Some(case) = last
-                && let IrStatement::If {
-                    logical,
-                    body,
-                    elseif,
-                    ..
-                } = *case
-            {
-                // Quoting else case
-                quote_in! { base =>
-                    else if ($(gen_expression(logical))) {
-                        $(gen_block(body))
+            // Generating else branches
+            for branch in else_branches {
+                match branch {
+                    IrElseBranch::Elif { logical, body, .. } => {
+                        // Quoting else if branch
+                        quote_in! { base =>
+                            else if ($(gen_expression(logical))) {
+                                $(gen_block(body))
+                            }
+                            $['\r']
+                        }
                     }
-                    $['\r']
+                    IrElseBranch::Else { body, .. } => {
+                        // Quoting else else branch
+                        quote_in! { base =>
+                            else {
+                                $(gen_block(body))
+                            }
+                            $['\r']
+                        }
+                    }
                 }
-                last = elseif;
             }
             base
         }
         // While statement
         IrStatement::While { logical, body, .. } => quote! {
-            while $(gen_expression(logical)) {
+            while ($(gen_expression(logical))) {
                 $(gen_block(body))
             }
         },
@@ -279,7 +289,13 @@ pub fn gen_statement(stmt: IrStatement) -> js::Tokens {
                                 })
                             },
                             // Range pattern
-                            IrPattern::Range { .. } => todo!()
+                            IrPattern::Range { .. } => todo!(),
+                            // Default pattern
+                            IrPattern::Default => {
+                                new $("$$")DefPattern(function() {
+                                    $(gen_block(case.body))
+                                })
+                            }
                         })
                     })
                     $['\r']
@@ -393,7 +409,7 @@ pub fn gen_module(name: &EcoString, module: &IrModule) -> js::Tokens {
     // Gen
     quote! {
         // Prelude
-        import {$("$$match"), $("$$equals"), $("$$EqPattern"), $("$$UnwrapPattern")} from $(quoted(format!("{dependencies_prefix}prelude.js")))
+        import {$("$$match"), $("$$equals"), $("$$EqPattern"), $("$$UnwrapPattern"), $("$$DefPattern")} from $(quoted(format!("{dependencies_prefix}prelude.js")))
         // Dependencies
         //
         // for `AsName`: import * as $name from "$module"
@@ -520,6 +536,16 @@ pub fn gen_prelude() -> js::Tokens {
                 } else {
                     return [false, null];
                 }
+            }
+        }
+
+        // DefPattern$Class
+        export class $("$$DefPattern") {
+            constructor(eq_fn) {
+                this.eq_fn = eq_fn;
+            }
+            evaluate(value) {
+                return [true, this.eq_fn()];
             }
         }
 

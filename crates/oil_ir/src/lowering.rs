@@ -2,13 +2,13 @@
 use crate::{
     errors::IrError,
     ir::{
-        IrBinaryOp, IrBlock, IrCase, IrDeclaration, IrDependency, IrDependencyKind, IrEnum,
-        IrEnumConstructor, IrExpression, IrExtern, IrFunction, IrModule, IrParameter, IrPattern,
-        IrStatement, IrType, IrUnaryOp, IrVariable,
+        IrBinaryOp, IrBlock, IrCase, IrDeclaration, IrDependency, IrDependencyKind, IrElseBranch,
+        IrEnum, IrEnumConstructor, IrExpression, IrExtern, IrFunction, IrModule, IrParameter,
+        IrPattern, IrStatement, IrType, IrUnaryOp, IrVariable,
     },
 };
 use miette::NamedSource;
-use oil_ast::ast::{Node, Pattern, Tree, UseKind};
+use oil_ast::ast::{ElseBranch, Node, Pattern, Tree, UseKind};
 use oil_common::bail;
 use std::sync::Arc;
 
@@ -400,6 +400,7 @@ pub fn node_to_ir_expression(source: &NamedSource<Arc<String>>, node: Node) -> I
                             start: node_to_ir_expression(source, start),
                             end: node_to_ir_expression(source, end),
                         },
+                        Pattern::Default => IrPattern::Default,
                     },
                     body: node_to_ir_block(source, case.body),
                 })
@@ -416,20 +417,29 @@ pub fn node_to_ir_statement(source: &NamedSource<Arc<String>>, node: Node) -> Ir
             location,
             logical,
             body,
-            elseif,
-        } => match elseif {
-            Some(elseif) => IrStatement::If {
-                location,
-                logical: node_to_ir_expression(source, *logical),
-                body: node_to_ir_block(source, *body),
-                elseif: Some(Box::new(node_to_ir_statement(source, *elseif))),
-            },
-            None => IrStatement::If {
-                location,
-                logical: node_to_ir_expression(source, *logical),
-                body: node_to_ir_block(source, *body),
-                elseif: None,
-            },
+            else_branches,
+        } => IrStatement::If {
+            location,
+            logical: node_to_ir_expression(source, *logical),
+            body: node_to_ir_block(source, *body),
+            else_branches: else_branches
+                .into_iter()
+                .map(|branch| match branch {
+                    ElseBranch::Elif {
+                        location,
+                        logical,
+                        body,
+                    } => IrElseBranch::Elif {
+                        location,
+                        logical: node_to_ir_expression(source, logical),
+                        body: node_to_ir_block(source, body),
+                    },
+                    ElseBranch::Else { location, body } => IrElseBranch::Else {
+                        location,
+                        body: node_to_ir_block(source, body),
+                    },
+                })
+                .collect(),
         },
         Node::While {
             location,
@@ -529,6 +539,7 @@ pub fn node_to_ir_statement(source: &NamedSource<Arc<String>>, node: Node) -> Ir
                             start: node_to_ir_expression(source, start),
                             end: node_to_ir_expression(source, end),
                         },
+                        Pattern::Default => IrPattern::Default,
                     },
                     body: node_to_ir_block(source, case.body),
                 })
@@ -539,7 +550,7 @@ pub fn node_to_ir_statement(source: &NamedSource<Arc<String>>, node: Node) -> Ir
 }
 
 /// Tree to ir
-pub fn tree_to_ir(source: NamedSource<Arc<String>>, tree: Tree) -> IrModule {
+pub fn tree_to_ir(source: &NamedSource<Arc<String>>, tree: Tree) -> IrModule {
     let mut module = IrModule {
         dependencies: vec![],
         definitions: vec![],

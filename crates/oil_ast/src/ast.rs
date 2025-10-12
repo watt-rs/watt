@@ -88,6 +88,8 @@ pub enum Pattern {
     Value(Node),
     // `0..10`
     Range { start: Node, end: Node },
+    // Default pattern
+    Default,
 }
 
 /// Case
@@ -103,6 +105,20 @@ pub struct Case {
 pub enum UseKind {
     AsName(Token),
     ForNames(Vec<Token>),
+}
+
+/// Else branch
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum ElseBranch {
+    Elif {
+        location: Address,
+        logical: Node,
+        body: Node,
+    },
+    Else {
+        location: Address,
+        body: Node,
+    },
 }
 
 /// Ast node
@@ -135,7 +151,7 @@ pub enum Node {
         location: Address,
         logical: Box<Node>,
         body: Box<Node>,
-        elseif: Option<Box<Node>>,
+        else_branches: Vec<ElseBranch>,
     },
     While {
         location: Address,

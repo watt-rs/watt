@@ -1,6 +1,5 @@
 /// Imports
 use crate::{
-    analyze::{module::analyze::ModuleAnalyzer, rc_ptr::RcPtr, typ::Module},
     errors::CompileError,
     io::{self, OilFile},
 };
@@ -8,11 +7,16 @@ use camino::{Utf8Path, Utf8PathBuf};
 use ecow::EcoString;
 use log::{error, info, trace};
 use miette::NamedSource;
-use oil_common::bail;
+use oil_cfa::cx::ModuleCfaCx;
+use oil_common::{bail, package::DraftPackage, rc_ptr::RcPtr};
 use oil_gen::gen_module;
 use oil_ir::{ir::IrModule, lowering};
 use oil_lex::lexer::Lexer;
 use oil_parse::parser::Parser;
+use oil_typeck::{
+    cx::{module::ModuleCx, package::PackageCx, root::RootCx},
+    typ::Module,
+};
 use petgraph::{Direction, prelude::DiGraphMap};
 use std::{
     collections::{HashMap, HashSet},
@@ -38,44 +42,21 @@ pub struct CompletedPackage {
     pub modules: Vec<CompletedModule>,
 }
 
-/// Draft package lints
-#[derive(Clone)]
-pub struct DraftPackageLints {
-    /// Disabled lints
-    pub disabled: Vec<String>,
-}
-
-/// Draft package
-#[derive(Clone)]
-pub struct DraftPackage {
-    /// Path to package
-    pub path: Utf8PathBuf,
-    /// Lints config
-    pub lints: DraftPackageLints,
-}
-
 /// Package compiler
-pub struct PackageCompiler<'modules> {
-    /// Draft package
-    pub(crate) draft: DraftPackage,
+pub struct PackageCompiler<'cx> {
     /// Compilation outcome path
     outcome: Utf8PathBuf,
-    /// Analyzed modules
-    pub(crate) analyzed_modules: &'modules mut HashMap<EcoString, RcPtr<Module>>,
+    /// Package typeck cx
+    package: PackageCx<'cx>,
 }
 
 /// Package compiler implementation
-impl<'modules> PackageCompiler<'modules> {
+impl<'cx> PackageCompiler<'cx> {
     /// Creates new package compiler
-    pub fn new(
-        draft: DraftPackage,
-        outcome: Utf8PathBuf,
-        analyzed_modules: &'modules mut HashMap<EcoString, RcPtr<Module>>,
-    ) -> Self {
+    pub fn new(draft: DraftPackage, outcome: Utf8PathBuf, root: &'cx mut RootCx) -> Self {
         Self {
-            draft,
             outcome,
-            analyzed_modules,
+            package: PackageCx { draft, root },
         }
     }
 
@@ -93,12 +74,17 @@ impl<'modules> PackageCompiler<'modules> {
         let mut parser = Parser::new(tokens, &named_source);
         let tree = parser.parse();
         // Untyped ir
-        lowering::tree_to_ir(named_source, tree)
+        let ir = lowering::tree_to_ir(&named_source, tree);
+        // Performing control flow analysys
+        let cfa_cx = ModuleCfaCx::new(&named_source);
+        cfa_cx.analyze(&ir);
+        // Done
+        ir
     }
 
     /// Collects all .oil files of package
     fn collect_sources(&self) -> Vec<OilFile> {
-        io::collect_sources(&self.draft.path)
+        io::collect_sources(&self.package.draft.path)
     }
 
     /// Finds cycle in a graph
@@ -182,12 +168,12 @@ impl<'modules> PackageCompiler<'modules> {
     /// Compiles package
     /// returns analyzed modules
     pub fn compile(&mut self) -> CompletedPackage {
-        trace!("Compiling package: {}", self.draft.path);
+        trace!("Compiling package: {}", self.package.draft.path);
 
         // Collecting sources
         let mut loaded_modules = HashMap::new();
         for source in self.collect_sources() {
-            let module_name = io::module_name(&self.draft.path, &source);
+            let module_name = io::module_name(&self.package.draft.path, &source);
             let module = self.load_module(&module_name, &source);
             loaded_modules.insert(module_name.clone(), module);
             info!("Loaded module {source:?} with name {module_name:?}");
@@ -218,9 +204,11 @@ impl<'modules> PackageCompiler<'modules> {
         for name in sorted {
             info!("Analyzing module {name}");
             let module = loaded_modules.get(name).unwrap();
-            let mut analyzer = ModuleAnalyzer::new(module, name, self);
+            let mut analyzer = ModuleCx::new(module, name, &self.package);
             let analyzed_module = RcPtr::new(analyzer.analyze());
-            self.analyzed_modules
+            self.package
+                .root
+                .modules
                 .insert(name.clone(), analyzed_module.clone());
             analyzed_modules.insert(name.clone(), analyzed_module);
         }
@@ -257,7 +245,7 @@ impl<'modules> PackageCompiler<'modules> {
 
         // Returning analyzed modules
         CompletedPackage {
-            path: self.draft.path.clone(),
+            path: self.package.draft.path.clone(),
             modules: analyzed_modules
                 .into_iter()
                 .map(|(name, module)| CompletedModule {

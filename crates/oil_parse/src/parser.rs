@@ -61,7 +61,7 @@ impl<'file_path> Parser<'file_path> {
         let end_span = self.previous().address.clone();
 
         Node::Block {
-            location: Address::span(start_span.span.start..end_span.span.end),
+            location: start_span + end_span,
             body: nodes,
         }
     }
@@ -225,7 +225,7 @@ impl<'file_path> Parser<'file_path> {
         let body = self.block();
 
         Node::AnonymousFn {
-            location: Address::span(start_span.span.start..end_span.span.end),
+            location: start_span + end_span,
             params,
             body: Box::new(body),
             typ,
@@ -616,58 +616,35 @@ impl<'file_path> Parser<'file_path> {
         let end_span = self.previous().address.clone();
 
         Node::While {
-            location: Address::span(start_span.span.start..end_span.span.end),
+            location: start_span + end_span,
             logical: Box::new(logical),
             body: Box::new(body),
         }
     }
 
     /// Else parsing
-    fn else_stmt(&mut self) -> Node {
+    fn else_stmt(&mut self) -> ElseBranch {
         let start_span = self.consume(TokenKind::Else).address.clone();
         let body = self.block();
         let end_span = self.previous().address.clone();
-        let location = Address::span(start_span.span.start..end_span.span.end);
 
-        Node::If {
-            location: location.clone(),
-            logical: Box::new(Node::Bool {
-                value: Token::new(TokenKind::Bool, "true".into(), location),
-            }),
-            body: Box::new(body),
-            elseif: None,
+        ElseBranch::Else {
+            location: start_span + end_span,
+            body,
         }
     }
 
     /// Elif parsing
-    fn elif_stmt(&mut self) -> Node {
+    fn elif_stmt(&mut self) -> ElseBranch {
         let start_span = self.consume(TokenKind::Elif).address.clone();
         let logical = self.expr();
         let body = self.block();
         let end_span = self.previous().address.clone();
 
-        // if elif / else is passed
-        if self.check(TokenKind::Elif) {
-            Node::If {
-                location: Address::span(start_span.span.start..end_span.span.end),
-                logical: Box::new(logical),
-                body: Box::new(body),
-                elseif: Some(Box::new(self.elif_stmt())),
-            }
-        } else if self.check(TokenKind::Else) {
-            Node::If {
-                location: Address::span(start_span.span.start..end_span.span.end),
-                logical: Box::new(logical),
-                body: Box::new(body),
-                elseif: Some(Box::new(self.else_stmt())),
-            }
-        } else {
-            Node::If {
-                location: Address::span(start_span.span.start..end_span.span.end),
-                logical: Box::new(logical),
-                body: Box::new(body),
-                elseif: None,
-            }
+        ElseBranch::Elif {
+            location: start_span + end_span,
+            logical,
+            body,
         }
     }
 
@@ -677,29 +654,23 @@ impl<'file_path> Parser<'file_path> {
         let logical = self.expr();
         let body = self.block();
         let end_span = self.previous().address.clone();
+        let mut else_branches = Vec::new();
 
-        // if elif / else is passed
-        if self.check(TokenKind::Elif) {
-            Node::If {
-                location: Address::span(start_span.span.start..end_span.span.end),
-                logical: Box::new(logical),
-                body: Box::new(body),
-                elseif: Some(Box::new(self.elif_stmt())),
-            }
-        } else if self.check(TokenKind::Else) {
-            Node::If {
-                location: Address::span(start_span.span.start..end_span.span.end),
-                logical: Box::new(logical),
-                body: Box::new(body),
-                elseif: Some(Box::new(self.else_stmt())),
-            }
-        } else {
-            Node::If {
-                location: Address::span(start_span.span.start..end_span.span.end),
-                logical: Box::new(logical),
-                body: Box::new(body),
-                elseif: None,
-            }
+        // elif parsing
+        while self.check(TokenKind::Elif) {
+            else_branches.push(self.elif_stmt());
+        }
+
+        // else parsing
+        if self.check(TokenKind::Else) {
+            else_branches.push(self.else_stmt());
+        }
+
+        Node::If {
+            location: start_span + end_span,
+            logical: Box::new(logical),
+            body: Box::new(body),
+            else_branches,
         }
     }
 
@@ -717,7 +688,7 @@ impl<'file_path> Parser<'file_path> {
         let end_span = self.consume(TokenKind::Else).address.clone();
 
         Node::For {
-            location: Address::span(start_span.span.start..end_span.span.end),
+            location: start_span + end_span,
             variable: name,
             iterable: Box::new(value),
             body: Box::new(body),
@@ -770,20 +741,38 @@ impl<'file_path> Parser<'file_path> {
         self.consume(TokenKind::Lbrace);
         let mut cases = Vec::new();
         while !self.check(TokenKind::Rbrace) {
-            // Start address of pattern
-            let pat_start = self.peek().address.clone();
-            // Pattern of case
-            let pattern = self.pattern();
-            // End address of pattern
-            let pat_end = self.peek().address.clone();
-            // -> { body, ... }
-            self.consume(TokenKind::Arrow);
-            let body = self.block();
-            cases.push(Case {
-                address: Address::span(pat_start.span.start..pat_end.span.end),
-                pattern,
-                body,
-            });
+            // If default
+            if self.check_ch("_") {
+                // Start address of case
+                let start_span = self.consume(TokenKind::Id).address.clone();
+                // -> { body, ... }
+                self.consume(TokenKind::Arrow);
+                let body = self.block();
+                // End address of case
+                let end_span = self.previous().address.clone();
+                cases.push(Case {
+                    address: start_span + end_span,
+                    pattern: Pattern::Default,
+                    body,
+                });
+            }
+            // If pattern
+            else {
+                // Start address of case
+                let start_span = self.peek().address.clone();
+                // Pattern of case
+                let pattern = self.pattern();
+                // -> { body, ... }
+                self.consume(TokenKind::Arrow);
+                let body = self.block();
+                // End address of case
+                let end_span = self.previous().address.clone();
+                cases.push(Case {
+                    address: start_span + end_span,
+                    pattern,
+                    body,
+                });
+            }
         }
         self.consume(TokenKind::Rbrace);
 
@@ -868,7 +857,7 @@ impl<'file_path> Parser<'file_path> {
         let end_span = self.previous().address.clone();
 
         Node::ExternFn {
-            location: Address::span(start_span.span.start..end_span.span.end),
+            location: start_span + end_span,
             name,
             publicity,
             params,
@@ -1149,6 +1138,14 @@ impl<'file_path> Parser<'file_path> {
     fn check(&self, tk_type: TokenKind) -> bool {
         match self.tokens.get(self.current as usize) {
             Some(tk) => tk.tk_type == tk_type,
+            None => false,
+        }
+    }
+
+    /// Check current token value is equal to tk_value
+    fn check_ch(&self, tk_value: &str) -> bool {
+        match self.tokens.get(self.current as usize) {
+            Some(tk) => tk.value == tk_value,
             None => false,
         }
     }

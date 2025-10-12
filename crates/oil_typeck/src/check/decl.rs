@@ -1,15 +1,16 @@
 /// Imports
-use crate::analyze::{
-    errors::AnalyzeError,
-    module::analyze::ModuleAnalyzer,
-    rc_ptr::RcPtr,
-    resolve::{Def, ModDef},
-    rib::RibKind,
+use crate::{
+    cx::module::ModuleCx,
+    errors::TypeckError,
+    resolve::{
+        resolve::{Def, ModDef},
+        rib::RibKind,
+    },
     typ::{CustomType, Enum, EnumVariant, Function, Typ, Type, WithPublicity},
 };
 use ecow::EcoString;
 use oil_ast::ast::{Publicity, TypePath};
-use oil_common::{address::Address, bail};
+use oil_common::{address::Address, bail, rc_ptr::RcPtr};
 use oil_ir::ir::{
     IrBlock, IrDeclaration, IrDependency, IrDependencyKind, IrEnumConstructor, IrFunction,
     IrParameter, IrVariable,
@@ -17,7 +18,7 @@ use oil_ir::ir::{
 use std::{cell::RefCell, collections::HashMap};
 
 /// Declaraton analyze
-impl<'pkg> ModuleAnalyzer<'pkg> {
+impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// Analyzes method
     #[allow(clippy::too_many_arguments)]
     fn analyze_method(
@@ -56,7 +57,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
 
         // defining function, if not already defined
         if type_.borrow().env.contains_key(&name) {
-            bail!(AnalyzeError::MethodIsAlreadyDefined {
+            bail!(TypeckError::MethodIsAlreadyDefined {
                 src: self.module.source.clone(),
                 span: location.span.into(),
                 m: name
@@ -80,7 +81,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
 
         // inferring body
         let block_location = body.get_location();
-        let inferred_block = self.infer_block(body);
+        let inferred_block = self.infer_block(body).unwrap_or(Typ::Void);
         self.unify(&location, &ret, &block_location, &inferred_block);
         self.resolver.pop_rib();
     }
@@ -141,7 +142,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         // fields env end
         let analyzed_fields = match self.resolver.pop_rib() {
             Some(fields) => fields.1,
-            None => bail!(AnalyzeError::EnvironmentsStackIsEmpty),
+            None => bail!(TypeckError::EnvironmentsStackIsEmpty),
         };
 
         // params env end
@@ -270,8 +271,9 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
 
         // inferring body
         let block_location = body.get_location();
-        let inferred_block = self.infer_block(body);
+        let inferred_block = self.infer_block(body).unwrap_or(Typ::Void);
         self.unify(&location, &ret, &block_location, &inferred_block);
+        self.resolver.pop_rib();
         self.resolver.pop_rib();
     }
 
@@ -355,7 +357,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
 
     /// Performs import
     pub fn perform_import(&mut self, import: IrDependency) {
-        match self.package.analyzed_modules.get(&import.path) {
+        match self.package.root.modules.get(&import.path) {
             Some(module) => match import.kind {
                 IrDependencyKind::AsName(name) => self.resolver.import_as(
                     &self.module.source,
@@ -370,7 +372,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     module.clone(),
                 ),
             },
-            None => bail!(AnalyzeError::ImportOfUnknownModule {
+            None => bail!(TypeckError::ImportOfUnknownModule {
                 src: self.module.source.clone(),
                 span: import.location.span.into(),
                 m: import.path

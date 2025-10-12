@@ -1,72 +1,90 @@
 /// Imports
-use crate::analyze::{
-    errors::AnalyzeError,
-    module::analyze::ModuleAnalyzer,
-    rc_ptr::RcPtr,
-    resolve::Def,
-    rib::RibKind,
+use crate::{
+    cx::module::ModuleCx,
+    errors::TypeckError,
+    resolve::{resolve::Def, rib::RibKind},
     typ::{Function, PreludeType, Typ},
 };
 use ecow::EcoString;
 use oil_ast::ast::TypePath;
-use oil_common::{address::Address, bail};
-use oil_ir::ir::{IrBlock, IrExpression, IrParameter, IrStatement};
+use oil_common::{address::Address, bail, rc_ptr::RcPtr};
+use oil_ir::ir::{IrBlock, IrElseBranch, IrExpression, IrParameter, IrStatement};
 use std::collections::HashMap;
 
 /// Statements iferring
-impl<'pkg> ModuleAnalyzer<'pkg> {
+impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// Infers if
     fn infer_if(
         &mut self,
         location: Address,
         logical: IrExpression,
         body: IrBlock,
-        elseif: Option<Box<IrStatement>>,
-    ) -> Typ {
+        else_branches: Vec<IrElseBranch>,
+    ) -> Option<Typ> {
         // pushing rib
         self.resolver.push_rib(RibKind::Conditional);
         // inferring logical
         let inferred_logical = self.infer_expr(logical);
         match inferred_logical {
             Typ::Prelude(PreludeType::Bool) => {}
-            _ => bail!(AnalyzeError::ExpectedLogicalInIf {
-                src: self.module.source.clone(),
-                span: location.span.into()
-            }),
+            _ => {
+                bail!(TypeckError::ExpectedLogicalInIf {
+                    src: self.module.source.clone(),
+                    span: location.span.into()
+                })
+            }
         }
         // inferring block
-        let inferred = self.infer_block(body);
+        let if_location = body.get_location();
+        let mut expected = self.infer_block(body)?;
         // popping rib
         self.resolver.pop_rib();
-        // analyzing elseif
-        match elseif {
-            Some(elseif) => {
-                // unifying types
-                let elif_location = (*elseif).get_location();
-                let inferred_elif = match *elseif {
-                    IrStatement::If {
-                        location,
-                        logical,
-                        body,
-                        elseif,
-                    } => self.infer_if(location, logical, body, elseif),
-                    _ => panic!(),
-                };
-                self.unify(&location, &inferred, &elif_location, &inferred_elif)
+        // analyzing else branches
+        for branch in else_branches {
+            match branch {
+                IrElseBranch::Elif { logical, body, .. } => {
+                    // inferring logical
+                    let logical_location = logical.get_location();
+                    let inferred_logical = self.infer_expr(logical);
+                    match inferred_logical {
+                        Typ::Prelude(PreludeType::Bool) => {}
+                        _ => {
+                            bail!(TypeckError::ExpectedLogicalInIf {
+                                src: self.module.source.clone(),
+                                span: logical_location.span.into()
+                            })
+                        }
+                    }
+                    // inferring block
+                    let branch_location = body.get_location();
+                    let inferred = self.infer_block(body)?;
+                    expected = self.unify(&if_location, &expected, &branch_location, &inferred);
+                }
+                IrElseBranch::Else { body, .. } => {
+                    // inferring block
+                    let branch_location = body.get_location();
+                    let inferred = self.infer_block(body)?;
+                    expected = self.unify(&if_location, &expected, &branch_location, &inferred);
+                }
             }
-            None => inferred,
         }
+        Some(expected)
     }
 
     /// Infers while
-    fn infer_while(&mut self, location: Address, logical: IrExpression, body: IrBlock) -> Typ {
+    fn infer_while(
+        &mut self,
+        location: Address,
+        logical: IrExpression,
+        body: IrBlock,
+    ) -> Option<Typ> {
         // pushing rib
         self.resolver.push_rib(RibKind::Loop);
         // inferring logical
         let inferred_logical = self.infer_expr(logical);
         match inferred_logical {
             Typ::Prelude(PreludeType::Bool) => {}
-            _ => bail!(AnalyzeError::ExpectedLogicalInWhile {
+            _ => bail!(TypeckError::ExpectedLogicalInWhile {
                 src: self.module.source.clone(),
                 span: location.span.into()
             }),
@@ -165,20 +183,20 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
 
         // inferring body
         let block_location = body.get_location();
-        let inferred_block = self.infer_block(body);
+        let inferred_block = self.infer_block(body).unwrap_or(Typ::Void);
         self.unify(&location, &ret, &block_location, &inferred_block);
         self.resolver.pop_rib();
     }
 
     /// Infers statement
-    fn infer_stmt(&mut self, statement: IrStatement) -> Typ {
+    fn infer_stmt(&mut self, statement: IrStatement) -> Option<Typ> {
         match statement {
             IrStatement::If {
                 location,
                 logical,
                 body,
-                elseif,
-            } => self.infer_if(location, logical, body, elseif),
+                else_branches,
+            } => self.infer_if(location, logical, body, else_branches),
             IrStatement::While {
                 location,
                 logical,
@@ -219,24 +237,8 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 self.analyze_function(location, name, params, body, typ);
                 None
             }
-            IrStatement::Break { location } => {
-                if !self.resolver.contains_rib(RibKind::Loop) {
-                    bail!(AnalyzeError::BreakWithoutLoop {
-                        src: self.module.source.clone(),
-                        span: location.span.into(),
-                    })
-                }
-                None
-            }
-            IrStatement::Continue { location } => {
-                if !self.resolver.contains_rib(RibKind::Loop) {
-                    bail!(AnalyzeError::ContinueWithoutLoop {
-                        src: self.module.source.clone(),
-                        span: location.span.into(),
-                    })
-                }
-                None
-            }
+            IrStatement::Break { .. } => None,
+            IrStatement::Continue { .. } => None,
             IrStatement::Return { value, .. } => Some(
                 value
                     .map(|value| self.infer_expr(value))
@@ -247,12 +249,12 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 location,
                 value,
                 cases,
-            } => Some(self.infer_pattern_matching(location, value, cases)),
+            } => self.infer_pattern_matching(location, value, cases),
         }
     }
 
     /// Infers block
-    pub(crate) fn infer_block(&mut self, block: IrBlock) -> Typ {
+    pub(crate) fn infer_block(&mut self, block: IrBlock) -> Option<Typ> {
         // Epxected type, used to
         // unify type of all block statements
         let mut expected = None;
@@ -264,8 +266,8 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             match &expected {
                 Some(expected_typ) => {
                     let inferred = match self.infer_stmt(stmt) {
-                        None | Some(Typ::Void) => continue,
                         Some(typ) => typ,
+                        _ => continue,
                     };
                     expected = Some(self.unify(&location, expected_typ, &stmt_location, &inferred));
                 }
@@ -278,6 +280,6 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 }
             }
         }
-        expected.unwrap_or(Typ::Void)
+        expected
     }
 }

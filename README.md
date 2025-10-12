@@ -45,6 +45,6 @@ fn main() {
 - [x] add pkg::use_of_app_package_as_dependency error
 - [x] implement `done` keyword
 - [ ] allow using expressions in match clauses (in match expressions only)
-- [ ] implement `default` case in match
+- [x] implement `default` case in match
 - [x] implement better span selection in unify errors.
 - [x] implement [lints] in `oil.toml`

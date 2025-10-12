@@ -1,4 +1,4 @@
-import {$$match, $$equals, $$EqPattern, $$UnwrapPattern} from "../prelude.js"
+import {$$match, $$equals, $$EqPattern, $$UnwrapPattern, $$DefPattern} from "../prelude.js"
 
 import {panic} from "../std/rt.js"
 import {unreachable} from "../std/unreachable.js"
@@ -25,6 +25,9 @@ export function unwrap(result) {
         new $$UnwrapPattern([], function($$fields) {
             panic("unwrap on error result.");
             return unreachable();
+        }),
+        new $$DefPattern(function() {
+            return 1;
         })
     ]);
     if ($$match_result != null && $$match_result != undefined) {

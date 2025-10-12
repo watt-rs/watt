@@ -8,12 +8,11 @@ use crate::{
 use camino::{Utf8Path, Utf8PathBuf};
 use console::style;
 use log::info;
-use oil_common::bail;
-use oil_compile::{
-    io,
-    package::{CompletedPackage, DraftPackage, DraftPackageLints},
-    project::ProjectCompiler,
+use oil_common::{
+    bail,
+    package::{DraftPackage, DraftPackageLints},
 };
+use oil_compile::{io, package::CompletedPackage, project::ProjectCompiler};
 use std::process::Command;
 
 /// Runs using runtime

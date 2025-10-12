@@ -1,22 +1,25 @@
 /// Imports
-use crate::analyze::{
-    errors::AnalyzeError,
-    module::analyze::{CallResult, ModuleAnalyzer},
-    rc_ptr::RcPtr,
-    res::Res,
-    resolve::{Def, ModDef},
-    rib::RibKind,
-    typ::{CustomType, Enum, Function, PreludeType, Typ, Type},
-    warnings::AnalyzeWarning,
-};
 use ecow::EcoString;
 use oil_ast::ast::{Publicity, TypePath};
-use oil_common::{address::Address, bail, warn};
+use oil_common::{address::Address, bail, rc_ptr::RcPtr, warn};
 use oil_ir::ir::{IrBinaryOp, IrBlock, IrCase, IrExpression, IrParameter, IrPattern, IrUnaryOp};
 use std::{cell::RefCell, collections::HashMap};
 
+use crate::{
+    cx::module::ModuleCx,
+    errors::TypeckError,
+    resolve::{
+        res::Res,
+        resolve::{Def, ModDef},
+        rib::RibKind,
+    },
+    typ::{CustomType, Enum, Function, PreludeType, Typ, Type},
+    utils::CallResult,
+    warnings::TypeckWarning,
+};
+
 /// Expressions inferring
-impl<'pkg> ModuleAnalyzer<'pkg> {
+impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// Infers binary
     fn infer_binary(
         &mut self,
@@ -37,7 +40,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 match left_typ {
                     Typ::Prelude(PreludeType::String) => match right_typ {
                         Typ::Prelude(PreludeType::String) => Typ::Prelude(PreludeType::String),
-                        _ => bail!(AnalyzeError::InvalidBinaryOp {
+                        _ => bail!(TypeckError::InvalidBinaryOp {
                             src: self.module.source.clone(),
                             span: location.span.into(),
                             a: left_typ,
@@ -45,7 +48,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                             op
                         }),
                     },
-                    _ => bail!(AnalyzeError::InvalidBinaryOp {
+                    _ => bail!(TypeckError::InvalidBinaryOp {
                         src: self.module.source.clone(),
                         span: location.span.into(),
                         a: left_typ,
@@ -67,7 +70,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     Typ::Prelude(PreludeType::Int) => match right_typ {
                         Typ::Prelude(PreludeType::Int) => Typ::Prelude(PreludeType::Int),
                         Typ::Prelude(PreludeType::Float) => Typ::Prelude(PreludeType::Float),
-                        _ => bail!(AnalyzeError::InvalidBinaryOp {
+                        _ => bail!(TypeckError::InvalidBinaryOp {
                             src: self.module.source.clone(),
                             span: location.span.into(),
                             a: left_typ,
@@ -78,7 +81,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     Typ::Prelude(PreludeType::Float) => match right_typ {
                         Typ::Prelude(PreludeType::Int) => Typ::Prelude(PreludeType::Float),
                         Typ::Prelude(PreludeType::Float) => Typ::Prelude(PreludeType::Float),
-                        _ => bail!(AnalyzeError::InvalidBinaryOp {
+                        _ => bail!(TypeckError::InvalidBinaryOp {
                             src: self.module.source.clone(),
                             span: location.span.into(),
                             a: left_typ,
@@ -86,7 +89,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                             op
                         }),
                     },
-                    _ => bail!(AnalyzeError::InvalidBinaryOp {
+                    _ => bail!(TypeckError::InvalidBinaryOp {
                         src: self.module.source.clone(),
                         span: location.span.into(),
                         a: left_typ,
@@ -101,7 +104,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 match left_typ {
                     Typ::Prelude(PreludeType::Bool) => match right_typ {
                         Typ::Prelude(PreludeType::Bool) => Typ::Prelude(PreludeType::Bool),
-                        _ => bail!(AnalyzeError::InvalidBinaryOp {
+                        _ => bail!(TypeckError::InvalidBinaryOp {
                             src: self.module.source.clone(),
                             span: location.span.into(),
                             a: left_typ,
@@ -109,7 +112,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                             op
                         }),
                     },
-                    _ => bail!(AnalyzeError::InvalidBinaryOp {
+                    _ => bail!(TypeckError::InvalidBinaryOp {
                         src: self.module.source.clone(),
                         span: location.span.into(),
                         a: left_typ,
@@ -127,7 +130,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                             Typ::Prelude(PreludeType::Int) | Typ::Prelude(PreludeType::Float) => {
                                 Typ::Prelude(PreludeType::Bool)
                             }
-                            _ => bail!(AnalyzeError::InvalidBinaryOp {
+                            _ => bail!(TypeckError::InvalidBinaryOp {
                                 src: self.module.source.clone(),
                                 span: location.span.into(),
                                 a: left_typ,
@@ -136,7 +139,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                             }),
                         }
                     }
-                    _ => bail!(AnalyzeError::InvalidBinaryOp {
+                    _ => bail!(TypeckError::InvalidBinaryOp {
                         src: self.module.source.clone(),
                         span: location.span.into(),
                         a: left_typ,
@@ -158,7 +161,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         // Checking type is prelude
         let value_typ = match &inferred_value {
             Typ::Prelude(t) => t,
-            _ => bail!(AnalyzeError::InvalidUnaryOp {
+            _ => bail!(TypeckError::InvalidUnaryOp {
                 src: self.module.source.clone(),
                 span: location.span.into(),
                 t: inferred_value,
@@ -171,7 +174,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             IrUnaryOp::Negate => match value_typ {
                 PreludeType::Int => Typ::Prelude(PreludeType::Int),
                 PreludeType::Float => Typ::Prelude(PreludeType::Float),
-                _ => bail!(AnalyzeError::InvalidUnaryOp {
+                _ => bail!(TypeckError::InvalidUnaryOp {
                     src: self.module.source.clone(),
                     span: location.span.into(),
                     t: inferred_value,
@@ -180,7 +183,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             },
             IrUnaryOp::Bang => match value_typ {
                 PreludeType::Bool => Typ::Prelude(PreludeType::Bool),
-                _ => bail!(AnalyzeError::InvalidUnaryOp {
+                _ => bail!(TypeckError::InvalidUnaryOp {
                     src: self.module.source.clone(),
                     span: location.span.into(),
                     t: inferred_value,
@@ -214,7 +217,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                             // If field is public, we resolved field
                             Publicity::Public => Res::Custom(ty.value.clone()),
                             // Else, raising `module field is private`
-                            _ => bail!(AnalyzeError::ModuleFieldIsPrivate {
+                            _ => bail!(TypeckError::ModuleFieldIsPrivate {
                                 src: self.module.source.clone(),
                                 span: field_location.span.into(),
                                 name: field_name
@@ -226,7 +229,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                             // If field is public, we resolved field
                             Publicity::Public => Res::Value(var.value.clone()),
                             // Else, raising `module field is private`
-                            _ => bail!(AnalyzeError::ModuleFieldIsPrivate {
+                            _ => bail!(TypeckError::ModuleFieldIsPrivate {
                                 src: self.module.source.clone(),
                                 span: field_location.span.into(),
                                 name: field_name
@@ -235,7 +238,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     }
                 },
                 // Else, raising `module field is not defined`
-                None => bail!(AnalyzeError::ModuleFieldIsNotDefined {
+                None => bail!(TypeckError::ModuleFieldIsNotDefined {
                     src: self.module.source.clone(),
                     span: field_location.span.into(),
                     m: field_module,
@@ -243,7 +246,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 }),
             },
             // If module is not defined
-            None => bail!(AnalyzeError::ModuleIsNotDefined { m: field_module }),
+            None => bail!(TypeckError::ModuleIsNotDefined { m: field_module }),
         }
     }
 
@@ -257,7 +260,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         // Finding variant
         match en.variants.iter().find(|var| var.name == field_name) {
             Some(variant) => Res::Variant(en.clone(), variant.clone()),
-            None => bail!(AnalyzeError::EnumVariantIsNotDefined {
+            None => bail!(TypeckError::EnumVariantIsNotDefined {
                 src: self.module.source.clone(),
                 span: field_location.span.into(),
                 e: en.name.clone(),
@@ -286,7 +289,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                         if *t == ty {
                             Res::Value(typ.value.clone())
                         } else {
-                            bail!(AnalyzeError::FieldIsPrivate {
+                            bail!(TypeckError::FieldIsPrivate {
                                 src: self.module.source.clone(),
                                 span: field_location.span.into(),
                                 t: borrowed.name.clone(),
@@ -295,7 +298,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                         }
                     }
                     // Else
-                    None => bail!(AnalyzeError::FieldIsPrivate {
+                    None => bail!(TypeckError::FieldIsPrivate {
                         src: self.module.source.clone(),
                         span: field_location.span.into(),
                         t: borrowed.name.clone(),
@@ -303,7 +306,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     }),
                 },
             },
-            None => bail!(AnalyzeError::FieldIsNotDefined {
+            None => bail!(TypeckError::FieldIsNotDefined {
                 src: self.module.source.clone(),
                 span: field_location.span.into(),
                 t: borrowed.name.clone(),
@@ -342,7 +345,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     // but emitting warning
                     warn!(
                         self.package,
-                        AnalyzeWarning::AccessOfDynField {
+                        TypeckWarning::AccessOfDynField {
                             src: self.module.source.clone(),
                             span: field_location.span.into()
                         }
@@ -350,14 +353,14 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     Res::Value(Typ::Dyn)
                 }
                 // Else
-                _ => bail!(AnalyzeError::CouldNotResolveFieldsIn {
+                _ => bail!(TypeckError::CouldNotResolveFieldsIn {
                     src: self.module.source.clone(),
                     span: field_location.span.into(),
                     res: container_inferred
                 }),
             },
             // Else
-            _ => bail!(AnalyzeError::CouldNotResolveFieldsIn {
+            _ => bail!(TypeckError::CouldNotResolveFieldsIn {
                 src: self.module.source.clone(),
                 span: field_location.span.into(),
                 res: container_inferred
@@ -382,7 +385,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             Res::Custom(CustomType::Type(ty)) => {
                 let borrowed = ty.borrow();
                 if borrowed.params != args {
-                    bail!(AnalyzeError::InvalidArgs {
+                    bail!(TypeckError::InvalidArgs {
                         src: self.module.source.clone(),
                         params_span: borrowed.location.span.clone().into(),
                         span: location.span.into()
@@ -396,7 +399,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 // Function
                 Typ::Function(f) => {
                     if f.params != args {
-                        bail!(AnalyzeError::InvalidArgs {
+                        bail!(TypeckError::InvalidArgs {
                             src: self.module.source.clone(),
                             params_span: f.location.span.clone().into(),
                             span: location.span.into()
@@ -411,7 +414,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     // but emitting warning
                     warn!(
                         self.package,
-                        AnalyzeWarning::CallOfDyn {
+                        TypeckWarning::CallOfDyn {
                             src: self.module.source.clone(),
                             span: location.span.into()
                         }
@@ -419,7 +422,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     CallResult::FromDyn
                 }
                 // Else
-                _ => bail!(AnalyzeError::CouldNotCall {
+                _ => bail!(TypeckError::CouldNotCall {
                     src: self.module.source.clone(),
                     span: location.span.into(),
                     res: function
@@ -428,7 +431,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             // Variant
             Res::Variant(en, variant) => {
                 if variant.params.values().cloned().collect::<Vec<Typ>>() != args {
-                    bail!(AnalyzeError::InvalidArgs {
+                    bail!(TypeckError::InvalidArgs {
                         src: self.module.source.clone(),
                         params_span: variant.location.span.clone().into(),
                         span: location.span.into()
@@ -437,7 +440,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     CallResult::FromEnum(Typ::Enum(en.clone()))
                 }
             }
-            _ => bail!(AnalyzeError::CouldNotCall {
+            _ => bail!(TypeckError::CouldNotCall {
                 src: self.module.source.clone(),
                 span: location.span.into(),
                 res: function
@@ -478,20 +481,20 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                                     CustomType::Type(ty) => Typ::Custom(ty.clone()),
                                 }
                             } else {
-                                bail!(AnalyzeError::TypeIsPrivate {
+                                bail!(TypeckError::TypeIsPrivate {
                                     src: self.module.source.clone(),
                                     span: location.span.into(),
                                     t: t.value.clone()
                                 })
                             }
                         }
-                        ModDef::Variable(_) => bail!(AnalyzeError::CouldNotUseValueAsType {
+                        ModDef::Variable(_) => bail!(TypeckError::CouldNotUseValueAsType {
                             src: self.module.source.clone(),
                             span: location.clone().span.into(),
                             v: name
                         }),
                     },
-                    None => bail!(AnalyzeError::TypeIsNotDefined {
+                    None => bail!(TypeckError::TypeIsNotDefined {
                         src: self.module.source.clone(),
                         span: location.span.into(),
                         t: format!("{module}.{name}").into()
@@ -531,7 +534,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             } => match self.infer_call(location.clone(), *what, args) {
                 CallResult::FromFunction(typ, function) => {
                     if typ == Typ::Void {
-                        bail!(AnalyzeError::CallExprReturnTypeIsVoid {
+                        bail!(TypeckError::CallExprReturnTypeIsVoid {
                             fn_src: function.source.clone(),
                             definition_span: function.location.span.clone().into(),
                             call_src: self.module.source.clone(),
@@ -545,7 +548,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 CallResult::FromEnum(e) => Res::Value(e),
                 CallResult::FromDyn => Res::Value(Typ::Dyn),
             },
-            expr => bail!(AnalyzeError::UnexpectedExprInResolution {
+            expr => bail!(TypeckError::UnexpectedExprInResolution {
                 expr: format!("{expr:?}").into()
             }),
         }
@@ -587,9 +590,9 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         });
 
         // inferring body
-        let block_location = &body.get_location();
-        let inferred_block = self.infer_block(body);
-        self.unify(&location, &ret, block_location, &inferred_block);
+        let block_location = body.get_location();
+        let inferred_block = self.infer_block(body).unwrap_or(Typ::Void);
+        self.unify(&location, &ret, &block_location, &inferred_block);
         self.resolver.pop_rib();
 
         // result
@@ -602,11 +605,11 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
         location: Address,
         what: IrExpression,
         cases: Vec<IrCase>,
-    ) -> Typ {
+    ) -> Option<Typ> {
         // inferring matchable
         let inferred_what = self.infer_expr(what);
-        // expected return type
-        let mut expected: Option<Typ> = None;
+        // typ to unify
+        let mut expected = None;
         // analyzing cases
         for case in cases {
             // Pattern scope start
@@ -622,7 +625,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                             // If types aren't equal
                             let en_typ = Typ::Enum(en.clone());
                             if inferred_what != en_typ {
-                                bail!(AnalyzeError::TypesMissmatch {
+                                bail!(TypeckError::TypesMissmatch {
                                     src: self.module.source.clone(),
                                     span: case.location.span.into(),
                                     expected: en_typ,
@@ -642,7 +645,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                                                 Def::Local(typ.clone()),
                                             );
                                         }
-                                        None => bail!(AnalyzeError::EnumVariantFieldIsNotDefined {
+                                        None => bail!(TypeckError::EnumVariantFieldIsNotDefined {
                                             src: self.module.source.clone(),
                                             span: case.location.span.clone().into(),
                                             res: res.clone(),
@@ -652,7 +655,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                                 });
                             }
                         }
-                        _ => bail!(AnalyzeError::WrongUnwrapPattern {
+                        _ => bail!(TypeckError::WrongUnwrapPattern {
                             src: self.module.source.clone(),
                             span: case.location.span.into(),
                             got: res
@@ -662,7 +665,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 IrPattern::Value(value) => {
                     let inferred_value = self.infer_expr(value);
                     if inferred_value != inferred_what {
-                        bail!(AnalyzeError::TypesMissmatch {
+                        bail!(TypeckError::TypesMissmatch {
                             src: self.module.source.clone(),
                             span: case.location.span.into(),
                             expected: inferred_what,
@@ -671,23 +674,20 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                     }
                 }
                 IrPattern::Range { start: _, end: _ } => todo!(),
+                IrPattern::Default => {}
             }
             // Analyzing body
-            match &expected {
-                Some(expected) => {
-                    let block_location = &case.location;
-                    let inferred_block = self.infer_block(case.body);
-                    self.unify(&case.location, expected, block_location, &inferred_block);
-                }
-                None => {
-                    let inferred = self.infer_block(case.body);
-                    expected = Some(inferred);
-                }
-            }
+            let case_location = case.body.get_location();
+            let inferred_case = self.infer_block(case.body)?;
+            expected = Some(match expected {
+                Some(expected) => self.unify(&location, &expected, &case_location, &inferred_case),
+                None => inferred_case,
+            });
             // Pattern scope end
             self.resolver.pop_rib();
         }
-        expected.unwrap_or(Typ::Void)
+        // type
+        expected
     }
 
     /// Infers expression
@@ -725,7 +725,7 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
             } => match self.infer_call(location.clone(), *what, args) {
                 CallResult::FromFunction(typ, function) => {
                     if typ == Typ::Void {
-                        bail!(AnalyzeError::CallExprReturnTypeIsVoid {
+                        bail!(TypeckError::CallExprReturnTypeIsVoid {
                             fn_src: function.source.clone(),
                             definition_span: function.location.span.clone().into(),
                             call_src: self.module.source.clone(),
@@ -750,7 +750,10 @@ impl<'pkg> ModuleAnalyzer<'pkg> {
                 location,
                 value,
                 cases,
-            } => self.infer_pattern_matching(location, *value, cases),
+            } => match self.infer_pattern_matching(location, *value, cases) {
+                Some(some) => some,
+                None => panic!() // todo
+            },
         }
     }
 }

@@ -102,6 +102,15 @@ export class $$EqPattern {
     }
 }
 
+export class $$DefPattern {
+    constructor(eq_fn) {
+        this.eq_fn = eq_fn;
+    }
+    evaluate(value) {
+        return [true, this.eq_fn()];
+    }
+}
+
 export function $$match(value, patterns) {
     for (const pat of patterns) {
         let result = pat.evaluate(value);

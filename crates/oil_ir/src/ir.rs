@@ -37,6 +37,8 @@ pub enum IrPattern {
         start: IrExpression,
         end: IrExpression,
     },
+    // Default
+    Default,
 }
 
 // Ir case
@@ -47,6 +49,20 @@ pub struct IrCase {
     pub body: IrBlock,
 }
 
+/// Ir else branch
+#[derive(Debug, Clone, PartialEq)]
+pub enum IrElseBranch {
+    Elif {
+        location: Address,
+        logical: IrExpression,
+        body: IrBlock,
+    },
+    Else {
+        location: Address,
+        body: IrBlock,
+    },
+}
+
 /// Ir statement
 #[derive(Debug, Clone, PartialEq)]
 pub enum IrStatement {
@@ -54,7 +70,7 @@ pub enum IrStatement {
         location: Address,
         logical: IrExpression,
         body: IrBlock,
-        elseif: Option<Box<IrStatement>>,
+        else_branches: Vec<IrElseBranch>,
     },
     While {
         location: Address,

@@ -1,5 +1,5 @@
 [package]
-name = "oil_compile"
+name = "oil_typeck"
 version = "0.1.0"
 edition = "2024"
 
@@ -10,8 +10,6 @@ oil_common = { path = "../oil_common" }
 oil_ir = { path = "../oil_ir" }
 oil_ast = { path = "../oil_ast" }
 oil_gen = { path = "../oil_gen" }
-oil_typeck = { path = "../oil_typeck" }
-oil_cfa = { path = "../oil_cfa" }
 miette = { version = "7.6.0", features = ["fancy"] }
 ecow = "0.2.6"
 camino = "1.1.10"

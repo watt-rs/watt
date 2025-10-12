@@ -693,14 +693,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "oil_common"
-version = "0.1.0"
-dependencies = [
- "miette",
-]
-
-[[package]]
-name = "oil_compile"
+name = "oil_cfa"
 version = "0.1.0"
 dependencies = [
  "camino",
@@ -713,6 +706,35 @@ dependencies = [
  "oil_ir",
  "oil_lex",
  "oil_parse",
+ "petgraph",
+ "thiserror",
+ "walkdir",
+]
+
+[[package]]
+name = "oil_common"
+version = "0.1.0"
+dependencies = [
+ "camino",
+ "miette",
+]
+
+[[package]]
+name = "oil_compile"
+version = "0.1.0"
+dependencies = [
+ "camino",
+ "ecow",
+ "log",
+ "miette",
+ "oil_ast",
+ "oil_cfa",
+ "oil_common",
+ "oil_gen",
+ "oil_ir",
+ "oil_lex",
+ "oil_parse",
+ "oil_typeck",
  "petgraph",
  "thiserror",
  "walkdir",
@@ -783,6 +805,25 @@ dependencies = [
  "thiserror",
  "toml",
  "url",
+]
+
+[[package]]
+name = "oil_typeck"
+version = "0.1.0"
+dependencies = [
+ "camino",
+ "ecow",
+ "log",
+ "miette",
+ "oil_ast",
+ "oil_common",
+ "oil_gen",
+ "oil_ir",
+ "oil_lex",
+ "oil_parse",
+ "petgraph",
+ "thiserror",
+ "walkdir",
 ]
 
 [[package]]

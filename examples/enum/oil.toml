@@ -5,3 +5,6 @@ main = "enum/main"
 dependencies = [
   "https://github.com/oil-rs/std"
 ]
+
+[lints]
+disabled = []

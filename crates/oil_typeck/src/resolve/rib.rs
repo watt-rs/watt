@@ -1,12 +1,11 @@
 /// Imports
-use crate::analyze::{
-    errors::AnalyzeError,
-    rc_ptr::RcPtr,
+use crate::{
+    errors::TypeckError,
     typ::{Typ, Type},
 };
 use ecow::EcoString;
 use miette::NamedSource;
-use oil_common::{address::Address, bail};
+use oil_common::{address::Address, bail, rc_ptr::RcPtr};
 use std::{cell::RefCell, collections::HashMap, sync::Arc};
 
 /// Rib kind
@@ -59,7 +58,7 @@ impl RibsStack {
                 if !env.1.contains_key(name) {
                     env.1.insert(name.clone(), variable);
                 } else {
-                    bail!(AnalyzeError::VariableIsAlreadyDefined {
+                    bail!(TypeckError::VariableIsAlreadyDefined {
                         src: named_source.clone(),
                         span: address.span.clone().into()
                     })

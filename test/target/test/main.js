@@ -1,8 +1,9 @@
-import {$$match, $$equals, $$EqPattern, $$UnwrapPattern} from "../prelude.js"
+import {$$match, $$equals, $$EqPattern, $$UnwrapPattern, $$DefPattern} from "../prelude.js"
 
 import * as io from "../std/io.js"
 import {Option} from "../std/option.js"
 import * as conv from "../std/convert.js"
+import {unreachable} from "../std/unreachable.js"
 
 export class $Node {
     constructor(value) {
@@ -19,6 +20,9 @@ export class $Node {
             new $$UnwrapPattern(["element"], function($$fields) {
                 let element = $$fields.element;
                 return element.last();
+            }),
+            new $$DefPattern(function() {
+                return unreachable();
             })
         ]);
         if ($$match_result != null && $$match_result != undefined) {
@@ -38,10 +42,11 @@ export class $Node {
                 if ($$equals(element.value, value)) {
                     self.next = element.next;
                 }
-                else if (true) {
+                else {
                     self.next = element.delete$(value);
                 }
-            })
+            }),
+            new $$DefPattern(function() {})
         ]);
         if ($$match_result != null && $$match_result != undefined) {
             return $$match_result
@@ -57,6 +62,9 @@ export class $Node {
             new $$UnwrapPattern(["element"], function($$fields) {
                 let element = $$fields.element;
                 return string + ", " + conv.string(element.to_string());
+            }),
+            new $$DefPattern(function() {
+                return unreachable();
             })
         ]);
         if ($$match_result != null && $$match_result != undefined) {
@@ -82,6 +90,9 @@ export class $List {
             new $$UnwrapPattern(["element"], function($$fields) {
                 let element = $$fields.element;
                 element.last().insert(value);
+            }),
+            new $$DefPattern(function() {
+                return unreachable();
             })
         ]);
         if ($$match_result != null && $$match_result != undefined) {
@@ -96,6 +107,9 @@ export class $List {
             new $$UnwrapPattern(["element"], function($$fields) {
                 let element = $$fields.element;
                 self.head = element.delete$(value);
+            }),
+            new $$DefPattern(function() {
+                return unreachable();
             })
         ]);
         if ($$match_result != null && $$match_result != undefined) {
@@ -110,6 +124,9 @@ export class $List {
             new $$UnwrapPattern(["element"], function($$fields) {
                 let element = $$fields.element;
                 return "[" + conv.string(element.to_string()) + "]";
+            }),
+            new $$DefPattern(function() {
+                return unreachable();
             })
         ]);
         if ($$match_result != null && $$match_result != undefined) {
@@ -119,6 +136,18 @@ export class $List {
 }
 export function List(head) {
     return new $List(head);
+}
+
+export function a() {
+    while (true) {
+        if ($$equals(3, 3)) {
+            return 1;
+        }
+        else if (3 > 4) {
+            break;
+        }
+    }
+    return 3;
 }
 
 export function main() {

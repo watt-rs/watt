@@ -1,14 +1,15 @@
 /// Imports
-use crate::analyze::{
-    errors::AnalyzeError,
-    rc_ptr::RcPtr,
-    res::Res,
-    rib::{Rib, RibKind, RibsStack},
+use crate::{
+    errors::TypeckError,
+    resolve::{
+        res::Res,
+        rib::{Rib, RibKind, RibsStack},
+    },
     typ::{CustomType, Module, Typ, Type, WithPublicity},
 };
 use ecow::EcoString;
 use miette::NamedSource;
-use oil_common::{address::Address, bail};
+use oil_common::{address::Address, bail, rc_ptr::RcPtr};
 use std::{cell::RefCell, collections::HashMap, fmt::Debug, sync::Arc};
 
 /// Definition
@@ -88,7 +89,7 @@ impl ModuleResolver {
                     Some(_) => match mod_def {
                         // Custom type
                         ModDef::CustomType(_) => {
-                            bail!(AnalyzeError::TypeIsAlreadyDefined {
+                            bail!(TypeckError::TypeIsAlreadyDefined {
                                 src: named_source.clone(),
                                 span: address.span.clone().into(),
                                 t: name.clone()
@@ -96,7 +97,7 @@ impl ModuleResolver {
                         }
                         // Variable
                         ModDef::Variable(_) => {
-                            bail!(AnalyzeError::VariableIsAlreadyDefined {
+                            bail!(TypeckError::VariableIsAlreadyDefined {
                                 src: named_source.clone(),
                                 span: address.span.clone().into(),
                             })
@@ -142,7 +143,7 @@ impl ModuleResolver {
                     None => match self.imported_modules.get(name) {
                         // Checking existence in modules
                         Some(_) => Res::Module(name.clone()),
-                        None => bail!(AnalyzeError::CouldNotResolve {
+                        None => bail!(TypeckError::CouldNotResolve {
                             src: named_source.clone(),
                             span: address.clone().span.into(),
                             name: name.clone()
@@ -165,7 +166,7 @@ impl ModuleResolver {
         match self.mod_defs.get(name) {
             Some(typ) => match typ {
                 ModDef::CustomType(ty) => ty.value.clone(),
-                ModDef::Variable(_) => bail!(AnalyzeError::CouldNotUseValueAsType {
+                ModDef::Variable(_) => bail!(TypeckError::CouldNotUseValueAsType {
                     src: named_source.clone(),
                     span: address.clone().span.into(),
                     v: name.clone()
@@ -175,13 +176,13 @@ impl ModuleResolver {
                 // Checking existence in imported defs
                 Some(typ) => match typ {
                     ModDef::CustomType(ty) => ty.value.clone(),
-                    ModDef::Variable(_) => bail!(AnalyzeError::CouldNotUseValueAsType {
+                    ModDef::Variable(_) => bail!(TypeckError::CouldNotUseValueAsType {
                         src: named_source.clone(),
                         span: address.clone().span.into(),
                         v: name.clone()
                     }),
                 },
-                None => bail!(AnalyzeError::TypeIsNotDefined {
+                None => bail!(TypeckError::TypeIsNotDefined {
                     src: named_source.clone(),
                     span: address.clone().span.into(),
                     t: name.clone()
@@ -195,7 +196,7 @@ impl ModuleResolver {
         // Checking existence in module definitions
         match self.imported_modules.get(name) {
             Some(m) => m,
-            None => bail!(AnalyzeError::ModuleIsNotDefined { m: name.clone() }),
+            None => bail!(TypeckError::ModuleIsNotDefined { m: name.clone() }),
         }
     }
 
@@ -203,7 +204,7 @@ impl ModuleResolver {
     pub fn contains_type_rib(&self) -> Option<&RcPtr<RefCell<Type>>> {
         self.ribs_stack.contains_type()
     }
-    
+
     /// Contains rib with specifix kind
     pub fn contains_rib(&self, kind: RibKind) -> bool {
         self.ribs_stack.contains_rib(kind)
@@ -233,7 +234,7 @@ impl ModuleResolver {
         module: RcPtr<Module>,
     ) {
         match self.imported_modules.get(&name) {
-            Some(module) => bail!(AnalyzeError::ModuleIsAlreadyImportedAs {
+            Some(module) => bail!(TypeckError::ModuleIsAlreadyImportedAs {
                 src: named_source.clone(),
                 span: address.span.clone().into(),
                 m: module.name.clone(),
@@ -257,7 +258,7 @@ impl ModuleResolver {
             match module.fields.get(&name) {
                 Some(def) => match self.imported_defs.get(&name) {
                     // Checking name is already imported from other module
-                    Some(already) => bail!(AnalyzeError::DefIsAlreadyImported {
+                    Some(already) => bail!(TypeckError::DefIsAlreadyImported {
                         src: named_source.clone(),
                         span: address.span.clone().into(),
                         name: name.clone(),
@@ -268,7 +269,7 @@ impl ModuleResolver {
                     }
                 },
                 None => {
-                    bail!(AnalyzeError::ModuleFieldIsNotDefined {
+                    bail!(TypeckError::ModuleFieldIsNotDefined {
                         src: named_source.clone(),
                         span: address.span.clone().into(),
                         m: module.name.clone(),
