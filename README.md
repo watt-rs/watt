@@ -15,15 +15,15 @@ type Flashlight(powered: Power) {
     self.is_powered = on
     io.println("is powered: " <> is_powered)
   }
-	pub fn is_powered(): Power {
-		self.is_powered
-	}
+  pub fn is_powered(): Power {
+	 self.is_powered
+  }
 }
 
 fn main() {
   let flashlight = Flashlight(Power.Off())
-	flashlight.print()
-	flashlight.power(Power.On)
-	flahslight.print()
+  flashlight.print()
+  flashlight.power(Power.On)
+  flahslight.print()
 }
 ```
