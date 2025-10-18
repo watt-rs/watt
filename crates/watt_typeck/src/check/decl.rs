@@ -1,0 +1,404 @@
+/// Imports
+use crate::{
+    cx::module::ModuleCx,
+    errors::TypeckError,
+    resolve::{
+        resolve::{Def, ModDef},
+        rib::RibKind,
+    },
+    typ::{CustomType, Enum, EnumVariant, Function, Typ, Type, WithPublicity},
+    unify::Equation,
+};
+use ecow::EcoString;
+use std::{cell::RefCell, collections::HashMap};
+use watt_ast::ast::{
+    Block, Declaration, Dependency, EnumConstructor, Parameter, Publicity, TypePath, UseKind,
+};
+use watt_common::{address::Address, bail, rc_ptr::RcPtr};
+
+/// Declaraton analyze
+impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
+    /// Analyzes method
+    #[allow(clippy::too_many_arguments)]
+    fn analyze_method(
+        &mut self,
+        location: Address,
+        name: EcoString,
+        type_: RcPtr<RefCell<Type>>,
+        publicity: Publicity,
+        params: Vec<Parameter>,
+        body: Block,
+        ret_type: Option<TypePath>,
+    ) {
+        // inferring return type
+        let ret = ret_type.map_or(Typ::Unit, |t| self.infer_type_annotation(t));
+        self.resolver.push_rib(RibKind::Function);
+
+        // inferring params
+        let params = params
+            .into_iter()
+            .map(|p| (p.name, self.infer_type_annotation(p.typ.clone())))
+            .collect::<HashMap<EcoString, Typ>>();
+
+        params.iter().for_each(|p| {
+            self.resolver
+                .define(&self.module.source, &location, p.0, Def::Local(p.1.clone()))
+        });
+
+        // creating and defining function
+        let function = Function {
+            source: self.module.source.clone(),
+            location: location.clone(),
+            name: name.clone(),
+            params: params.into_values().collect::<Vec<Typ>>(),
+            ret: ret.clone(),
+        };
+
+        // defining function, if not already defined
+        if type_.borrow().env.contains_key(&name) {
+            bail!(TypeckError::MethodIsAlreadyDefined {
+                src: self.module.source.clone(),
+                span: location.span.into(),
+                m: name
+            })
+        } else {
+            type_.borrow_mut().env.insert(
+                name,
+                WithPublicity {
+                    publicity,
+                    value: Typ::Function(RcPtr::new(function)),
+                },
+            );
+        }
+
+        self.resolver.define(
+            &self.module.source,
+            &location,
+            &"self".into(),
+            Def::Local(Typ::Custom(type_.clone())),
+        );
+
+        // inferring body
+        let block_location = body.location.clone();
+        let inferred_block = self.infer_block(body);
+        self.solver.solve(Equation::Unify(
+            (location, ret),
+            (block_location, inferred_block),
+        ));
+        self.resolver.pop_rib();
+    }
+
+    /// Analyzes type
+    fn analyze_type(
+        &mut self,
+        location: Address,
+        name: EcoString,
+        publicity: Publicity,
+        params: Vec<Parameter>,
+        declarations: Vec<Declaration>,
+    ) {
+        // inferred params
+        let inferred_params = params
+            .into_iter()
+            .map(|p| (p.name, (p.location, self.infer_type_annotation(p.typ))))
+            .collect::<HashMap<EcoString, (Address, Typ)>>();
+
+        // construction type
+        let type_ = RcPtr::new(RefCell::new(Type {
+            source: self.module.source.clone(),
+            location: location.clone(),
+            name: name.clone(),
+            params: inferred_params.iter().map(|p| p.1.1.clone()).collect(),
+            env: HashMap::new(),
+        }));
+
+        // defining type, if not already defined
+        self.resolver.define(
+            &self.module.source,
+            &location,
+            &name,
+            Def::Module(ModDef::CustomType(WithPublicity {
+                publicity,
+                value: CustomType::Type(type_.clone()),
+            })),
+        );
+
+        // params env start
+        self.resolver.push_rib(RibKind::ConstructorParams);
+
+        // params
+        inferred_params.into_iter().for_each(|p| {
+            self.resolver
+                .define(&self.module.source, &p.1.0, &p.0, Def::Local(p.1.1));
+        });
+
+        // fields env start
+        self.resolver.push_rib(RibKind::Fields);
+
+        // analyzing fields
+        declarations.iter().for_each(|f| match f {
+            Declaration::VarDef {
+                location,
+                publicity,
+                name,
+                value,
+                typ,
+            } => self.analyze_define(location.clone(), name.clone(), value.clone(), typ.clone()),
+            _ => {}
+        });
+
+        // fields env end
+        let analyzed_fields = match self.resolver.pop_rib() {
+            Some(fields) => fields.1,
+            None => bail!(TypeckError::EnvironmentsStackIsEmpty),
+        };
+
+        // params env end
+        self.resolver.pop_rib();
+
+        // adding fields to type env
+        let mut borrowed = type_.borrow_mut();
+        declarations.iter().for_each(|f| match f {
+            Declaration::VarDef {
+                location,
+                publicity,
+                name,
+                value,
+                typ,
+            } => {
+                borrowed.env.insert(
+                    name.clone(),
+                    WithPublicity {
+                        publicity: publicity.clone(),
+                        value: analyzed_fields.get(name).unwrap().clone(),
+                    },
+                );
+            }
+            _ => {}
+        });
+        drop(borrowed);
+
+        // type env start
+        self.resolver.push_rib(RibKind::Type(type_.clone()));
+
+        // adding functions
+        declarations.into_iter().for_each(|f| match f {
+            Declaration::Function {
+                location,
+                publicity,
+                name,
+                params,
+                body,
+                typ,
+            } => {
+                self.analyze_method(location, name, type_.clone(), publicity, params, body, typ);
+            }
+            _ => {}
+        });
+
+        // type env end
+        self.resolver.pop_rib();
+    }
+
+    /// Analyzes enum
+    fn analyze_enum(
+        &mut self,
+        location: Address,
+        name: EcoString,
+        publicity: Publicity,
+        variants: Vec<EnumConstructor>,
+    ) {
+        // inferred variants
+        let inferred_variants = variants
+            .into_iter()
+            .map(|v| EnumVariant {
+                location: v.location,
+                name: v.name,
+                params: v
+                    .params
+                    .into_iter()
+                    .map(|param| (param.name, self.infer_type_annotation(param.typ)))
+                    .collect(),
+            })
+            .collect::<Vec<EnumVariant>>();
+
+        // construction enum
+        let enum_ = RcPtr::new(Enum {
+            source: self.module.source.clone(),
+            location: location.clone(),
+            name: name.clone(),
+            variants: inferred_variants,
+        });
+
+        // defining enum, if not already defined
+        self.resolver.define(
+            &self.module.source,
+            &location,
+            &name,
+            Def::Module(ModDef::CustomType(WithPublicity {
+                publicity,
+                value: CustomType::Enum(enum_),
+            })),
+        );
+    }
+
+    /// Analyzes funciton declaration
+    fn analyze_function_decl(
+        &mut self,
+        location: Address,
+        publicity: Publicity,
+        name: EcoString,
+        params: Vec<Parameter>,
+        body: Block,
+        ret_type: Option<TypePath>,
+    ) {
+        // inferring return type
+        let ret = ret_type.map_or(Typ::Unit, |t| self.infer_type_annotation(t));
+
+        // inferring params
+        let params = params
+            .into_iter()
+            .map(|p| (p.name, self.infer_type_annotation(p.typ.clone())))
+            .collect::<HashMap<EcoString, Typ>>();
+
+        // creating and defining function
+        let function = Function {
+            source: self.module.source.clone(),
+            location: location.clone(),
+            name: name.clone(),
+            params: params.clone().into_values().collect::<Vec<Typ>>(),
+            ret: ret.clone(),
+        };
+        self.resolver.define(
+            &self.module.source.clone(),
+            &location,
+            &name,
+            Def::Module(ModDef::Variable(WithPublicity {
+                publicity,
+                value: Typ::Function(RcPtr::new(function)),
+            })),
+        );
+
+        // pushing new scope
+        self.resolver.push_rib(RibKind::Function);
+
+        // defining params in new scope
+        params.iter().for_each(|p| {
+            self.resolver
+                .define(&self.module.source, &location, p.0, Def::Local(p.1.clone()))
+        });
+
+        // inferring body
+        let block_location = body.location.clone();
+        let inferred_block = self.infer_block(body);
+        self.solver.solve(Equation::Unify(
+            (location, ret),
+            (block_location, inferred_block),
+        ));
+        self.resolver.pop_rib();
+    }
+
+    /// Analyzes extern function declaration
+    fn analyze_extern(
+        &mut self,
+        location: Address,
+        publicity: Publicity,
+        name: EcoString,
+        params: Vec<Parameter>,
+        ret_type: Option<TypePath>,
+    ) {
+        // inferring return type
+        let ret = ret_type.map_or(Typ::Unit, |t| self.infer_type_annotation(t));
+
+        // inferring params
+        let params = params
+            .into_iter()
+            .map(|p| (p.name, self.infer_type_annotation(p.typ.clone())))
+            .collect::<HashMap<EcoString, Typ>>();
+
+        // creating and defining function
+        let function = Function {
+            source: self.module.source.clone(),
+            location: location.clone(),
+            name: name.clone(),
+            params: params.clone().into_values().collect::<Vec<Typ>>(),
+            ret: ret.clone(),
+        };
+        self.resolver.define(
+            &self.module.source.clone(),
+            &location,
+            &name,
+            Def::Module(ModDef::Variable(WithPublicity {
+                publicity,
+                value: Typ::Function(RcPtr::new(function)),
+            })),
+        );
+    }
+
+    /// Analyzes declaration
+    pub fn analyze_declaration(&mut self, declaration: Declaration) {
+        match declaration {
+            Declaration::TypeDeclaration {
+                location,
+                name,
+                publicity,
+                constructor,
+                declarations,
+            } => self.analyze_type(location, name, publicity, constructor, declarations),
+            Declaration::EnumDeclaration {
+                location,
+                name,
+                publicity,
+                variants,
+            } => self.analyze_enum(location, name, publicity, variants),
+            Declaration::ExternFn {
+                location,
+                name,
+                publicity,
+                params,
+                typ,
+                ..
+            } => self.analyze_extern(location, publicity, name, params, typ),
+            Declaration::VarDef {
+                location,
+                publicity,
+                name,
+                value,
+                typ,
+            } => self.analyze_define(location, name, value, typ),
+            Declaration::Function {
+                location,
+                publicity,
+                name,
+                params,
+                body,
+                typ,
+            } => self.analyze_function_decl(location, publicity, name, params, body, typ),
+        }
+    }
+
+    /// Performs import
+    pub fn perform_import(&mut self, import: Dependency) {
+        match self.package.root.modules.get(&import.path.module) {
+            Some(module) => match import.kind {
+                UseKind::AsName(name) => self.resolver.import_as(
+                    &self.module.source,
+                    &import.location,
+                    name,
+                    module.clone(),
+                ),
+                UseKind::ForNames(names) => self.resolver.import_for(
+                    &self.module.source,
+                    &import.location,
+                    names,
+                    module.clone(),
+                ),
+            },
+            None => bail!(TypeckError::ImportOfUnknownModule {
+                src: self.module.source.clone(),
+                span: import.location.span.into(),
+                m: import.path.module
+            }),
+        };
+    }
+}

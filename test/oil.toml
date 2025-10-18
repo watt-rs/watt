@@ -3,7 +3,7 @@ pkg = "app"
 name = "test"
 main = "test/main"
 dependencies = [
-    "https://github.com/oil-rs/std"
+    "https://github.com/watt-rs/std"
 ]
 
 [lints]

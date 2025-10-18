@@ -1,8 +1,0 @@
-[package]
-name = "oil_common"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-miette = "7.6.0"
-camino = "1.1.10"

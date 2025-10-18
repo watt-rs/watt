@@ -668,165 +668,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "oil"
-version = "0.1.0"
-dependencies = [
- "camino",
- "clap",
- "ecow",
- "log",
- "miette",
- "oil_common",
- "oil_compile",
- "oil_pm",
- "pretty_env_logger",
- "thiserror",
-]
-
-[[package]]
-name = "oil_ast"
-version = "0.1.0"
-dependencies = [
- "ecow",
- "oil_common",
- "oil_lex",
-]
-
-[[package]]
-name = "oil_cfa"
-version = "0.1.0"
-dependencies = [
- "camino",
- "ecow",
- "log",
- "miette",
- "oil_ast",
- "oil_common",
- "oil_gen",
- "oil_ir",
- "oil_lex",
- "oil_parse",
- "petgraph",
- "thiserror",
- "walkdir",
-]
-
-[[package]]
-name = "oil_common"
-version = "0.1.0"
-dependencies = [
- "camino",
- "miette",
-]
-
-[[package]]
-name = "oil_compile"
-version = "0.1.0"
-dependencies = [
- "camino",
- "ecow",
- "log",
- "miette",
- "oil_ast",
- "oil_cfa",
- "oil_common",
- "oil_gen",
- "oil_ir",
- "oil_lex",
- "oil_parse",
- "oil_typeck",
- "petgraph",
- "thiserror",
- "walkdir",
-]
-
-[[package]]
-name = "oil_gen"
-version = "0.1.0"
-dependencies = [
- "ecow",
- "genco",
- "oil_ir",
-]
-
-[[package]]
-name = "oil_ir"
-version = "0.1.0"
-dependencies = [
- "camino",
- "ecow",
- "miette",
- "oil_ast",
- "oil_common",
- "oil_lex",
- "oil_parse",
- "petgraph",
- "thiserror",
-]
-
-[[package]]
-name = "oil_lex"
-version = "0.1.0"
-dependencies = [
- "ecow",
- "miette",
- "oil_common",
- "thiserror",
-]
-
-[[package]]
-name = "oil_parse"
-version = "0.1.0"
-dependencies = [
- "ecow",
- "miette",
- "oil_ast",
- "oil_common",
- "oil_lex",
- "thiserror",
-]
-
-[[package]]
-name = "oil_pm"
-version = "0.1.0"
-dependencies = [
- "camino",
- "console",
- "ecow",
- "git2",
- "indicatif",
- "log",
- "miette",
- "oil_common",
- "oil_compile",
- "oil_gen",
- "petgraph",
- "serde",
- "thiserror",
- "toml",
- "url",
-]
-
-[[package]]
-name = "oil_typeck"
-version = "0.1.0"
-dependencies = [
- "camino",
- "ecow",
- "log",
- "miette",
- "oil_ast",
- "oil_common",
- "oil_gen",
- "oil_ir",
- "oil_lex",
- "oil_parse",
- "petgraph",
- "thiserror",
- "walkdir",
-]
-
-[[package]]
 name = "once_cell"
 version = "1.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1359,6 +1200,128 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bad67dc8b2a1a6e5448428adec4c3e84c43e561d8c9ee8a9e5aabeb193ec41d1"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "watt"
+version = "0.1.0"
+dependencies = [
+ "camino",
+ "clap",
+ "ecow",
+ "log",
+ "miette",
+ "pretty_env_logger",
+ "thiserror",
+ "watt_common",
+ "watt_compile",
+ "watt_pm",
+]
+
+[[package]]
+name = "watt_ast"
+version = "0.1.0"
+dependencies = [
+ "ecow",
+ "miette",
+ "watt_common",
+ "watt_lex",
+]
+
+[[package]]
+name = "watt_common"
+version = "0.1.0"
+dependencies = [
+ "camino",
+ "miette",
+]
+
+[[package]]
+name = "watt_compile"
+version = "0.1.0"
+dependencies = [
+ "camino",
+ "ecow",
+ "log",
+ "miette",
+ "petgraph",
+ "thiserror",
+ "walkdir",
+ "watt_ast",
+ "watt_common",
+ "watt_gen",
+ "watt_lex",
+ "watt_parse",
+ "watt_typeck",
+]
+
+[[package]]
+name = "watt_gen"
+version = "0.1.0"
+dependencies = [
+ "ecow",
+ "genco",
+]
+
+[[package]]
+name = "watt_lex"
+version = "0.1.0"
+dependencies = [
+ "ecow",
+ "miette",
+ "thiserror",
+ "watt_common",
+]
+
+[[package]]
+name = "watt_parse"
+version = "0.1.0"
+dependencies = [
+ "ecow",
+ "miette",
+ "thiserror",
+ "watt_ast",
+ "watt_common",
+ "watt_lex",
+]
+
+[[package]]
+name = "watt_pm"
+version = "0.1.0"
+dependencies = [
+ "camino",
+ "console",
+ "ecow",
+ "git2",
+ "indicatif",
+ "log",
+ "miette",
+ "petgraph",
+ "serde",
+ "thiserror",
+ "toml",
+ "url",
+ "watt_common",
+ "watt_compile",
+ "watt_gen",
+]
+
+[[package]]
+name = "watt_typeck"
+version = "0.1.0"
+dependencies = [
+ "camino",
+ "ecow",
+ "log",
+ "miette",
+ "petgraph",
+ "thiserror",
+ "walkdir",
+ "watt_ast",
+ "watt_common",
+ "watt_gen",
+ "watt_lex",
+ "watt_parse",
 ]
 
 [[package]]

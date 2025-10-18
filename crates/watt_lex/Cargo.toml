@@ -1,0 +1,10 @@
+[package]
+name = "watt_lex"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+watt_common = { path = "../watt_common" }
+thiserror = "2.0.12"
+miette = { version = "7.6.0", features = ["fancy"] }
+ecow = "0.2.6"

@@ -1,50 +1,29 @@
-<p align="center">
-  <h2 align="center">⛽ Oil.</h2>
-  <p align="center"><i>A lightweight, expressive fuel-powered language 🛢️.</i>
-</p>
+⚡ **Watt is friednly, lightweight, programming language written in Rust for the JavaScript platform.**
 
-🧴 Oil is statically-typed, type-safe, compiled programming language, designed to assist developers.
-
-```oil
-use std/io as io
-
-fn main() {
-  io.println("Hello, Oil!")
-}
+🔦 Simple example:
 ```
+import std/io as io
 
-```oil
-use std/io as io
+enum Power {
+	On,
+	Off
+}
 
-type Juice(multiplier: int) {
-  let multiplier: int = multiplier
-  pub let juice: int = 0
-
-  pub fn apply(amount: int) {
-    self.juice += (self.multiplier * amount)
+type Flashlight(powered: Power) {
+  let is_powered = powered
+  pub fn power(on: Power) {
+    self.is_powered = on
+    io.println("is powered: " <> is_powered)
   }
+	pub fn is_powered(): Power {
+		self.is_powered
+	}
 }
 
 fn main() {
-  let juice: Juice = Juice(3)
-  juice.apply(10)
-
-  io.println(juice.juice)
+  let flashlight = Flashlight(Power.Off())
+	flashlight.print()
+	flashlight.power(Power.On)
+	flahslight.print()
 }
 ```
-
-### ToDo
-- [x] make anonymous founctions expressions
-	- [x] make type annotations for functions: ```let a: fn(): int = f```
-- [x] make check for main function and module in project
-- [ ] implement `for` loop
-    - [ ] implement `range` expression
-- [x] add invalid names as js keywords, such as `class`, `function`, etc...
-- [x] foreign functions mechanism
-- [x] different runtimes
-- [x] add pkg::use_of_app_package_as_dependency error
-- [x] implement `done` keyword
-- [ ] allow using expressions in match clauses (in match expressions only)
-- [x] implement `default` case in match
-- [x] implement better span selection in unify errors.
-- [x] implement [lints] in `oil.toml`

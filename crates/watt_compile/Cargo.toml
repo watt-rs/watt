@@ -1,0 +1,19 @@
+[package]
+name = "watt_compile"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+watt_lex = { path = "../watt_lex" }
+watt_parse = { path = "../watt_parse" }
+watt_common = { path = "../watt_common" }
+watt_ast = { path = "../watt_ast" }
+watt_gen = { path = "../watt_gen" }
+watt_typeck = { path = "../watt_typeck" }
+miette = { version = "7.6.0", features = ["fancy"] }
+ecow = "0.2.6"
+camino = "1.1.10"
+thiserror = "2.0.12"
+log = "0.4.27"
+walkdir = "2.5.0"
+petgraph = "0.8.2"
