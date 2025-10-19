@@ -2,7 +2,7 @@
 use crate::{
     cx::module::ModuleCx,
     resolve::res::Res,
-    typ::{Enum, Typ},
+    typ::{Enum, PreludeType, Typ},
 };
 use watt_ast::ast::{Case, Pattern};
 use watt_common::rc_ptr::RcPtr;
@@ -24,8 +24,11 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
         // Matching value
         match &ex.value {
             // All prelude type possible values
-            // could not be covered.
-            Typ::Prelude(_) => false,
+            // could not be covered, except boolean.
+            Typ::Prelude(typ) => match typ {
+                PreludeType::Bool => ex.check_with_bool(),
+                _ => false,
+            },
             // All custom type values
             // could not be covered,
             // because it's a ref type.
@@ -51,8 +54,31 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
     }
 
     /// Checks that all possible
+    /// bool values (true, false) are covered
+    fn check_with_bool(&mut self) -> bool {
+        // is true matched
+        let mut true_matched = false;
+        let mut false_matched = false;
+        // Matching all cases
+        for case in self.cases.drain(..) {
+            // Matching pattern
+            match case.pattern {
+                // Bool pattern
+                Pattern::Bool(val) => match val.as_str() {
+                    "true" => true_matched = true,
+                    "false" => false_matched = false,
+                    _ => unreachable!(),
+                },
+                _ => return false,
+            }
+        }
+        // If both matched
+        true_matched && false_matched
+    }
+
+    /// Checks that all possible
     /// enum variants are covered
-    pub fn check_with_en(&mut self, en: RcPtr<Enum>) -> bool {
+    fn check_with_en(&mut self, en: RcPtr<Enum>) -> bool {
         // Matched patterns
         let mut matched_patterns = Vec::new();
         // Matching all cases
@@ -68,7 +94,6 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
                         _ => unreachable!(),
                     }
                 }
-                Pattern::Value(_) => continue,
                 Pattern::Variant(var) => match self.cx.infer_resolution(var) {
                     Res::Variant(_, pattern_variant) => {
                         matched_patterns.push(pattern_variant);
@@ -76,6 +101,8 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
                     _ => unreachable!(),
                 },
                 Pattern::Default => return true,
+                Pattern::BindTo(_) => return true,
+                _ => continue,
             }
         }
         // Deleting duplicates

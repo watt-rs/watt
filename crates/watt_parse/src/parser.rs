@@ -680,45 +680,60 @@ impl<'file_path> Parser<'file_path> {
 
     /// Pattern parsing
     fn pattern(&mut self) -> Pattern {
-        // If colon presented
-        //  => parsing enum variant patterns
-        if self.check(TokenKind::Colon) {
-            // :
-            self.consume(TokenKind::Colon);
-            // Parsing variant
-            let value = self.variable();
-            // Checking for unwrap of enum
-            if self.check(TokenKind::Lbrace) {
-                // { .., n fields }
-                self.consume(TokenKind::Lbrace);
-                let mut fields = Vec::new();
-                // Checking for close of braces
-                if self.check(TokenKind::Rbrace) {
-                    self.advance();
-                    return Pattern::Unwrap { en: value, fields };
-                }
-                // Parsing field names
-                let field = self.consume(TokenKind::Id).clone();
-                fields.push((field.address, field.value));
-                while self.check(TokenKind::Comma) {
-                    self.advance();
-                    let field = self.consume(TokenKind::Id).clone();
-                    fields.push((field.address, field.value));
-                }
-                self.consume(TokenKind::Rbrace);
-                // As result, enum unwrap pattern
-                Pattern::Unwrap { en: value, fields }
-            }
-            // If no unwrap, returning just as value
-            else {
-                Pattern::Variant(value)
+        // If string presented
+        if self.check(TokenKind::Text) {
+            Pattern::String(self.advance().value.clone())
+        }
+        // If bool presented
+        else if self.check(TokenKind::Bool) {
+            Pattern::Bool(self.advance().value.clone())
+        }
+        // If number presented
+        else if self.check(TokenKind::Number) {
+            let value = self.advance().clone();
+            if value.value.contains(".") {
+                Pattern::Float(value.value)
+            } else {
+                Pattern::Int(value.value)
             }
         }
-        // If colon not presented
-        //  => parsing value patterns
+        // If identifier presented
         else {
-            // Parsing value
-            Pattern::Value(self.expr())
+            // If dot or paren presented -> enum patterns
+            if self.check_next(TokenKind::Dot) || self.check_next(TokenKind::Lparen) {
+                // Parsing variant
+                let value = self.variable();
+                // Checking for unwrap of enum
+                if self.check(TokenKind::Lbrace) {
+                    // { .., n fields }
+                    self.consume(TokenKind::Lbrace);
+                    let mut fields = Vec::new();
+                    // Checking for close of braces
+                    if self.check(TokenKind::Rbrace) {
+                        self.advance();
+                        return Pattern::Unwrap { en: value, fields };
+                    }
+                    // Parsing field names
+                    let field = self.consume(TokenKind::Id).clone();
+                    fields.push((field.address, field.value));
+                    while self.check(TokenKind::Comma) {
+                        self.advance();
+                        let field = self.consume(TokenKind::Id).clone();
+                        fields.push((field.address, field.value));
+                    }
+                    self.consume(TokenKind::Rbrace);
+                    // As result, enum unwrap pattern
+                    Pattern::Unwrap { en: value, fields }
+                }
+                // If no unwrap, returning just as value
+                else {
+                    Pattern::Variant(value)
+                }
+            }
+            // If not -> bind pattern
+            else {
+                Pattern::BindTo(self.consume(TokenKind::Id).value.clone())
+            }
         }
     }
 
@@ -1164,6 +1179,14 @@ impl<'file_path> Parser<'file_path> {
     /// Check current token type is equal to tk_type
     fn check(&self, tk_type: TokenKind) -> bool {
         match self.tokens.get(self.current as usize) {
+            Some(tk) => tk.tk_type == tk_type,
+            None => false,
+        }
+    }
+
+    /// Check next token type is equal to tk_type
+    fn check_next(&self, tk_type: TokenKind) -> bool {
+        match self.tokens.get(self.current as usize + 1) {
             Some(tk) => tk.tk_type == tk_type,
             None => false,
         }

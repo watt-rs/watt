@@ -74,10 +74,18 @@ pub enum Pattern {
         en: Expression,
         fields: Vec<(Address, EcoString)>,
     },
-    // `123456`
-    Value(Expression),
     // Enum variants
     Variant(Expression),
+    // `123456`
+    Int(EcoString),
+    // `1.34`
+    Float(EcoString),
+    // Bool value `true` / `false
+    Bool(EcoString),
+    // "Hello, world!"
+    String(EcoString),
+    // Bind pattern
+    BindTo(EcoString),
     // Default pattern
     Default,
 }

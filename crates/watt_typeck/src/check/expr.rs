@@ -652,14 +652,47 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                         }),
                     }
                 }
-                Pattern::Value(value) => {
-                    let inferred_value = self.infer_expr(value);
-                    if inferred_value != inferred_what {
+                Pattern::Int(_) => {
+                    let typ = Typ::Prelude(PreludeType::Int);
+                    if inferred_what != typ {
                         bail!(TypeckError::TypesMissmatch {
                             src: self.module.source.clone(),
                             span: case.address.span.into(),
                             expected: inferred_what,
-                            got: inferred_value
+                            got: typ
+                        })
+                    }
+                }
+                Pattern::Float(_) => {
+                    let typ = Typ::Prelude(PreludeType::Float);
+                    if inferred_what != typ {
+                        bail!(TypeckError::TypesMissmatch {
+                            src: self.module.source.clone(),
+                            span: case.address.span.into(),
+                            expected: inferred_what,
+                            got: typ
+                        })
+                    }
+                }
+                Pattern::String(_) => {
+                    let typ = Typ::Prelude(PreludeType::String);
+                    if inferred_what != typ {
+                        bail!(TypeckError::TypesMissmatch {
+                            src: self.module.source.clone(),
+                            span: case.address.span.into(),
+                            expected: inferred_what,
+                            got: typ
+                        })
+                    }
+                }
+                Pattern::Bool(_) => {
+                    let typ = Typ::Prelude(PreludeType::Bool);
+                    if inferred_what != typ {
+                        bail!(TypeckError::TypesMissmatch {
+                            src: self.module.source.clone(),
+                            span: case.address.span.into(),
+                            expected: inferred_what,
+                            got: typ
                         })
                     }
                 }
@@ -669,7 +702,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     // that is a enum variant
                     let res = self.infer_resolution(var);
                     match &res {
-                        Res::Variant(en, variant) => {
+                        Res::Variant(en, _) => {
                             // If types aren't equal
                             let en_typ = Typ::Enum(en.clone());
                             if inferred_what != en_typ {
@@ -687,7 +720,15 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                             got: res
                         }),
                     }
-                },
+                }
+                Pattern::BindTo(name) => {
+                    self.resolver.define(
+                        &self.module.source,
+                        &case.address,
+                        &name,
+                        Def::Local(inferred_what.clone()),
+                    );
+                }
             }
             // analyzing body
             let case_location = case.body.location.clone();

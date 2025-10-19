@@ -11,20 +11,20 @@ enum Power {
 
 type Flashlight(powered: Power) {
   let is_powered = powered
-  
+
   pub fn power(on: Power) {
     self.is_powered = on
     io.println("is powered: " <> is_powered)
   }
-  
+
 	pub fn is_powered(): Power {
-		self.is_powered
+	  self.is_powered
 	}
 }
 
 fn main() {
   let flashlight = Flashlight(Power.Off())
-	flashlight.print()
+  flashlight.print()
 	flashlight.power(Power.On)
 	flahslight.print()
 }

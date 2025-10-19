@@ -3,10 +3,10 @@ use std/option for Option
 
 fn is_some(a: Option): bool {
     match a {
-        :Option.Some -> {
+        Option.Some -> {
             true
         }
-        :Option.None -> {
+        Option.None -> {
             false
         }
     }
