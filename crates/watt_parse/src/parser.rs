@@ -55,14 +55,14 @@ impl<'file_path> Parser<'file_path> {
     fn block(&mut self) -> Block {
         // parsing statement before reaching
         // end of file, or a `}`
-        let start_span = self.peek().address.clone();
         let mut nodes: Vec<Statement> = Vec::new();
         self.consume(TokenKind::Lbrace);
+        let start_span = self.peek().address.clone();
         while !self.check(TokenKind::Rbrace) {
             nodes.push(self.statement());
         }
-        self.consume(TokenKind::Rbrace);
         let end_span = self.previous().address.clone();
+        self.consume(TokenKind::Rbrace);
 
         Block {
             location: start_span + end_span,
@@ -680,33 +680,45 @@ impl<'file_path> Parser<'file_path> {
 
     /// Pattern parsing
     fn pattern(&mut self) -> Pattern {
-        // Parsing value
-        let value = self.expr();
-        // Checking for unwrap of enum
-        if self.check(TokenKind::Lbrace) {
-            // { .., n fields }
-            self.consume(TokenKind::Lbrace);
-            let mut fields = Vec::new();
-            // Checking for close of braces
-            if self.check(TokenKind::Rbrace) {
-                self.advance();
-                return Pattern::Unwrap { en: value, fields };
-            }
-            // Parsing field names
-            let field = self.consume(TokenKind::Id).clone();
-            fields.push((field.address, field.value));
-            while self.check(TokenKind::Comma) {
-                self.advance();
+        // If colon presented
+        //  => parsing enum variant patterns
+        if self.check(TokenKind::Colon) {
+            // :
+            self.consume(TokenKind::Colon);
+            // Parsing variant
+            let value = self.variable();
+            // Checking for unwrap of enum
+            if self.check(TokenKind::Lbrace) {
+                // { .., n fields }
+                self.consume(TokenKind::Lbrace);
+                let mut fields = Vec::new();
+                // Checking for close of braces
+                if self.check(TokenKind::Rbrace) {
+                    self.advance();
+                    return Pattern::Unwrap { en: value, fields };
+                }
+                // Parsing field names
                 let field = self.consume(TokenKind::Id).clone();
                 fields.push((field.address, field.value));
+                while self.check(TokenKind::Comma) {
+                    self.advance();
+                    let field = self.consume(TokenKind::Id).clone();
+                    fields.push((field.address, field.value));
+                }
+                self.consume(TokenKind::Rbrace);
+                // As result, enum unwrap pattern
+                Pattern::Unwrap { en: value, fields }
             }
-            self.consume(TokenKind::Rbrace);
-            // As result, enum unwrap pattern
-            Pattern::Unwrap { en: value, fields }
+            // If no unwrap, returning just as value
+            else {
+                Pattern::Variant(value)
+            }
         }
-        // If no unwrap, returning just as value
+        // If colon not presented
+        //  => parsing value patterns
         else {
-            Pattern::Value(value)
+            // Parsing value
+            Pattern::Value(self.expr())
         }
     }
 
@@ -1077,7 +1089,8 @@ impl<'file_path> Parser<'file_path> {
 
     /// Statement parsing
     fn statement(&mut self) -> Statement {
-        match self.peek().tk_type {
+        // Parsing statement
+        let stmt = match self.peek().tk_type {
             TokenKind::Continue => self.continue_stmt(),
             TokenKind::Break => self.break_stmt(),
             TokenKind::While => self.while_stmt(),
@@ -1100,6 +1113,15 @@ impl<'file_path> Parser<'file_path> {
                 }
             }
             _ => Statement::Expr(self.expr()),
+        };
+        // If `;` presented
+        if self.check(TokenKind::Semicolon) {
+            self.advance();
+            Statement::Semi {
+                stmt: Box::new(stmt),
+            }
+        } else {
+            stmt
         }
     }
 

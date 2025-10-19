@@ -152,13 +152,8 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
                 ']' => self.add_tk(TokenKind::Rbracket, "]"),
                 ',' => self.add_tk(TokenKind::Comma, ","),
                 '.' => self.add_tk(TokenKind::Dot, "."),
-                ':' => {
-                    if self.is_match(':') {
-                        self.add_tk(TokenKind::PathSeparator, "::");
-                    } else {
-                        self.add_tk(TokenKind::Colon, ":")
-                    }
-                }
+                ':' => self.add_tk(TokenKind::Colon, ":"),
+                ';' => self.add_tk(TokenKind::Semicolon, ";"),
                 '<' => {
                     if self.is_match('=') {
                         self.add_tk(TokenKind::LessEq, "<=");

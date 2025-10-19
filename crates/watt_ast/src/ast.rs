@@ -76,6 +76,8 @@ pub enum Pattern {
     },
     // `123456`
     Value(Expression),
+    // Enum variants
+    Variant(Expression),
     // Default pattern
     Default,
 }
@@ -275,6 +277,8 @@ pub enum Statement {
     ///
     /// `continue`
     Continue { location: Address },
+    /// Represents semi colon statement
+    Semi { stmt: Box<Statement> },
 }
 
 /// Block

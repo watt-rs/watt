@@ -19,7 +19,11 @@ pub struct ModuleCx<'pkg, 'cx> {
 }
 
 /// Implementation
-impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
+impl<'pkg, 'cx> ModuleCx<'pkg, 'cx>
+where
+    'pkg: 'cx,
+    'cx: 'pkg,
+{
     /// Creates new module analyzer
     pub fn new(
         module: &'pkg ast::Module,

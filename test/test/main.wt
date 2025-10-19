@@ -1,0 +1,17 @@
+use std/io as io
+use std/option for Option
+
+fn is_some(a: Option): bool {
+    match a {
+        :Option.Some -> {
+            true
+        }
+        :Option.None -> {
+            false
+        }
+    }
+}
+
+fn main() {
+    is_some(Option.Some(3));
+}

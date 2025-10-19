@@ -12,7 +12,8 @@ use crate::{
 use ecow::EcoString;
 use std::{cell::RefCell, collections::HashMap};
 use watt_ast::ast::{
-    Block, Declaration, Dependency, EnumConstructor, Parameter, Publicity, TypePath, UseKind,
+    Block, Declaration, Dependency, EnumConstructor, Expression, Parameter, Publicity, TypePath,
+    UseKind,
 };
 use watt_common::{address::Address, bail, rc_ptr::RcPtr};
 
@@ -139,11 +140,13 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         declarations.iter().for_each(|f| match f {
             Declaration::VarDef {
                 location,
-                publicity,
                 name,
                 value,
                 typ,
-            } => self.analyze_define(location.clone(), name.clone(), value.clone(), typ.clone()),
+                ..
+            } => {
+                self.analyze_let_define(location.clone(), name.clone(), value.clone(), typ.clone())
+            }
             _ => {}
         });
 
@@ -160,11 +163,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         let mut borrowed = type_.borrow_mut();
         declarations.iter().for_each(|f| match f {
             Declaration::VarDef {
-                location,
-                publicity,
-                name,
-                value,
-                typ,
+                publicity, name, ..
             } => {
                 borrowed.env.insert(
                     name.clone(),
@@ -335,6 +334,46 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         );
     }
 
+    /// Analyzes define
+    pub(crate) fn analyze_define(
+        &mut self,
+        location: Address,
+        publicity: Publicity,
+        name: EcoString,
+        value: Expression,
+        typ: Option<TypePath>,
+    ) {
+        let inferred_value = self.infer_expr(value);
+        match typ {
+            Some(annotated_path) => {
+                let annotated_location = annotated_path.get_location();
+                let annotated = self.infer_type_annotation(annotated_path);
+                self.solver.solve(Equation::Unify(
+                    (location.clone(), inferred_value.clone()),
+                    (annotated_location, annotated),
+                ));
+                self.resolver.define(
+                    &self.module.source,
+                    &location,
+                    &name,
+                    Def::Module(ModDef::Variable(WithPublicity {
+                        publicity,
+                        value: inferred_value,
+                    })),
+                )
+            }
+            None => self.resolver.define(
+                &self.module.source,
+                &location,
+                &name,
+                Def::Module(ModDef::Variable(WithPublicity {
+                    publicity,
+                    value: inferred_value,
+                })),
+            ),
+        }
+    }
+
     /// Analyzes declaration
     pub fn analyze_declaration(&mut self, declaration: Declaration) {
         match declaration {
@@ -365,7 +404,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 name,
                 value,
                 typ,
-            } => self.analyze_define(location, name, value, typ),
+            } => self.analyze_define(location, publicity, name, value, typ),
             Declaration::Function {
                 location,
                 publicity,

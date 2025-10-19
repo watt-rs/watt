@@ -50,7 +50,7 @@ pub fn collect_sources(path: &Utf8PathBuf) -> Vec<WattFile> {
         let entry_path = e.path();
         if entry_path.is_file() {
             match entry_path.extension() {
-                Some(ext) => ext == "watt",
+                Some(ext) => ext == "wt",
                 None => false,
             }
         } else {

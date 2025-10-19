@@ -2,7 +2,4 @@ import {$$match, $$equals, $$EqPattern, $$UnwrapPattern, $$DefPattern} from "../
 
 import {panic} from "../std/rt.js"
 
-export function unreachable() {
-    panic("unreachable created.");
-    return -1;
-}
+todo

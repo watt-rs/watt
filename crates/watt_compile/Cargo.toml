@@ -8,8 +8,8 @@ watt_lex = { path = "../watt_lex" }
 watt_parse = { path = "../watt_parse" }
 watt_common = { path = "../watt_common" }
 watt_ast = { path = "../watt_ast" }
-watt_gen = { path = "../watt_gen" }
 watt_typeck = { path = "../watt_typeck" }
+watt_gen = { path = "../watt_gen" }
 miette = { version = "7.6.0", features = ["fancy"] }
 ecow = "0.2.6"
 camino = "1.1.10"

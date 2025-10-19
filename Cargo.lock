@@ -1261,6 +1261,7 @@ version = "0.1.0"
 dependencies = [
  "ecow",
  "genco",
+ "watt_ast",
 ]
 
 [[package]]

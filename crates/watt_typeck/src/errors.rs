@@ -293,7 +293,16 @@ pub enum TypeckError {
     WrongUnwrapPattern {
         #[source_code]
         src: NamedSource<Arc<String>>,
-        #[label("this return seems to be wrong.")]
+        #[label("this seems to be wrong.")]
+        span: SourceSpan,
+        got: Res,
+    },
+    #[error("wrong variant pattern. expected variant of enum, got {got:?}")]
+    #[diagnostic(code(typeck::wrong_variant_pattern))]
+    WrongVariantPattern {
+        #[source_code]
+        src: NamedSource<Arc<String>>,
+        #[label("this seems to be wrong.")]
         span: SourceSpan,
         got: Res,
     },

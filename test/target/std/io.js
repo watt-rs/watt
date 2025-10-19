@@ -3,32 +3,8 @@ import {$$match, $$equals, $$EqPattern, $$UnwrapPattern, $$DefPattern} from "../
 import * as rt from "../std/rt.js"
 import {panic} from "../std/rt.js"
 
-export function println(text) {
-    console.log(text)
-}
+todo
 
-export function readln() {
-    
-  let runtime = rt.which();
-  if (runtime == "Deno" ||
-      runtime == "Bun") {
-    return prompt("");
-  }
-  else {
-    panic("`readln` is not implemented for " + runtime + " runtime");
-  }
+todo
 
-}
-
-export function ask(text) {
-    
-  let runtime = rt.which();
-  if (runtime == "Deno" ||
-      runtime == "Bun") {
-    return prompt(text);
-  }
-  else {
-    panic("`ask` is not implemented for " + runtime + " runtime");
-  }
-
-}
+todo

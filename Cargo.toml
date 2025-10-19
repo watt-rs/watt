@@ -7,5 +7,6 @@ members = [
     "crates/watt",
     "crates/watt_compile",
     "crates/watt_pm",
+    "crates/watt_gen"
 ]
 resolver = "3"

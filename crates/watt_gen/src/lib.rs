@@ -1,6 +1,7 @@
 /// Imports
 use ecow::EcoString;
 use genco::{lang::js, quote, quote_in, tokens::quoted};
+use watt_ast::ast::{Block, Declaration, Expression, Module, Pattern, Statement, UseKind};
 
 /// Replaces js identifiers equal
 /// to some js keywords with `{indentifier}$`
@@ -76,63 +77,66 @@ pub fn try_escape_js(identifier: &str) -> String {
 }
 
 /// Generates expression code
-pub fn gen_expression(expr: IrExpression) -> js::Tokens {
+pub fn gen_expression(expr: Expression) -> js::Tokens {
+    /*
     match expr {
-        IrExpression::Float { location: _, value } => quote! ( $(value.to_string()) ),
-        IrExpression::Int { location: _, value } => quote! ( $(value.to_string()) ),
-        IrExpression::String { location: _, value } => quote! ( $(quoted(value.as_str())) ),
-        IrExpression::Bool { location: _, value } => quote! ( $(value.as_str()) ),
-        IrExpression::Bin {
+        Expression::Float { location: _, value } => quote! ( $(value.to_string()) ),
+        Expression::Int { location: _, value } => quote! ( $(value.to_string()) ),
+        Expression::String { location: _, value } => quote! ( $(quoted(value.as_str())) ),
+        Expression::Bool { location: _, value } => quote! ( $(value.as_str()) ),
+        Expression::Bin {
             location: _,
             left,
             right,
             op,
-        } => match op {
+        } => match op.as_str() {
             // With string values
-            IrBinaryOp::Concat => quote!( $(gen_expression(*left)) + $(gen_expression(*right)) ),
+            "<>" => quote!( $(gen_expression(*left)) + $(gen_expression(*right)) ),
             // With number values
-            IrBinaryOp::Add => quote!( $(gen_expression(*left)) + $(gen_expression(*right)) ),
-            IrBinaryOp::Sub => quote!( $(gen_expression(*left)) - $(gen_expression(*right)) ),
-            IrBinaryOp::Mul => quote!( $(gen_expression(*left)) * $(gen_expression(*right)) ),
-            IrBinaryOp::Div => quote!( $(gen_expression(*left)) / $(gen_expression(*right)) ),
-            IrBinaryOp::Or => quote!( $(gen_expression(*left)) || $(gen_expression(*right)) ),
-            IrBinaryOp::And => quote!( $(gen_expression(*left)) && $(gen_expression(*right)) ),
-            IrBinaryOp::Xor => quote!( $(gen_expression(*left)) ^ $(gen_expression(*right)) ),
-            IrBinaryOp::BitwiseAnd => {
+            "+" => quote!( $(gen_expression(*left)) + $(gen_expression(*right)) ),
+            "-" => quote!( $(gen_expression(*left)) - $(gen_expression(*right)) ),
+            "*" => quote!( $(gen_expression(*left)) * $(gen_expression(*right)) ),
+            "/" => quote!( $(gen_expression(*left)) / $(gen_expression(*right)) ),
+            "^" => quote!( $(gen_expression(*left)) ^ $(gen_expression(*right)) ),
+            "&" => {
                 quote!( $(gen_expression(*left)) & $(gen_expression(*right)) )
             }
-            IrBinaryOp::BitwiseOr => quote!( $(gen_expression(*left)) | $(gen_expression(*right)) ),
-            IrBinaryOp::Mod => quote!( $(gen_expression(*left)) % $(gen_expression(*right)) ),
-            IrBinaryOp::Gt => quote!( $(gen_expression(*left)) > $(gen_expression(*right)) ),
-            IrBinaryOp::Lt => quote!( $(gen_expression(*left)) < $(gen_expression(*right)) ),
-            IrBinaryOp::Ge => quote!( $(gen_expression(*left)) >= $(gen_expression(*right)) ),
-            IrBinaryOp::Le => quote!( $(gen_expression(*left)) <= $(gen_expression(*right)) ),
+            "|" => quote!( $(gen_expression(*left)) | $(gen_expression(*right)) ),
+            "%" => quote!( $(gen_expression(*left)) % $(gen_expression(*right)) ),
+            ">" => quote!( $(gen_expression(*left)) > $(gen_expression(*right)) ),
+            "<" => quote!( $(gen_expression(*left)) < $(gen_expression(*right)) ),
+            ">=" => quote!( $(gen_expression(*left)) >= $(gen_expression(*right)) ),
+            "<=" => quote!( $(gen_expression(*left)) <= $(gen_expression(*right)) ),
             // With bool
-            IrBinaryOp::Eq => {
+            "||" => quote!( $(gen_expression(*left)) || $(gen_expression(*right)) ),
+            "&&" => quote!( $(gen_expression(*left)) && $(gen_expression(*right)) ),
+            "==" => {
                 quote!( $("$$equals")($(gen_expression(*left)), $(gen_expression(*right))) )
             }
-            IrBinaryOp::Neq => {
+            "!=" => {
                 quote!( !$("$$equals")($(gen_expression(*left)), $(gen_expression(*right))) )
             }
+            _ => unreachable!(),
         },
-        IrExpression::Unary { value, op, .. } => match op {
-            IrUnaryOp::Negate => quote!( -$(gen_expression(*value)) ),
-            IrUnaryOp::Bang => quote!( !$(gen_expression(*value)) ),
+        Expression::Unary { value, op, .. } => match op.as_str() {
+            "-" => quote!( -$(gen_expression(*value)) ),
+            "!" => quote!( !$(gen_expression(*value)) ),
+            _ => unreachable!(),
         },
-        IrExpression::Get { name, .. } => quote!($(try_escape_js(&name))),
-        IrExpression::FieldAccess {
+        Expression::PrefixVar { name, .. } => quote!($(try_escape_js(&name))),
+        Expression::SuffixVar {
             location: _,
             container,
             name,
         } => quote!($(gen_expression(*container)).$(try_escape_js(&name))),
-        IrExpression::Call {
+        Expression::Call {
             location: _,
             what,
             args,
         } => quote! {
             $(gen_expression(*what))($(for arg in args join (, ) => $(gen_expression(arg))))
         },
-        IrExpression::AnFn { params, body, .. } => {
+        Expression::Function { params, body, .. } => {
             // function ($param, $param, n...)
             quote! {
                 function ($(for param in params join (, ) => $(param.name.to_string()))) {
@@ -140,8 +144,7 @@ pub fn gen_expression(expr: IrExpression) -> js::Tokens {
                 }
             }
         }
-        IrExpression::Range { .. } => todo!(),
-        IrExpression::Match {
+        Expression::Match {
             location: _,
             value,
             cases,
@@ -152,22 +155,20 @@ pub fn gen_expression(expr: IrExpression) -> js::Tokens {
                     $(for case in cases join (,$['\r']) {
                         $(match case.pattern {
                             // Value pattern / eq pattern
-                            IrPattern::Value(val) => {
+                            Pattern::Value(val) => {
                                 new $("$$")EqPattern($(gen_expression(val)), function() {
                                     $(gen_block(case.body))
                                 })
                             },
                             // Unwrap pattern of fields {field, field, n..}
-                            IrPattern::Unwrap { en: _, fields } => {
-                                new $("$$")UnwrapPattern([$(for field in fields.clone() join (, ) => $(quoted(field.as_str())))], function($("$$fields")) {
-                                    $(for field in fields => let $(field.clone().to_string()) = $("$$fields").$(field.as_str());$['\r'])
+                            Pattern::Unwrap { en: _, fields } => {
+                                new $("$$")UnwrapPattern([$(for field in fields.clone() join (, ) => $(quoted(field.1.as_str())))], function($("$$fields")) {
+                                    $(for field in fields => let $(field.1.as_str()) = $("$$fields").$(field.1.as_str());$['\r'])
                                     $(gen_block(case.body))
                                 })
                             },
-                            // Range pattern
-                            IrPattern::Range { .. } => todo!(),
                             // Default pattern
-                            IrPattern::Default => {
+                            Pattern::Default => {
                                 new $("$$")DefPattern(function() {
                                     $(gen_block(case.body))
                                 })
@@ -178,11 +179,20 @@ pub fn gen_expression(expr: IrExpression) -> js::Tokens {
                 ]);
             }
         }
+        Expression::If {
+            location,
+            logical,
+            body,
+            else_branches,
+        } => todo!(),
     }
+    */
+    quote!(todo)
 }
 
 /// Generates statement
-pub fn gen_statement(stmt: IrStatement) -> js::Tokens {
+pub fn gen_statement(stmt: Statement) -> js::Tokens {
+    /*
     match stmt {
         // If statement
         IrStatement::If {
@@ -304,10 +314,13 @@ pub fn gen_statement(stmt: IrStatement) -> js::Tokens {
         // For statement
         IrStatement::For { .. } => todo!(),
     }
+    */
+    quote!(todo)
 }
 
 /// Generates declaration
-pub fn gen_declaration(decl: IrDeclaration) -> js::Tokens {
+pub fn gen_declaration(decl: Declaration) -> js::Tokens {
+    /*
     match decl {
         IrDeclaration::Function(ir_function) => {
             // function $name($param, $param, n...)
@@ -383,18 +396,23 @@ pub fn gen_declaration(decl: IrDeclaration) -> js::Tokens {
             }
         }
     }
+    */
+    quote!(todo)
 }
 
 /// Generates block
-pub fn gen_block(block: IrBlock) -> js::Tokens {
+pub fn gen_block(block: Block) -> js::Tokens {
+    /*
     // Block of statement
     quote! {
         $(for stmt in block.statements join ($['\r']) => $(gen_statement(stmt)))
     }
+    */
+    quote!(todo)
 }
 
 /// Generates module
-pub fn gen_module(name: &EcoString, module: &IrModule) -> js::Tokens {
+pub fn gen_module(name: &EcoString, module: &Module) -> js::Tokens {
     // Segments amount for dependencies
     let name_segments_amount = name.split("/").count();
     // Dependencies prefix
@@ -411,16 +429,16 @@ pub fn gen_module(name: &EcoString, module: &IrModule) -> js::Tokens {
         // for `AsName`: import * as $name from "$module"
         // for `ForNames`: import {$name, $name, ...} from "$module"
         $(for dep in module.dependencies.clone() join ($['\r']) => $(match dep.kind {
-            IrDependencyKind::AsName(name) => {
-                import * as $(name.to_string()) from $(quoted(format!("{dependencies_prefix}{}.js", dep.path.as_str())))
+            UseKind::AsName(name) => {
+                import * as $(name.to_string()) from $(quoted(format!("{dependencies_prefix}{}.js", dep.path.module.as_str())))
             },
-            IrDependencyKind::ForNames(names) => {
-                import {$(for name in names join(, ) => $(name.to_string()))} from $(quoted(format!("{dependencies_prefix}{}.js", dep.path.as_str())))
+            UseKind::ForNames(names) => {
+                import {$(for name in names join(, ) => $(name.to_string()))} from $(quoted(format!("{dependencies_prefix}{}.js", dep.path.module.as_str())))
             },
         }))
         $['\n']
         // Declarations
-        $(for decl in module.definitions.clone() join ($['\n']) => $(gen_declaration(decl)))
+        $(for decl in module.declarations.clone() join ($['\n']) => $(gen_declaration(decl)))
     }
 }
 

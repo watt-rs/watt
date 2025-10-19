@@ -15,6 +15,7 @@ use std::{
 };
 use watt_ast::ast;
 use watt_common::{bail, package::DraftPackage, rc_ptr::RcPtr};
+use watt_gen::gen_module;
 use watt_lex::lexer::Lexer;
 use watt_parse::parser::Parser;
 use watt_typeck::{

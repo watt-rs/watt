@@ -2,6 +2,7 @@
 use crate::{
     cx::module::ModuleCx,
     errors::TypeckError,
+    ex::ExMatchCx,
     resolve::{
         res::Res,
         resolve::{Def, ModDef},
@@ -453,6 +454,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 "bool" => Typ::Prelude(PreludeType::Bool),
                 "string" => Typ::Prelude(PreludeType::String),
                 "dyn" => Typ::Dyn,
+                "unit" => Typ::Unit,
                 _ => match self
                     .resolver
                     .resolve_type(&name, &self.module.source, &location)
@@ -528,18 +530,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 what,
                 args,
             } => match self.infer_call(location.clone(), *what, args) {
-                CallResult::FromFunction(typ, function) => {
-                    if typ == Typ::Unit {
-                        bail!(TypeckError::CallExprReturnTypeIsVoid {
-                            fn_src: function.source.clone(),
-                            definition_span: function.location.span.clone().into(),
-                            call_src: self.module.source.clone(),
-                            span: location.span.into()
-                        })
-                    } else {
-                        Res::Value(typ)
-                    }
-                }
+                CallResult::FromFunction(typ, _) => Res::Value(typ),
                 CallResult::FromType(t) => Res::Value(t),
                 CallResult::FromEnum(e) => Res::Value(e),
                 CallResult::FromDyn => Res::Value(Typ::Dyn),
@@ -609,18 +600,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         let inferred_what = self.infer_expr(what);
         // to unify
         let mut to_unify = Vec::new();
-        // checking for default case
-        let default_cases = cases
-            .iter()
-            .filter(|case| case.pattern == Pattern::Default)
-            .count();
-        if default_cases > 1 {
-            todo!();
-        } else if default_cases < 1 {
-            return Typ::Unit;
-        }
-        // analyzing cases
-        for case in cases {
+        // type checking cases
+        for case in cases.clone() {
             // pattern scope start
             self.resolver.push_rib(RibKind::Pattern);
             // matching pattern
@@ -683,6 +664,30 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     }
                 }
                 Pattern::Default => {}
+                Pattern::Variant(var) => {
+                    // inferring resolution, and checking
+                    // that is a enum variant
+                    let res = self.infer_resolution(var);
+                    match &res {
+                        Res::Variant(en, variant) => {
+                            // If types aren't equal
+                            let en_typ = Typ::Enum(en.clone());
+                            if inferred_what != en_typ {
+                                bail!(TypeckError::TypesMissmatch {
+                                    src: self.module.source.clone(),
+                                    span: case.address.span.into(),
+                                    expected: en_typ,
+                                    got: inferred_what.clone()
+                                });
+                            }
+                        }
+                        _ => bail!(TypeckError::WrongVariantPattern {
+                            src: self.module.source.clone(),
+                            span: case.address.span.into(),
+                            got: res
+                        }),
+                    }
+                },
             }
             // analyzing body
             let case_location = case.body.location.clone();
@@ -691,8 +696,11 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             // pattern scope end
             self.resolver.pop_rib();
         }
-        // type
-        self.solver.solve(Equation::UnifyMany(to_unify))
+        // solved type
+        let typ = self.solver.solve(Equation::UnifyMany(to_unify));
+        let checked = ExMatchCx::check(self, inferred_what, cases);
+        // checking all cases covered
+        if checked { typ } else { Typ::Unit }
     }
 
     /// Infers if
@@ -794,18 +802,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 what,
                 args,
             } => match self.infer_call(location.clone(), *what, args) {
-                CallResult::FromFunction(typ, function) => {
-                    if typ == Typ::Unit {
-                        bail!(TypeckError::CallExprReturnTypeIsVoid {
-                            fn_src: function.source.clone(),
-                            definition_span: function.location.span.clone().into(),
-                            call_src: self.module.source.clone(),
-                            span: location.span.into()
-                        })
-                    } else {
-                        typ
-                    }
-                }
+                CallResult::FromFunction(typ, _) => typ,
                 CallResult::FromType(t) => t,
                 CallResult::FromEnum(e) => e,
                 CallResult::FromDyn => Typ::Dyn,
@@ -820,10 +817,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 location,
                 value,
                 cases,
-            } => match self.infer_pattern_matching(location, *value, cases) {
-                Typ::Unit => todo!("do error for unit in pattern matching expr"),
-                it => it,
-            },
+            } => self.infer_pattern_matching(location, *value, cases),
             Expression::If {
                 location,
                 logical,

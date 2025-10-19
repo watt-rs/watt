@@ -2,39 +2,10 @@ import {$$match, $$equals, $$EqPattern, $$UnwrapPattern, $$DefPattern} from "../
 
 import {Result} from "../std/result.js"
 
-export const ConvertError = {
-    FailedToParseInt: (val) => ({
-        $meta: "Enum",
-        $enum: "ConvertError",
-        val: val
-    }),
-    FailedToParseFloat: (val) => ({
-        $meta: "Enum",
-        $enum: "ConvertError",
-        val: val
-    })
-};
+todo
 
-export function int(val) {
-    
-  let int = parseInt(val);
-  if (int == NaN) {
-    return Result.Err(ConvertError.FailedToParseInt(val));
-  }
-  return Result.Ok(int);
+todo
 
-}
+todo
 
-export function float(val) {
-    
-  let float = parseFloat(val);
-  if (float == NaN) {
-    return Result.Err(ConvertError.FailedToParseInt(val));
-  }
-  return Result.Ok(float);
-
-}
-
-export function string(val) {
-    return val.toString()
-}
+todo

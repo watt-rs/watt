@@ -2,9 +2,9 @@
 use crate::resolve::resolve::ModDef;
 use ecow::EcoString;
 use miette::NamedSource;
+use std::{cell::RefCell, collections::HashMap, fmt::Debug, sync::Arc};
 use watt_ast::ast::Publicity;
 use watt_common::{address::Address, rc_ptr::RcPtr};
-use std::{cell::RefCell, collections::HashMap, fmt::Debug, sync::Arc};
 
 /// Prelude type
 #[derive(Debug, Clone, PartialEq)]
@@ -34,7 +34,7 @@ impl Debug for Type {
 }
 
 /// Enum varient
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct EnumVariant {
     pub location: Address,
     pub name: EcoString,
@@ -159,7 +159,7 @@ impl Debug for Typ {
             Self::Enum(custom_enum) => write!(f, "Type(Enum({}))", custom_enum.name),
             Self::Function(function) => write!(f, "Type(Function({}))", function.name),
             Self::Dyn => write!(f, "Type(Dyn)"),
-            Self::Unit => write!(f, "Type(Void)"),
+            Self::Unit => write!(f, "Type(Unit)"),
         }
     }
 }

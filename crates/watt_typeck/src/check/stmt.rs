@@ -3,14 +3,13 @@ use crate::{
     cx::module::ModuleCx,
     errors::TypeckError,
     resolve::{resolve::Def, rib::RibKind},
-    typ::{Function, PreludeType, Typ},
+    typ::{PreludeType, Typ},
     unify::Equation,
 };
 use ecow::EcoString;
-use std::collections::HashMap;
 use watt_ast::ast::*;
-use watt_ast::ast::{Block, Expression, Parameter, TypePath};
-use watt_common::{address::Address, bail, rc_ptr::RcPtr};
+use watt_ast::ast::{Block, Expression, TypePath};
+use watt_common::{address::Address, bail};
 
 /// Statements iferring
 impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
@@ -33,8 +32,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         self.resolver.pop_rib();
     }
 
-    /// Analyzes define
-    pub(crate) fn analyze_define(
+    /// Analyzes `let` define
+    pub(crate) fn analyze_let_define(
         &mut self,
         location: Address,
         name: EcoString,
@@ -77,56 +76,52 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         ));
     }
 
-    /// Analyzes funciton statement
-    fn analyze_function(
-        &mut self,
-        location: Address,
-        name: EcoString,
-        params: Vec<Parameter>,
-        body: Block,
-        ret_type: Option<TypePath>,
-    ) {
-        // inferring return type
-        let ret = ret_type.map_or(Typ::Unit, |t| self.infer_type_annotation(t));
-
-        // inferring params
-        let params = params
-            .into_iter()
-            .map(|p| (p.name, self.infer_type_annotation(p.typ.clone())))
-            .collect::<HashMap<EcoString, Typ>>();
-
-        // creating and defining function
-        let function = Function {
-            source: self.module.source.clone(),
-            location: location.clone(),
-            name: name.clone(),
-            params: params.clone().into_values().collect::<Vec<Typ>>(),
-            ret: ret.clone(),
-        };
-        self.resolver.define(
-            &self.module.source.clone(),
-            &location,
-            &name,
-            Def::Local(Typ::Function(RcPtr::new(function))),
-        );
-
-        // pushing new scope
-        self.resolver.push_rib(RibKind::Function);
-
-        // defining params in new scope
-        params.iter().for_each(|p| {
-            self.resolver
-                .define(&self.module.source, &location, p.0, Def::Local(p.1.clone()))
-        });
-
-        // inferring body
-        let block_location = body.location.clone();
-        let inferred_block = self.infer_block(body);
-        self.solver.solve(Equation::Unify(
-            (location, ret),
-            (block_location, inferred_block),
-        ));
-        self.resolver.pop_rib();
+    /// Infers stmt
+    fn infer_stmt(&mut self, stmt: Statement) -> Typ {
+        match stmt {
+            Statement::Expr(expression) => self.infer_expr(expression),
+            Statement::VarDef {
+                location,
+                name,
+                value,
+                typ,
+            } => {
+                self.analyze_let_define(location, name, value, typ);
+                Typ::Unit
+            }
+            Statement::VarAssign {
+                location,
+                what,
+                value,
+            } => {
+                self.analyze_assignment(location, what, value);
+                Typ::Unit
+            }
+            Statement::While {
+                location,
+                logical,
+                body,
+            } => {
+                self.analyze_while(location, logical, body);
+                Typ::Unit
+            }
+            Statement::Break { .. } => {
+                if !self.resolver.contains_rib(RibKind::Loop) {
+                    unimplemented!()
+                }
+                Typ::Unit
+            }
+            Statement::Continue { .. } => {
+                if !self.resolver.contains_rib(RibKind::Loop) {
+                    unimplemented!()
+                }
+                Typ::Unit
+            }
+            Statement::Semi { stmt } => {
+                self.infer_stmt(*stmt);
+                Typ::Unit
+            }
+        }
     }
 
     /// Infers block
@@ -138,42 +133,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         };
         // Analyzing each statement
         for stmt in block.body {
-            match stmt {
-                Statement::VarDef {
-                    location,
-                    name,
-                    value,
-                    typ,
-                } => self.analyze_define(location, name, value, typ),
-                Statement::VarAssign {
-                    location,
-                    what,
-                    value,
-                } => self.analyze_assignment(location, what, value),
-                Statement::Expr(expression) => {
-                    self.infer_expr(expression);
-                }
-                Statement::While {
-                    location,
-                    logical,
-                    body,
-                } => self.analyze_while(location, logical, body),
-                Statement::Break { .. } => {
-                    if !self.resolver.contains_rib(RibKind::Loop) {
-                        unimplemented!()
-                    }
-                }
-                Statement::Continue { .. } => {
-                    if !self.resolver.contains_rib(RibKind::Loop) {
-                        unimplemented!()
-                    }
-                }
-            };
+            self.infer_stmt(stmt);
         }
         // Inferring last
-        match last {
-            Statement::Expr(expression) => self.infer_expr(expression),
-            _ => Typ::Unit,
-        }
+        self.infer_stmt(last)
     }
 }

@@ -5,4 +5,5 @@ edition = "2024"
 
 [dependencies]
 genco = { version = "0.18.1" }
+watt_ast = { path = "../watt_ast" }
 ecow = "0.2.6"
