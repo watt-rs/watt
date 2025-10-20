@@ -7,6 +7,7 @@ use ecow::EcoString;
 use miette::{Diagnostic, NamedSource, SourceSpan};
 use std::sync::Arc;
 use thiserror::Error;
+use watt_ast::ast::{BinaryOp, UnaryOp};
 
 /// For errors
 unsafe impl Send for Typ {}
@@ -72,7 +73,7 @@ pub enum TypeckError {
         span: SourceSpan,
         a: Typ,
         b: Typ,
-        op: EcoString,
+        op: BinaryOp,
     },
     #[error("invalid unary operation {op:?} with type {t:?}.")]
     #[diagnostic(code(typeck::invalid_unary_op))]
@@ -82,7 +83,7 @@ pub enum TypeckError {
         #[label("this is incorrect.")]
         span: SourceSpan,
         t: Typ,
-        op: EcoString,
+        op: UnaryOp,
     },
     #[error("field \"{field}\" is not defined in type {t}.")]
     #[diagnostic(code(typeck::field_is_not_defined))]
@@ -314,6 +315,22 @@ pub enum TypeckError {
         #[label("this is unexpected.")]
         span: SourceSpan,
         res: Res,
+    },
+    #[error("could not use break outside loop.")]
+    #[diagnostic(code(typeck::break_outside_loop))]
+    BreakOutsideLoop {
+        #[source_code]
+        src: NamedSource<Arc<String>>,
+        #[label("break is outside loop.")]
+        span: SourceSpan,
+    },
+    #[error("could not use continue outside loop.")]
+    #[diagnostic(code(typeck::continue_outside_loop))]
+    ContinueOutsideLoop {
+        #[source_code]
+        src: NamedSource<Arc<String>>,
+        #[label("continue is outside loop.")]
+        span: SourceSpan,
     },
     #[error("unexpected expr in resolution {expr:?}.")]
     #[diagnostic(

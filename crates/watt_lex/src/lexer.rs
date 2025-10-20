@@ -79,7 +79,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
                     } else if self.is_match('&') {
                         self.add_tk(TokenKind::And, "&&");
                     } else {
-                        self.add_tk(TokenKind::BitwiseAnd, "&");
+                        self.add_tk(TokenKind::Ampersand, "&");
                     }
                 }
                 '|' => {
@@ -88,7 +88,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
                     } else if self.is_match('|') {
                         self.add_tk(TokenKind::Or, "||");
                     } else {
-                        self.add_tk(TokenKind::BitwiseOr, "|");
+                        self.add_tk(TokenKind::Bar, "|");
                     }
                 }
                 '^' => {

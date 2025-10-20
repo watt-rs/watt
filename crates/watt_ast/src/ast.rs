@@ -57,6 +57,54 @@ pub struct EnumConstructor {
     pub params: Vec<Parameter>,
 }
 
+/// Binary operator
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum BinaryOp {
+    /// +
+    Add,
+    /// -
+    Sub,
+    /// %
+    Mul,
+    /// /
+    Div,
+    /// %
+    Mod,
+    /// ==
+    Eq,
+    /// !=
+    NotEq,
+    /// >
+    Gt,
+    /// >=
+    Ge,
+    /// <
+    Lt,
+    /// <=
+    Le,
+    /// &&
+    And,
+    /// ||
+    Or,
+    /// ^
+    Xor,
+    /// &
+    BitwiseAnd,
+    /// |
+    BitwiseOr,
+    /// <>
+    Concat,
+}
+
+/// Unary operator
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum UnaryOp {
+    /// -
+    Neg,
+    /// !
+    Bang,
+}
+
 /// Publicity
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Publicity {
@@ -143,7 +191,7 @@ pub enum Expression {
         location: Address,
         left: Box<Expression>,
         right: Box<Expression>,
-        op: EcoString,
+        op: BinaryOp,
     },
     /// Represents unary expression
     ///
@@ -153,7 +201,7 @@ pub enum Expression {
     Unary {
         location: Address,
         value: Box<Expression>,
-        op: EcoString,
+        op: UnaryOp,
     },
     /// Represents if expression
     ///

@@ -15,7 +15,9 @@ use crate::{
 };
 use ecow::EcoString;
 use std::{cell::RefCell, collections::HashMap};
-use watt_ast::ast::{Block, Case, ElseBranch, Expression, Parameter, Pattern, Publicity, TypePath};
+use watt_ast::ast::{
+    BinaryOp, Block, Case, ElseBranch, Expression, Parameter, Pattern, Publicity, TypePath, UnaryOp,
+};
 use watt_common::{address::Address, bail, rc_ptr::RcPtr, warn};
 
 /// Expressions inferring
@@ -24,7 +26,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     fn infer_binary(
         &mut self,
         location: Address,
-        op: &str,
+        op: BinaryOp,
         left: Expression,
         right: Expression,
     ) -> Typ {
@@ -35,7 +37,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // Matching operator
         match op {
             // Concat
-            "<>" => {
+            BinaryOp::Concat => {
                 // Checking prelude types
                 match left_typ {
                     Typ::Prelude(PreludeType::String) => match right_typ {
@@ -45,7 +47,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                             span: location.span.into(),
                             a: left_typ,
                             b: right_typ,
-                            op: op.into()
+                            op
                         }),
                     },
                     _ => bail!(TypeckError::InvalidBinaryOp {
@@ -53,12 +55,18 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                         span: location.span.into(),
                         a: left_typ,
                         b: right_typ,
-                        op: op.into()
+                        op
                     }),
                 }
             }
             // Arithmetical
-            "+" | "-" | "*" | "/" | "&" | "|" | "%" => {
+            BinaryOp::Add
+            | BinaryOp::Sub
+            | BinaryOp::Mul
+            | BinaryOp::Div
+            | BinaryOp::BitwiseAnd
+            | BinaryOp::BitwiseOr
+            | BinaryOp::Mod => {
                 // Checking prelude types
                 match left_typ {
                     Typ::Prelude(PreludeType::Int) => match right_typ {
@@ -93,7 +101,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 }
             }
             // Logical
-            "^" | "&&" | "||" => {
+            BinaryOp::Xor | BinaryOp::And | BinaryOp::Or => {
                 // Checking prelude types
                 match left_typ {
                     Typ::Prelude(PreludeType::Bool) => match right_typ {
@@ -116,7 +124,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 }
             }
             // Compare
-            "<=" | "<" | ">=" | ">" => {
+            BinaryOp::Ge | BinaryOp::Gt | BinaryOp::Le | BinaryOp::Lt => {
                 // Checking prelude types
                 match left_typ {
                     Typ::Prelude(PreludeType::Int) | Typ::Prelude(PreludeType::Float) => {
@@ -143,14 +151,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 }
             }
             // Equality
-            "==" | "!=" => Typ::Prelude(PreludeType::Bool),
-            // Other = panic
-            _ => unimplemented!(),
+            BinaryOp::Eq | BinaryOp::NotEq => Typ::Prelude(PreludeType::Bool),
         }
     }
 
     /// Infers unary
-    fn infer_unary(&mut self, location: Address, op: &str, value: Expression) -> Typ {
+    fn infer_unary(&mut self, location: Address, op: UnaryOp, value: Expression) -> Typ {
         // Inferred value `Typ`
         let inferred_value = self.infer_expr(value);
 
@@ -161,13 +167,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 src: self.module.source.clone(),
                 span: location.span.into(),
                 t: inferred_value,
-                op: op.into()
+                op
             }),
         };
 
         // Matching operator
         match op {
-            "-" => match value_typ {
+            // Negate `-`
+            UnaryOp::Neg => match value_typ {
                 PreludeType::Int => Typ::Prelude(PreludeType::Int),
                 PreludeType::Float => Typ::Prelude(PreludeType::Float),
                 _ => bail!(TypeckError::InvalidUnaryOp {
@@ -177,7 +184,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     op: op.into()
                 }),
             },
-            "!" => match value_typ {
+            // Bool negate / bang `!`
+            UnaryOp::Bang => match value_typ {
                 PreludeType::Bool => Typ::Prelude(PreludeType::Bool),
                 _ => bail!(TypeckError::InvalidUnaryOp {
                     src: self.module.source.clone(),
@@ -186,7 +194,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     op: op.into()
                 }),
             },
-            _ => unimplemented!(),
         }
     }
 
@@ -822,12 +829,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 left,
                 right,
                 op,
-            } => self.infer_binary(location, &op, *left, *right),
+            } => self.infer_binary(location, op, *left, *right),
             Expression::Unary {
                 location,
                 value,
                 op,
-            } => self.infer_unary(location, &op, *value),
+            } => self.infer_unary(location, op, *value),
             Expression::PrefixVar { location, name } => self
                 .infer_get(location.clone(), name)
                 .unwrap_typ(&self.module.source, &location),

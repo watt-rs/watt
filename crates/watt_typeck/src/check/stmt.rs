@@ -105,15 +105,21 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 self.analyze_while(location, logical, body);
                 Typ::Unit
             }
-            Statement::Break { .. } => {
+            Statement::Break { location } => {
                 if !self.resolver.contains_rib(RibKind::Loop) {
-                    unimplemented!()
+                    bail!(TypeckError::BreakOutsideLoop {
+                        src: self.module.source.clone(),
+                        span: location.span.into()
+                    })
                 }
                 Typ::Unit
             }
-            Statement::Continue { .. } => {
+            Statement::Continue { location } => {
                 if !self.resolver.contains_rib(RibKind::Loop) {
-                    unimplemented!()
+                    bail!(TypeckError::ContinueOutsideLoop {
+                        src: self.module.source.clone(),
+                        span: location.span.into()
+                    })
                 }
                 Typ::Unit
             }

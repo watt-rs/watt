@@ -368,7 +368,7 @@ impl<'file_path> Parser<'file_path> {
                                 location: op_address + end_address,
                                 left: Box::new(variable),
                                 right: expr,
-                                op: "+".into(),
+                                op: BinaryOp::Add,
                             },
                         }
                     }
@@ -383,7 +383,7 @@ impl<'file_path> Parser<'file_path> {
                                 location: op_address + end_address,
                                 left: Box::new(variable),
                                 right: expr,
-                                op: "-".into(),
+                                op: BinaryOp::Sub,
                             },
                         }
                     }
@@ -398,7 +398,7 @@ impl<'file_path> Parser<'file_path> {
                                 location: op_address + end_address,
                                 left: Box::new(variable),
                                 right: expr,
-                                op: "*".into(),
+                                op: BinaryOp::Mul,
                             },
                         }
                     }
@@ -413,7 +413,7 @@ impl<'file_path> Parser<'file_path> {
                                 location: op_address + end_address,
                                 left: Box::new(variable),
                                 right: expr,
-                                op: "/".into(),
+                                op: BinaryOp::Div,
                             },
                         }
                     }
@@ -521,7 +521,11 @@ impl<'file_path> Parser<'file_path> {
 
             Expression::Unary {
                 location: op.address,
-                op: op.value,
+                op: match op.tk_type {
+                    TokenKind::Minus => UnaryOp::Neg,
+                    TokenKind::Bang => UnaryOp::Bang,
+                    _ => unreachable!(),
+                },
                 value: Box::new(self.primary_expr()),
             }
         } else {
@@ -534,12 +538,12 @@ impl<'file_path> Parser<'file_path> {
         let mut start_location = self.peek().address.clone();
         let mut left = self.unary_expr();
 
-        while self.check(TokenKind::Slash)
-            || self.check(TokenKind::Star)
-            || self.check(TokenKind::BitwiseAnd)
-            || self.check(TokenKind::BitwiseOr)
+        while self.check(TokenKind::Star)
+            || self.check(TokenKind::Slash)
             || self.check(TokenKind::Percent)
-            || self.check(TokenKind::Or)
+            || self.check(TokenKind::Caret)
+            || self.check(TokenKind::Ampersand)
+            || self.check(TokenKind::Bar)
         {
             let op = self.peek().clone();
             self.current += 1;
@@ -549,7 +553,14 @@ impl<'file_path> Parser<'file_path> {
                 location: start_location + end_location,
                 left: Box::new(left),
                 right: Box::new(right),
-                op: op.value,
+                op: match op.tk_type {
+                    TokenKind::Star => BinaryOp::Mul,
+                    TokenKind::Slash => BinaryOp::Div,
+                    TokenKind::Ampersand => BinaryOp::BitwiseAnd,
+                    TokenKind::Bar => BinaryOp::BitwiseOr,
+                    TokenKind::Percent => BinaryOp::Mod,
+                    _ => unreachable!(),
+                },
             };
             start_location = self.peek().address.clone();
         }
@@ -574,7 +585,12 @@ impl<'file_path> Parser<'file_path> {
                 location: start_location + end_location,
                 left: Box::new(left),
                 right: Box::new(right),
-                op: op.value,
+                op: match op.tk_type {
+                    TokenKind::Plus => BinaryOp::Add,
+                    TokenKind::Minus => BinaryOp::Sub,
+                    TokenKind::Concat => BinaryOp::Concat,
+                    _ => unreachable!(),
+                },
             };
             start_location = self.peek().address.clone();
         }
@@ -588,9 +604,9 @@ impl<'file_path> Parser<'file_path> {
         let mut left = self.additive_expr();
 
         if self.check(TokenKind::Greater)
+            || self.check(TokenKind::GreaterEq)
             || self.check(TokenKind::Less)
             || self.check(TokenKind::LessEq)
-            || self.check(TokenKind::GreaterEq)
         {
             let op = self.advance().clone();
             let right = self.additive_expr();
@@ -599,7 +615,13 @@ impl<'file_path> Parser<'file_path> {
                 location: start_location + end_location,
                 left: Box::new(left),
                 right: Box::new(right),
-                op: op.value,
+                op: match op.tk_type {
+                    TokenKind::Greater => BinaryOp::Gt,
+                    TokenKind::GreaterEq => BinaryOp::Ge,
+                    TokenKind::Less => BinaryOp::Lt,
+                    TokenKind::LessEq => BinaryOp::Le,
+                    _ => unreachable!(),
+                },
             };
         }
 
@@ -619,7 +641,11 @@ impl<'file_path> Parser<'file_path> {
                 location: start_location + end_location,
                 left: Box::new(left),
                 right: Box::new(right),
-                op: op.value,
+                op: match op.tk_type {
+                    TokenKind::Eq => BinaryOp::Eq,
+                    TokenKind::NotEq => BinaryOp::NotEq,
+                    _ => unreachable!(),
+                },
             };
         }
 
@@ -639,7 +665,11 @@ impl<'file_path> Parser<'file_path> {
                 location: start_location + end_location,
                 left: Box::new(left),
                 right: Box::new(right),
-                op: op.value.clone(),
+                op: match op.tk_type {
+                    TokenKind::And => BinaryOp::And,
+                    TokenKind::Or => BinaryOp::Or,
+                    _ => unreachable!(),
+                },
             };
             start_location = self.peek().address.clone();
         }
