@@ -126,7 +126,7 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
             };
         }
         // If not not matched
-        return (true_matched && false_matched) || self.has_default_pattern(&self.cases);
+        (true_matched && false_matched) || self.has_default_pattern(&self.cases)
     }
 
     /// Ensures all enum patterns are consistent
@@ -143,8 +143,8 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
             let mut patterns = Vec::new();
             match pattern {
                 Pattern::Or(pat1, pat2) => {
-                    patterns.append(&mut collect_patterns(&pat1));
-                    patterns.append(&mut collect_patterns(&pat2));
+                    patterns.append(&mut collect_patterns(pat1));
+                    patterns.append(&mut collect_patterns(pat2));
                 }
                 pattern => patterns.push(pattern.clone()),
             }
@@ -159,11 +159,7 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
         // Collecting variant patterns
         let variant_patterns: Vec<Pattern> = collected_patterns
             .into_iter()
-            .filter(|pattern| match pattern {
-                Pattern::Unwrap { .. } => true,
-                Pattern::Variant(_) => true,
-                _ => false,
-            })
+            .filter(|pattern| matches!(pattern, Pattern::Unwrap { .. } | Pattern::Variant(_)))
             .collect();
 
         // Collecting unwrap patterns
@@ -223,10 +219,10 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
             },
             Pattern::Or(pat1, pat2) => {
                 // Collecting variants
-                variants.append(&mut self.collect_enum_variants(address, &pat1));
-                variants.append(&mut self.collect_enum_variants(address, &pat2));
+                variants.append(&mut self.collect_enum_variants(address, pat1));
+                variants.append(&mut self.collect_enum_variants(address, pat2));
                 // Ensuring that enum patterns are consistent
-                self.ensure_enum_patterns_consistent(address.clone(), &pat1, &pat2)
+                self.ensure_enum_patterns_consistent(address.clone(), pat1, pat2)
             }
             _ => return variants,
         }

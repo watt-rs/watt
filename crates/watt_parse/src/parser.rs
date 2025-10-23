@@ -287,7 +287,7 @@ impl<'file_path> Parser<'file_path> {
         Expression::If {
             location: start_span + end_span,
             logical: Box::new(logical),
-            body: body,
+            body,
             else_branches,
         }
     }

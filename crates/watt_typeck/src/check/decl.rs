@@ -137,17 +137,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         self.resolver.push_rib(RibKind::Fields);
 
         // analyzing fields
-        declarations.iter().for_each(|f| match f {
-            Declaration::VarDef {
+        declarations.iter().for_each(|f| if let Declaration::VarDef {
                 location,
                 name,
                 value,
                 typ,
                 ..
-            } => {
-                self.analyze_let_define(location.clone(), name.clone(), value.clone(), typ.clone())
-            }
-            _ => {}
+            } = f {
+            self.analyze_let_define(location.clone(), name.clone(), value.clone(), typ.clone())
         });
 
         // fields env end
@@ -161,19 +158,16 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
         // adding fields to type env
         let mut borrowed = type_.borrow_mut();
-        declarations.iter().for_each(|f| match f {
-            Declaration::VarDef {
+        declarations.iter().for_each(|f| if let Declaration::VarDef {
                 publicity, name, ..
-            } => {
-                borrowed.env.insert(
-                    name.clone(),
-                    WithPublicity {
-                        publicity: publicity.clone(),
-                        value: analyzed_fields.get(name).unwrap().clone(),
-                    },
-                );
-            }
-            _ => {}
+            } = f {
+            borrowed.env.insert(
+                name.clone(),
+                WithPublicity {
+                    publicity: publicity.clone(),
+                    value: analyzed_fields.get(name).unwrap().clone(),
+                },
+            );
         });
         drop(borrowed);
 
@@ -181,18 +175,15 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         self.resolver.push_rib(RibKind::Type(type_.clone()));
 
         // adding functions
-        declarations.into_iter().for_each(|f| match f {
-            Declaration::Function {
+        declarations.into_iter().for_each(|f| if let Declaration::Function {
                 location,
                 publicity,
                 name,
                 params,
                 body,
                 typ,
-            } => {
-                self.analyze_method(location, name, type_.clone(), publicity, params, body, typ);
-            }
-            _ => {}
+            } = f {
+            self.analyze_method(location, name, type_.clone(), publicity, params, body, typ);
         });
 
         // type env end

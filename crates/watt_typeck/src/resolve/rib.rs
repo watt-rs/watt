@@ -29,6 +29,12 @@ pub struct RibsStack {
 }
 
 /// Ribs stack implementation
+impl Default for RibsStack {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RibsStack {
     /// Creates new stack
     pub fn new() -> Self {

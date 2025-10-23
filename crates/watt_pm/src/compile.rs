@@ -152,7 +152,7 @@ pub fn compile(path: Utf8PathBuf) -> Utf8PathBuf {
             let config = config::retrieve_config(&path);
             // Generating draft package
             DraftPackage {
-                path: path,
+                path,
                 lints: DraftPackageLints {
                     disabled: config.lints.disabled,
                 },

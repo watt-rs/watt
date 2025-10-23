@@ -59,6 +59,12 @@ pub struct ModuleResolver {
 }
 
 /// Implementation
+impl Default for ModuleResolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ModuleResolver {
     /// Creates new module resolver
     pub fn new() -> Self {

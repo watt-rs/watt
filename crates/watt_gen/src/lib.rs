@@ -318,7 +318,7 @@ pub fn gen_declaration(decl: Declaration) -> js::Tokens {
                 $(for decl in &declarations {
                     $(match decl {
                         Declaration::Function { name, params, body, .. } => {
-                            $(try_escape_js(&name))($(for param in params join (, ) => $(param.name.to_string()))) {
+                            $(try_escape_js(name))($(for param in params join (, ) => $(param.name.to_string()))) {
                                 let self = this;
                                 $(gen_block_expr(body.clone()))
                             }

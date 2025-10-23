@@ -78,7 +78,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                             span: location.span.into(),
                             a: left_typ,
                             b: right_typ,
-                            op: op.into()
+                            op
                         }),
                     },
                     Typ::Prelude(PreludeType::Float) => match right_typ {
@@ -89,7 +89,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                             span: location.span.into(),
                             a: left_typ,
                             b: right_typ,
-                            op: op.into()
+                            op
                         }),
                     },
                     _ => bail!(TypeckError::InvalidBinaryOp {
@@ -97,7 +97,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                         span: location.span.into(),
                         a: left_typ,
                         b: right_typ,
-                        op: op.into()
+                        op
                     }),
                 }
             }
@@ -112,7 +112,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                             span: location.span.into(),
                             a: left_typ,
                             b: right_typ,
-                            op: op.into()
+                            op
                         }),
                     },
                     _ => bail!(TypeckError::InvalidBinaryOp {
@@ -120,7 +120,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                         span: location.span.into(),
                         a: left_typ,
                         b: right_typ,
-                        op: op.into()
+                        op
                     }),
                 }
             }
@@ -138,7 +138,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                                 span: location.span.into(),
                                 a: left_typ,
                                 b: right_typ,
-                                op: op.into()
+                                op
                             }),
                         }
                     }
@@ -147,7 +147,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                         span: location.span.into(),
                         a: left_typ,
                         b: right_typ,
-                        op: op.into()
+                        op
                     }),
                 }
             }
@@ -182,7 +182,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     src: self.module.source.clone(),
                     span: location.span.into(),
                     t: inferred_value,
-                    op: op.into()
+                    op
                 }),
             },
             // Bool negate / bang `!`
@@ -192,7 +192,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     src: self.module.source.clone(),
                     span: location.span.into(),
                     t: inferred_value,
-                    op: op.into()
+                    op
                 }),
             },
         }

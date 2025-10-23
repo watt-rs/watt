@@ -33,7 +33,7 @@ impl<'eq> EquationsSolver<'eq> {
         match equation {
             Equation::Unify(v1, v2) => self.unify(v1.0, v1.1, v2.0, v2.1),
             Equation::UnifyMany(items) => {
-                if items.len() > 0 {
+                if !items.is_empty() {
                     let mut v1: Option<Var> = None;
                     for v2 in items {
                         v1 = Some(match v1 {

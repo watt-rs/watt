@@ -71,9 +71,9 @@ impl<'cx> PackageCompiler<'cx> {
         let tokens = lexer.lex();
         // Parsing
         let mut parser = Parser::new(tokens, &named_source);
-        let tree = parser.parse();
+        
         // Done
-        tree
+        parser.parse()
     }
 
     /// Collects all .watt files of package
