@@ -18,6 +18,6 @@ export function main() {
         else {
             return false
         }
-    })();
+    })()
     io.println(a);
 }
