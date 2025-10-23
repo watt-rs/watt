@@ -323,25 +323,17 @@ pub enum Statement {
     ///
     /// represents expression
     Expr(Expression),
-    /// Represents while loop
+    /// Represents loop
     ///
-    /// while `cond` {
+    /// loop `cond` {
     ///     ...
     /// }
     ///
-    While {
+    Loop {
         location: Address,
         logical: Expression,
         body: Block,
     },
-    /// Represents loop break
-    ///
-    /// `break`
-    Break { location: Address },
-    /// Represents loop continue
-    ///
-    /// `continue`
-    Continue { location: Address },
     /// Represents semi colon expression
     Semi(Expression),
 }
@@ -353,9 +345,7 @@ impl Statement {
             Statement::VarDef { location, .. } => location.clone(),
             Statement::VarAssign { location, .. } => location.clone(),
             Statement::Expr(expression) => expression.location(),
-            Statement::While { location, .. } => location.clone(),
-            Statement::Break { location } => location.clone(),
-            Statement::Continue { location } => location.clone(),
+            Statement::Loop { location, .. } => location.clone(),
             Statement::Semi(expression) => expression.location(),
         }
     }

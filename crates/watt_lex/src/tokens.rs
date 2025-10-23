@@ -50,7 +50,6 @@ pub enum TokenKind {
     Elif,      // elif
     Else,      // else
     Use,       // use
-    Break,     // break
     Lbracket,  // [
     Rbracket,  // ]
     Colon,     // :
@@ -58,7 +57,6 @@ pub enum TokenKind {
     For,       // for
     Bang,      // !
     In,        // in
-    Continue,  // continue
     Unit,      // unit
     As,        // as
     Pub,       // pub

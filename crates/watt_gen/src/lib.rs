@@ -267,7 +267,7 @@ pub fn gen_expression(expr: Expression) -> js::Tokens {
 pub fn gen_statement(stmt: Statement) -> js::Tokens {
     match stmt {
         // While statement
-        Statement::While { logical, body, .. } => quote! {
+        Statement::Loop { logical, body, .. } => quote! {
             while ($(gen_expression(logical))) {
                 $(gen_block(body))
             }
@@ -280,10 +280,6 @@ pub fn gen_statement(stmt: Statement) -> js::Tokens {
         Statement::VarAssign { what, value, .. } => quote! {
             $(gen_expression(what)) = $(gen_expression(value))
         },
-        // Break statement
-        Statement::Break { .. } => quote!(break),
-        // Continue statement
-        Statement::Continue { .. } => quote!(continue),
         // Expression statement
         Statement::Expr(expr) => quote!($(gen_expression(expr))),
         // Semicolon expression statement

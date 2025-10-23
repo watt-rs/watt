@@ -9,8 +9,8 @@ import {
 } from "../prelude.js"
 
 import * as io from "../std/io.js"
-import {Option} from "../std/option.js"
 import * as conv from "../std/convert.js"
+import {Option} from "../std/option.js"
 
 export class $Node {
     constructor(value) {
@@ -32,7 +32,15 @@ export class $Node {
     }
     insert(value) {
         let self = this;
-        self.next = Option.Some(Node(value))
+        return $$match(self.next, [
+            new $$UnwrapPattern(["element"], function($$fields) {
+                let element = $$fields.element;
+                element.value = Option.Some(Node(value))
+            }),
+            new $$VariantPattern("None", function() {
+                self.next = Option.Some(Node(value))
+            })
+        ])
     }
     delete$(value) {
         let self = this;
@@ -130,11 +138,8 @@ export function main() {
     list.push("hello");
     list.push(true);
     list.push(false);
-    io.println(list.to_string());
-    list.delete$("hello");
-    io.println(list.to_string());
-    list.delete$(false);
-    io.println(list.to_string());
-    list.delete$(1);
+    list.push(444);
+    list.delete$(true);
+    list.delete$(444);
     io.println(list.to_string());
 }

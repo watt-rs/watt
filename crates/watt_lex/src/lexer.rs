@@ -28,7 +28,6 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
         // Keywords list
         let keywords_map = HashMap::from([
             ("fn", TokenKind::Fn),
-            ("break", TokenKind::Break),
             ("if", TokenKind::If),
             ("elif", TokenKind::Elif),
             ("else", TokenKind::Else),
@@ -37,7 +36,6 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
             ("while", TokenKind::While),
             ("for", TokenKind::For),
             ("in", TokenKind::In),
-            ("continue", TokenKind::Continue),
             ("true", TokenKind::Bool),
             ("false", TokenKind::Bool),
             ("as", TokenKind::As),

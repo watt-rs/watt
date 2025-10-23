@@ -687,18 +687,6 @@ impl<'file_path> Parser<'file_path> {
         self.logical_expr()
     }
 
-    /// Continue statement parsing
-    fn continue_stmt(&mut self) -> Statement {
-        let location = self.consume(TokenKind::Continue).address.clone();
-        Statement::Continue { location }
-    }
-
-    /// Break statement parsing
-    fn break_stmt(&mut self) -> Statement {
-        let location = self.consume(TokenKind::Break).address.clone();
-        Statement::Break { location }
-    }
-
     /// While statement parsing
     fn while_stmt(&mut self) -> Statement {
         let start_span = self.consume(TokenKind::While).address.clone();
@@ -706,7 +694,7 @@ impl<'file_path> Parser<'file_path> {
         let body = self.block();
         let end_span = self.previous().address.clone();
 
-        Statement::While {
+        Statement::Loop {
             location: start_span + end_span,
             logical,
             body,
@@ -1169,8 +1157,6 @@ impl<'file_path> Parser<'file_path> {
     fn statement(&mut self) -> Statement {
         // Parsing statement
         let stmt = match self.peek().tk_type {
-            TokenKind::Continue => self.continue_stmt(),
-            TokenKind::Break => self.break_stmt(),
             TokenKind::While => self.while_stmt(),
             TokenKind::Let => self.let_stmt(),
             TokenKind::Id => {
