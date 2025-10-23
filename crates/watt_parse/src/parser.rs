@@ -2,7 +2,7 @@
 use crate::errors::ParseError;
 use ecow::EcoString;
 use miette::NamedSource;
-use std::{backtrace::Backtrace, sync::Arc};
+use std::sync::Arc;
 use watt_ast::ast::*;
 use watt_common::address::Address;
 use watt_common::bail;
