@@ -554,7 +554,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         &mut self,
         location: Address,
         params: Vec<Parameter>,
-        body: Block,
+        body: Either<Block, Box<Expression>>,
         ret_type: Option<TypePath>,
     ) -> Typ {
         // inferring return type
@@ -585,8 +585,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         });
 
         // inferring body
-        let block_location = body.location.clone();
-        let inferred_block = self.infer_block(body);
+        let (block_location, inferred_block) = match body {
+            Either::Left(block) => (block.location.clone(), self.infer_block(block)),
+            Either::Right(expr) => (expr.location(), self.infer_expr(*expr)),
+        };
         self.solver.solve(Equation::Unify(
             (location, ret),
             (block_location, inferred_block),
@@ -764,7 +766,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         &mut self,
         location: Address,
         logical: Expression,
-        body: Block,
+        body: Either<Block, Box<Expression>>,
         else_branches: Vec<ElseBranch>,
     ) -> Typ {
         // pushing rib
@@ -781,8 +783,11 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             }
         }
         // inferring block
-        let if_location = body.location.clone();
-        let mut to_unify = vec![(if_location, self.infer_block(body))];
+        let (if_location, inferred_if) = match body {
+            Either::Left(block) => (block.location.clone(), self.infer_block(block)),
+            Either::Right(expr) => (expr.location(), self.infer_expr(*expr)),
+        };
+        let mut to_unify = vec![(if_location, inferred_if)];
         // popping rib
         self.resolver.pop_rib();
         // else reached
@@ -804,15 +809,19 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                         }
                     }
                     // inferring block
-                    let branch_location = body.location.clone();
-                    let inferred = self.infer_block(body);
-                    to_unify.push((branch_location, inferred));
+                    let (branch_location, inferred_branch) = match body {
+                        Either::Left(block) => (block.location.clone(), self.infer_block(block)),
+                        Either::Right(expr) => (expr.location(), self.infer_expr(expr)),
+                    };
+                    to_unify.push((branch_location, inferred_branch));
                 }
                 ElseBranch::Else { body, .. } => {
                     // inferring block
-                    let branch_location = body.location.clone();
-                    let inferred = self.infer_block(body);
-                    to_unify.push((branch_location, inferred));
+                    let (branch_location, inferred_branch) = match body {
+                        Either::Left(block) => (block.location.clone(), self.infer_block(block)),
+                        Either::Right(expr) => (expr.location(), self.infer_expr(expr)),
+                    };
+                    to_unify.push((branch_location, inferred_branch));
                     else_reached = true;
                 }
             }

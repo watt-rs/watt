@@ -12,8 +12,8 @@ use crate::{
 use ecow::EcoString;
 use std::{cell::RefCell, collections::HashMap};
 use watt_ast::ast::{
-    Block, Declaration, Dependency, EnumConstructor, Expression, Parameter, Publicity, TypePath,
-    UseKind,
+    Block, Declaration, Dependency, Either, EnumConstructor, Expression, Parameter, Publicity,
+    TypePath, UseKind,
 };
 use watt_common::{address::Address, bail, rc_ptr::RcPtr};
 
@@ -28,7 +28,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         type_: RcPtr<RefCell<Type>>,
         publicity: Publicity,
         params: Vec<Parameter>,
-        body: Block,
+        body: Either<Block, Expression>,
         ret_type: Option<TypePath>,
     ) {
         // inferring return type
@@ -80,8 +80,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         );
 
         // inferring body
-        let block_location = body.location.clone();
-        let inferred_block = self.infer_block(body);
+        let (block_location, inferred_block) = match body {
+            Either::Left(block) => (block.location.clone(), self.infer_block(block)),
+            Either::Right(expr) => (expr.location(), self.infer_expr(expr)),
+        };
         self.solver.solve(Equation::Unify(
             (location, ret),
             (block_location, inferred_block),
@@ -137,14 +139,17 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         self.resolver.push_rib(RibKind::Fields);
 
         // analyzing fields
-        declarations.iter().for_each(|f| if let Declaration::VarDef {
+        declarations.iter().for_each(|f| {
+            if let Declaration::VarDef {
                 location,
                 name,
                 value,
                 typ,
                 ..
-            } = f {
-            self.analyze_let_define(location.clone(), name.clone(), value.clone(), typ.clone())
+            } = f
+            {
+                self.analyze_let_define(location.clone(), name.clone(), value.clone(), typ.clone())
+            }
         });
 
         // fields env end
@@ -158,16 +163,19 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
         // adding fields to type env
         let mut borrowed = type_.borrow_mut();
-        declarations.iter().for_each(|f| if let Declaration::VarDef {
+        declarations.iter().for_each(|f| {
+            if let Declaration::VarDef {
                 publicity, name, ..
-            } = f {
-            borrowed.env.insert(
-                name.clone(),
-                WithPublicity {
-                    publicity: publicity.clone(),
-                    value: analyzed_fields.get(name).unwrap().clone(),
-                },
-            );
+            } = f
+            {
+                borrowed.env.insert(
+                    name.clone(),
+                    WithPublicity {
+                        publicity: publicity.clone(),
+                        value: analyzed_fields.get(name).unwrap().clone(),
+                    },
+                );
+            }
         });
         drop(borrowed);
 
@@ -175,15 +183,18 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         self.resolver.push_rib(RibKind::Type(type_.clone()));
 
         // adding functions
-        declarations.into_iter().for_each(|f| if let Declaration::Function {
+        declarations.into_iter().for_each(|f| {
+            if let Declaration::Function {
                 location,
                 publicity,
                 name,
                 params,
                 body,
                 typ,
-            } = f {
-            self.analyze_method(location, name, type_.clone(), publicity, params, body, typ);
+            } = f
+            {
+                self.analyze_method(location, name, type_.clone(), publicity, params, body, typ);
+            }
         });
 
         // type env end
@@ -239,7 +250,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         publicity: Publicity,
         name: EcoString,
         params: Vec<Parameter>,
-        body: Block,
+        body: Either<Block, Expression>,
         ret_type: Option<TypePath>,
     ) {
         // inferring return type
@@ -279,8 +290,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         });
 
         // inferring body
-        let block_location = body.location.clone();
-        let inferred_block = self.infer_block(body);
+        let (block_location, inferred_block) = match body {
+            Either::Left(block) => (block.location.clone(), self.infer_block(block)),
+            Either::Right(expr) => (expr.location(), self.infer_expr(expr)),
+        };
         self.solver.solve(Equation::Unify(
             (location, ret),
             (block_location, inferred_block),

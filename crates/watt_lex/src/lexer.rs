@@ -33,8 +33,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
             ("else", TokenKind::Else),
             ("type", TokenKind::Type),
             ("enum", TokenKind::Enum),
-            ("while", TokenKind::While),
-            ("for", TokenKind::For),
+            ("loop", TokenKind::Loop),
             ("in", TokenKind::In),
             ("true", TokenKind::Bool),
             ("false", TokenKind::Bool),
@@ -44,6 +43,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
             ("pub", TokenKind::Pub),
             ("match", TokenKind::Match),
             ("extern", TokenKind::Extern),
+            ("for", TokenKind::For),
         ]);
         // Lexer
         Lexer {

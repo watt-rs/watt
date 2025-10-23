@@ -38,7 +38,7 @@ pub enum TokenKind {
     Comma,     // ,
     If,        // if
     Bool,      // bool
-    While,     // while
+    Loop,      // loop
     Type,      // type
     Enum,      // enum
     Dot,       // dot
@@ -54,7 +54,6 @@ pub enum TokenKind {
     Rbracket,  // ]
     Colon,     // :
     Semicolon, // ;
-    For,       // for
     Bang,      // !
     In,        // in
     Unit,      // unit
@@ -63,6 +62,7 @@ pub enum TokenKind {
     Match,     // match
     Arrow,     // arrow
     Extern,    // extern
+    For,       // for
 }
 
 /// Token structure

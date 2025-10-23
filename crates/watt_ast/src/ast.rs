@@ -161,11 +161,11 @@ pub enum ElseBranch {
     Elif {
         location: Address,
         logical: Expression,
-        body: Block,
+        body: Either<Block, Expression>,
     },
     Else {
         location: Address,
-        body: Block,
+        body: Either<Block, Expression>,
     },
 }
 
@@ -220,7 +220,7 @@ pub enum Expression {
     If {
         location: Address,
         logical: Box<Expression>,
-        body: Block,
+        body: Either<Block, Box<Expression>>,
         else_branches: Vec<ElseBranch>,
     },
     /// Represents prefix variable
@@ -252,7 +252,7 @@ pub enum Expression {
     Function {
         location: Address,
         params: Vec<Parameter>,
-        body: Block,
+        body: Either<Block, Box<Expression>>,
         typ: Option<TypePath>,
     },
     /// Match expression
@@ -332,7 +332,7 @@ pub enum Statement {
     Loop {
         location: Address,
         logical: Expression,
-        body: Block,
+        body: Either<Block, Expression>,
     },
     /// Represents semi colon expression
     Semi(Expression),
@@ -385,7 +385,7 @@ pub struct Method {
     publicity: Publicity,
     name: EcoString,
     params: Vec<Parameter>,
-    body: Block,
+    body: Either<Block, Expression>,
     typ: Option<TypePath>,
 }
 
@@ -451,7 +451,7 @@ pub enum Declaration {
         publicity: Publicity,
         name: EcoString,
         params: Vec<Parameter>,
-        body: Block,
+        body: Either<Block, Expression>,
         typ: Option<TypePath>,
     },
 }

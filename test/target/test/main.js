@@ -95,7 +95,7 @@ export class $List {
     }
     push(value) {
         let self = this;
-        $$match(self.head, [
+        return $$match(self.head, [
             new $$VariantPattern("None", function() {
                 self.head = Option.Some(Node(value))
             }),
@@ -103,16 +103,16 @@ export class $List {
                 let element = $$fields.element;
                 element.last().insert(value);
             })
-        ]);
+        ])
     }
     delete$(value) {
         let self = this;
-        $$match(self.head, [
+        return $$match(self.head, [
             new $$UnwrapPattern(["element"], function($$fields) {
                 let element = $$fields.element;
                 self.head = element.delete$(value)
             })
-        ]);
+        ])
     }
     to_string() {
         let self = this;

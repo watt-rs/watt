@@ -211,7 +211,10 @@ pub fn gen_expression(expr: Expression) -> js::Tokens {
             // function ($param, $param, n...)
             quote! {
                 function ($(for param in params join (, ) => $(param.name.to_string()))) {
-                    $(gen_block_expr(body))
+                    $(match body {
+                        Either::Left(block) => $(gen_block_expr(block)),
+                        Either::Right(expr) => return $(gen_expression(*expr))
+                    })
                 }
             }
         }
@@ -239,19 +242,28 @@ pub fn gen_expression(expr: Expression) -> js::Tokens {
             quote! {
                 (() => {
                    if ($(gen_expression(*logical))) {
-                       $(gen_block_expr(body))
+                       $(match body {
+                           Either::Left(block) => $(gen_block_expr(block)),
+                           Either::Right(expr) => return $(gen_expression(*expr))
+                       })
                    }
                    $(for branch in else_branches {
                        $(match branch {
                            ElseBranch::Elif { logical, body, .. } => {
                                else if ($(gen_expression(logical))) {
-                                   $(gen_block_expr(body))
+                                   $(match body {
+                                       Either::Left(block) => $(gen_block_expr(block)),
+                                       Either::Right(expr) => return $(gen_expression(expr))
+                                   })
                                }
                                $['\r']
                            }
                            ElseBranch::Else { body, .. } => {
                                else {
-                                   $(gen_block_expr(body))
+                                   $(match body {
+                                       Either::Left(block) => $(gen_block_expr(block)),
+                                       Either::Right(expr) => return $(gen_expression(expr))
+                                   })
                                }
                                $['\r']
                            }
@@ -269,7 +281,10 @@ pub fn gen_statement(stmt: Statement) -> js::Tokens {
         // While statement
         Statement::Loop { logical, body, .. } => quote! {
             while ($(gen_expression(logical))) {
-                $(gen_block(body))
+                $(match body {
+                    Either::Left(block) => $(gen_block(block)),
+                    Either::Right(expr) => $(gen_expression(expr));
+                })
             }
         },
         // Variable definition statement
@@ -296,7 +311,10 @@ pub fn gen_declaration(decl: Declaration) -> js::Tokens {
             // function $name($param, $param, n...)
             quote! {
                 export function $(try_escape_js(&name))($(for param in params join (, ) => $(param.name.to_string()))) {
-                    $(gen_block_expr(body))
+                    $(match body {
+                        Either::Left(block) => $(gen_block_expr(block)),
+                        Either::Right(expr) => return $(gen_expression(expr))
+                    })
                 }
             }
         }
@@ -316,7 +334,10 @@ pub fn gen_declaration(decl: Declaration) -> js::Tokens {
                         Declaration::Function { name, params, body, .. } => {
                             $(try_escape_js(name))($(for param in params join (, ) => $(param.name.to_string()))) {
                                 let self = this;
-                                $(gen_block_expr(body.clone()))
+                                $(match body {
+                                    Either::Left(block) => $(gen_block_expr(block.clone())),
+                                    Either::Right(expr) => return $(gen_expression(expr.clone()))
+                                })
                             }
                             $['\r']
                         }

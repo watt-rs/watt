@@ -51,7 +51,7 @@ impl<'file_path> Parser<'file_path> {
         }
     }
 
-    /// Block statement parsing
+    /// Block parsing
     fn block(&mut self) -> Block {
         // parsing statement before reaching
         // end of file, or a `}`
@@ -67,6 +67,58 @@ impl<'file_path> Parser<'file_path> {
         Block {
             location: start_span + end_span,
             body: nodes,
+        }
+    }
+
+    /// Block or expr parsing
+    fn block_or_expr(&mut self) -> Either<Block, Expression> {
+        // if lbrace passed
+        if self.check(TokenKind::Lbrace) {
+            // parsing statement before reaching
+            // end of file, or a `}`
+            let mut nodes: Vec<Statement> = Vec::new();
+            self.consume(TokenKind::Lbrace);
+            let start_span = self.peek().address.clone();
+            while !self.check(TokenKind::Rbrace) {
+                nodes.push(self.statement());
+            }
+            let end_span = self.previous().address.clone();
+            self.consume(TokenKind::Rbrace);
+            Either::Left(Block {
+                location: start_span + end_span,
+                body: nodes,
+            })
+        } else {
+            // `=`
+            self.consume(TokenKind::Assign);
+            // parsing single expression
+            Either::Right(self.expr())
+        }
+    }
+
+    /// Block or box expr parsing
+    fn block_or_box_expr(&mut self) -> Either<Block, Box<Expression>> {
+        // if lbrace passed
+        if self.check(TokenKind::Lbrace) {
+            // parsing statement before reaching
+            // end of file, or a `}`
+            let mut nodes: Vec<Statement> = Vec::new();
+            self.consume(TokenKind::Lbrace);
+            let start_span = self.peek().address.clone();
+            while !self.check(TokenKind::Rbrace) {
+                nodes.push(self.statement());
+            }
+            let end_span = self.previous().address.clone();
+            self.consume(TokenKind::Rbrace);
+            Either::Left(Block {
+                location: start_span + end_span,
+                body: nodes,
+            })
+        } else {
+            // `=`
+            self.consume(TokenKind::Assign);
+            // parsing single expression
+            Either::Right(Box::new(self.expr()))
         }
     }
 
@@ -230,7 +282,7 @@ impl<'file_path> Parser<'file_path> {
         let end_span = self.previous().address.clone();
 
         // body
-        let body = self.block();
+        let body = self.block_or_box_expr();
 
         Expression::Function {
             location: start_span + end_span,
@@ -243,7 +295,7 @@ impl<'file_path> Parser<'file_path> {
     /// Else parsing
     fn else_branch(&mut self) -> ElseBranch {
         let start_span = self.consume(TokenKind::Else).address.clone();
-        let body = self.block();
+        let body = self.block_or_expr();
         let end_span = self.previous().address.clone();
 
         ElseBranch::Else {
@@ -256,7 +308,7 @@ impl<'file_path> Parser<'file_path> {
     fn elif_branch(&mut self) -> ElseBranch {
         let start_span = self.consume(TokenKind::Elif).address.clone();
         let logical = self.expr();
-        let body = self.block();
+        let body = self.block_or_expr();
         let end_span = self.previous().address.clone();
 
         ElseBranch::Elif {
@@ -270,7 +322,7 @@ impl<'file_path> Parser<'file_path> {
     fn if_expr(&mut self) -> Expression {
         let start_span = self.consume(TokenKind::If).address.clone();
         let logical = self.expr();
-        let body = self.block();
+        let body = self.block_or_box_expr();
         let end_span = self.previous().address.clone();
         let mut else_branches = Vec::new();
 
@@ -687,11 +739,11 @@ impl<'file_path> Parser<'file_path> {
         self.logical_expr()
     }
 
-    /// While statement parsing
-    fn while_stmt(&mut self) -> Statement {
-        let start_span = self.consume(TokenKind::While).address.clone();
+    /// Loop statement parsing
+    fn loop_stmt(&mut self) -> Statement {
+        let start_span = self.consume(TokenKind::Loop).address.clone();
         let logical = self.expr();
-        let body = self.block();
+        let body = self.block_or_expr();
         let end_span = self.previous().address.clone();
 
         Statement::Loop {
@@ -864,7 +916,7 @@ impl<'file_path> Parser<'file_path> {
         };
 
         // body
-        let body = self.block();
+        let body = self.block_or_expr();
 
         // end location
         let end_location = self.previous().address.clone();
@@ -1157,7 +1209,7 @@ impl<'file_path> Parser<'file_path> {
     fn statement(&mut self) -> Statement {
         // Parsing statement
         let stmt = match self.peek().tk_type {
-            TokenKind::While => self.while_stmt(),
+            TokenKind::Loop => self.loop_stmt(),
             TokenKind::Let => self.let_stmt(),
             TokenKind::Id => {
                 let pos = self.current;

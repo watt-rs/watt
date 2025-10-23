@@ -10,15 +10,14 @@ type Node(value: dyn) {
     let value: dyn = value
 
     /// Gets last node
-    pub fn last(): Node {
+    pub fn last(): Node =
         match self.next {
             Option.None -> self
             Option.Some { element } -> element.last()
         }
-    }
 
     /// Inserts new Node
-    pub fn insert(value: dyn) {
+    pub fn insert(value: dyn) =
         match self.next {
             Option.Some { element } -> {
                 element.value = Option.Some(Node(value));
@@ -27,11 +26,10 @@ type Node(value: dyn) {
                 self.next = Option.Some(Node(value));
             }
         }
-    }
 
     /// Deletes node
-    pub fn delete(value: dyn): Option {
-        if self.value == value {
+    pub fn delete(value: dyn): Option =
+        if self.value == value { 
             self.next
         } else {
             self.next = match self.next {
@@ -46,7 +44,6 @@ type Node(value: dyn) {
             };
             Option.Some(self)
         }
-    }
 
     /// To string
     pub fn to_string(): string {
@@ -68,7 +65,7 @@ pub type List {
     let head: Option = Option.None()
 
     /// Appends element
-    pub fn push(value: dyn) {
+    pub fn push(value: dyn) =
         match self.head {
             Option.None -> {
                 self.head = Option.Some(Node(value));
@@ -76,20 +73,18 @@ pub type List {
             Option.Some { element } -> {
                 element.last().insert(value);
             }
-        };
-    }
+        }
 
     /// Deletes element
-    pub fn delete(value: dyn) {
+    pub fn delete(value: dyn) =
         match self.head {
             Option.Some { element } -> {
                 self.head = element.delete(value)
             }
-        };
-    }
+        }
 
     /// To string
-    pub fn to_string(): string {
+    pub fn to_string(): string =
         match self.head {
             Option.None -> {
                 "[]"
@@ -98,7 +93,6 @@ pub type List {
                 "[" <> conv.string(element.to_string()) <> "]"
             }
         }
-    }
 }
 
 fn main() {

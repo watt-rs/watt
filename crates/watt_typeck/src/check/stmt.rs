@@ -14,7 +14,12 @@ use watt_common::{address::Address, bail};
 /// Statements iferring
 impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// Analyzes while
-    fn analyze_while(&mut self, location: Address, logical: Expression, body: Block) {
+    fn analyze_while(
+        &mut self,
+        location: Address,
+        logical: Expression,
+        body: Either<Block, Expression>,
+    ) {
         // pushing rib
         self.resolver.push_rib(RibKind::Loop);
         // inferring logical
@@ -27,7 +32,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             }),
         }
         // inferring block
-        let _ = self.infer_block(body);
+        let _ = match body {
+            Either::Left(block) => self.infer_block(block),
+            Either::Right(expr) => self.infer_expr(expr),
+        };
         // popping rib
         self.resolver.pop_rib();
     }
