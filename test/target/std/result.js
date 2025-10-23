@@ -33,7 +33,7 @@ export function unwrap(result) {
             return value
         }),
         new $$VariantPattern("Err", function() {
-            panic("unwrap on error result.");
+            panic("unwrap on error result.")
             return unreachable()
         })
     ])

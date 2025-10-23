@@ -342,8 +342,23 @@ pub enum Statement {
     ///
     /// `continue`
     Continue { location: Address },
-    /// Represents semi colon statement
-    Semi(Box<Statement>),
+    /// Represents semi colon expression
+    Semi(Expression),
+}
+
+/// Implementation
+impl Statement {
+    pub fn location(&self) -> Address {
+        match self {
+            Statement::VarDef { location, .. } => location.clone(),
+            Statement::VarAssign { location, .. } => location.clone(),
+            Statement::Expr(expression) => expression.location(),
+            Statement::While { location, .. } => location.clone(),
+            Statement::Break { location } => location.clone(),
+            Statement::Continue { location } => location.clone(),
+            Statement::Semi(expression) => expression.location(),
+        }
+    }
 }
 
 /// Block

@@ -1,9 +1,9 @@
 /// Imports
 use ecow::EcoString;
 use miette::{Diagnostic, NamedSource, SourceSpan};
-use watt_lex::tokens::TokenKind;
 use std::sync::Arc;
 use thiserror::Error;
+use watt_lex::tokens::TokenKind;
 
 /// Parse errors with `thiserror`
 #[derive(Debug, Error, Diagnostic)]
@@ -17,6 +17,17 @@ pub enum ParseError {
         span: SourceSpan,
         unexpected: EcoString,
         expected: TokenKind,
+    },
+    #[error("expected semicolon after non-closing statement.")]
+    #[diagnostic(
+        code(parse::expected_semicolon),
+        help("the semicolon can be omitted only after last statement in the block.")
+    )]
+    ExpectedSemicolon {
+        #[source_code]
+        src: NamedSource<Arc<String>>,
+        #[label("expected semicolon after that.")]
+        span: SourceSpan,
     },
     #[error("unexpected end of file.")]
     #[diagnostic(code(parse::unexpected_eof))]

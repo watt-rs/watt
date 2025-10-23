@@ -227,7 +227,7 @@ impl<'file_path> Parser<'file_path> {
             None
         };
         // end span `fn (): ... {}`
-        let end_span = self.peek().address.clone();
+        let end_span = self.previous().address.clone();
 
         // body
         let body = self.block();
@@ -294,7 +294,7 @@ impl<'file_path> Parser<'file_path> {
 
     /// Variable parsing
     fn variable(&mut self) -> Expression {
-        // start address
+        // start address `id...`
         let start_address = self.peek().address.clone();
 
         // variable
@@ -323,9 +323,8 @@ impl<'file_path> Parser<'file_path> {
             if self.check(TokenKind::Lparen) {
                 let args = self.args();
                 let end_address = self.previous().address.clone();
-                let address = Address::span(start_address.span.start..end_address.span.end - 1);
                 result = Expression::Call {
-                    location: address,
+                    location: start_address.clone() + end_address,
                     what: Box::new(result),
                     args,
                 };
@@ -345,12 +344,12 @@ impl<'file_path> Parser<'file_path> {
                 span: location.span.into()
             }),
             _ => {
-                let op = self.peek().clone();
+                let op = self.advance().clone();
                 match op.tk_type {
                     TokenKind::Assign => {
-                        let start_address = self.advance().address.clone();
+                        let start_address = variable.location();
                         let expr = self.expr();
-                        let end_address = self.peek().address.clone();
+                        let end_address = self.previous().address.clone();
                         Statement::VarAssign {
                             location: start_address + end_address,
                             what: variable,
@@ -358,14 +357,14 @@ impl<'file_path> Parser<'file_path> {
                         }
                     }
                     TokenKind::AddAssign => {
-                        let op_address = self.advance().address.clone();
+                        let start_address = variable.location();
                         let expr = Box::new(self.expr());
-                        let end_address = self.peek().address.clone();
+                        let end_address = self.previous().address.clone();
                         Statement::VarAssign {
-                            location: op_address.clone() + end_address.clone(),
+                            location: start_address.clone() + end_address.clone(),
                             what: variable.clone(),
                             value: Expression::Bin {
-                                location: op_address + end_address,
+                                location: start_address + end_address,
                                 left: Box::new(variable),
                                 right: expr,
                                 op: BinaryOp::Add,
@@ -373,14 +372,14 @@ impl<'file_path> Parser<'file_path> {
                         }
                     }
                     TokenKind::SubAssign => {
-                        let op_address = self.advance().address.clone();
+                        let start_address = variable.location();
                         let expr = Box::new(self.expr());
-                        let end_address = self.peek().address.clone();
+                        let end_address = self.previous().address.clone();
                         Statement::VarAssign {
                             location: Address::span(address.span.start..end_address.span.end - 1),
                             what: variable.clone(),
                             value: Expression::Bin {
-                                location: op_address + end_address,
+                                location: start_address + end_address,
                                 left: Box::new(variable),
                                 right: expr,
                                 op: BinaryOp::Sub,
@@ -388,14 +387,14 @@ impl<'file_path> Parser<'file_path> {
                         }
                     }
                     TokenKind::MulAssign => {
-                        let op_address = self.advance().address.clone();
+                        let start_address = variable.location();
                         let expr = Box::new(self.expr());
-                        let end_address = self.peek().address.clone();
+                        let end_address = self.previous().address.clone();
                         Statement::VarAssign {
                             location: Address::span(address.span.start..end_address.span.end - 1),
                             what: variable.clone(),
                             value: Expression::Bin {
-                                location: op_address + end_address,
+                                location: start_address + end_address,
                                 left: Box::new(variable),
                                 right: expr,
                                 op: BinaryOp::Mul,
@@ -403,14 +402,14 @@ impl<'file_path> Parser<'file_path> {
                         }
                     }
                     TokenKind::DivAssign => {
-                        let op_address = self.advance().address.clone();
+                        let start_address = variable.location();
                         let expr = Box::new(self.expr());
-                        let end_address = self.peek().address.clone();
+                        let end_address = self.previous().address.clone();
                         Statement::VarAssign {
                             location: Address::span(address.span.start..end_address.span.end - 1),
                             what: variable.clone(),
                             value: Expression::Bin {
-                                location: op_address + end_address,
+                                location: start_address + end_address,
                                 left: Box::new(variable),
                                 right: expr,
                                 op: BinaryOp::Div,
@@ -429,6 +428,9 @@ impl<'file_path> Parser<'file_path> {
 
     /// Let statement parsing
     fn let_stmt(&mut self) -> Statement {
+        // start address
+        let start_address = self.peek().address.clone();
+
         // `let $id`
         self.consume(TokenKind::Let);
         let name = self.consume(TokenKind::Id).clone();
@@ -449,8 +451,11 @@ impl<'file_path> Parser<'file_path> {
         self.consume(TokenKind::Assign);
         let value = self.expr();
 
+        // end address
+        let end_address = self.previous().address.clone();
+
         Statement::VarDef {
-            location: name.address,
+            location: start_address + end_address,
             name: name.value,
             typ,
             value,
@@ -548,7 +553,7 @@ impl<'file_path> Parser<'file_path> {
             let op = self.peek().clone();
             self.current += 1;
             let right = self.unary_expr();
-            let end_location = self.peek().address.clone();
+            let end_location = self.previous().address.clone();
             left = Expression::Bin {
                 location: start_location + end_location,
                 left: Box::new(left),
@@ -580,7 +585,7 @@ impl<'file_path> Parser<'file_path> {
             let op = self.peek().clone();
             self.current += 1;
             let right = self.multiplicative_expr();
-            let end_location = self.peek().address.clone();
+            let end_location = self.previous().address.clone();
             left = Expression::Bin {
                 location: start_location + end_location,
                 left: Box::new(left),
@@ -610,7 +615,7 @@ impl<'file_path> Parser<'file_path> {
         {
             let op = self.advance().clone();
             let right = self.additive_expr();
-            let end_location = self.peek().address.clone();
+            let end_location = self.previous().address.clone();
             left = Expression::Bin {
                 location: start_location + end_location,
                 left: Box::new(left),
@@ -636,7 +641,7 @@ impl<'file_path> Parser<'file_path> {
         if self.check(TokenKind::Eq) || self.check(TokenKind::NotEq) {
             let op = self.advance().clone();
             let right = self.compare_expr();
-            let end_location = self.peek().address.clone();
+            let end_location = self.previous().address.clone();
             left = Expression::Bin {
                 location: start_location + end_location,
                 left: Box::new(left),
@@ -660,7 +665,7 @@ impl<'file_path> Parser<'file_path> {
         while self.check(TokenKind::And) || self.check(TokenKind::Or) {
             let op = self.advance().clone();
             let right = self.equality_expr();
-            let end_location = self.peek().address.clone();
+            let end_location = self.previous().address.clone();
             left = Expression::Bin {
                 location: start_location + end_location,
                 left: Box::new(left),
@@ -1175,14 +1180,31 @@ impl<'file_path> Parser<'file_path> {
                     }
                 }
             }
-            _ => Statement::Expr(self.expr()),
+            _ => {
+                let expr = self.expr();
+                if self.check(TokenKind::Semicolon) {
+                    Statement::Semi(expr)
+                } else {
+                    Statement::Expr(expr)
+                }
+            }
         };
         // If `;` presented
         if self.check(TokenKind::Semicolon) {
             self.advance();
-            Statement::Semi(Box::new(stmt))
-        } else {
             stmt
+        }
+        // If not
+        else {
+            // Checking for closing brace `}`
+            if self.check(TokenKind::Rbrace) {
+                stmt
+            } else {
+                bail!(ParseError::ExpectedSemicolon {
+                    src: self.named_source.clone(),
+                    span: stmt.location().span.into()
+                })
+            }
         }
     }
 

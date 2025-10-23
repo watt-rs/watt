@@ -287,7 +287,7 @@ pub fn gen_statement(stmt: Statement) -> js::Tokens {
         // Expression statement
         Statement::Expr(expr) => quote!($(gen_expression(expr))),
         // Semicolon expression statement
-        Statement::Semi(stmt) => quote!($(gen_statement(*stmt));),
+        Statement::Semi(expr) => quote!($(gen_expression(expr));),
     }
 }
 

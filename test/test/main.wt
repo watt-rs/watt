@@ -9,7 +9,7 @@ type Flashlight(powered: Power) {
   let is_powered = powered
 
   pub fn power(on: Power) {
-    self.is_powered = on
+    self.is_powered = on;
     io.println("power: " <> match self.is_powered {
       Power.On -> "on"
       Power.Off -> "off"
