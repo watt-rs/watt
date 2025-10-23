@@ -521,6 +521,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     .collect(),
                 ret: self.infer_type_annotation(*ret),
             })),
+            TypePath::Unit { .. } => Typ::Unit,
         }
     }
 

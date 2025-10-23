@@ -29,7 +29,7 @@ type Node(value: dyn) {
 
     /// Deletes node
     pub fn delete(value: dyn): Option =
-        if self.value == value { 
+        if self.value == value {
             self.next
         } else {
             self.next = match self.next {

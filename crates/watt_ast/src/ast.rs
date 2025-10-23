@@ -28,6 +28,9 @@ pub enum TypePath {
         params: Vec<TypePath>,
         ret: Box<TypePath>,
     },
+    Unit {
+        location: Address,
+    },
 }
 
 /// Type path implementation
@@ -37,6 +40,7 @@ impl TypePath {
             TypePath::Local { location, .. } => location.clone(),
             TypePath::Module { location, .. } => location.clone(),
             TypePath::Function { location, .. } => location.clone(),
+            TypePath::Unit { location } => location.clone(),
         }
     }
 }

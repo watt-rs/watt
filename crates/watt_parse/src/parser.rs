@@ -172,7 +172,7 @@ impl<'file_path> Parser<'file_path> {
         // If function type annotation
         if self.check(TokenKind::Fn) {
             // start of span `fn (...): ...`
-            let span_start = self.peek().address.clone();
+            let start_address = self.peek().address.clone();
             self.consume(TokenKind::Fn);
             // params
             self.consume(TokenKind::Lparen);
@@ -187,25 +187,38 @@ impl<'file_path> Parser<'file_path> {
             self.consume(TokenKind::Colon);
             let ret = Box::new(self.type_annotation());
             // end of span `fn (...): ...`
-            let span_end = self.peek().address.clone();
+            let end_address = self.previous().address.clone();
             // function type path
             TypePath::Function {
-                location: Address::span(span_start.span.start..span_end.span.end),
+                location: Address::span(start_address.span.start..end_address.span.end),
                 params,
                 ret,
             }
         }
+        // If unit type annotation
+        else if self.check(TokenKind::Lparen) {
+            // ()
+            let start_address = self.advance().address.clone();
+            let end_address = self.consume(TokenKind::Rparen).address.clone();
+            TypePath::Unit {
+                location: start_address + end_address,
+            }
+        }
         // Else, type name annotation
         else {
+            // start address of `type.annotation`
+            let start_address = self.peek().address.clone();
             // fisrt id
             let first_id = self.consume(TokenKind::Id).clone();
             // if dot found
             if self.check(TokenKind::Dot) {
                 // consuming dot
                 self.consume(TokenKind::Dot);
+                // end address of `module.definition`
+                let end_address = self.peek().address.clone();
                 // module type path
                 TypePath::Module {
-                    location: first_id.address,
+                    location: start_address + end_address,
                     module: first_id.value,
                     name: self.consume(TokenKind::Id).value.clone(),
                 }
@@ -214,7 +227,7 @@ impl<'file_path> Parser<'file_path> {
             else {
                 // local type path
                 TypePath::Local {
-                    location: first_id.address,
+                    location: start_address,
                     name: first_id.value,
                 }
             }
