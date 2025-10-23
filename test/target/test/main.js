@@ -1,9 +1,23 @@
-import {$$match, $$equals, $$EqPattern, $$UnwrapPattern, $$DefPattern} from "../prelude.js"
+import {
+    $$match,
+    $$equals,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "../prelude.js"
 
 import * as io from "../std/io.js"
 
-todo
-
-todo
-
-todo
+export function main() {
+    let a = (() => {
+        if (true) {
+            return true
+        }
+        else {
+            return false
+        }
+    })();
+    io.println(a);
+}

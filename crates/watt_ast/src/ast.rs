@@ -343,7 +343,7 @@ pub enum Statement {
     /// `continue`
     Continue { location: Address },
     /// Represents semi colon statement
-    Semi { stmt: Box<Statement> },
+    Semi(Box<Statement>),
 }
 
 /// Block
@@ -421,7 +421,7 @@ pub enum Declaration {
     ///
     /// `publicity` extern fn(..., ..., n): typ = '""' / '``'
     ///
-    ExternFn {
+    ExternFunction {
         location: Address,
         name: EcoString,
         publicity: Publicity,

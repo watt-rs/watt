@@ -124,7 +124,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 }
                 Typ::Unit
             }
-            Statement::Semi { stmt } => {
+            Statement::Semi(stmt) => {
                 self.infer_stmt(*stmt);
                 Typ::Unit
             }

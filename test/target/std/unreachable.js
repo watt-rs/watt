@@ -1,5 +1,16 @@
-import {$$match, $$equals, $$EqPattern, $$UnwrapPattern, $$DefPattern} from "../prelude.js"
+import {
+    $$match,
+    $$equals,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "../prelude.js"
 
 import {panic} from "../std/rt.js"
 
-todo
+export function unreachable() {
+    panic("unreachable created.");
+    return -1
+}

@@ -102,12 +102,43 @@ export class $$EqPattern {
     }
 }
 
-export class $$DefPattern {
+export class $$WildcardPattern {
     constructor(eq_fn) {
         this.eq_fn = eq_fn;
     }
     evaluate(value) {
         return [true, this.eq_fn()];
+    }
+}
+
+export class $$BindPattern {
+    constructor(eq_fn) {
+        this.eq_fn = eq_fn;
+    }
+    evaluate(value) {
+        return [true, this.eq_fn(value)];
+    }
+}
+
+export class $$VariantPattern {
+    constructor(variant, eq_fn) {
+        this.variant = variant
+        this.eq_fn = eq_fn;
+    }
+    evaluate(value) {
+
+        if ("$meta" in value) {
+
+            let meta = value.$meta;
+
+            if (meta == "Enum") {
+                if (value.$variant == this.variant) {
+                    return [true, this.eq_fn(value)];
+                } else {
+                    return [false, null]
+                }
+            }
+        }
     }
 }
 

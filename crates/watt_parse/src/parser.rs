@@ -953,7 +953,7 @@ impl<'file_path> Parser<'file_path> {
         // end location
         let end_location = self.previous().address.clone();
 
-        Declaration::ExternFn {
+        Declaration::ExternFunction {
             location: start_location + end_location,
             name,
             publicity,
@@ -1180,9 +1180,7 @@ impl<'file_path> Parser<'file_path> {
         // If `;` presented
         if self.check(TokenKind::Semicolon) {
             self.advance();
-            Statement::Semi {
-                stmt: Box::new(stmt),
-            }
+            Statement::Semi(Box::new(stmt))
         } else {
             stmt
         }

@@ -1,3 +1,23 @@
-import {$$match, $$equals, $$EqPattern, $$UnwrapPattern, $$DefPattern} from "../prelude.js"
+import {
+    $$match,
+    $$equals,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "../prelude.js"
 
-todo
+export const Option = {
+    Some: (element) => ({
+        $meta: "Enum",
+        $enum: "Option",
+        $variant: "Some",
+        element: element
+    }),
+    None: () => ({
+        $meta: "Enum",
+        $enum: "Option",
+        $variant: "None",
+    })
+};

@@ -390,7 +390,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 publicity,
                 variants,
             } => self.analyze_enum(location, name, publicity, variants),
-            Declaration::ExternFn {
+            Declaration::ExternFunction {
                 location,
                 name,
                 publicity,

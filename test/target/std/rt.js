@@ -1,7 +1,35 @@
-import {$$match, $$equals, $$EqPattern, $$UnwrapPattern, $$DefPattern} from "../prelude.js"
+import {
+    $$match,
+    $$equals,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "../prelude.js"
 
-todo
+export function which() {
+    return (typeof Deno!="undefined"?"Deno":typeof Bun!="undefined"?"Bun":typeof process!="undefined"&&process.versions?.node?"Node.js":"Unknown")
+}
 
-todo
+export function exit(code) {
+    
+  const runtime = which();
+  if (runtime == "Deno") {
+    Deno.exit(code);
+  } else if (runtime == "Bun") {
+    Bun.exit(code);
+  } else if (runtime == "Node.js") {
+    process.exit(code);
+  } else {
+    panic("unimplemented");
+  }
 
-todo
+}
+
+export function panic(text) {
+    
+  const err = new Error(text);
+  throw err;
+
+}
