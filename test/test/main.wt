@@ -1,17 +1,10 @@
 use std/io as io
 use std/option for Option
 
-fn is_some(a: Option): bool {
-    match a {
-        Option.Some -> {
+fn main() {
+    let value: bool = match Option.None() {
+        Option.Some | Option.None -> {
             true
         }
-        Option.None -> {
-            false
-        }
-    }
-}
-
-fn main() {
-    is_some(Option.Some(3));
+    };
 }

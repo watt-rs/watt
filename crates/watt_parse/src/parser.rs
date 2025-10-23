@@ -710,60 +710,70 @@ impl<'file_path> Parser<'file_path> {
 
     /// Pattern parsing
     fn pattern(&mut self) -> Pattern {
-        // If string presented
-        if self.check(TokenKind::Text) {
-            Pattern::String(self.advance().value.clone())
-        }
-        // If bool presented
-        else if self.check(TokenKind::Bool) {
-            Pattern::Bool(self.advance().value.clone())
-        }
-        // If number presented
-        else if self.check(TokenKind::Number) {
-            let value = self.advance().clone();
-            if value.value.contains(".") {
-                Pattern::Float(value.value)
-            } else {
-                Pattern::Int(value.value)
+        // Parsing single pattern
+        let pattern =
+            // If string presented
+            if self.check(TokenKind::Text) {
+                Pattern::String(self.advance().value.clone())
             }
-        }
-        // If identifier presented
-        else {
-            // If dot or paren presented -> enum patterns
-            if self.check_next(TokenKind::Dot) || self.check_next(TokenKind::Lparen) {
-                // Parsing variant
-                let value = self.variable();
-                // Checking for unwrap of enum
-                if self.check(TokenKind::Lbrace) {
-                    // { .., n fields }
-                    self.consume(TokenKind::Lbrace);
-                    let mut fields = Vec::new();
-                    // Checking for close of braces
-                    if self.check(TokenKind::Rbrace) {
-                        self.advance();
-                        return Pattern::Unwrap { en: value, fields };
-                    }
-                    // Parsing field names
-                    let field = self.consume(TokenKind::Id).clone();
-                    fields.push((field.address, field.value));
-                    while self.check(TokenKind::Comma) {
-                        self.advance();
+            // If bool presented
+            else if self.check(TokenKind::Bool) {
+                Pattern::Bool(self.advance().value.clone())
+            }
+            // If number presented
+            else if self.check(TokenKind::Number) {
+                let value = self.advance().clone();
+                if value.value.contains(".") {
+                    Pattern::Float(value.value)
+                } else {
+                    Pattern::Int(value.value)
+                }
+            }
+            // If identifier presented
+            else {
+                // If dot or paren presented -> enum patterns
+                if self.check_next(TokenKind::Dot) || self.check_next(TokenKind::Lparen) {
+                    // Parsing variant
+                    let value = self.variable();
+                    // Checking for unwrap of enum
+                    if self.check(TokenKind::Lbrace) {
+                        // { .., n fields }
+                        self.consume(TokenKind::Lbrace);
+                        let mut fields = Vec::new();
+                        // Checking for close of braces
+                        if self.check(TokenKind::Rbrace) {
+                            self.advance();
+                            return Pattern::Unwrap { en: value, fields };
+                        }
+                        // Parsing field names
                         let field = self.consume(TokenKind::Id).clone();
                         fields.push((field.address, field.value));
+                        while self.check(TokenKind::Comma) {
+                            self.advance();
+                            let field = self.consume(TokenKind::Id).clone();
+                            fields.push((field.address, field.value));
+                        }
+                        self.consume(TokenKind::Rbrace);
+                        // As result, enum unwrap pattern
+                        Pattern::Unwrap { en: value, fields }
                     }
-                    self.consume(TokenKind::Rbrace);
-                    // As result, enum unwrap pattern
-                    Pattern::Unwrap { en: value, fields }
+                    // If no unwrap, returning just as value
+                    else {
+                        Pattern::Variant(value)
+                    }
                 }
-                // If no unwrap, returning just as value
+                // If not -> bind pattern
                 else {
-                    Pattern::Variant(value)
+                    Pattern::BindTo(self.consume(TokenKind::Id).value.clone())
                 }
-            }
-            // If not -> bind pattern
-            else {
-                Pattern::BindTo(self.consume(TokenKind::Id).value.clone())
-            }
+            };
+        // Checking if more patterns presented
+        if self.check(TokenKind::Bar) {
+            // Parsing `or` pattern
+            self.consume(TokenKind::Bar);
+            Pattern::Or(Box::new(pattern), Box::new(self.pattern()))
+        } else {
+            pattern
         }
     }
 
@@ -794,7 +804,7 @@ impl<'file_path> Parser<'file_path> {
                 let end_span = self.previous().address.clone();
                 cases.push(Case {
                     address: start_span + end_span,
-                    pattern: Pattern::Default,
+                    pattern: Pattern::Wildcard,
                     body,
                 });
             }

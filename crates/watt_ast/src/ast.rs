@@ -134,8 +134,10 @@ pub enum Pattern {
     String(EcoString),
     // Bind pattern
     BindTo(EcoString),
-    // Default pattern
-    Default,
+    // Wildcard pattern
+    Wildcard,
+    // Two patterns in one
+    Or(Box<Pattern>, Box<Pattern>),
 }
 
 /// Case

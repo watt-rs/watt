@@ -2,7 +2,7 @@
 use crate::{
     cx::module::ModuleCx,
     resolve::res::Res,
-    typ::{Enum, PreludeType, Typ},
+    typ::{Enum, EnumVariant, PreludeType, Typ},
 };
 use watt_ast::ast::{Case, Pattern};
 use watt_common::rc_ptr::RcPtr;
@@ -27,87 +27,145 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
             // could not be covered, except boolean.
             Typ::Prelude(typ) => match typ {
                 PreludeType::Bool => ex.check_with_bool(),
-                _ => false,
+                _ => ex.has_default_pattern(&ex.cases),
             },
             // All custom type values
             // could not be covered,
             // because it's a ref type.
-            Typ::Custom(_) => false,
+            //
+            // So, checking for default patterns
+            // `BindTo` and `Wildcard`
+            Typ::Custom(_) => ex.has_default_pattern(&ex.cases),
             // All enum variant values
             // could be covered, so
             // checking it
+            //
+            // So, checking for default patterns
+            // `BindTo` and `Wildcard`
             Typ::Enum(en) => ex.check_with_en(en.clone()),
             // All function values
             // cold not be covered,
             // becuase it's a ref type.
-            Typ::Function(_) => false,
+            //
+            // So, checking for default patterns
+            // `BindTo` and `Wildcard`
+            Typ::Function(_) => ex.has_default_pattern(&ex.cases),
             // All dyn value
             // could not be covered,
             // because it's a dynamic type
             // with unknown constraints
-            Typ::Dyn => false,
+            //
+            // So, checking for default patterns
+            // `BindTo` and `Wildcard`
+            Typ::Dyn => ex.has_default_pattern(&ex.cases),
             // Could not cover unit
             // values, becuase...
             // it's nothing =)
-            Typ::Unit => false,
+            //
+            // So, checking for default patterns
+            // `BindTo` and `Wildcard`
+            Typ::Unit => ex.has_default_pattern(&ex.cases),
+        }
+    }
+
+    /// Checks that `BindTo` or `Wildcard` pattern exists in cases vec
+    fn has_default_pattern(&self, cases: &Vec<Case>) -> bool {
+        // Checking for patterns
+        for case in cases {
+            match case.pattern {
+                Pattern::BindTo(_) => return true,
+                Pattern::Wildcard => return true,
+                _ => continue,
+            }
+        }
+        // Else
+        false
+    }
+
+    /// Checks that true or false is matched
+    /// (true_matched, false_matched)
+    fn check_bool_pattern(pattern: &Pattern) -> (bool, bool) {
+        // Matching pattern
+        match &pattern {
+            // Bool pattern
+            Pattern::Bool(val) => match val.as_str() {
+                "true" => (true, false),
+                "false" => (false, true),
+                _ => unreachable!(),
+            },
+            // Or pattern
+            Pattern::Or(pat1, pat2) => {
+                let first = Self::check_bool_pattern(pat1);
+                let second = Self::check_bool_pattern(pat2);
+                (first.0 || second.0, first.1 || second.1)
+            }
+            // Other
+            _ => (false, false),
         }
     }
 
     /// Checks that all possible
     /// bool values (true, false) are covered
     fn check_with_bool(&mut self) -> bool {
-        // is true matched
+        // True matched
         let mut true_matched = false;
         let mut false_matched = false;
         // Matching all cases
-        for case in self.cases.drain(..) {
-            // Matching pattern
-            match case.pattern {
-                // Bool pattern
-                Pattern::Bool(val) => match val.as_str() {
-                    "true" => true_matched = true,
-                    "false" => false_matched = false,
-                    _ => unreachable!(),
-                },
-                _ => return false,
-            }
+        for case in &self.cases {
+            match Self::check_bool_pattern(&case.pattern) {
+                (true, true) => return true,
+                (true, false) => {
+                    true_matched = true;
+                }
+                (false, true) => {
+                    false_matched = true;
+                }
+                _ => {}
+            };
         }
-        // If both matched
-        true_matched && false_matched
+        // If not not matched
+        return (true_matched && false_matched) || self.has_default_pattern(&self.cases);
+    }
+
+    /// Collects matched variants
+    fn collect_enum_variants(&mut self, pattern: &Pattern) -> Vec<EnumVariant> {
+        // Matched variants
+        let mut variants = Vec::new();
+        // Matching pattern
+        match pattern {
+            Pattern::Unwrap { en, .. } => match self.cx.infer_resolution(en.clone()) {
+                Res::Variant(_, pattern_variant) => {
+                    variants.push(pattern_variant);
+                }
+                _ => unreachable!(),
+            },
+            Pattern::Variant(var) => match self.cx.infer_resolution(var.clone()) {
+                Res::Variant(_, pattern_variant) => {
+                    variants.push(pattern_variant);
+                }
+                _ => unreachable!(),
+            },
+            Pattern::Or(pat1, pat2) => {
+                variants.append(&mut self.collect_enum_variants(&pat1));
+                variants.append(&mut self.collect_enum_variants(&pat2));
+            }
+            _ => return variants,
+        }
+        variants
     }
 
     /// Checks that all possible
     /// enum variants are covered
     fn check_with_en(&mut self, en: RcPtr<Enum>) -> bool {
-        // Matched patterns
-        let mut matched_patterns = Vec::new();
+        // Matched variants
+        let mut matched_variants = Vec::new();
         // Matching all cases
-        for case in self.cases.drain(..) {
-            // Matching pattern
-            match case.pattern {
-                // Unwrap pattern
-                Pattern::Unwrap { en: pattern_en, .. } => {
-                    match self.cx.infer_resolution(pattern_en) {
-                        Res::Variant(_, pattern_variant) => {
-                            matched_patterns.push(pattern_variant);
-                        }
-                        _ => unreachable!(),
-                    }
-                }
-                Pattern::Variant(var) => match self.cx.infer_resolution(var) {
-                    Res::Variant(_, pattern_variant) => {
-                        matched_patterns.push(pattern_variant);
-                    }
-                    _ => unreachable!(),
-                },
-                Pattern::Default => return true,
-                Pattern::BindTo(_) => return true,
-                _ => continue,
-            }
+        for case in std::mem::take(&mut self.cases) {
+            matched_variants.append(&mut self.collect_enum_variants(&case.pattern));
         }
         // Deleting duplicates
-        matched_patterns.dedup();
+        matched_variants.dedup();
         // Checking all patterns covered
-        matched_patterns.len() == en.variants.len()
+        matched_variants.len() == en.variants.len()
     }
 }

@@ -596,13 +596,142 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         Typ::Function(RcPtr::new(function))
     }
 
+    /// Analyzes single pattern
+    fn analyze_pattern(&mut self, inferred_what: Typ, case: &Case, pat: &Pattern) {
+        // matching pattern
+        match pat.clone() {
+            Pattern::Unwrap { en, fields } => {
+                // inferring resolution, and checking
+                // that is a enum variant
+                let res = self.infer_resolution(en);
+                match &res {
+                    Res::Variant(en, variant) => {
+                        // If types aren't equal
+                        let en_typ = Typ::Enum(en.clone());
+                        if inferred_what != en_typ {
+                            bail!(TypeckError::TypesMissmatch {
+                                src: self.module.source.clone(),
+                                span: case.address.span.clone().into(),
+                                expected: en_typ,
+                                got: inferred_what.clone()
+                            });
+                        }
+                        // If types equal, checking fields existence
+                        else {
+                            fields.into_iter().for_each(|field| {
+                                match variant.params.get(&field.1) {
+                                    // Defining field with it's type, if it exists
+                                    Some(typ) => {
+                                        self.resolver.define(
+                                            &self.module.source,
+                                            &field.0,
+                                            &field.1,
+                                            Def::Local(typ.clone()),
+                                        );
+                                    }
+                                    None => bail!(TypeckError::EnumVariantFieldIsNotDefined {
+                                        src: self.module.source.clone(),
+                                        span: case.address.span.clone().into(),
+                                        res: res.clone(),
+                                        field: field.1
+                                    }),
+                                }
+                            });
+                        }
+                    }
+                    _ => bail!(TypeckError::WrongUnwrapPattern {
+                        src: self.module.source.clone(),
+                        span: case.address.span.clone().into(),
+                        got: res
+                    }),
+                }
+            }
+            Pattern::Int(_) => {
+                let typ = Typ::Prelude(PreludeType::Int);
+                if inferred_what != typ {
+                    bail!(TypeckError::TypesMissmatch {
+                        src: self.module.source.clone(),
+                        span: case.address.span.clone().into(),
+                        expected: inferred_what,
+                        got: typ
+                    })
+                }
+            }
+            Pattern::Float(_) => {
+                let typ = Typ::Prelude(PreludeType::Float);
+                if inferred_what != typ {
+                    bail!(TypeckError::TypesMissmatch {
+                        src: self.module.source.clone(),
+                        span: case.address.span.clone().into(),
+                        expected: inferred_what,
+                        got: typ
+                    })
+                }
+            }
+            Pattern::String(_) => {
+                let typ = Typ::Prelude(PreludeType::String);
+                if inferred_what != typ {
+                    bail!(TypeckError::TypesMissmatch {
+                        src: self.module.source.clone(),
+                        span: case.address.span.clone().into(),
+                        expected: inferred_what,
+                        got: typ
+                    })
+                }
+            }
+            Pattern::Bool(_) => {
+                let typ = Typ::Prelude(PreludeType::Bool);
+                if inferred_what != typ {
+                    bail!(TypeckError::TypesMissmatch {
+                        src: self.module.source.clone(),
+                        span: case.address.span.clone().into(),
+                        expected: inferred_what,
+                        got: typ
+                    })
+                }
+            }
+            Pattern::Wildcard => {}
+            Pattern::Variant(var) => {
+                // inferring resolution, and checking
+                // that is a enum variant
+                let res = self.infer_resolution(var);
+                match &res {
+                    Res::Variant(en, _) => {
+                        // If types aren't equal
+                        let en_typ = Typ::Enum(en.clone());
+                        if inferred_what != en_typ {
+                            bail!(TypeckError::TypesMissmatch {
+                                src: self.module.source.clone(),
+                                span: case.address.span.clone().into(),
+                                expected: en_typ,
+                                got: inferred_what.clone()
+                            });
+                        }
+                    }
+                    _ => bail!(TypeckError::WrongVariantPattern {
+                        src: self.module.source.clone(),
+                        span: case.address.span.clone().into(),
+                        got: res
+                    }),
+                }
+            }
+            Pattern::BindTo(name) => {
+                self.resolver.define(
+                    &self.module.source,
+                    &case.address,
+                    &name,
+                    Def::Local(inferred_what.clone()),
+                );
+            }
+            Pattern::Or(pat1, pat2) => {
+                self.analyze_pattern(inferred_what.clone(), case, &pat1);
+                self.analyze_pattern(inferred_what, case, &pat2);
+            }
+        }
+    }
+
     /// Infers pattern matching
-    pub(crate) fn infer_pattern_matching(
-        &mut self,
-        location: Address,
-        what: Expression,
-        cases: Vec<Case>,
-    ) -> Typ {
+    pub(crate) fn infer_pattern_matching(&mut self, what: Expression, cases: Vec<Case>) -> Typ {
         // inferring matchable
         let inferred_what = self.infer_expr(what);
         // to unify
@@ -611,132 +740,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         for case in cases.clone() {
             // pattern scope start
             self.resolver.push_rib(RibKind::Pattern);
-            // matching pattern
-            match case.pattern {
-                Pattern::Unwrap { en, fields } => {
-                    // inferring resolution, and checking
-                    // that is a enum variant
-                    let res = self.infer_resolution(en);
-                    match &res {
-                        Res::Variant(en, variant) => {
-                            // If types aren't equal
-                            let en_typ = Typ::Enum(en.clone());
-                            if inferred_what != en_typ {
-                                bail!(TypeckError::TypesMissmatch {
-                                    src: self.module.source.clone(),
-                                    span: case.address.span.into(),
-                                    expected: en_typ,
-                                    got: inferred_what.clone()
-                                });
-                            }
-                            // If types equal, checking fields existence
-                            else {
-                                fields.into_iter().for_each(|field| {
-                                    match variant.params.get(&field.1) {
-                                        // Defining field with it's type, if it exists
-                                        Some(typ) => {
-                                            self.resolver.define(
-                                                &self.module.source,
-                                                &location,
-                                                &field.1,
-                                                Def::Local(typ.clone()),
-                                            );
-                                        }
-                                        None => bail!(TypeckError::EnumVariantFieldIsNotDefined {
-                                            src: self.module.source.clone(),
-                                            span: case.address.span.clone().into(),
-                                            res: res.clone(),
-                                            field: field.1
-                                        }),
-                                    }
-                                });
-                            }
-                        }
-                        _ => bail!(TypeckError::WrongUnwrapPattern {
-                            src: self.module.source.clone(),
-                            span: case.address.span.into(),
-                            got: res
-                        }),
-                    }
-                }
-                Pattern::Int(_) => {
-                    let typ = Typ::Prelude(PreludeType::Int);
-                    if inferred_what != typ {
-                        bail!(TypeckError::TypesMissmatch {
-                            src: self.module.source.clone(),
-                            span: case.address.span.into(),
-                            expected: inferred_what,
-                            got: typ
-                        })
-                    }
-                }
-                Pattern::Float(_) => {
-                    let typ = Typ::Prelude(PreludeType::Float);
-                    if inferred_what != typ {
-                        bail!(TypeckError::TypesMissmatch {
-                            src: self.module.source.clone(),
-                            span: case.address.span.into(),
-                            expected: inferred_what,
-                            got: typ
-                        })
-                    }
-                }
-                Pattern::String(_) => {
-                    let typ = Typ::Prelude(PreludeType::String);
-                    if inferred_what != typ {
-                        bail!(TypeckError::TypesMissmatch {
-                            src: self.module.source.clone(),
-                            span: case.address.span.into(),
-                            expected: inferred_what,
-                            got: typ
-                        })
-                    }
-                }
-                Pattern::Bool(_) => {
-                    let typ = Typ::Prelude(PreludeType::Bool);
-                    if inferred_what != typ {
-                        bail!(TypeckError::TypesMissmatch {
-                            src: self.module.source.clone(),
-                            span: case.address.span.into(),
-                            expected: inferred_what,
-                            got: typ
-                        })
-                    }
-                }
-                Pattern::Default => {}
-                Pattern::Variant(var) => {
-                    // inferring resolution, and checking
-                    // that is a enum variant
-                    let res = self.infer_resolution(var);
-                    match &res {
-                        Res::Variant(en, _) => {
-                            // If types aren't equal
-                            let en_typ = Typ::Enum(en.clone());
-                            if inferred_what != en_typ {
-                                bail!(TypeckError::TypesMissmatch {
-                                    src: self.module.source.clone(),
-                                    span: case.address.span.into(),
-                                    expected: en_typ,
-                                    got: inferred_what.clone()
-                                });
-                            }
-                        }
-                        _ => bail!(TypeckError::WrongVariantPattern {
-                            src: self.module.source.clone(),
-                            span: case.address.span.into(),
-                            got: res
-                        }),
-                    }
-                }
-                Pattern::BindTo(name) => {
-                    self.resolver.define(
-                        &self.module.source,
-                        &case.address,
-                        &name,
-                        Def::Local(inferred_what.clone()),
-                    );
-                }
-            }
+            // analyzing pattern
+            self.analyze_pattern(inferred_what.clone(), &case, &case.pattern);
             // analyzing body
             let case_location = case.body.location.clone();
             let inferred_case = self.infer_block(case.body);
@@ -861,11 +866,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 body,
                 typ,
             } => self.infer_anonymous_fn(location, params, body, typ),
-            Expression::Match {
-                location,
-                value,
-                cases,
-            } => self.infer_pattern_matching(location, *value, cases),
+            Expression::Match { value, cases, .. } => self.infer_pattern_matching(*value, cases),
             Expression::If {
                 location,
                 logical,
