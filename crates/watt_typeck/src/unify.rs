@@ -67,16 +67,7 @@ impl<'eq> EquationsSolver<'eq> {
                         t2: t2.clone()
                     }),
                 },
-                (Typ::Dyn, t) | (t, Typ::Dyn) => match t {
-                    Typ::Unit => bail!(TypeckError::CouldNotUnify {
-                        src: self.source.clone(),
-                        first_span: l1.span.clone().into(),
-                        t1: t1.clone(),
-                        second_span: l2.span.clone().into(),
-                        t2: t2.clone()
-                    }),
-                    _ => Typ::Dyn,
-                },
+                (Typ::Dyn, _) | (_, Typ::Dyn) => Typ::Dyn,
                 _ => bail!(TypeckError::CouldNotUnify {
                     src: self.source.clone(),
                     first_span: l1.span.clone().into(),

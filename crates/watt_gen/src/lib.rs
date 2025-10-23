@@ -360,7 +360,8 @@ pub fn gen_declaration(decl: Declaration) -> js::Tokens {
             // with meta type field as `type_name`
             let generated_constructor = quote! {
                 constructor($(for field in constructor.clone() join (, ) => $(try_escape_js(&field.name)))) {
-                    this.$("$")meta = $(quoted(name.to_string()));
+                    this.$("$meta") = "Type";
+                    this.$("$type") = $(quoted(name.to_string()));
                     $(for decl in std::mem::take(&mut declarations) {
                         $(match decl {
                             Declaration::VarDef { name, value, .. } => {

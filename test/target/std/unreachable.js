@@ -11,6 +11,5 @@ import {
 import {panic} from "../std/rt.js"
 
 export function unreachable() {
-    panic("unreachable created.");
-    return -1
+    return panic("unreachable created.")
 }

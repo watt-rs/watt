@@ -1,99 +1,5 @@
 use std/io as io
-use std/convert as conv
-use std/option for Option
-
-/// Represents linked list node
-type Node(value: dyn) {
-    /// Next node
-    let next: Option = Option.None()
-    /// Value
-    let value: dyn = value
-
-    /// Gets last node
-    pub fn last(): Node =
-        match self.next {
-            Option.None -> self
-            Option.Some { element } -> element.last()
-        }
-
-    /// Inserts new Node
-    pub fn insert(value: dyn) =
-        match self.next {
-            Option.Some { element } -> {
-                element.value = Option.Some(Node(value));
-            }
-            Option.None -> {
-                self.next = Option.Some(Node(value));
-            }
-        }
-
-    /// Deletes node
-    pub fn delete(value: dyn): Option =
-        if self.value == value {
-            self.next
-        } else {
-            self.next = match self.next {
-                Option.Some { element } -> {
-                    if element.value == value {
-                        element.next
-                    } else {
-                        element.delete(value)
-                    }
-                }
-                Option.None -> Option.None()
-            };
-            Option.Some(self)
-        }
-
-    /// To string
-    pub fn to_string(): string {
-        let string = conv.string(self.value);
-        match self.next {
-            Option.None -> {
-                string
-            }
-            Option.Some { element } -> {
-                string <> ", " <> conv.string(element.to_string()) // todo
-            }
-        }
-    }
-}
-
-/// Represents list type
-pub type List {
-    /// Head
-    let head: Option = Option.None()
-
-    /// Appends element
-    pub fn push(value: dyn) =
-        match self.head {
-            Option.None -> {
-                self.head = Option.Some(Node(value));
-            }
-            Option.Some { element } -> {
-                element.last().insert(value);
-            }
-        }
-
-    /// Deletes element
-    pub fn delete(value: dyn) =
-        match self.head {
-            Option.Some { element } -> {
-                self.head = element.delete(value)
-            }
-        }
-
-    /// To string
-    pub fn to_string(): string =
-        match self.head {
-            Option.None -> {
-                "[]"
-            }
-            Option.Some { element } -> {
-                "[" <> conv.string(element.to_string()) <> "]"
-            }
-        }
-}
+use std/list for List
 
 fn main() {
     let list = List();
@@ -102,23 +8,7 @@ fn main() {
     list.push(true);
     list.push(false);
     list.push(444);
-    list.delete(true);
-    list.delete(444);
+    list.delete(1);
+    list.delete(4);
     io.println(list.to_string());
 }
-
-
-/*
-pub enum Either {
-    Left(value: dyn),
-    Right(value: dyn)
-}
-
-fn main() {
-    let either = Either.Right(123);
-    match either {
-        Either.Left { value } -> io.println("first: " <> conv.string(value))
-        Either.Right { value } -> io.println("second: " <> conv.string(value))
-    }
-}
-*/
