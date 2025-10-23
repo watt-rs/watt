@@ -103,16 +103,20 @@ fn gen_pattern(pattern: Pattern, body: Either<Block, Expression>) -> js::Tokens 
             }
             // Unwrap pattern of fields {field, field, n..}
             Pattern::Unwrap { en, fields } => {
-                new $("$$")UnwrapPattern($(match en {
-                    Expression::SuffixVar { name, .. } => $(quoted(name.as_str())),
-                    _ => $(quoted("unreachable"))
-                }), [$(for field in fields.clone() join (, ) => $(quoted(field.1.as_str())))], function($("$$fields")) {
-                    $(for field in fields => let $(field.1.as_str()) = $("$$fields").$(field.1.as_str());$['\r'])
-                    $(match body {
-                        Either::Left(block) => $(gen_block_expr(block)),
-                        Either::Right(expr) => return $(gen_expression(expr))
-                    })
-                })
+                new $("$$")UnwrapPattern(
+                    $(match en {
+                        Expression::SuffixVar { name, .. } => $(quoted(name.as_str())),
+                        _ => $(quoted("unreachable"))
+                    }),
+                    [$(for field in fields.clone() join (, ) => $(quoted(field.1.as_str())))],
+                    function($("$$fields")) {
+                        $(for field in fields => let $(field.1.as_str()) = $("$$fields").$(field.1.as_str());$['\r'])
+                        $(match body {
+                            Either::Left(block) => $(gen_block_expr(block)),
+                            Either::Right(expr) => return $(gen_expression(expr))
+                        })
+                    }
+                )
             },
             // Wildcard pattern
             Pattern::Wildcard => {
@@ -135,15 +139,18 @@ fn gen_pattern(pattern: Pattern, body: Either<Block, Expression>) -> js::Tokens 
             }
             // Variant(var) pattern
             Pattern::Variant(var) => {
-                new $("$$")VariantPattern($(match var {
-                    Expression::SuffixVar { name, .. } => $(quoted(name.as_str())),
-                    _ => $(quoted("unreachable"))
-                }), function() {
-                    $(match body {
-                        Either::Left(block) => $(gen_block_expr(block)),
-                        Either::Right(expr) => return $(gen_expression(expr))
-                    })
-                })
+                new $("$$")VariantPattern(
+                    $(match var {
+                        Expression::SuffixVar { name, .. } => $(quoted(name.as_str())),
+                        _ => $(quoted("unreachable"))
+                    }),
+                    function() {
+                        $(match body {
+                            Either::Left(block) => $(gen_block_expr(block)),
+                            Either::Right(expr) => return $(gen_expression(expr))
+                        })
+                    }
+                )
             }
             // Or(pat1, pat2) pattern
             Pattern::Or(pat1, pat2) => {
@@ -566,7 +573,7 @@ pub fn gen_prelude() -> js::Tokens {
                             // Unwrap
                             return [true, this.unwrap_fn(value)];
                         } else {
-                            return [false, null]
+                            return [false, null];
                         }
                     } else {
                         return [false, null];

@@ -21,25 +21,39 @@ export class $Node {
     last() {
         let self = this;
         return $$match(self.next, [
-            new $$VariantPattern("None", function() {
-                return self
-            }),
-            new $$UnwrapPattern("Some", ["element"], function($$fields) {
-                let element = $$fields.element;
-                return element.last()
-            })
+            new $$VariantPattern(
+                "None",
+                function() {
+                    return self
+                }
+            ),
+            new $$UnwrapPattern(
+                "Some",
+                ["element"],
+                function($$fields) {
+                    let element = $$fields.element;
+                    return element.last()
+                }
+            )
         ])
     }
     insert(value) {
         let self = this;
         return $$match(self.next, [
-            new $$UnwrapPattern("Some", ["element"], function($$fields) {
-                let element = $$fields.element;
-                element.value = Option.Some(Node(value))
-            }),
-            new $$VariantPattern("None", function() {
-                self.next = Option.Some(Node(value))
-            })
+            new $$UnwrapPattern(
+                "Some",
+                ["element"],
+                function($$fields) {
+                    let element = $$fields.element;
+                    element.value = Option.Some(Node(value))
+                }
+            ),
+            new $$VariantPattern(
+                "None",
+                function() {
+                    self.next = Option.Some(Node(value))
+                }
+            )
         ])
     }
     delete$(value) {
@@ -50,20 +64,27 @@ export class $Node {
             }
             else {
                 self.next = $$match(self.next, [
-                    new $$UnwrapPattern("Some", ["element"], function($$fields) {
-                        let element = $$fields.element;
-                        return (() => {
-                            if ($$equals(element.value, value)) {
-                                return element.next
-                            }
-                            else {
-                                return element.delete$(value)
-                            }
-                        })()
-                    }),
-                    new $$VariantPattern("None", function() {
-                        return Option.None()
-                    })
+                    new $$UnwrapPattern(
+                        "Some",
+                        ["element"],
+                        function($$fields) {
+                            let element = $$fields.element;
+                            return (() => {
+                                if ($$equals(element.value, value)) {
+                                    return element.next
+                                }
+                                else {
+                                    return element.delete$(value)
+                                }
+                            })()
+                        }
+                    ),
+                    new $$VariantPattern(
+                        "None",
+                        function() {
+                            return Option.None()
+                        }
+                    )
                 ])
                 return Option.Some(self)
             }
@@ -73,13 +94,20 @@ export class $Node {
         let self = this;
         let string = conv.string(self.value)
         return $$match(self.next, [
-            new $$VariantPattern("None", function() {
-                return string
-            }),
-            new $$UnwrapPattern("Some", ["element"], function($$fields) {
-                let element = $$fields.element;
-                return string + ", " + conv.string(element.to_string())
-            })
+            new $$VariantPattern(
+                "None",
+                function() {
+                    return string
+                }
+            ),
+            new $$UnwrapPattern(
+                "Some",
+                ["element"],
+                function($$fields) {
+                    let element = $$fields.element;
+                    return string + ", " + conv.string(element.to_string())
+                }
+            )
         ])
     }
     ;
@@ -96,34 +124,52 @@ export class $List {
     push(value) {
         let self = this;
         return $$match(self.head, [
-            new $$VariantPattern("None", function() {
-                self.head = Option.Some(Node(value))
-            }),
-            new $$UnwrapPattern("Some", ["element"], function($$fields) {
-                let element = $$fields.element;
-                element.last().insert(value);
-            })
+            new $$VariantPattern(
+                "None",
+                function() {
+                    self.head = Option.Some(Node(value))
+                }
+            ),
+            new $$UnwrapPattern(
+                "Some",
+                ["element"],
+                function($$fields) {
+                    let element = $$fields.element;
+                    element.last().insert(value);
+                }
+            )
         ])
     }
     delete$(value) {
         let self = this;
         return $$match(self.head, [
-            new $$UnwrapPattern("Some", ["element"], function($$fields) {
-                let element = $$fields.element;
-                self.head = element.delete$(value)
-            })
+            new $$UnwrapPattern(
+                "Some",
+                ["element"],
+                function($$fields) {
+                    let element = $$fields.element;
+                    self.head = element.delete$(value)
+                }
+            )
         ])
     }
     to_string() {
         let self = this;
         return $$match(self.head, [
-            new $$VariantPattern("None", function() {
-                return "[]"
-            }),
-            new $$UnwrapPattern("Some", ["element"], function($$fields) {
-                let element = $$fields.element;
-                return "[" + conv.string(element.to_string()) + "]"
-            })
+            new $$VariantPattern(
+                "None",
+                function() {
+                    return "[]"
+                }
+            ),
+            new $$UnwrapPattern(
+                "Some",
+                ["element"],
+                function($$fields) {
+                    let element = $$fields.element;
+                    return "[" + conv.string(element.to_string()) + "]"
+                }
+            )
         ])
     }
     ;

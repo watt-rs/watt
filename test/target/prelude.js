@@ -83,7 +83,7 @@ export class $$UnwrapPattern {
 
                     return [true, this.unwrap_fn(value)];
                 } else {
-                    return [false, null]
+                    return [false, null];
                 }
             } else {
                 return [false, null];
