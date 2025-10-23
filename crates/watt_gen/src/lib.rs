@@ -102,8 +102,11 @@ fn gen_pattern(pattern: Pattern, body: Either<Block, Expression>) -> js::Tokens 
                 })
             }
             // Unwrap pattern of fields {field, field, n..}
-            Pattern::Unwrap { en: _, fields } => {
-                new $("$$")UnwrapPattern([$(for field in fields.clone() join (, ) => $(quoted(field.1.as_str())))], function($("$$fields")) {
+            Pattern::Unwrap { en, fields } => {
+                new $("$$")UnwrapPattern($(match en {
+                    Expression::SuffixVar { name, .. } => $(quoted(name.as_str())),
+                    _ => $(quoted("unreachable"))
+                }), [$(for field in fields.clone() join (, ) => $(quoted(field.1.as_str())))], function($("$$fields")) {
                     $(for field in fields => let $(field.1.as_str()) = $("$$fields").$(field.1.as_str());$['\r'])
                     $(match body {
                         Either::Left(block) => $(gen_block_expr(block)),
@@ -537,7 +540,8 @@ pub fn gen_prelude() -> js::Tokens {
 
         // UnwrapPattern$Class
         export class $("$$UnwrapPattern") {
-            constructor(fields, unwrap_fn) {
+            constructor(variant, fields, unwrap_fn) {
+                this.variant = variant;
                 this.fields = fields;
                 this.unwrap_fn = unwrap_fn;
             }
@@ -550,15 +554,20 @@ pub fn gen_prelude() -> js::Tokens {
                     if (meta == "Enum") {
                         // Retrieving keys
                         let keys = Object.keys(value);
-                        // Checking for fields
-                        for (const field of this.fields) {
-                            // If keys isn't includes a field
-                            if (!keys.includes(field)) {
-                                return [false, null];
-                            }
-                        };
-                        // Unwrap
-                        return [true, this.unwrap_fn(value)];
+                        // If variant is same
+                        if (value.$("$variant") == this.variant) {
+                            // Checking for fields
+                            for (const field of this.fields) {
+                                // If keys isn't includes a field
+                                if (!keys.includes(field)) {
+                                    return [false, null];
+                                }
+                            };
+                            // Unwrap
+                            return [true, this.unwrap_fn(value)];
+                        } else {
+                            return [false, null]
+                        }
                     } else {
                         return [false, null];
                     }
@@ -616,6 +625,7 @@ pub fn gen_prelude() -> js::Tokens {
                     let meta = value.$("$meta");
                     // Checking it's an enum
                     if (meta == "Enum") {
+                        // If variant is same
                         if (value.$("$variant") == this.variant) {
                             return [true, this.eq_fn(value)];
                         } else {

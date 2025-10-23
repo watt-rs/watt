@@ -106,3 +106,19 @@ fn main() {
     list.delete(444);
     io.println(list.to_string());
 }
+
+
+/*
+pub enum Either {
+    Left(value: dyn),
+    Right(value: dyn)
+}
+
+fn main() {
+    let either = Either.Right(123);
+    match either {
+        Either.Left { value } -> io.println("first: " <> conv.string(value))
+        Either.Right { value } -> io.println("second: " <> conv.string(value))
+    }
+}
+*/

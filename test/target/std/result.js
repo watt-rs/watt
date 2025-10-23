@@ -28,7 +28,7 @@ export const Result = {
 
 export function unwrap(result) {
     return $$match(result, [
-        new $$UnwrapPattern(["value"], function($$fields) {
+        new $$UnwrapPattern("Ok", ["value"], function($$fields) {
             let value = $$fields.value;
             return value
         }),

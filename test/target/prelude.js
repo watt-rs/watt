@@ -57,7 +57,8 @@ export function $$equals(a, b) {
 }
 
 export class $$UnwrapPattern {
-    constructor(fields, unwrap_fn) {
+    constructor(variant, fields, unwrap_fn) {
+        this.variant = variant;
         this.fields = fields;
         this.unwrap_fn = unwrap_fn;
     }
@@ -71,14 +72,19 @@ export class $$UnwrapPattern {
 
                 let keys = Object.keys(value);
 
-                for (const field of this.fields) {
+                if (value.$variant == this.variant) {
 
-                    if (!keys.includes(field)) {
-                        return [false, null];
-                    }
-                };
+                    for (const field of this.fields) {
 
-                return [true, this.unwrap_fn(value)];
+                        if (!keys.includes(field)) {
+                            return [false, null];
+                        }
+                    };
+
+                    return [true, this.unwrap_fn(value)];
+                } else {
+                    return [false, null]
+                }
             } else {
                 return [false, null];
             }
@@ -132,6 +138,7 @@ export class $$VariantPattern {
             let meta = value.$meta;
 
             if (meta == "Enum") {
+
                 if (value.$variant == this.variant) {
                     return [true, this.eq_fn(value)];
                 } else {

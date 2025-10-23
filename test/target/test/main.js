@@ -24,7 +24,7 @@ export class $Node {
             new $$VariantPattern("None", function() {
                 return self
             }),
-            new $$UnwrapPattern(["element"], function($$fields) {
+            new $$UnwrapPattern("Some", ["element"], function($$fields) {
                 let element = $$fields.element;
                 return element.last()
             })
@@ -33,7 +33,7 @@ export class $Node {
     insert(value) {
         let self = this;
         return $$match(self.next, [
-            new $$UnwrapPattern(["element"], function($$fields) {
+            new $$UnwrapPattern("Some", ["element"], function($$fields) {
                 let element = $$fields.element;
                 element.value = Option.Some(Node(value))
             }),
@@ -50,7 +50,7 @@ export class $Node {
             }
             else {
                 self.next = $$match(self.next, [
-                    new $$UnwrapPattern(["element"], function($$fields) {
+                    new $$UnwrapPattern("Some", ["element"], function($$fields) {
                         let element = $$fields.element;
                         return (() => {
                             if ($$equals(element.value, value)) {
@@ -76,7 +76,7 @@ export class $Node {
             new $$VariantPattern("None", function() {
                 return string
             }),
-            new $$UnwrapPattern(["element"], function($$fields) {
+            new $$UnwrapPattern("Some", ["element"], function($$fields) {
                 let element = $$fields.element;
                 return string + ", " + conv.string(element.to_string())
             })
@@ -99,7 +99,7 @@ export class $List {
             new $$VariantPattern("None", function() {
                 self.head = Option.Some(Node(value))
             }),
-            new $$UnwrapPattern(["element"], function($$fields) {
+            new $$UnwrapPattern("Some", ["element"], function($$fields) {
                 let element = $$fields.element;
                 element.last().insert(value);
             })
@@ -108,7 +108,7 @@ export class $List {
     delete$(value) {
         let self = this;
         return $$match(self.head, [
-            new $$UnwrapPattern(["element"], function($$fields) {
+            new $$UnwrapPattern("Some", ["element"], function($$fields) {
                 let element = $$fields.element;
                 self.head = element.delete$(value)
             })
@@ -120,7 +120,7 @@ export class $List {
             new $$VariantPattern("None", function() {
                 return "[]"
             }),
-            new $$UnwrapPattern(["element"], function($$fields) {
+            new $$UnwrapPattern("Some", ["element"], function($$fields) {
                 let element = $$fields.element;
                 return "[" + conv.string(element.to_string()) + "]"
             })
