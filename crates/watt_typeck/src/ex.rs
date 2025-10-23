@@ -129,9 +129,13 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
         return (true_matched && false_matched) || self.has_default_pattern(&self.cases);
     }
 
-    /// Checks all unwrap patterns
-    /// unwraps same fields
-    fn check_unwrap_patterns(&mut self, location: Address, pat1: &Pattern, pat2: &Pattern) {
+    /// Ensures all enum patterns are consistent
+    fn ensure_enum_patterns_consistent(
+        &mut self,
+        location: Address,
+        pat1: &Pattern,
+        pat2: &Pattern,
+    ) {
         /// Collects all patterns from single.
         /// Given pattern can collect
         /// many patterns if pattern is `Pattern::Or`.
@@ -146,10 +150,12 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
             }
             patterns
         }
+
         // Collecting all patterns
         let mut collected_patterns = Vec::new();
         collected_patterns.append(&mut collect_patterns(pat1));
         collected_patterns.append(&mut collect_patterns(pat2));
+
         // Collecting variant patterns
         let variant_patterns: Vec<Pattern> = collected_patterns
             .into_iter()
@@ -159,6 +165,7 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
                 _ => false,
             })
             .collect();
+
         // Collecting unwrap patterns
         let unwrap_patterns: Vec<Vec<EcoString>> = variant_patterns
             .iter()
@@ -170,8 +177,10 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
                 }
             })
             .collect();
-        // If exists at least one unwrap pattern
-        if unwrap_patterns.len() > 0 {
+
+        // If exists at least one unwrap pattern, checking
+        // unwrap fields consistent
+        if !unwrap_patterns.is_empty() {
             // If `variant_patterns` and `unwrap_patterns`
             // are missmatched, raising error
             if variant_patterns.len() != unwrap_patterns.len() {
@@ -180,6 +189,7 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
                     span: location.span.into()
                 })
             }
+
             // Checking that all unwrap patterns fields are same
             let first = unwrap_patterns.first().unwrap();
             for pat in &unwrap_patterns {
@@ -215,7 +225,8 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
                 // Collecting variants
                 variants.append(&mut self.collect_enum_variants(address, &pat1));
                 variants.append(&mut self.collect_enum_variants(address, &pat2));
-                self.check_unwrap_patterns(address.clone(), &pat1, &pat2)
+                // Ensuring that enum patterns are consistent
+                self.ensure_enum_patterns_consistent(address.clone(), &pat1, &pat2)
             }
             _ => return variants,
         }
