@@ -2,7 +2,7 @@
 use crate::errors::ParseError;
 use ecow::EcoString;
 use miette::NamedSource;
-use std::sync::Arc;
+use std::{backtrace::Backtrace, sync::Arc};
 use watt_ast::ast::*;
 use watt_common::address::Address;
 use watt_common::bail;
@@ -1155,6 +1155,16 @@ impl<'file_path> Parser<'file_path> {
         }
     }
 
+    /// Expression statement parsing
+    fn expr_statement(&mut self) -> Statement {
+        let expr = self.expr();
+        if self.check(TokenKind::Semicolon) {
+            Statement::Semi(expr)
+        } else {
+            Statement::Expr(expr)
+        }
+    }
+
     /// Statement parsing
     fn statement(&mut self) -> Statement {
         // Parsing statement
@@ -1176,18 +1186,11 @@ impl<'file_path> Parser<'file_path> {
                     | TokenKind::Assign => self.assignment(start + end, variable),
                     _ => {
                         self.current = pos; // recovering to old position, if not an assignment
-                        Statement::Expr(self.expr())
+                        self.expr_statement()
                     }
                 }
             }
-            _ => {
-                let expr = self.expr();
-                if self.check(TokenKind::Semicolon) {
-                    Statement::Semi(expr)
-                } else {
-                    Statement::Expr(expr)
-                }
-            }
+            _ => self.expr_statement(),
         };
         // If `;` presented
         if self.check(TokenKind::Semicolon) {
