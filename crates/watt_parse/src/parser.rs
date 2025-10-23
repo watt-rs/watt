@@ -786,9 +786,6 @@ impl<'file_path> Parser<'file_path> {
         self.consume(TokenKind::Match);
         let value = self.expr();
 
-        // End address
-        let end = self.peek().address.clone();
-
         // Cases
         self.consume(TokenKind::Lbrace);
         let mut cases = Vec::new();
@@ -827,6 +824,9 @@ impl<'file_path> Parser<'file_path> {
             }
         }
         self.consume(TokenKind::Rbrace);
+
+        // End address
+        let end = self.previous().address.clone();
 
         Expression::Match {
             location: Address::span(start.span.start..end.span.end),

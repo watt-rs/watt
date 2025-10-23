@@ -40,14 +40,15 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         value: Expression,
         typ: Option<TypePath>,
     ) {
+        let value_location = value.location();
         let inferred_value = self.infer_expr(value);
         match typ {
             Some(annotated_path) => {
                 let annotated_location = annotated_path.get_location();
                 let annotated = self.infer_type_annotation(annotated_path);
                 self.solver.solve(Equation::Unify(
-                    (location.clone(), inferred_value.clone()),
                     (annotated_location, annotated),
+                    (value_location.clone(), inferred_value.clone()),
                 ));
                 self.resolver.define(
                     &self.module.source,

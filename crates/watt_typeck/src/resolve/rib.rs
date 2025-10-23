@@ -5,8 +5,8 @@ use crate::{
 };
 use ecow::EcoString;
 use miette::NamedSource;
-use watt_common::{address::Address, bail, rc_ptr::RcPtr};
 use std::{cell::RefCell, collections::HashMap, sync::Arc};
+use watt_common::{address::Address, bail, rc_ptr::RcPtr};
 
 /// Rib kind
 #[derive(PartialEq)]
@@ -64,6 +64,35 @@ impl RibsStack {
                     })
                 }
             }
+            None => todo!(),
+        }
+    }
+
+    /// Defines variable.
+    /// If definition exists, checks types equality.
+    pub fn redefine(
+        &mut self,
+        named_source: &NamedSource<Arc<String>>,
+        address: &Address,
+        name: &EcoString,
+        variable: Typ,
+    ) {
+        match self.stack.last_mut() {
+            Some(env) => match env.1.get(name) {
+                Some(def) => {
+                    if def != &variable {
+                        bail!(TypeckError::TypesMissmatch {
+                            src: named_source.clone(),
+                            span: address.span.clone().into(),
+                            expected: def.clone(),
+                            got: variable
+                        })
+                    }
+                }
+                None => {
+                    env.1.insert(name.clone(), variable);
+                }
+            },
             None => todo!(),
         }
     }

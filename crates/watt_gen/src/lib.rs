@@ -155,7 +155,8 @@ pub fn gen_expression(expr: Expression) -> js::Tokens {
                     $(for case in cases join (,$['\r']) {
                         $(match case.pattern {
                             // Value pattern / eq pattern
-                            Pattern::Value(val) => {
+                            Pattern::Int(val) | Pattern::Float(val) |
+                            Pattern::String(val) | Pattern::Bool(val)  => {
                                 new $("$$")EqPattern($(gen_expression(val)), function() {
                                     $(gen_block(case.body))
                                 })

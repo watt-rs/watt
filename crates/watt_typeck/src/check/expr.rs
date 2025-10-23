@@ -622,11 +622,11 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                                 match variant.params.get(&field.1) {
                                     // Defining field with it's type, if it exists
                                     Some(typ) => {
-                                        self.resolver.define(
+                                        self.resolver.redefine_local(
                                             &self.module.source,
                                             &field.0,
                                             &field.1,
-                                            Def::Local(typ.clone()),
+                                            typ.clone(),
                                         );
                                     }
                                     None => bail!(TypeckError::EnumVariantFieldIsNotDefined {

@@ -1,9 +1,14 @@
 use std/io as io
-use std/option for Option
+
+enum Test {
+    A(value: int),
+    B(value: int),
+    C(value: int, value2: int)
+}
 
 fn main() {
-    let value: bool = match Option.None() {
-        Option.Some | Option.None -> {
+    let value: bool = match Test.A(1) {
+        Test.A { value } | Test.B { value } | Test.C { value } -> {
             true
         }
     };

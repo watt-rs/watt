@@ -272,7 +272,7 @@ pub enum TypeckError {
     TypesMissmatch {
         #[source_code]
         src: NamedSource<Arc<String>>,
-        #[label("type annotation missmatched here.")]
+        #[label("types missmatched here.")]
         span: SourceSpan,
         expected: Typ,
         got: Typ,
@@ -339,4 +339,25 @@ pub enum TypeckError {
         url("https://github.com/wattlanguage/watt")
     )]
     UnexpectedExprInResolution { expr: EcoString },
+}
+
+/// Exhaustiveness error
+#[derive(Debug, Error, Diagnostic)]
+pub enum ExError {
+    #[error("enum patterns missmatch.")]
+    #[diagnostic(code(ex::enum_patterns_missmatch))]
+    EnumPatternsMissmatch {
+        #[source_code]
+        src: NamedSource<Arc<String>>,
+        #[label("patterns are missmatched.")]
+        span: SourceSpan,
+    },
+    #[error("enum fields missmatch.")]
+    #[diagnostic(code(ex::enum_unwrap_fields_missmatch))]
+    EnumUnwrapFieldsMissmatch {
+        #[source_code]
+        src: NamedSource<Arc<String>>,
+        #[label("fields of patterns are missmatched.")]
+        span: SourceSpan,
+    },
 }

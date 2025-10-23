@@ -1,11 +1,13 @@
 /// Imports
 use crate::{
     cx::module::ModuleCx,
+    errors::ExError,
     resolve::res::Res,
     typ::{Enum, EnumVariant, PreludeType, Typ},
 };
+use ecow::EcoString;
 use watt_ast::ast::{Case, Pattern};
-use watt_common::rc_ptr::RcPtr;
+use watt_common::{address::Address, bail, rc_ptr::RcPtr};
 
 /// Exhaustiveness check of pattern matching
 pub struct ExMatchCx<'module_cx, 'pkg, 'cx> {
@@ -26,7 +28,7 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
             // All prelude type possible values
             // could not be covered, except boolean.
             Typ::Prelude(typ) => match typ {
-                PreludeType::Bool => ex.check_with_bool(),
+                PreludeType::Bool => ex.check_bool_values_covered(),
                 _ => ex.has_default_pattern(&ex.cases),
             },
             // All custom type values
@@ -42,7 +44,7 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
             //
             // So, checking for default patterns
             // `BindTo` and `Wildcard`
-            Typ::Enum(en) => ex.check_with_en(en.clone()),
+            Typ::Enum(en) => ex.check_enum_variants_covered(en.clone()),
             // All function values
             // cold not be covered,
             // becuase it's a ref type.
@@ -106,7 +108,7 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
 
     /// Checks that all possible
     /// bool values (true, false) are covered
-    fn check_with_bool(&mut self) -> bool {
+    fn check_bool_values_covered(&mut self) -> bool {
         // True matched
         let mut true_matched = false;
         let mut false_matched = false;
@@ -127,8 +129,72 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
         return (true_matched && false_matched) || self.has_default_pattern(&self.cases);
     }
 
+    /// Checks all unwrap patterns
+    /// unwraps same fields
+    fn check_unwrap_patterns(&mut self, location: Address, pat1: &Pattern, pat2: &Pattern) {
+        /// Collects all patterns from single.
+        /// Given pattern can collect
+        /// many patterns if pattern is `Pattern::Or`.
+        fn collect_patterns(pattern: &Pattern) -> Vec<Pattern> {
+            let mut patterns = Vec::new();
+            match pattern {
+                Pattern::Or(pat1, pat2) => {
+                    patterns.append(&mut collect_patterns(&pat1));
+                    patterns.append(&mut collect_patterns(&pat2));
+                }
+                pattern => patterns.push(pattern.clone()),
+            }
+            patterns
+        }
+        // Collecting all patterns
+        let mut collected_patterns = Vec::new();
+        collected_patterns.append(&mut collect_patterns(pat1));
+        collected_patterns.append(&mut collect_patterns(pat2));
+        // Collecting variant patterns
+        let variant_patterns: Vec<Pattern> = collected_patterns
+            .into_iter()
+            .filter(|pattern| match pattern {
+                Pattern::Unwrap { .. } => true,
+                Pattern::Variant(_) => true,
+                _ => false,
+            })
+            .collect();
+        // Collecting unwrap patterns
+        let unwrap_patterns: Vec<Vec<EcoString>> = variant_patterns
+            .iter()
+            .filter_map(|pattern| {
+                if let Pattern::Unwrap { fields, .. } = pattern {
+                    Some(fields.iter().map(|(_, name)| name.clone()).collect())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        // If exists at least one unwrap pattern
+        if unwrap_patterns.len() > 0 {
+            // If `variant_patterns` and `unwrap_patterns`
+            // are missmatched, raising error
+            if variant_patterns.len() != unwrap_patterns.len() {
+                bail!(ExError::EnumPatternsMissmatch {
+                    src: self.cx.module.source.clone(),
+                    span: location.span.into()
+                })
+            }
+            // Checking that all unwrap patterns fields are same
+            let first = unwrap_patterns.first().unwrap();
+            for pat in &unwrap_patterns {
+                if pat != first {
+                    bail!(ExError::EnumUnwrapFieldsMissmatch {
+                        src: self.cx.module.source.clone(),
+                        span: location.span.into()
+                    })
+                }
+            }
+        }
+    }
+
     /// Collects matched variants
-    fn collect_enum_variants(&mut self, pattern: &Pattern) -> Vec<EnumVariant> {
+    fn collect_enum_variants(&mut self, address: &Address, pattern: &Pattern) -> Vec<EnumVariant> {
         // Matched variants
         let mut variants = Vec::new();
         // Matching pattern
@@ -146,8 +212,10 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
                 _ => unreachable!(),
             },
             Pattern::Or(pat1, pat2) => {
-                variants.append(&mut self.collect_enum_variants(&pat1));
-                variants.append(&mut self.collect_enum_variants(&pat2));
+                // Collecting variants
+                variants.append(&mut self.collect_enum_variants(address, &pat1));
+                variants.append(&mut self.collect_enum_variants(address, &pat2));
+                self.check_unwrap_patterns(address.clone(), &pat1, &pat2)
             }
             _ => return variants,
         }
@@ -156,12 +224,12 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
 
     /// Checks that all possible
     /// enum variants are covered
-    fn check_with_en(&mut self, en: RcPtr<Enum>) -> bool {
+    fn check_enum_variants_covered(&mut self, en: RcPtr<Enum>) -> bool {
         // Matched variants
         let mut matched_variants = Vec::new();
         // Matching all cases
         for case in std::mem::take(&mut self.cases) {
-            matched_variants.append(&mut self.collect_enum_variants(&case.pattern));
+            matched_variants.append(&mut self.collect_enum_variants(&case.address, &case.pattern));
         }
         // Deleting duplicates
         matched_variants.dedup();

@@ -9,8 +9,8 @@ use crate::{
 };
 use ecow::EcoString;
 use miette::NamedSource;
-use watt_common::{address::Address, bail, rc_ptr::RcPtr};
 use std::{cell::RefCell, collections::HashMap, fmt::Debug, sync::Arc};
+use watt_common::{address::Address, bail, rc_ptr::RcPtr};
 
 /// Definition
 pub enum Def {
@@ -70,7 +70,7 @@ impl ModuleResolver {
         }
     }
 
-    /// Creates definiton, if no definition
+    /// Creates definition, if no definition
     /// with same name is already defined.
     pub fn define(
         &mut self,
@@ -115,6 +115,18 @@ impl ModuleResolver {
                     .define(named_source, address, name, local_def);
             }
         }
+    }
+
+    /// Defines local variable.
+    /// If definition exists, checks types equality.
+    pub fn redefine_local(
+        &mut self,
+        named_source: &NamedSource<Arc<String>>,
+        address: &Address,
+        name: &EcoString,
+        typ: Typ,
+    ) {
+        self.ribs_stack.redefine(named_source, address, name, typ);
     }
 
     /// Resolves up a value
