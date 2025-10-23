@@ -158,3 +158,7 @@ export function $$match(value, patterns) {
     }
     return null;
 }
+
+export function $$todo() {
+    throw "reached todo code.";
+}

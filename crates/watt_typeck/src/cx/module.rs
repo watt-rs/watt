@@ -15,7 +15,7 @@ pub struct ModuleCx<'pkg, 'cx> {
     /// Root package context
     pub(crate) package: &'cx PackageCx<'cx>,
     /// Equations solver
-    pub(crate) solver: EquationsSolver<'pkg>,
+    pub(crate) solver: EquationsSolver<'pkg, 'cx>,
 }
 
 /// Implementation
@@ -35,7 +35,7 @@ where
             module_name,
             resolver: ModuleResolver::new(),
             package,
-            solver: EquationsSolver::new(&module.source),
+            solver: EquationsSolver::new(package, &module.source),
         }
     }
 

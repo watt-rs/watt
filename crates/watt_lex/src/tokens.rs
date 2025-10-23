@@ -63,6 +63,7 @@ pub enum TokenKind {
     Arrow,     // arrow
     Extern,    // extern
     For,       // for
+    Todo,      // todo
 }
 
 /// Token structure

@@ -1,11 +1,13 @@
 /// Imports
 use crate::{
+    cx::package::PackageCx,
     errors::TypeckError,
     typ::{PreludeType, Typ},
+    warnings::TypeckWarning,
 };
 use miette::NamedSource;
 use std::sync::Arc;
-use watt_common::{address::Address, bail};
+use watt_common::{address::Address, bail, warn};
 
 /// Equation var
 pub type Var = (Address, Typ);
@@ -17,15 +19,16 @@ pub enum Equation {
 }
 
 /// Equations solver
-pub struct EquationsSolver<'eq> {
+pub struct EquationsSolver<'eq, 'cx> {
     source: &'eq NamedSource<Arc<String>>,
+    package: &'cx PackageCx<'cx>,
 }
 
 /// Implementation
-impl<'eq> EquationsSolver<'eq> {
+impl<'eq, 'cx> EquationsSolver<'eq, 'cx> {
     /// Creates new equations solver
-    pub fn new(source: &'eq NamedSource<Arc<String>>) -> Self {
-        Self { source }
+    pub fn new(package: &'cx PackageCx<'cx>, source: &'eq NamedSource<Arc<String>>) -> Self {
+        Self { package, source }
     }
 
     /// Solves the equation
@@ -67,7 +70,20 @@ impl<'eq> EquationsSolver<'eq> {
                         t2: t2.clone()
                     }),
                 },
-                (Typ::Dyn, _) | (_, Typ::Dyn) => Typ::Dyn,
+                (Typ::Dyn, t) | (t, Typ::Dyn) => match t {
+                    Typ::Unit => {
+                        warn!(
+                            self.package,
+                            TypeckWarning::UnitAndDynUnification {
+                                src: self.source.clone(),
+                                first_span: l1.span.clone().into(),
+                                second_span: l2.span.clone().into(),
+                            }
+                        );
+                        Typ::Dyn
+                    }
+                    _ => Typ::Dyn,
+                },
                 _ => bail!(TypeckError::CouldNotUnify {
                     src: self.source.clone(),
                     first_span: l1.span.clone().into(),

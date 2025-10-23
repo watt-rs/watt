@@ -842,6 +842,16 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Expression::Int { .. } => Typ::Prelude(PreludeType::Int),
             Expression::String { .. } => Typ::Prelude(PreludeType::String),
             Expression::Bool { .. } => Typ::Prelude(PreludeType::Bool),
+            Expression::Todo { location } => {
+                warn!(
+                    self.package,
+                    TypeckWarning::FoundTodo {
+                        src: self.module.source.clone(),
+                        span: location.span.into()
+                    }
+                );
+                Typ::Unit
+            }
             Expression::Bin {
                 location,
                 left,

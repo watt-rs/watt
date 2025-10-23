@@ -21,4 +21,5 @@ export function main() {
     list.delete$(1);
     list.delete$(4);
     io.println(list.to_string());
+    return $$todo()
 }

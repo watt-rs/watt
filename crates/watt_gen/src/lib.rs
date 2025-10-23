@@ -282,6 +282,7 @@ pub fn gen_expression(expr: Expression) -> js::Tokens {
                 })()
             }
         }
+        Expression::Todo { .. } => quote!($("$$todo()")),
     }
 }
 
@@ -653,6 +654,11 @@ pub fn gen_prelude() -> js::Tokens {
                 }
             }
             return null;
+        }
+
+        // Todo$Fn
+        export function $("$$todo")() {
+            throw "reached todo code.";
         }
     }
 }

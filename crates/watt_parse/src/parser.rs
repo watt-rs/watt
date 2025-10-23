@@ -537,6 +537,14 @@ impl<'file_path> Parser<'file_path> {
         expr
     }
 
+    /// Todo expr `todo`
+    #[inline]
+    fn todo_expr(&mut self) -> Expression {
+        Expression::Todo {
+            location: self.advance().address.clone(),
+        }
+    }
+
     /// Primary expr parsing
     fn primary_expr(&mut self) -> Expression {
         match self.peek().tk_type {
@@ -569,6 +577,7 @@ impl<'file_path> Parser<'file_path> {
                     value: value.value,
                 }
             }
+            TokenKind::Todo => self.todo_expr(),
             TokenKind::Lparen => self.grouping_expr(),
             TokenKind::Fn => self.anonymous_fn_expr(),
             TokenKind::Match => self.pattern_matching(),

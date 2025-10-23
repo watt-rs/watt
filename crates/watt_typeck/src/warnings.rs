@@ -30,4 +30,30 @@ pub enum TypeckWarning {
         #[label("this is unsafe.")]
         span: SourceSpan,
     },
+    #[error("found unsafe cast.")]
+    #[diagnostic(
+        code(typeck::warn::unit_and_dyn_unification),
+        help("it's better to get rid of unification `unit` and `dyn`."),
+        severity(warning)
+    )]
+    UnitAndDynUnification {
+        #[source_code]
+        src: NamedSource<Arc<String>>,
+        #[label("unify this...")]
+        first_span: SourceSpan,
+        #[label("and this is unsafe.")]
+        second_span: SourceSpan,
+    },
+    #[error("found todo.")]
+    #[diagnostic(
+        code(typeck::warn::found_todo),
+        help("todo existence is ok, but this code will cause a panic when executed."),
+        severity(warning)
+    )]
+    FoundTodo {
+        #[source_code]
+        src: NamedSource<Arc<String>>,
+        #[label("found todo.")]
+        span: SourceSpan,
+    },
 }

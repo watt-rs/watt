@@ -187,6 +187,8 @@ pub enum Expression {
     /// Represents `true` or `false`
     /// value
     Bool { location: Address, value: EcoString },
+    /// Represents todo
+    Todo { location: Address },
     /// Represents binary expression
     ///
     /// `a || b`
@@ -282,6 +284,7 @@ impl Expression {
             Expression::Float { location, .. } => location.clone(),
             Expression::String { location, .. } => location.clone(),
             Expression::Bool { location, .. } => location.clone(),
+            Expression::Todo { location, .. } => location.clone(),
             Expression::Bin { location, .. } => location.clone(),
             Expression::Unary { location, .. } => location.clone(),
             Expression::If { location, .. } => location.clone(),
