@@ -16,7 +16,8 @@ use crate::{
 use ecow::EcoString;
 use std::{cell::RefCell, collections::HashMap};
 use watt_ast::ast::{
-    BinaryOp, Block, Case, ElseBranch, Expression, Parameter, Pattern, Publicity, TypePath, UnaryOp,
+    BinaryOp, Block, Case, Either, ElseBranch, Expression, Parameter, Pattern, Publicity, TypePath,
+    UnaryOp,
 };
 use watt_common::{address::Address, bail, rc_ptr::RcPtr, warn};
 
@@ -743,8 +744,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             // analyzing pattern
             self.analyze_pattern(inferred_what.clone(), &case, &case.pattern);
             // analyzing body
-            let case_location = case.body.location.clone();
-            let inferred_case = self.infer_block(case.body);
+            let (case_location, inferred_case) = match case.body {
+                Either::Left(block) => (block.location.clone(), self.infer_block(block)),
+                Either::Right(expr) => (expr.location(), self.infer_expr(expr)),
+            };
             to_unify.push((case_location, inferred_case));
             // pattern scope end
             self.resolver.pop_rib();

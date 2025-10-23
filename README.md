@@ -2,7 +2,7 @@
 
 🔦 Simple example:
 ```
-import std/io as io
+use std/io as io
 
 enum Power {
 	On,
@@ -14,18 +14,17 @@ type Flashlight(powered: Power) {
 
   pub fn power(on: Power) {
     self.is_powered = on
-    io.println("is powered: " <> is_powered)
+    io.println("power: " <> match self.is_powered {
+      Power.On -> "on"
+      Power.Off -> "off"
+    })
   }
-
-	pub fn is_powered(): Power {
-	  self.is_powered
-	}
 }
 
 fn main() {
   let flashlight = Flashlight(Power.Off())
-  flashlight.print()
-	flashlight.power(Power.On)
-	flahslight.print()
+  flashlight.power(Power.On())
+  flashlight.power(Power.Off())
+  flashlight.power(Power.On())
 }
 ```

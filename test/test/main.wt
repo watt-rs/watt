@@ -1,15 +1,25 @@
 use std/io as io
 
-enum Test {
-    A(value: int),
-    B(value: int),
-    C(value: int, value2: int)
+enum Power {
+	On,
+	Off
+}
+
+type Flashlight(powered: Power) {
+  let is_powered = powered
+
+  pub fn power(on: Power) {
+    self.is_powered = on
+    io.println("power: " <> match self.is_powered {
+        Power.On -> "on"
+        Power.Off -> "off"
+    })
+  }
 }
 
 fn main() {
-    let value: bool = match Test.A(1) {
-        Test.A { value } | Test.B { value } | Test.C { value } -> {
-            true
-        }
-    };
+  let flashlight = Flashlight(Power.Off())
+  flashlight.power(Power.On())
+  flashlight.power(Power.Off())
+  flashlight.power(Power.On())
 }

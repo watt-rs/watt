@@ -796,7 +796,11 @@ impl<'file_path> Parser<'file_path> {
                 let start_span = self.consume(TokenKind::Id).address.clone();
                 // -> { body, ... }
                 self.consume(TokenKind::Arrow);
-                let body = self.block();
+                let body = if self.check(TokenKind::Lbrace) {
+                    Either::Left(self.block())
+                } else {
+                    Either::Right(self.expr())
+                };
                 // End address of case
                 let end_span = self.previous().address.clone();
                 cases.push(Case {
@@ -813,7 +817,11 @@ impl<'file_path> Parser<'file_path> {
                 let pattern = self.pattern();
                 // -> { body, ... }
                 self.consume(TokenKind::Arrow);
-                let body = self.block();
+                let body = if self.check(TokenKind::Lbrace) {
+                    Either::Left(self.block())
+                } else {
+                    Either::Right(self.expr())
+                };
                 // End address of case
                 let end_span = self.previous().address.clone();
                 cases.push(Case {

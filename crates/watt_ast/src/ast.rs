@@ -145,7 +145,7 @@ pub enum Pattern {
 pub struct Case {
     pub address: Address,
     pub pattern: Pattern,
-    pub body: Block,
+    pub body: Either<Block, Expression>,
 }
 
 /// Use kind
@@ -288,6 +288,13 @@ impl Expression {
             Expression::Match { location, .. } => location.clone(),
         }
     }
+}
+
+/// Either type
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Either<A, B> {
+    Left(A),
+    Right(B),
 }
 
 /// Statement
