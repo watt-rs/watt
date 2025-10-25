@@ -43,8 +43,13 @@ impl Type {
                 Some(def) => {
                     match &def.value {
                         Typ::Function(implementation) => {
-                            // If function != implementation
-                            if !function.veq(implementation) {
+                            // If function == implementation
+                            if function.veq(implementation) {
+                                // Checking implementation publicity
+                                if def.publicity != Publicity::Public {
+                                    return false;
+                                }
+                            } else {
                                 return false;
                             }
                         }
@@ -196,11 +201,11 @@ impl PartialEq for Typ {
             (Typ::Prelude(a), Typ::Prelude(b)) => a == b,
             (Typ::Custom(a), Typ::Custom(b)) => a == b,
             (Typ::Enum(a), Typ::Enum(b)) => a == b,
+            (Typ::Trait(a), Typ::Trait(b)) => a == b,
             (Typ::Function(a), Typ::Function(b)) => a.veq(b),
             (Typ::Unit, Typ::Unit) => true,
             (other, Typ::Dyn) => other != &Typ::Unit,
             (Typ::Dyn, other) => other != &Typ::Unit,
-            (Typ::Trait(a), Typ::Trait(b)) => a == b,
             _ => false,
         }
     }

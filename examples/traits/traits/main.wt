@@ -5,7 +5,7 @@ pub trait Dog {
 }
 
 pub type Dalmatian {
-    fn bark() =
+    pub fn bark() =
         io.println("Dalmatian: woof! woof!")
 
     pub fn specific() =
@@ -13,7 +13,7 @@ pub type Dalmatian {
 }
 
 pub type Bulldog {
-    fn bark() =
+    pub fn bark() =
         io.println("Bulldog: arf-arf! woof!")
 }
 

@@ -88,12 +88,12 @@ impl<'eq, 'cx> EquationsSolver<'eq, 'cx> {
                     if ty.borrow().is_impls(tr.clone()) {
                         Typ::Trait(tr.clone())
                     } else {
-                        bail!(TypeckError::CouldNotUnify {
+                        bail!(TypeckError::CouldNotUnifyTraitAndTyp {
                             src: self.source.clone(),
                             first_span: l1.span.clone().into(),
-                            t1: t1.clone(),
+                            tr: t1.clone(),
                             second_span: l2.span.clone().into(),
-                            t2: t2.clone()
+                            ty: t2.clone()
                         })
                     }
                 }

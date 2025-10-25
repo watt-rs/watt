@@ -44,6 +44,25 @@ pub enum TypeckError {
         second_span: SourceSpan,
         t2: Typ,
     },
+    #[error("could not unify trait {tr:?} and {ty:?}.")]
+    #[diagnostic(
+        code(typeck::could_not_unify_trait_and_typ),
+        help(
+            "all trait functions are `public` by default,
+check that {ty:?} you trying to cast to the trait {tr:?}
+implements all trait functions with `pub` modifier."
+        )
+    )]
+    CouldNotUnifyTraitAndTyp {
+        #[source_code]
+        src: NamedSource<Arc<String>>,
+        #[label("could not unify this...")]
+        first_span: SourceSpan,
+        tr: Typ,
+        #[label("with this")]
+        second_span: SourceSpan,
+        ty: Typ,
+    },
     #[error("could not use value {v} as type.")]
     #[diagnostic(code(typeck::could_not_use_value_as_type))]
     CouldNotUseValueAsType {

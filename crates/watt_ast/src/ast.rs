@@ -114,7 +114,6 @@ pub enum UnaryOp {
 pub enum Publicity {
     Public,
     Private,
-    None,
 }
 
 /// Pattern
