@@ -784,9 +784,9 @@ checksum = "69cdb34c158ceb288df11e18b4bd39de994f6657d83847bdffdbd7f346754b0f"
 
 [[package]]
 name = "regex"
-version = "1.11.3"
+version = "1.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b5288124840bee7b386bc413c487869b360b2b4ec421ea56425128692f2a82c"
+checksum = "843bc0191f75f3e22651ae5f1e72939ab2f72a4bc30fa80a066bd66edefc24d4"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -796,9 +796,9 @@ dependencies = [
 
 [[package]]
 name = "regex-automata"
-version = "0.4.11"
+version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "833eb9ce86d40ef33cb1306d8accf7bc8ec2bfea4355cbdebb3df68b40925cad"
+checksum = "5276caf25ac86c8d810222b3dbb938e512c55c6831a10f3e6ed1c93b84041f1c"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -1251,6 +1251,7 @@ dependencies = [
  "watt_common",
  "watt_gen",
  "watt_lex",
+ "watt_lint",
  "watt_parse",
  "watt_typeck",
 ]
@@ -1272,6 +1273,25 @@ dependencies = [
  "miette",
  "thiserror",
  "watt_common",
+]
+
+[[package]]
+name = "watt_lint"
+version = "0.1.0"
+dependencies = [
+ "camino",
+ "ecow",
+ "log",
+ "miette",
+ "once_cell",
+ "petgraph",
+ "regex",
+ "thiserror",
+ "walkdir",
+ "watt_ast",
+ "watt_common",
+ "watt_lex",
+ "watt_parse",
 ]
 
 [[package]]
@@ -1320,7 +1340,6 @@ dependencies = [
  "walkdir",
  "watt_ast",
  "watt_common",
- "watt_gen",
  "watt_lex",
  "watt_parse",
 ]

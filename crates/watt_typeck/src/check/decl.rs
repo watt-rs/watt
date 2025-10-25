@@ -139,7 +139,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         self.resolver.push_rib(RibKind::Fields);
 
         // analyzing fields
-        declarations.iter().for_each(|f| {
+        declarations.iter().cloned().for_each(|f| {
             if let Declaration::VarDef {
                 location,
                 name,
@@ -148,7 +148,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 ..
             } = f
             {
-                self.analyze_let_define(location.clone(), name.clone(), value.clone(), typ.clone())
+                self.analyze_let_define(location, name, value, typ)
             }
         });
 
@@ -163,7 +163,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
         // adding fields to type env
         let mut borrowed = type_.borrow_mut();
-        declarations.iter().for_each(|f| {
+        declarations.iter().cloned().for_each(|f| {
             if let Declaration::VarDef {
                 publicity, name, ..
             } = f
@@ -172,7 +172,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     name.clone(),
                     WithPublicity {
                         publicity: publicity.clone(),
-                        value: analyzed_fields.get(name).unwrap().clone(),
+                        value: analyzed_fields.get(&name).unwrap().clone(),
                     },
                 );
             }

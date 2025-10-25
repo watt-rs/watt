@@ -10,6 +10,7 @@ watt_common = { path = "../watt_common" }
 watt_ast = { path = "../watt_ast" }
 watt_typeck = { path = "../watt_typeck" }
 watt_gen = { path = "../watt_gen" }
+watt_lint = { path = "../watt_lint" }
 miette = { version = "7.6.0", features = ["fancy"] }
 ecow = "0.2.6"
 camino = "1.1.10"
