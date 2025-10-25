@@ -1105,6 +1105,71 @@ impl<'file_path> Parser<'file_path> {
         }
     }
 
+    /// Trait declaration parsing
+    fn trait_declaration(&mut self, publicity: Publicity) -> Declaration {
+        // start location
+        let start_location = self.peek().address.clone();
+
+        // variable is used to create type span in bails.
+        self.consume(TokenKind::Trait);
+
+        // type name
+        let name = self.consume(TokenKind::Id).clone();
+
+        // body parsing
+        let mut functions = Vec::new();
+        self.consume(TokenKind::Lbrace);
+        while !self.check(TokenKind::Rbrace) {
+            if self.check(TokenKind::Fn) {
+                // start location
+                let start_location = self.peek().address.clone();
+                self.consume(TokenKind::Fn);
+
+                // function name
+                let name = self.consume(TokenKind::Id).value.clone();
+
+                // params
+                let mut params: Vec<Parameter> = Vec::new();
+                if self.check(TokenKind::Lparen) {
+                    params = self.parameters();
+                }
+
+                // return type
+                // if type specified
+                let typ = if self.check(TokenKind::Colon) {
+                    // `: $type`
+                    self.consume(TokenKind::Colon);
+                    Some(self.type_annotation())
+                }
+                // else
+                else {
+                    None
+                };
+
+                // end location
+                let end_location = self.previous().address.clone();
+
+                functions.push(TraitFunction {
+                    location: start_location + end_location,
+                    name,
+                    params,
+                    typ,
+                })
+            }
+        }
+        self.consume(TokenKind::Rbrace);
+
+        // end location
+        let end_location = self.previous().address.clone();
+
+        Declaration::TraitDeclaration {
+            location: start_location + end_location,
+            name: name.value,
+            publicity,
+            functions,
+        }
+    }
+
     /// Enum declaration parsing
     fn enum_declaration(&mut self, publicity: Publicity) -> Declaration {
         // start address
@@ -1202,6 +1267,7 @@ impl<'file_path> Parser<'file_path> {
     fn declaration(&mut self, publicity: Publicity) -> Declaration {
         match self.peek().tk_type {
             TokenKind::Type => self.type_declaration(publicity),
+            TokenKind::Trait => self.trait_declaration(publicity),
             TokenKind::Fn => self.fn_declaration(publicity),
             TokenKind::Enum => self.enum_declaration(publicity),
             TokenKind::Let => self.let_declaration(publicity),

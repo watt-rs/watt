@@ -8,7 +8,7 @@ use crate::{
         resolve::{Def, ModDef},
         rib::RibKind,
     },
-    typ::{CustomType, Enum, Function, PreludeType, Typ, Type},
+    typ::{CustomType, Enum, Function, PreludeType, Trait, Typ, Type},
     unify::Equation,
     utils::CallResult,
     warnings::TypeckWarning,
@@ -320,6 +320,24 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
     }
 
+    /// Infers trait field access
+    fn infer_trait_field_access(
+        &self,
+        tr: RcPtr<Trait>,
+        field_location: Address,
+        field_name: EcoString,
+    ) -> Res {
+        match tr.functions.get(&field_name) {
+            Some(function) => Res::Value(Typ::Function(function.clone())),
+            None => bail!(TypeckError::FieldIsNotDefined {
+                src: self.module.source.clone(),
+                span: field_location.span.into(),
+                t: tr.name.clone(),
+                field: field_name
+            }),
+        }
+    }
+
     /// Infers access
     fn infer_field_access(
         &mut self,
@@ -343,6 +361,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 // Custom Type
                 Typ::Custom(ty) => {
                     self.infer_type_field_access(ty.clone(), field_location, field_name)
+                }
+                // Trait
+                Typ::Trait(tr) => {
+                    self.infer_trait_field_access(tr.clone(), field_location, field_name)
                 }
                 // Dyn
                 Typ::Dyn => {
@@ -383,35 +405,27 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         let function = self.infer_resolution(what);
         let args = args
             .iter()
-            .map(|a| self.infer_expr(a.clone()))
-            .collect::<Vec<Typ>>();
+            .map(|a| (a.location(), self.infer_expr(a.clone())))
+            .collect::<Vec<(Address, Typ)>>();
         match &function {
             // Custom type
             Res::Custom(CustomType::Type(ty)) => {
                 let borrowed = ty.borrow();
-                if borrowed.params != args {
-                    bail!(TypeckError::InvalidArgs {
-                        src: self.module.source.clone(),
-                        params_span: borrowed.location.span.clone().into(),
-                        span: location.span.into()
-                    })
-                } else {
-                    CallResult::FromType(Typ::Custom(ty.clone()))
-                }
+                borrowed.params.iter().zip(args).for_each(|(a, b)| {
+                    self.solver
+                        .solve(Equation::Unify((borrowed.location.clone(), a.clone()), b));
+                });
+                CallResult::FromType(Typ::Custom(ty.clone()))
             }
             // Value
             Res::Value(t) => match t {
                 // Function
                 Typ::Function(f) => {
-                    if f.params != args {
-                        bail!(TypeckError::InvalidArgs {
-                            src: self.module.source.clone(),
-                            params_span: f.location.span.clone().into(),
-                            span: location.span.into()
-                        })
-                    } else {
-                        CallResult::FromFunction(f.ret.clone(), f.clone())
-                    }
+                    f.params.iter().zip(args).for_each(|(a, b)| {
+                        self.solver
+                            .solve(Equation::Unify((f.location.clone(), a.clone()), b));
+                    });
+                    CallResult::FromFunction(f.ret.clone(), f.clone())
                 }
                 // Dyn
                 Typ::Dyn => {
@@ -435,15 +449,11 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             },
             // Variant
             Res::Variant(en, variant) => {
-                if variant.params.values().cloned().collect::<Vec<Typ>>() != args {
-                    bail!(TypeckError::InvalidArgs {
-                        src: self.module.source.clone(),
-                        params_span: variant.location.span.clone().into(),
-                        span: location.span.into()
-                    })
-                } else {
-                    CallResult::FromEnum(Typ::Enum(en.clone()))
-                }
+                variant.params.iter().zip(args).for_each(|(a, b)| {
+                    self.solver
+                        .solve(Equation::Unify((variant.location.clone(), a.1.clone()), b));
+                });
+                CallResult::FromEnum(Typ::Enum(en.clone()))
             }
             _ => bail!(TypeckError::CouldNotCall {
                 src: self.module.source.clone(),
@@ -469,6 +479,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 {
                     CustomType::Enum(en) => Typ::Enum(en.clone()),
                     CustomType::Type(ty) => Typ::Custom(ty.clone()),
+                    CustomType::Trait(tr) => Typ::Trait(tr.clone()),
                 },
             },
             TypePath::Module {
@@ -485,6 +496,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                                 match &t.value {
                                     CustomType::Enum(en) => Typ::Enum(en.clone()),
                                     CustomType::Type(ty) => Typ::Custom(ty.clone()),
+                                    CustomType::Trait(tr) => Typ::Trait(tr.clone()),
                                 }
                             } else {
                                 bail!(TypeckError::TypeIsPrivate {

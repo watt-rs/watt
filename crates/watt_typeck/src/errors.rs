@@ -241,16 +241,6 @@ pub enum TypeckError {
         name: EcoString,
         def: ModDef,
     },
-    #[error("invalid arguments.")]
-    #[diagnostic(code(typeck::invalid_args))]
-    InvalidArgs {
-        #[source_code]
-        src: NamedSource<Arc<String>>,
-        #[label("parameters described here.")]
-        params_span: SourceSpan,
-        #[label("invalid arguments.")]
-        span: SourceSpan,
-    },
     #[error("expected a logical epxression in if.")]
     #[diagnostic(code(typeck::expected_logical_in_if))]
     ExpectedLogicalInIf {

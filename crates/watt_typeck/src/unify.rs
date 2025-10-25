@@ -84,6 +84,19 @@ impl<'eq, 'cx> EquationsSolver<'eq, 'cx> {
                     }
                     _ => Typ::Dyn,
                 },
+                (Typ::Trait(tr), Typ::Custom(ty)) | (Typ::Custom(ty), Typ::Trait(tr)) => {
+                    if ty.borrow().is_impls(tr.clone()) {
+                        Typ::Trait(tr.clone())
+                    } else {
+                        bail!(TypeckError::CouldNotUnify {
+                            src: self.source.clone(),
+                            first_span: l1.span.clone().into(),
+                            t1: t1.clone(),
+                            second_span: l2.span.clone().into(),
+                            t2: t2.clone()
+                        })
+                    }
+                }
                 _ => bail!(TypeckError::CouldNotUnify {
                     src: self.source.clone(),
                     first_span: l1.span.clone().into(),

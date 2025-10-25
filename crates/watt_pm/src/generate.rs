@@ -26,7 +26,7 @@ pub fn gen_project(path: Utf8PathBuf, ty: PackageType) {
             let src = path.join(name);
             io::mkdir(&src);
             // Generating main.watt
-            let main = src.join("main.watt");
+            let main = src.join("main.wt");
             io::write(main, String::from("// It's just a main file :)"));
         }
     }

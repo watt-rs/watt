@@ -38,6 +38,13 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
             // So, checking for default patterns
             // `BindTo` and `Wildcard`
             Typ::Custom(_) => ex.has_default_pattern(&ex.cases),
+            // All trait values
+            // could not be covered,
+            // because it's a ref type.
+            //
+            // So, checking for default patterns
+            // `BindTo` and `Wildcard`
+            Typ::Trait(_) => ex.has_default_pattern(&ex.cases),
             // All enum variant values
             // could be covered, so
             // checking it

@@ -354,7 +354,7 @@ pub fn gen_declaration(decl: Declaration) -> js::Tokens {
                         }
                         _ => $(quote!())
                     })
-                });
+                })
             };
 
             // constructor($field, $field, n...)
@@ -418,6 +418,19 @@ pub fn gen_declaration(decl: Declaration) -> js::Tokens {
                 export function $(try_escape_js(&name))($(for param in params join (, ) => $(param.name.to_string()))) {
                     $(body.to_string())
                 }
+            }
+        }
+        Declaration::TraitDeclaration {
+            name,
+            functions: definitions,
+            ..
+        } => {
+            // Trait is compile time object only,
+            // so we defining only meta structure
+            quote! {
+                export let $(name.to_string()) = [
+                    $(for def in definitions join (, ) => $(quoted(def.name.to_string())))
+                ]
             }
         }
     }

@@ -1,15 +1,9 @@
 use std/io as io
 use std/list for List
 
+fn a(): dyn =
+    io.println("hello, world!")
+
 fn main() {
-    let list = List();
-    list.push(1);
-    list.push("hello");
-    list.push(true);
-    list.push(false);
-    list.push(444);
-    list.delete(1);
-    list.delete(4);
-    io.println(list.to_string());
-    todo
+    a();
 }

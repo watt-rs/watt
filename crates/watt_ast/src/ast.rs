@@ -396,6 +396,15 @@ pub struct Method {
     typ: Option<TypePath>,
 }
 
+/// Trait Function
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TraitFunction {
+    pub location: Address,
+    pub name: EcoString,
+    pub params: Vec<Parameter>,
+    pub typ: Option<TypePath>,
+}
+
 /// Declaration
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Declaration {
@@ -428,6 +437,19 @@ pub enum Declaration {
         name: EcoString,
         publicity: Publicity,
         variants: Vec<EnumConstructor>,
+    },
+    /// Represents trait declaration
+    ///
+    /// `publicity` trait ... {
+    ///     definition,
+    ///     definition,
+    ///     definition
+    /// }
+    TraitDeclaration {
+        location: Address,
+        name: EcoString,
+        publicity: Publicity,
+        functions: Vec<TraitFunction>,
     },
     /// Represents extern function declaration
     ///

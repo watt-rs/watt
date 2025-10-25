@@ -1,0 +1,25 @@
+use std/io as io
+
+pub trait Dog {
+    fn bark()
+}
+
+pub type Dalmatian {
+    fn bark() =
+        io.println("Dalmatian: woof! woof!")
+}
+
+pub type Bulldog {
+    fn bark() =
+        io.println("Bulldog: arf-arf! woof!")
+}
+
+fn bark(dog: Dog) =
+    dog.bark()
+
+pub fn main() {
+    let dog: Dog = Bulldog();
+    let dog2: Dog = Dalmatian();
+    bark(dog);
+    bark(dog2);
+}

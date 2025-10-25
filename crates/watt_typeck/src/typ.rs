@@ -17,7 +17,6 @@ pub enum PreludeType {
 
 /// Custom type
 #[derive(Clone)]
-#[allow(dead_code)]
 pub struct Type {
     pub source: NamedSource<Arc<String>>,
     pub location: Address,
@@ -29,7 +28,60 @@ pub struct Type {
 /// Debug implementation
 impl Debug for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Custom({})", self.name)
+        write!(f, "Type({})", self.name)
+    }
+}
+
+/// Implementation
+impl Type {
+    /// Checks that type implements trait
+    pub fn is_impls(&self, tr: RcPtr<Trait>) -> bool {
+        // Checking functions matches trait functions
+        for function in tr.functions.values() {
+            // Checking that function exists in type
+            match self.env.get(&function.name) {
+                Some(def) => {
+                    match &def.value {
+                        Typ::Function(implementation) => {
+                            // If function != implementation
+                            if !function.veq(implementation) {
+                                return false;
+                            }
+                        }
+                        _ => return false,
+                    }
+                }
+                None => return false,
+            }
+        }
+        // If all is implemented => true
+        true
+    }
+}
+
+/// Trait function
+#[derive(Clone)]
+pub struct TraitFunction {
+    pub source: NamedSource<Arc<String>>,
+    pub location: Address,
+    pub name: EcoString,
+    pub params: Vec<Typ>,
+    pub ret: Typ,
+}
+
+/// Trait
+#[derive(Clone)]
+pub struct Trait {
+    pub source: NamedSource<Arc<String>>,
+    pub location: Address,
+    pub name: EcoString,
+    pub functions: HashMap<EcoString, RcPtr<Function>>,
+}
+
+/// Debug implementation
+impl Debug for Trait {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Trait({})", self.name)
     }
 }
 
@@ -95,6 +147,7 @@ impl PartialEq for Function {
 pub enum CustomType {
     Enum(RcPtr<Enum>),
     Type(RcPtr<RefCell<Type>>),
+    Trait(RcPtr<Trait>),
 }
 
 /// Debug implementation
@@ -103,6 +156,7 @@ impl Debug for CustomType {
         match self {
             CustomType::Enum(en) => write!(f, "Custom({en:?})"),
             CustomType::Type(ty) => write!(f, "Custom({ty:?})"),
+            CustomType::Trait(tr) => write!(f, "Custom({tr:?})"),
         }
     }
 }
@@ -128,6 +182,7 @@ impl Debug for Module {
 pub enum Typ {
     Prelude(PreludeType),
     Custom(RcPtr<RefCell<Type>>),
+    Trait(RcPtr<Trait>),
     Enum(RcPtr<Enum>),
     Function(RcPtr<Function>),
     Dyn,
@@ -160,6 +215,7 @@ impl Debug for Typ {
             Self::Function(function) => write!(f, "Type(Function({}))", function.name),
             Self::Dyn => write!(f, "Type(Dyn)"),
             Self::Unit => write!(f, "Type(Unit)"),
+            Self::Trait(custom_trait) => write!(f, "Type(Trait({}))", custom_trait.name),
         }
     }
 }

@@ -6,14 +6,14 @@ use crate::{
         resolve::{Def, ModDef},
         rib::RibKind,
     },
-    typ::{CustomType, Enum, EnumVariant, Function, Typ, Type, WithPublicity},
+    typ::{CustomType, Enum, EnumVariant, Function, Trait, Typ, Type, WithPublicity},
     unify::Equation,
 };
 use ecow::EcoString;
 use std::{cell::RefCell, collections::HashMap};
 use watt_ast::ast::{
-    Block, Declaration, Dependency, Either, EnumConstructor, Expression, Parameter, Publicity,
-    TypePath, UseKind,
+    self, Block, Declaration, Dependency, Either, EnumConstructor, Expression, Parameter,
+    Publicity, TypePath, UseKind,
 };
 use watt_common::{address::Address, bail, rc_ptr::RcPtr};
 
@@ -201,6 +201,52 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         self.resolver.pop_rib();
     }
 
+    /// Analyzes trait
+    fn analyze_trait(
+        &mut self,
+        location: Address,
+        publicity: Publicity,
+        name: EcoString,
+        functions: Vec<ast::TraitFunction>,
+    ) {
+        // construction trait
+        let trait_ = RcPtr::new(Trait {
+            source: self.module.source.clone(),
+            location: location.clone(),
+            name: name.clone(),
+            functions: functions
+                .into_iter()
+                .map(|f| {
+                    (
+                        f.name.clone(),
+                        RcPtr::new(Function {
+                            source: self.module.source.clone(),
+                            location: f.location,
+                            name: f.name,
+                            params: f
+                                .params
+                                .into_iter()
+                                .map(|param| self.infer_type_annotation(param.typ))
+                                .collect(),
+                            ret: f.typ.map_or(Typ::Unit, |t| self.infer_type_annotation(t)),
+                        }),
+                    )
+                })
+                .collect(),
+        });
+
+        // defining type, if not already defined
+        self.resolver.define(
+            &self.module.source,
+            &location,
+            &name,
+            Def::Module(ModDef::CustomType(WithPublicity {
+                publicity,
+                value: CustomType::Trait(trait_.clone()),
+            })),
+        );
+    }
+
     /// Analyzes enum
     fn analyze_enum(
         &mut self,
@@ -353,8 +399,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 let annotated_location = annotated_path.get_location();
                 let annotated = self.infer_type_annotation(annotated_path);
                 self.solver.solve(Equation::Unify(
+                    (annotated_location, annotated.clone()),
                     (location.clone(), inferred_value.clone()),
-                    (annotated_location, annotated),
                 ));
                 self.resolver.define(
                     &self.module.source,
@@ -362,7 +408,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     &name,
                     Def::Module(ModDef::Variable(WithPublicity {
                         publicity,
-                        value: inferred_value,
+                        value: annotated,
                     })),
                 )
             }
@@ -417,6 +463,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 body,
                 typ,
             } => self.analyze_function_decl(location, publicity, name, params, body, typ),
+            Declaration::TraitDeclaration {
+                location,
+                name,
+                publicity,
+                functions,
+            } => self.analyze_trait(location, publicity, name, functions),
         }
     }
 
