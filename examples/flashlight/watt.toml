@@ -1,0 +1,8 @@
+[pkg]
+pkg = "app"
+name = "flashlight"
+main = "flashlight/main"
+dependencies = []
+
+[lints]
+disabled = []
