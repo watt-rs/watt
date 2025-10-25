@@ -15,7 +15,18 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
       - name: Build
         run: cargo build --verbose
+
       - name: Run tests
         run: cargo test --verbose
+
+      - name: Run examples
+        run: |
+          for dir in examples/*; do
+            if [ -d "$dir" ] && [ -f "$dir/Cargo.toml" ]; then
+              echo "Running example in $dir"
+              (cd "$dir" && cargo run run)
+            fi
+          done
