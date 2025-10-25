@@ -1,4 +1,4 @@
 /target
 /std
-/examples/juice/.cache
-/examples/enum/.cache
+/examples/flashlight/.cache
+/examples/traits/.cache
