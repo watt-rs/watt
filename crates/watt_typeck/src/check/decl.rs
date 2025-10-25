@@ -398,7 +398,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Some(annotated_path) => {
                 let annotated_location = annotated_path.get_location();
                 let annotated = self.infer_type_annotation(annotated_path);
-                self.solver.solve(Equation::Unify(
+                let unified = self.solver.solve(Equation::Unify(
                     (annotated_location, annotated.clone()),
                     (location.clone(), inferred_value.clone()),
                 ));
@@ -408,7 +408,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     &name,
                     Def::Module(ModDef::Variable(WithPublicity {
                         publicity,
-                        value: annotated,
+                        value: unified,
                     })),
                 )
             }

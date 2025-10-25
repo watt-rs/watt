@@ -200,6 +200,7 @@ impl PartialEq for Typ {
             (Typ::Unit, Typ::Unit) => true,
             (other, Typ::Dyn) => other != &Typ::Unit,
             (Typ::Dyn, other) => other != &Typ::Unit,
+            (Typ::Trait(a), Typ::Trait(b)) => a == b,
             _ => false,
         }
     }

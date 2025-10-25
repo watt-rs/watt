@@ -87,7 +87,6 @@ export class $List {
         let self = this;
         return "[" + self.join(", ") + "]"
     }
-    ;
 }
 export function List() {
     return new $List();
