@@ -33,5 +33,8 @@ jobs:
           ls -la examples || echo "No examples directory found"
 
           for dir in examples/*; do
+            echo "------------------------"
+            echo "Running $dir"
             (cd "$dir" && cargo run run)
+            echo "------------------------"
           done
