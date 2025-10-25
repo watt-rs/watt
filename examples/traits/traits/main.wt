@@ -7,6 +7,9 @@ pub trait Dog {
 pub type Dalmatian {
     fn bark() =
         io.println("Dalmatian: woof! woof!")
+
+    pub fn specific() =
+        io.println("Dalmatian!")
 }
 
 pub type Bulldog {
@@ -18,8 +21,15 @@ fn bark(dog: Dog) =
     dog.bark()
 
 pub fn main() {
+    // Casting `Buldog` to `Dog`
     let dog: Dog = Bulldog();
+    // Casting `Dalmatian` to `Dog`
     let dog2: Dog = Dalmatian();
+    // Barking using trait
     bark(dog);
     bark(dog2);
+    // Casting `Dog` to `Dalmatian`
+    let dalmatian: Dalmatian = dog2;
+    // Calling to Dalmatian's `specficic` function
+    dalmatian.specific()
 }

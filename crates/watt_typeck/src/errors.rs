@@ -85,7 +85,7 @@ pub enum TypeckError {
         t: Typ,
         op: UnaryOp,
     },
-    #[error("field \"{field}\" is not defined in type {t}.")]
+    #[error("field \"{field}\" is not defined in type \"{t}\".")]
     #[diagnostic(code(typeck::field_is_not_defined))]
     FieldIsNotDefined {
         #[source_code]

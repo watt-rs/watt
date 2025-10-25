@@ -54,12 +54,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Some(annotated_path) => {
                 let annotated_location = annotated_path.get_location();
                 let annotated = self.infer_type_annotation(annotated_path);
-                let unified = self.solver.solve(Equation::Unify(
+                self.solver.solve(Equation::Unify(
                     (annotated_location, annotated.clone()),
                     (value_location.clone(), inferred_value.clone()),
                 ));
                 self.resolver
-                    .define(&self.module.source, &location, &name, Def::Local(unified))
+                    .define(&self.module.source, &location, &name, Def::Local(annotated))
             }
             None => self.resolver.define(
                 &self.module.source,

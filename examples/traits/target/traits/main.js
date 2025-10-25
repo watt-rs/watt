@@ -23,6 +23,10 @@ export class $Dalmatian {
         let self = this;
         return io.println("Dalmatian: woof! woof!")
     }
+    specific() {
+        let self = this;
+        return io.println("Dalmatian!")
+    }
 }
 export function Dalmatian() {
     return new $Dalmatian();
@@ -51,4 +55,6 @@ export function main() {
     let dog2 = Dalmatian()
     bark(dog);
     bark(dog2);
+    let dalmatian = dog2
+    return dalmatian.specific()
 }
