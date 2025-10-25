@@ -2,7 +2,9 @@
 pkg = "app"
 name = "flashlight"
 main = "flashlight/main"
-dependencies = []
+dependencies = [
+    "https://github.com/watt-rs/std"
+]
 
 [lints]
 disabled = []
