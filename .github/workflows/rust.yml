@@ -22,11 +22,19 @@ jobs:
       - name: Run tests
         run: cargo test --verbose
 
-      - name: Run examples
+      - name: Run each example
         run: |
+          echo "Listing contents of examples:"
+          ls -la examples || echo "No examples directory found"
+
           for dir in examples/*; do
-            if [ -d "$dir" ] && [ -f "$dir/Cargo.toml" ]; then
-              echo "Running example in $dir"
-              (cd "$dir" && cargo run run)
+            echo "Checking $dir"
+            if [ -d "$dir" ]; then
+              if [ -f "$dir/Cargo.toml" ]; then
+                echo "Running example in $dir"
+                (cd "$dir" && cargo run run)
+              else
+                echo "No Cargo.toml in $dir, skipping"
+              fi
             fi
           done
