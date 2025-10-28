@@ -175,17 +175,27 @@ impl<'file_path> Parser<'file_path> {
             let start_address = self.peek().address.clone();
             self.consume(TokenKind::Fn);
             // params
+            let mut params: Vec<TypePath> = Vec::new();
+
+            // `($type, $type, n )`
             self.consume(TokenKind::Lparen);
-            let mut params = Vec::new();
-            params.push(self.type_annotation());
-            while self.check(TokenKind::Comma) {
-                self.advance();
+            if !self.check(TokenKind::Rparen) {
                 params.push(self.type_annotation());
+
+                while self.check(TokenKind::Comma) {
+                    self.consume(TokenKind::Comma);
+                    params.push(self.type_annotation());
+                }
             }
             self.consume(TokenKind::Rparen);
+
             // : $ret
-            self.consume(TokenKind::Colon);
-            let ret = Box::new(self.type_annotation());
+            let ret = if self.check(TokenKind::Colon) {
+                self.consume(TokenKind::Colon);
+                Some(Box::new(self.type_annotation()))
+            } else {
+                None
+            };
             // end of span `fn (...): ...`
             let end_address = self.previous().address.clone();
             // function type path

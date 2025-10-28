@@ -144,7 +144,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                 if !case::is_pascal_case(&name) {
                     warn!(
                         self,
-                        LintWarning::WrongVariantName {
+                        LintWarning::WrongTypeName {
                             src: self.source.clone(),
                             span: location.span.clone().into()
                         }
@@ -235,7 +235,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                 if !case::is_snake_case(&name) {
                     warn!(
                         self,
-                        LintWarning::WrongVariantName {
+                        LintWarning::WrongFunctionName {
                             src: self.source.clone(),
                             span: location.span.clone().into()
                         }

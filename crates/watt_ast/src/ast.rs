@@ -26,7 +26,7 @@ pub enum TypePath {
     Function {
         location: Address,
         params: Vec<TypePath>,
-        ret: Box<TypePath>,
+        ret: Option<Box<TypePath>>,
     },
     Unit {
         location: Address,

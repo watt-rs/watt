@@ -531,7 +531,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     .into_iter()
                     .map(|p| self.infer_type_annotation(p))
                     .collect(),
-                ret: self.infer_type_annotation(*ret),
+                ret: ret.map_or(Typ::Unit, |t| self.infer_type_annotation(*t)),
             })),
             TypePath::Unit { .. } => Typ::Unit,
         }

@@ -143,7 +143,7 @@ impl Debug for Function {
 /// ignores function name and location
 impl PartialEq for Function {
     fn eq(&self, other: &Self) -> bool {
-        self.source == other.source && self.params == other.params && self.ret == other.ret
+        self.params == other.params && self.ret == other.ret
     }
 }
 
