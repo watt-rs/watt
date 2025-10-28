@@ -171,7 +171,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 borrowed.env.insert(
                     name.clone(),
                     WithPublicity {
-                        publicity: publicity.clone(),
+                        publicity,
                         value: analyzed_fields.get(&name).unwrap().clone(),
                     },
                 );

@@ -56,5 +56,7 @@ export function main() {
     bark(dog);
     bark(dog2);
     let dalmatian = dog2
-    return dalmatian.specific()
+    dalmatian.specific();
+    let dalmatian2 = dog2
+    return dalmatian2.specific()
 }

@@ -7,7 +7,7 @@ use std::{
 };
 
 /// Rc that compares by ptr
-#[derive(Clone)]
+#[derive(Clone, Hash)]
 pub struct RcPtr<T>(Rc<T>);
 
 /// Implementation
