@@ -12,7 +12,7 @@ use watt_common::bail;
 /// Lexer structure
 pub struct Lexer<'source, 'cursor> {
     cursor: Cursor<'cursor>,
-    named_source: &'source NamedSource<Arc<String>>,
+    source: &'source Arc<NamedSource<String>>,
     tokens: Vec<Token>,
     keywords: HashMap<&'static str, TokenKind>,
 }
@@ -24,7 +24,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
     /// * `code`: source code represented as `&'cursor [char]`
     /// * `file_path`: source file path
     ///
-    pub fn new(code: &'cursor [char], named_source: &'source NamedSource<Arc<String>>) -> Self {
+    pub fn new(code: &'cursor [char], source: &'source Arc<NamedSource<String>>) -> Self {
         // Keywords list
         let keywords_map = HashMap::from([
             ("fn", TokenKind::Fn),
@@ -51,7 +51,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
         // Lexer
         Lexer {
             cursor: Cursor::new(code),
-            named_source,
+            source: source,
             tokens: vec![],
             keywords: keywords_map,
         }
@@ -222,7 +222,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
                     // unexpected
                     else {
                         bail!(LexError::UnexpectedCharacter {
-                            src: self.named_source.clone(),
+                            src: self.source.clone(),
                             span: self.cursor.current.into(),
                             ch
                         })
@@ -251,7 +251,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
 
             if self.cursor.is_at_end() || self.is_match('\n') {
                 bail!(LexError::UnclosedStringQuotes {
-                    src: self.named_source.clone(),
+                    src: self.source.clone(),
                     span: (span_start..self.cursor.current).into(),
                 })
             }
@@ -263,7 +263,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
         Token {
             tk_type: TokenKind::Text,
             value: text,
-            address: Address::span(span_start..span_end),
+            address: Address::span(self.source.clone(), span_start..span_end),
         }
     }
 
@@ -285,7 +285,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
 
             if self.cursor.is_at_end() {
                 bail!(LexError::UnclosedStringQuotes {
-                    src: self.named_source.clone(),
+                    src: self.source.clone(),
                     span: (span_start..self.cursor.current).into(),
                 })
             }
@@ -297,7 +297,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
         Token {
             tk_type: TokenKind::Text,
             value: text,
-            address: Address::span(span_start..span_end),
+            address: Address::span(self.source.clone(), span_start..span_end),
         }
     }
 
@@ -322,7 +322,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
                 text.push(self.advance());
                 if is_float {
                     bail!(LexError::InvalidNumber {
-                        src: self.named_source.clone(),
+                        src: self.source.clone(),
                         span: (span_start..self.cursor.current + 1).into(),
                         number: text
                     })
@@ -342,7 +342,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::span(span_start..span_end),
+            address: Address::span(self.source.clone(), span_start..span_end),
         }
     }
 
@@ -367,7 +367,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::span(span_start..span_end),
+            address: Address::span(self.source.clone(), span_start..span_end),
         }
     }
 
@@ -392,7 +392,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::span(span_start..span_end),
+            address: Address::span(self.source.clone(), span_start..span_end),
         }
     }
 
@@ -417,7 +417,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::span(span_start..span_end),
+            address: Address::span(self.source.clone(), span_start..span_end),
         }
     }
 
@@ -452,7 +452,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
         Token {
             tk_type,
             value: text,
-            address: Address::span(span_start..span_end),
+            address: Address::span(self.source.clone(), span_start..span_end),
         }
     }
 
@@ -480,7 +480,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
         self.tokens.push(Token::new(
             tk_type,
             tk_value.into(),
-            Address::new(self.cursor.current),
+            Address::new(self.source.clone(), self.cursor.current),
         ));
     }
 

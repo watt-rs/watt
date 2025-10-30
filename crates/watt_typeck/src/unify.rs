@@ -1,12 +1,10 @@
 /// Imports
 use crate::{
     cx::package::PackageCx,
-    errors::TypeckError,
+    errors::{TypeckError, TypeckRelated},
     typ::{PreludeType, Typ},
     warnings::TypeckWarning,
 };
-use miette::NamedSource;
-use std::sync::Arc;
 use watt_common::{address::Address, bail, warn};
 
 /// Equation var
@@ -38,19 +36,19 @@ impl PartialEq for Equation {
 }
 
 /// Equations solver
-pub struct EquationsSolver<'eq, 'cx> {
-    source: &'eq NamedSource<Arc<String>>,
+pub struct EquationsSolver<'cx> {
+    /// Package context
     package: &'cx PackageCx<'cx>,
+    /// Cached equations
     cached: Vec<(Equation, Typ)>,
 }
 
 /// Implementation
-impl<'eq, 'cx> EquationsSolver<'eq, 'cx> {
+impl<'cx> EquationsSolver<'cx> {
     /// Creates new equations solver
-    pub fn new(package: &'cx PackageCx<'cx>, source: &'eq NamedSource<Arc<String>>) -> Self {
+    pub fn new(package: &'cx PackageCx<'cx>) -> Self {
         Self {
             package,
-            source,
             cached: Vec::new(),
         }
     }
@@ -98,11 +96,18 @@ impl<'eq, 'cx> EquationsSolver<'eq, 'cx> {
                     (PreludeType::Int, PreludeType::Float) => Typ::Prelude(PreludeType::Float),
                     (PreludeType::Float, PreludeType::Int) => Typ::Prelude(PreludeType::Float),
                     _ => bail!(TypeckError::CouldNotUnify {
-                        src: self.source.clone(),
-                        first_span: l1.span.clone().into(),
                         t1: t1.clone(),
-                        second_span: l2.span.clone().into(),
-                        t2: t2.clone()
+                        t2: t2.clone(),
+                        related: vec![
+                            TypeckRelated::This {
+                                src: l1.source,
+                                span: l1.span.into()
+                            },
+                            TypeckRelated::WithThis {
+                                src: l2.source,
+                                span: l2.span.into()
+                            }
+                        ]
                     }),
                 },
                 (Typ::Dyn, t) | (t, Typ::Dyn) => match t {
@@ -110,8 +115,9 @@ impl<'eq, 'cx> EquationsSolver<'eq, 'cx> {
                         warn!(
                             self.package,
                             TypeckWarning::UnitAndDynUnification {
-                                src: self.source.clone(),
+                                first_src: l1.source,
                                 first_span: l1.span.clone().into(),
+                                second_src: l2.source,
                                 second_span: l2.span.clone().into(),
                             }
                         );
@@ -124,20 +130,28 @@ impl<'eq, 'cx> EquationsSolver<'eq, 'cx> {
                         Typ::Trait(tr.clone())
                     } else {
                         bail!(TypeckError::CouldNotUnifyTraitAndTyp {
-                            src: self.source.clone(),
+                            first_src: l1.source,
                             first_span: l1.span.clone().into(),
                             tr: t1.clone(),
+                            second_src: l2.source,
                             second_span: l2.span.clone().into(),
                             ty: t2.clone()
                         })
                     }
                 }
                 _ => bail!(TypeckError::CouldNotUnify {
-                    src: self.source.clone(),
-                    first_span: l1.span.clone().into(),
                     t1: t1.clone(),
-                    second_span: l2.span.clone().into(),
-                    t2: t2.clone()
+                    t2: t2.clone(),
+                    related: vec![
+                        TypeckRelated::This {
+                            src: l1.source,
+                            span: l1.span.into()
+                        },
+                        TypeckRelated::WithThis {
+                            src: l2.source,
+                            span: l2.span.into()
+                        }
+                    ]
                 }),
             }
         } else {

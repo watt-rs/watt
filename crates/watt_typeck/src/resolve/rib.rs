@@ -4,8 +4,7 @@ use crate::{
     typ::{Typ, Type},
 };
 use ecow::EcoString;
-use miette::NamedSource;
-use std::{cell::RefCell, collections::HashMap, sync::Arc};
+use std::{cell::RefCell, collections::HashMap};
 use watt_common::{address::Address, bail, rc_ptr::RcPtr};
 
 /// Rib kind
@@ -52,20 +51,14 @@ impl RibsStack {
     }
 
     /// Defines variable
-    pub fn define(
-        &mut self,
-        named_source: &NamedSource<Arc<String>>,
-        address: &Address,
-        name: &EcoString,
-        variable: Typ,
-    ) {
+    pub fn define(&mut self, address: &Address, name: &EcoString, variable: Typ) {
         match self.stack.last_mut() {
             Some(env) => {
                 if !env.1.contains_key(name) {
                     env.1.insert(name.clone(), variable);
                 } else {
                     bail!(TypeckError::VariableIsAlreadyDefined {
-                        src: named_source.clone(),
+                        src: address.source.clone(),
                         span: address.span.clone().into()
                     })
                 }
@@ -76,19 +69,13 @@ impl RibsStack {
 
     /// Defines variable.
     /// If definition exists, checks types equality.
-    pub fn redefine(
-        &mut self,
-        named_source: &NamedSource<Arc<String>>,
-        address: &Address,
-        name: &EcoString,
-        variable: Typ,
-    ) {
+    pub fn redefine(&mut self, address: &Address, name: &EcoString, variable: Typ) {
         match self.stack.last_mut() {
             Some(env) => match env.1.get(name) {
                 Some(def) => {
                     if def != &variable {
                         bail!(TypeckError::TypesMissmatch {
-                            src: named_source.clone(),
+                            src: address.source.clone(),
                             span: address.span.clone().into(),
                             expected: def.clone(),
                             got: variable

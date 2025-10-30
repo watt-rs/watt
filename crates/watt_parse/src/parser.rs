@@ -12,18 +12,18 @@ use watt_lex::tokens::{Token, TokenKind};
 pub struct Parser<'file_path> {
     tokens: Vec<Token>,
     current: u128,
-    named_source: &'file_path NamedSource<Arc<String>>,
+    source: &'file_path Arc<NamedSource<String>>,
 }
 
 /// Parser implementation
 #[allow(unused_qualifications)]
 impl<'file_path> Parser<'file_path> {
     /// New parser
-    pub fn new(tokens: Vec<Token>, named_source: &'file_path NamedSource<Arc<String>>) -> Self {
+    pub fn new(tokens: Vec<Token>, source: &'file_path Arc<NamedSource<String>>) -> Self {
         Parser {
             tokens,
             current: 0,
-            named_source,
+            source,
         }
     }
 
@@ -45,7 +45,7 @@ impl<'file_path> Parser<'file_path> {
         }
 
         Module {
-            source: self.named_source.to_owned(),
+            source: self.source.to_owned(),
             dependencies,
             declarations,
         }
@@ -145,8 +145,8 @@ impl<'file_path> Parser<'file_path> {
     fn dependency_path(&mut self) -> DependencyPath {
         // module name string
         let mut module = EcoString::new();
-        // start token, used to create span
-        let start = self.peek().clone();
+        // start address
+        let start_address = self.peek().address.clone();
 
         // first `id`
         module.push_str(&self.consume(TokenKind::Id).value.clone());
@@ -158,11 +158,11 @@ impl<'file_path> Parser<'file_path> {
             module.push_str(&self.consume(TokenKind::Id).value.clone());
         }
 
-        // end token, used to create span
-        let end = self.previous().clone();
+        // end address
+        let end_address = self.previous().address.clone();
 
         DependencyPath {
-            address: Address::span(start.address.span.start..end.address.span.end),
+            address: start_address + end_address,
             module,
         }
     }
@@ -200,7 +200,7 @@ impl<'file_path> Parser<'file_path> {
             let end_address = self.previous().address.clone();
             // function type path
             TypePath::Function {
-                location: Address::span(start_address.span.start..end_address.span.end),
+                location: start_address + end_address,
                 params,
                 ret,
             }
@@ -415,7 +415,7 @@ impl<'file_path> Parser<'file_path> {
     fn assignment(&mut self, address: Address, variable: Expression) -> Statement {
         match variable {
             Expression::Call { location, .. } => bail!(ParseError::InvalidAssignmentOperation {
-                src: self.named_source.clone(),
+                src: location.source,
                 span: location.span.into()
             }),
             _ => {
@@ -436,7 +436,7 @@ impl<'file_path> Parser<'file_path> {
                         let expr = Box::new(self.expr());
                         let end_address = self.previous().address.clone();
                         Statement::VarAssign {
-                            location: start_address.clone() + end_address.clone(),
+                            location: address.clone() + end_address.clone(),
                             what: variable.clone(),
                             value: Expression::Bin {
                                 location: start_address + end_address,
@@ -451,7 +451,7 @@ impl<'file_path> Parser<'file_path> {
                         let expr = Box::new(self.expr());
                         let end_address = self.previous().address.clone();
                         Statement::VarAssign {
-                            location: Address::span(address.span.start..end_address.span.end - 1),
+                            location: address + end_address.clone(),
                             what: variable.clone(),
                             value: Expression::Bin {
                                 location: start_address + end_address,
@@ -466,7 +466,7 @@ impl<'file_path> Parser<'file_path> {
                         let expr = Box::new(self.expr());
                         let end_address = self.previous().address.clone();
                         Statement::VarAssign {
-                            location: Address::span(address.span.start..end_address.span.end - 1),
+                            location: address + end_address.clone(),
                             what: variable.clone(),
                             value: Expression::Bin {
                                 location: start_address + end_address,
@@ -481,7 +481,7 @@ impl<'file_path> Parser<'file_path> {
                         let expr = Box::new(self.expr());
                         let end_address = self.previous().address.clone();
                         Statement::VarAssign {
-                            location: Address::span(address.span.start..end_address.span.end - 1),
+                            location: address + end_address.clone(),
                             what: variable.clone(),
                             value: Expression::Bin {
                                 location: start_address + end_address,
@@ -492,7 +492,7 @@ impl<'file_path> Parser<'file_path> {
                         }
                     }
                     _ => bail!(ParseError::InvalidAssignmentOperator {
-                        src: self.named_source.clone(),
+                        src: address.source,
                         span: op.address.span.into(),
                         op: op.value
                     }),
@@ -595,7 +595,7 @@ impl<'file_path> Parser<'file_path> {
             _ => {
                 let token = self.peek().clone();
                 bail!(ParseError::UnexpectedExpressionToken {
-                    src: self.named_source.clone(),
+                    src: token.address.source,
                     span: token.address.span.into(),
                     unexpected: token.value
                 });
@@ -857,7 +857,7 @@ impl<'file_path> Parser<'file_path> {
     /// Pattern match parsing
     fn pattern_matching(&mut self) -> Expression {
         // Start address
-        let start = self.peek().address.clone();
+        let start_address = self.peek().address.clone();
 
         // `match value { patterns, ... }`
         self.consume(TokenKind::Match);
@@ -911,10 +911,10 @@ impl<'file_path> Parser<'file_path> {
         self.consume(TokenKind::Rbrace);
 
         // End address
-        let end = self.previous().address.clone();
+        let end_address = self.previous().address.clone();
 
         Expression::Match {
-            location: Address::span(start.span.start..end.span.end),
+            location: start_address + end_address,
             value: Box::new(value),
             cases,
         }
@@ -1042,8 +1042,8 @@ impl<'file_path> Parser<'file_path> {
 
     /// Type declaration parsing
     fn type_declaration(&mut self, publicity: Publicity) -> Declaration {
-        // start location
-        let start_location = self.peek().address.clone();
+        // start address
+        let start_address = self.peek().address.clone();
 
         // variable is used to create type span in bails.
         let type_tk = self.consume(TokenKind::Type).clone();
@@ -1080,22 +1080,22 @@ impl<'file_path> Parser<'file_path> {
                                 declarations.push(self.let_declaration(Publicity::Public))
                             }
                             _ => {
-                                let end = self.peek().clone();
+                                let end = self.previous().clone();
                                 bail!(ParseError::UnexpectedNodeInTypeBody {
-                                    src: self.named_source.clone(),
+                                    src: start_address.source,
                                     type_span: (type_tk.address + name.address).span.into(),
-                                    span: (location.address.span.start..(end.address.span.end - 1))
+                                    span: (location.address.span.start..end.address.span.end)
                                         .into(),
                                 })
                             }
                         }
                     }
                     _ => {
-                        let end = self.peek().clone();
+                        let end = self.previous().clone();
                         bail!(ParseError::UnexpectedNodeInTypeBody {
-                            src: self.named_source.clone(),
+                            src: start_address.source,
                             type_span: (type_tk.address.span.start..name.address.span.end).into(),
-                            span: (location.address.span.start..(end.address.span.end - 1)).into(),
+                            span: (location.address.span.start..end.address.span.end).into(),
                         })
                     }
                 }
@@ -1103,11 +1103,11 @@ impl<'file_path> Parser<'file_path> {
             self.consume(TokenKind::Rbrace);
         }
 
-        // end location
-        let end_location = self.previous().address.clone();
+        // end address
+        let end_address = self.previous().address.clone();
 
         Declaration::TypeDeclaration {
-            location: start_location + end_location,
+            location: start_address + end_address,
             publicity,
             name: name.value,
             constructor,
@@ -1285,7 +1285,7 @@ impl<'file_path> Parser<'file_path> {
             _ => {
                 let token = self.peek().clone();
                 bail!(ParseError::UnexpectedDeclarationToken {
-                    src: self.named_source.clone(),
+                    src: token.address.source,
                     span: token.address.span.into(),
                     unexpected: token.value
                 })
@@ -1340,7 +1340,7 @@ impl<'file_path> Parser<'file_path> {
                 stmt
             } else {
                 bail!(ParseError::ExpectedSemicolon {
-                    src: self.named_source.clone(),
+                    src: self.source.clone(),
                     span: stmt.location().span.into()
                 })
             }
@@ -1372,7 +1372,7 @@ impl<'file_path> Parser<'file_path> {
                     tk
                 } else {
                     bail!(ParseError::UnexpectedToken {
-                        src: self.named_source.clone(),
+                        src: self.source.clone(),
                         span: tk.address.clone().span.into(),
                         unexpected: tk.value.clone(),
                         expected: tk_type

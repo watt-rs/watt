@@ -4,15 +4,11 @@ use crate::{
     consts,
     warnings::LintWarning,
 };
-use miette::NamedSource;
-use std::sync::Arc;
 use watt_ast::ast::{Block, Declaration, Either, ElseBranch, Expression, Module, Statement};
 use watt_common::{package::DraftPackage, warn};
 
 /// Linting context
 pub struct LintCx<'cx, 'module> {
-    /// Source
-    pub source: &'cx NamedSource<Arc<String>>,
     /// Draft package
     pub draft: &'cx DraftPackage,
     /// Module
@@ -22,16 +18,8 @@ pub struct LintCx<'cx, 'module> {
 /// Implementation
 impl<'cx, 'module> LintCx<'cx, 'module> {
     /// Creates new context
-    pub fn new(
-        source: &'cx NamedSource<Arc<String>>,
-        draft: &'cx DraftPackage,
-        module: &'module Module,
-    ) -> Self {
-        Self {
-            source,
-            draft,
-            module,
-        }
+    pub fn new(draft: &'cx DraftPackage, module: &'module Module) -> Self {
+        Self { draft, module }
     }
 
     /// Lints module
@@ -56,7 +44,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     warn!(
                         self,
                         LintWarning::WrongTypeName {
-                            src: self.source.clone(),
+                            src: location.source.clone(),
                             span: location.span.clone().into()
                         }
                     )
@@ -67,7 +55,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     warn!(
                         self,
                         LintWarning::TooManyParams {
-                            src: self.source.clone(),
+                            src: location.source.clone(),
                             span: location.span.clone().into(),
                             name: name.clone()
                         }
@@ -90,7 +78,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     warn!(
                         self,
                         LintWarning::WrongTypeName {
-                            src: self.source.clone(),
+                            src: location.source.clone(),
                             span: location.span.clone().into()
                         }
                     )
@@ -101,7 +89,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     warn!(
                         self,
                         LintWarning::TooManyParams {
-                            src: self.source.clone(),
+                            src: location.source.clone(),
                             span: location.span.clone().into(),
                             name: name.clone()
                         }
@@ -115,7 +103,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                         warn!(
                             self,
                             LintWarning::WrongVariantName {
-                                src: self.source.clone(),
+                                src: location.source.clone(),
                                 span: variant.location.span.clone().into()
                             }
                         )
@@ -126,7 +114,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                         warn!(
                             self,
                             LintWarning::TooManyParams {
-                                src: self.source.clone(),
+                                src: location.source.clone(),
                                 span: variant.location.span.clone().into(),
                                 name: name.clone()
                             }
@@ -145,7 +133,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     warn!(
                         self,
                         LintWarning::WrongTypeName {
-                            src: self.source.clone(),
+                            src: location.source.clone(),
                             span: location.span.clone().into()
                         }
                     )
@@ -158,7 +146,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                         warn!(
                             self,
                             LintWarning::WrongFunctionName {
-                                src: self.source.clone(),
+                                src: location.source.clone(),
                                 span: function.location.span.clone().into()
                             }
                         )
@@ -168,7 +156,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                         warn!(
                             self,
                             LintWarning::TooManyParamsInAnFn {
-                                src: self.source.clone(),
+                                src: location.source.clone(),
                                 span: location.span.clone().into()
                             }
                         )
@@ -186,7 +174,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     warn!(
                         self,
                         LintWarning::WrongVariantName {
-                            src: self.source.clone(),
+                            src: location.source.clone(),
                             span: location.span.clone().into()
                         }
                     )
@@ -196,7 +184,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     warn!(
                         self,
                         LintWarning::TooManyParamsInAnFn {
-                            src: self.source.clone(),
+                            src: location.source.clone(),
                             span: location.span.clone().into()
                         }
                     )
@@ -213,7 +201,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     warn!(
                         self,
                         LintWarning::WrongVariantName {
-                            src: self.source.clone(),
+                            src: location.source.clone(),
                             span: location.span.clone().into()
                         }
                     )
@@ -236,7 +224,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     warn!(
                         self,
                         LintWarning::WrongFunctionName {
-                            src: self.source.clone(),
+                            src: location.source.clone(),
                             span: location.span.clone().into()
                         }
                     )
@@ -246,7 +234,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     warn!(
                         self,
                         LintWarning::TooManyParamsInAnFn {
-                            src: self.source.clone(),
+                            src: location.source.clone(),
                             span: location.span.clone().into()
                         }
                     )
@@ -262,7 +250,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
             warn!(
                 self,
                 LintWarning::EmptyBlock {
-                    src: self.source.clone(),
+                    src: block.location.source.clone(),
                     span: block.location.span.clone().into()
                 }
             );
@@ -288,7 +276,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     warn!(
                         self,
                         LintWarning::WrongVariableName {
-                            src: self.source.clone(),
+                            src: location.source.clone(),
                             span: location.span.clone().into(),
                         }
                     )
@@ -380,7 +368,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     warn!(
                         self,
                         LintWarning::TooManyParamsInAnFn {
-                            src: self.source.clone(),
+                            src: location.source.clone(),
                             span: location.span.clone().into()
                         }
                     )

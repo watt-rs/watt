@@ -14,7 +14,7 @@ pub enum TypeckWarning {
     )]
     AccessOfDynField {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this is unsafe.")]
         span: SourceSpan,
     },
@@ -26,7 +26,7 @@ pub enum TypeckWarning {
     )]
     CallOfDyn {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this is unsafe.")]
         span: SourceSpan,
     },
@@ -38,9 +38,11 @@ pub enum TypeckWarning {
     )]
     UnitAndDynUnification {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        first_src: Arc<NamedSource<String>>,
         #[label("unify this...")]
         first_span: SourceSpan,
+        #[source_code]
+        second_src: Arc<NamedSource<String>>,
         #[label("and this is unsafe.")]
         second_span: SourceSpan,
     },
@@ -52,7 +54,7 @@ pub enum TypeckWarning {
     )]
     FoundTodo {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("found todo.")]
         span: SourceSpan,
     },

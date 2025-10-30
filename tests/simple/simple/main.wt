@@ -1,0 +1,12 @@
+use suit/test for Test
+use suit/run as test_runner
+use suit/assert for assert_eq
+use std/list for List
+
+fn test_success() {
+    assert_eq(2 + 2, 4);
+}
+
+fn main() {
+    let test = Test("test", test_success)
+}

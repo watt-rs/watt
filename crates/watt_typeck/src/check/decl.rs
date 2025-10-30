@@ -43,7 +43,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
         params.iter().for_each(|p| {
             self.resolver
-                .define(&self.module.source, &location, p.0, Def::Local(p.1.clone()))
+                .define(&location, p.0, Def::Local(p.1.clone()))
         });
 
         // creating and defining function
@@ -73,7 +73,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
 
         self.resolver.define(
-            &self.module.source,
             &location,
             &"self".into(),
             Def::Local(Typ::Custom(type_.clone())),
@@ -100,24 +99,28 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         params: Vec<Parameter>,
         declarations: Vec<Declaration>,
     ) {
-        // inferred params
-        let inferred_params = params
-            .into_iter()
-            .map(|p| (p.name, (p.location, self.infer_type_annotation(p.typ))))
-            .collect::<HashMap<EcoString, (Address, Typ)>>();
+        // inferred params vector and map
+        let mut inferred_params = Vec::with_capacity(params.len());
+        let mut inferred_params_map = HashMap::with_capacity(params.len());
+
+        // inferring params
+        for p in params {
+            let typ = self.infer_type_annotation(p.typ);
+            inferred_params.push(typ.clone());
+            inferred_params_map.insert(p.name, (p.location, typ));
+        }
 
         // construction type
         let type_ = RcPtr::new(RefCell::new(Type {
-            source: self.module.source.clone(),
+            source: location.source.clone(),
             location: location.clone(),
             name: name.clone(),
-            params: inferred_params.iter().map(|p| p.1.1.clone()).collect(),
+            params: inferred_params,
             env: HashMap::new(),
         }));
 
         // defining type, if not already defined
         self.resolver.define(
-            &self.module.source,
             &location,
             &name,
             Def::Module(ModDef::CustomType(WithPublicity {
@@ -130,9 +133,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         self.resolver.push_rib(RibKind::ConstructorParams);
 
         // params
-        inferred_params.into_iter().for_each(|p| {
-            self.resolver
-                .define(&self.module.source, &p.1.0, &p.0, Def::Local(p.1.1));
+        inferred_params_map.into_iter().for_each(|p| {
+            self.resolver.define(&p.1.0, &p.0, Def::Local(p.1.1));
         });
 
         // fields env start
@@ -237,7 +239,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
         // defining type, if not already defined
         self.resolver.define(
-            &self.module.source,
             &location,
             &name,
             Def::Module(ModDef::CustomType(WithPublicity {
@@ -271,7 +272,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
         // construction enum
         let enum_ = RcPtr::new(Enum {
-            source: self.module.source.clone(),
+            source: location.source.clone(),
             location: location.clone(),
             name: name.clone(),
             variants: inferred_variants,
@@ -279,7 +280,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
         // defining enum, if not already defined
         self.resolver.define(
-            &self.module.source,
             &location,
             &name,
             Def::Module(ModDef::CustomType(WithPublicity {
@@ -317,7 +317,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             ret: ret.clone(),
         };
         self.resolver.define(
-            &self.module.source.clone(),
             &location,
             &name,
             Def::Module(ModDef::Variable(WithPublicity {
@@ -332,7 +331,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // defining params in new scope
         params.iter().for_each(|p| {
             self.resolver
-                .define(&self.module.source, &location, p.0, Def::Local(p.1.clone()))
+                .define(&location, p.0, Def::Local(p.1.clone()))
         });
 
         // inferring body
@@ -374,7 +373,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             ret: ret.clone(),
         };
         self.resolver.define(
-            &self.module.source.clone(),
             &location,
             &name,
             Def::Module(ModDef::Variable(WithPublicity {
@@ -403,7 +401,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     (location.clone(), inferred_value.clone()),
                 ));
                 self.resolver.define(
-                    &self.module.source,
                     &location,
                     &name,
                     Def::Module(ModDef::Variable(WithPublicity {
@@ -413,7 +410,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 )
             }
             None => self.resolver.define(
-                &self.module.source,
                 &location,
                 &name,
                 Def::Module(ModDef::Variable(WithPublicity {
@@ -476,18 +472,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     pub fn perform_import(&mut self, import: Dependency) {
         match self.package.root.modules.get(&import.path.module) {
             Some(module) => match import.kind {
-                UseKind::AsName(name) => self.resolver.import_as(
-                    &self.module.source,
-                    &import.location,
-                    name,
-                    module.clone(),
-                ),
-                UseKind::ForNames(names) => self.resolver.import_for(
-                    &self.module.source,
-                    &import.location,
-                    names,
-                    module.clone(),
-                ),
+                UseKind::AsName(name) => {
+                    self.resolver
+                        .import_as(&import.location, name, module.clone())
+                }
+                UseKind::ForNames(names) => {
+                    self.resolver
+                        .import_for(&import.location, names, module.clone())
+                }
             },
             None => bail!(TypeckError::ImportOfUnknownModule {
                 src: self.module.source.clone(),

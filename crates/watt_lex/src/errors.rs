@@ -11,7 +11,7 @@ pub enum LexError {
     #[diagnostic(code(lex::unexpected_char))]
     UnexpectedCharacter {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this character isn't expected here.")]
         span: SourceSpan,
         ch: char,
@@ -20,7 +20,7 @@ pub enum LexError {
     #[diagnostic(code(lex::unclosed_string_quotes))]
     UnclosedStringQuotes {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("no ending quote specified.")]
         span: SourceSpan,
     },
@@ -28,7 +28,7 @@ pub enum LexError {
     #[diagnostic(code(lex::invalid_number))]
     InvalidNumber {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this number isn't valid.")]
         span: SourceSpan,
         number: EcoString,

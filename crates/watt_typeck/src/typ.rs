@@ -18,7 +18,7 @@ pub enum PreludeType {
 /// Custom type
 #[derive(Clone)]
 pub struct Type {
-    pub source: NamedSource<Arc<String>>,
+    pub source: Arc<NamedSource<String>>,
     pub location: Address,
     pub name: EcoString,
     pub params: Vec<Typ>,
@@ -67,7 +67,7 @@ impl Type {
 /// Trait function
 #[derive(Clone)]
 pub struct TraitFunction {
-    pub source: NamedSource<Arc<String>>,
+    pub source: Arc<NamedSource<String>>,
     pub location: Address,
     pub name: EcoString,
     pub params: Vec<Typ>,
@@ -77,7 +77,7 @@ pub struct TraitFunction {
 /// Trait
 #[derive(Clone)]
 pub struct Trait {
-    pub source: NamedSource<Arc<String>>,
+    pub source: Arc<NamedSource<String>>,
     pub location: Address,
     pub name: EcoString,
     pub functions: HashMap<EcoString, RcPtr<Function>>,
@@ -109,7 +109,7 @@ impl Debug for EnumVariant {
 #[derive(Clone)]
 #[allow(dead_code)]
 pub struct Enum {
-    pub source: NamedSource<Arc<String>>,
+    pub source: Arc<NamedSource<String>>,
     pub location: Address,
     pub name: EcoString,
     pub variants: Vec<EnumVariant>,
@@ -125,7 +125,7 @@ impl Debug for Enum {
 /// Function
 #[derive(Clone)]
 pub struct Function {
-    pub source: NamedSource<Arc<String>>,
+    pub source: Arc<NamedSource<String>>,
     pub location: Address,
     pub name: EcoString,
     pub params: Vec<Typ>,
@@ -170,7 +170,7 @@ impl Debug for CustomType {
 #[derive(Clone)]
 #[allow(dead_code)]
 pub struct Module {
-    pub source: NamedSource<Arc<String>>,
+    pub source: Arc<NamedSource<String>>,
     pub name: EcoString,
     pub fields: HashMap<EcoString, ModDef>,
 }

@@ -17,6 +17,27 @@ unsafe impl Sync for Res {}
 unsafe impl Send for CustomType {}
 unsafe impl Sync for CustomType {}
 
+/// Typechecking related
+#[derive(Debug, Error, Diagnostic)]
+pub enum TypeckRelated {
+    #[error("this...")]
+    #[diagnostic(severity(info))]
+    This {
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label()]
+        span: SourceSpan,
+    },
+    #[error("with this.")]
+    #[diagnostic(severity(info))]
+    WithThis {
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label()]
+        span: SourceSpan,
+    },
+}
+
 /// Typechecking error
 #[derive(Debug, Error, Diagnostic)]
 pub enum TypeckError {
@@ -27,7 +48,7 @@ pub enum TypeckError {
     )]
     CouldNotResolve {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this is not defined.")]
         span: SourceSpan,
         name: EcoString,
@@ -35,13 +56,9 @@ pub enum TypeckError {
     #[error("could not unify {t1:?} and {t2:?}.")]
     #[diagnostic(code(typeck::could_not_unify))]
     CouldNotUnify {
-        #[source_code]
-        src: NamedSource<Arc<String>>,
-        #[label("could not unify this...")]
-        first_span: SourceSpan,
+        #[related]
+        related: Vec<TypeckRelated>,
         t1: Typ,
-        #[label("with this")]
-        second_span: SourceSpan,
         t2: Typ,
     },
     #[error("could not unify trait {tr:?} and {ty:?}.")]
@@ -55,10 +72,12 @@ implements all trait functions with `pub` modifier."
     )]
     CouldNotUnifyTraitAndTyp {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        first_src: Arc<NamedSource<String>>,
         #[label("could not unify this...")]
         first_span: SourceSpan,
         tr: Typ,
+        #[source_code]
+        second_src: Arc<NamedSource<String>>,
         #[label("with this")]
         second_span: SourceSpan,
         ty: Typ,
@@ -67,7 +86,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::could_not_use_value_as_type))]
     CouldNotUseValueAsType {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("could not use as type.")]
         span: SourceSpan,
         v: EcoString,
@@ -79,7 +98,7 @@ implements all trait functions with `pub` modifier."
     )]
     VariableIsAlreadyDefined {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this variable is already defined.")]
         span: SourceSpan,
     },
@@ -87,7 +106,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::invalid_binary_op))]
     InvalidBinaryOp {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this is incorrect.")]
         span: SourceSpan,
         a: Typ,
@@ -98,7 +117,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::invalid_unary_op))]
     InvalidUnaryOp {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this is incorrect.")]
         span: SourceSpan,
         t: Typ,
@@ -108,7 +127,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::field_is_not_defined))]
     FieldIsNotDefined {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this access is invalid.")]
         span: SourceSpan,
         t: EcoString,
@@ -118,7 +137,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::enum_variant_is_not_defined))]
     EnumVariantIsNotDefined {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this access is invalid.")]
         span: SourceSpan,
         e: EcoString,
@@ -128,7 +147,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::enum_variant_field_is_not_defined))]
     EnumVariantFieldIsNotDefined {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this pattern isn't valid.")]
         span: SourceSpan,
         res: Res,
@@ -138,7 +157,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::module_field_is_not_defined))]
     ModuleFieldIsNotDefined {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this access is invalid.")]
         span: SourceSpan,
         m: EcoString,
@@ -148,7 +167,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::field_is_private))]
     FieldIsPrivate {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this access is invalid.")]
         span: SourceSpan,
         t: EcoString,
@@ -158,7 +177,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::type_is_private))]
     TypeIsPrivate {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this access is invalid.")]
         span: SourceSpan,
         t: CustomType,
@@ -167,7 +186,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::module_field_is_private))]
     ModuleFieldIsPrivate {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this access is invalid.")]
         span: SourceSpan,
         name: EcoString,
@@ -183,7 +202,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::could_not_call))]
     CouldNotCall {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this is incorrect.")]
         span: SourceSpan,
         res: Res,
@@ -192,7 +211,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::could_not_resolve_fileds_in))]
     CouldNotResolveFieldsIn {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this is incorrect.")]
         span: SourceSpan,
         res: Res,
@@ -201,7 +220,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::type_is_not_defined))]
     TypeIsNotDefined {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this type is not defined.")]
         span: SourceSpan,
         t: EcoString,
@@ -217,7 +236,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::import_of_unknown_module))]
     ImportOfUnknownModule {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this module is not unknown.")]
         span: SourceSpan,
         m: EcoString,
@@ -226,7 +245,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::type_is_already_defined))]
     TypeIsAlreadyDefined {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("new definition here.")]
         span: SourceSpan,
         t: EcoString,
@@ -235,7 +254,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::method_is_already_defined))]
     MethodIsAlreadyDefined {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this method is already defined.")]
         span: SourceSpan,
         m: EcoString,
@@ -244,7 +263,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::module_is_already_imported))]
     ModuleIsAlreadyImportedAs {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this module is already imported.")]
         span: SourceSpan,
         m: EcoString,
@@ -254,7 +273,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::def_is_already_imported))]
     DefIsAlreadyImported {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this name is already imported.")]
         span: SourceSpan,
         name: EcoString,
@@ -264,7 +283,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::expected_logical_in_if))]
     ExpectedLogicalInIf {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("expected logical expression in if.")]
         span: SourceSpan,
     },
@@ -272,7 +291,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::expected_logical_in_while))]
     ExpectedLogicalInWhile {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("expected logical expression in while.")]
         span: SourceSpan,
     },
@@ -280,7 +299,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::types_missmatch))]
     TypesMissmatch {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("types missmatched here.")]
         span: SourceSpan,
         expected: Typ,
@@ -290,11 +309,11 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::call_expr_return_type_is_void))]
     CallExprReturnTypeIsVoid {
         #[source_code]
-        fn_src: NamedSource<Arc<String>>,
+        fn_src: Arc<NamedSource<String>>,
         #[label("function defined here.")]
         definition_span: SourceSpan,
         #[source_code]
-        call_src: NamedSource<Arc<String>>,
+        call_src: Arc<NamedSource<String>>,
         #[label("function call occured here.")]
         span: SourceSpan,
     },
@@ -302,7 +321,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::wrong_unwrap_pattern))]
     WrongUnwrapPattern {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this seems to be wrong.")]
         span: SourceSpan,
         got: Res,
@@ -311,7 +330,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::wrong_variant_pattern))]
     WrongVariantPattern {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this seems to be wrong.")]
         span: SourceSpan,
         got: Res,
@@ -320,7 +339,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::unexpected_resolution), help("can't use {res:?} here."))]
     UnexpectedResolution {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this is unexpected.")]
         span: SourceSpan,
         res: Res,
@@ -329,7 +348,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::break_outside_loop))]
     BreakOutsideLoop {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("break is outside loop.")]
         span: SourceSpan,
     },
@@ -337,7 +356,7 @@ implements all trait functions with `pub` modifier."
     #[diagnostic(code(typeck::continue_outside_loop))]
     ContinueOutsideLoop {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("continue is outside loop.")]
         span: SourceSpan,
     },
@@ -357,7 +376,7 @@ pub enum ExError {
     #[diagnostic(code(ex::enum_patterns_missmatch))]
     EnumPatternsMissmatch {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("patterns are missmatched.")]
         span: SourceSpan,
     },
@@ -365,7 +384,7 @@ pub enum ExError {
     #[diagnostic(code(ex::enum_unwrap_fields_missmatch))]
     EnumUnwrapFieldsMissmatch {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("fields of patterns are missmatched.")]
         span: SourceSpan,
     },

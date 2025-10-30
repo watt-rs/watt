@@ -59,10 +59,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     (value_location.clone(), inferred_value.clone()),
                 ));
                 self.resolver
-                    .define(&self.module.source, &location, &name, Def::Local(annotated))
+                    .define(&location, &name, Def::Local(annotated))
             }
             None => self.resolver.define(
-                &self.module.source,
                 &location,
                 &name,
                 Def::Local(inferred_value),

@@ -8,8 +8,7 @@ use crate::{
     typ::{CustomType, Module, Typ, Type, WithPublicity},
 };
 use ecow::EcoString;
-use miette::NamedSource;
-use std::{cell::RefCell, collections::HashMap, fmt::Debug, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, fmt::Debug};
 use watt_common::{address::Address, bail, rc_ptr::RcPtr};
 
 /// Definition
@@ -78,13 +77,7 @@ impl ModuleResolver {
 
     /// Creates definition, if no definition
     /// with same name is already defined.
-    pub fn define(
-        &mut self,
-        named_source: &NamedSource<Arc<String>>,
-        address: &Address,
-        name: &EcoString,
-        def: Def,
-    ) {
+    pub fn define(&mut self, address: &Address, name: &EcoString, def: Def) {
         // Checking def
         match def {
             // If module
@@ -96,7 +89,7 @@ impl ModuleResolver {
                         // Custom type
                         ModDef::CustomType(_) => {
                             bail!(TypeckError::TypeIsAlreadyDefined {
-                                src: named_source.clone(),
+                                src: address.source.clone(),
                                 span: address.span.clone().into(),
                                 t: name.clone()
                             })
@@ -104,7 +97,7 @@ impl ModuleResolver {
                         // Variable
                         ModDef::Variable(_) => {
                             bail!(TypeckError::VariableIsAlreadyDefined {
-                                src: named_source.clone(),
+                                src: address.source.clone(),
                                 span: address.span.clone().into(),
                             })
                         }
@@ -117,32 +110,20 @@ impl ModuleResolver {
             }
             // If local
             Def::Local(local_def) => {
-                self.ribs_stack
-                    .define(named_source, address, name, local_def);
+                self.ribs_stack.define(address, name, local_def);
             }
         }
     }
 
     /// Defines local variable.
     /// If definition exists, checks types equality.
-    pub fn redefine_local(
-        &mut self,
-        named_source: &NamedSource<Arc<String>>,
-        address: &Address,
-        name: &EcoString,
-        typ: Typ,
-    ) {
-        self.ribs_stack.redefine(named_source, address, name, typ);
+    pub fn redefine_local(&mut self, address: &Address, name: &EcoString, typ: Typ) {
+        self.ribs_stack.redefine(address, name, typ);
     }
 
     /// Resolves up a value
     /// Raises error if variable is not found.
-    pub fn resolve(
-        &self,
-        named_source: &NamedSource<Arc<String>>,
-        address: &Address,
-        name: &EcoString,
-    ) -> Res {
+    pub fn resolve(&self, address: &Address, name: &EcoString) -> Res {
         // Checking existence in ribs
         match self.ribs_stack.lookup(name) {
             Some(typ) => Res::Value(typ),
@@ -162,7 +143,7 @@ impl ModuleResolver {
                         // Checking existence in modules
                         Some(_) => Res::Module(name.clone()),
                         None => bail!(TypeckError::CouldNotResolve {
-                            src: named_source.clone(),
+                            src: address.source.clone(),
                             span: address.clone().span.into(),
                             name: name.clone()
                         }),
@@ -174,18 +155,13 @@ impl ModuleResolver {
 
     /// Resolves up a type
     /// Raises error if variable is not found.
-    pub fn resolve_type(
-        &self,
-        name: &EcoString,
-        named_source: &NamedSource<Arc<String>>,
-        address: &Address,
-    ) -> CustomType {
+    pub fn resolve_type(&self, name: &EcoString, address: &Address) -> CustomType {
         // Checking existence in module definitions
         match self.mod_defs.get(name) {
             Some(typ) => match typ {
                 ModDef::CustomType(ty) => ty.value.clone(),
                 ModDef::Variable(_) => bail!(TypeckError::CouldNotUseValueAsType {
-                    src: named_source.clone(),
+                    src: address.source.clone(),
                     span: address.clone().span.into(),
                     v: name.clone()
                 }),
@@ -195,13 +171,13 @@ impl ModuleResolver {
                 Some(typ) => match typ {
                     ModDef::CustomType(ty) => ty.value.clone(),
                     ModDef::Variable(_) => bail!(TypeckError::CouldNotUseValueAsType {
-                        src: named_source.clone(),
+                        src: address.source.clone(),
                         span: address.clone().span.into(),
                         v: name.clone()
                     }),
                 },
                 None => bail!(TypeckError::TypeIsNotDefined {
-                    src: named_source.clone(),
+                    src: address.source.clone(),
                     span: address.clone().span.into(),
                     t: name.clone()
                 }),
@@ -244,16 +220,10 @@ impl ModuleResolver {
     }
 
     /// Imports module as name
-    pub fn import_as(
-        &mut self,
-        named_source: &NamedSource<Arc<String>>,
-        address: &Address,
-        name: EcoString,
-        module: RcPtr<Module>,
-    ) {
+    pub fn import_as(&mut self, address: &Address, name: EcoString, module: RcPtr<Module>) {
         match self.imported_modules.get(&name) {
             Some(module) => bail!(TypeckError::ModuleIsAlreadyImportedAs {
-                src: named_source.clone(),
+                src: address.source.clone(),
                 span: address.span.clone().into(),
                 m: module.name.clone(),
                 name: name.clone()
@@ -263,13 +233,7 @@ impl ModuleResolver {
     }
 
     /// Imports names from module
-    pub fn import_for(
-        &mut self,
-        named_source: &NamedSource<Arc<String>>,
-        address: &Address,
-        names: Vec<EcoString>,
-        module: RcPtr<Module>,
-    ) {
+    pub fn import_for(&mut self, address: &Address, names: Vec<EcoString>, module: RcPtr<Module>) {
         // Importing names
         for name in names {
             // Checking name existence
@@ -277,7 +241,7 @@ impl ModuleResolver {
                 Some(def) => match self.imported_defs.get(&name) {
                     // Checking name is already imported from other module
                     Some(already) => bail!(TypeckError::DefIsAlreadyImported {
-                        src: named_source.clone(),
+                        src: address.source.clone(),
                         span: address.span.clone().into(),
                         name: name.clone(),
                         def: already.clone()
@@ -288,7 +252,7 @@ impl ModuleResolver {
                 },
                 None => {
                     bail!(TypeckError::ModuleFieldIsNotDefined {
-                        src: named_source.clone(),
+                        src: address.source.clone(),
                         span: address.span.clone().into(),
                         m: module.name.clone(),
                         field: name

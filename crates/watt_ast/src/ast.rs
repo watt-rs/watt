@@ -487,7 +487,7 @@ pub enum Declaration {
 /// Ast tree
 #[derive(Debug)]
 pub struct Module {
-    pub source: NamedSource<Arc<String>>,
+    pub source: Arc<NamedSource<String>>,
     pub dependencies: Vec<Dependency>,
     pub declarations: Vec<Declaration>,
 }

@@ -12,7 +12,7 @@ pub enum ParseError {
     #[diagnostic(code(parse::unexpected_token), help("expected {expected:?}."))]
     UnexpectedToken {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this token is unexpected.")]
         span: SourceSpan,
         unexpected: EcoString,
@@ -25,7 +25,7 @@ pub enum ParseError {
     )]
     ExpectedSemicolon {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("expected semicolon after that.")]
         span: SourceSpan,
     },
@@ -36,7 +36,7 @@ pub enum ParseError {
     #[diagnostic(code(parse::expected_id_as_access), help("expected identifier."))]
     ExpectedIdAsAccess {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this token is unexpected.")]
         span: SourceSpan,
         unexpected: EcoString,
@@ -48,7 +48,7 @@ pub enum ParseError {
     )]
     InvalidOperationInExpr {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this in unacceptable in expressions.")]
         span: SourceSpan,
         unexpected: EcoString,
@@ -57,7 +57,7 @@ pub enum ParseError {
     #[diagnostic(code(parse::invalid_assignment_operator))]
     InvalidAssignmentOperator {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this is unrecognized operator.")]
         span: SourceSpan,
         op: EcoString,
@@ -66,7 +66,7 @@ pub enum ParseError {
     #[diagnostic(code(parse::invalid_assignment_operation))]
     InvalidAssignmentOperation {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this in unacceptable with assignment operation.")]
         span: SourceSpan,
     },
@@ -74,7 +74,7 @@ pub enum ParseError {
     #[diagnostic(code(parse::unexpected_expression_token))]
     UnexpectedExpressionToken {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this can not be represented as expression.")]
         span: SourceSpan,
         unexpected: EcoString,
@@ -83,7 +83,7 @@ pub enum ParseError {
     #[diagnostic(code(parse::variable_access_cannot_be_statement))]
     VariableAccessCanNotBeStatement {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this can not be a statement")]
         span: SourceSpan,
     },
@@ -91,7 +91,7 @@ pub enum ParseError {
     #[diagnostic(code(parse::unexpected_statement_node))]
     UnexpectedStatement {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this can not be a statement")]
         span: SourceSpan,
     },
@@ -99,7 +99,7 @@ pub enum ParseError {
     #[diagnostic(code(parse::unexpected_node_in_type_body))]
     UnexpectedNodeInTypeBody {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("type defined here.")]
         type_span: SourceSpan,
         #[label("this is unexpected in type body.")]
@@ -109,7 +109,7 @@ pub enum ParseError {
     #[diagnostic(code(parse::unexpected_statement_token))]
     UnexpectedStatementToken {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this can not be represented as statement.")]
         span: SourceSpan,
         unexpected: EcoString,
@@ -121,7 +121,7 @@ pub enum ParseError {
     )]
     UnexpectedDeclarationToken {
         #[source_code]
-        src: NamedSource<Arc<String>>,
+        src: Arc<NamedSource<String>>,
         #[label("this can not be represented as declaration.")]
         span: SourceSpan,
         unexpected: EcoString,

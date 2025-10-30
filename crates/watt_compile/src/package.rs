@@ -66,7 +66,7 @@ impl<'cx> PackageCompiler<'cx> {
         let code = file.read();
         let code_chars: Vec<char> = code.chars().collect();
         // Creating named source for miette
-        let named_source = NamedSource::<Arc<String>>::new(module_name, Arc::new(code));
+        let named_source = Arc::new(NamedSource::<String>::new(module_name, code));
         // Lexing
         let lexer = Lexer::new(&code_chars, &named_source);
         let tokens = lexer.lex();
@@ -74,7 +74,7 @@ impl<'cx> PackageCompiler<'cx> {
         let mut parser = Parser::new(tokens, &named_source);
         let ast = parser.parse();
         // Linting
-        let linter = LintCx::new(&named_source, &self.package.draft, &ast);
+        let linter = LintCx::new(&self.package.draft, &ast);
         linter.lint();
         // Done
         ast

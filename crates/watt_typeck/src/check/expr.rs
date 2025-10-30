@@ -200,7 +200,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
     /// Infers get
     fn infer_get(&self, location: Address, name: EcoString) -> Res {
-        self.resolver.resolve(&self.module.source, &location, &name)
+        self.resolver.resolve(&location, &name)
     }
 
     /// Infers module field access
@@ -473,10 +473,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 "string" => Typ::Prelude(PreludeType::String),
                 "dyn" => Typ::Dyn,
                 "unit" => Typ::Unit,
-                _ => match self
-                    .resolver
-                    .resolve_type(&name, &self.module.source, &location)
-                {
+                _ => match self.resolver.resolve_type(&name, &location) {
                     CustomType::Enum(en) => Typ::Enum(en.clone()),
                     CustomType::Type(ty) => Typ::Custom(ty.clone()),
                     CustomType::Trait(tr) => Typ::Trait(tr.clone()),
@@ -594,7 +591,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // defining params in new scope
         params.iter().for_each(|p| {
             self.resolver
-                .define(&self.module.source, &location, p.0, Def::Local(p.1.clone()))
+                .define(&location, p.0, Def::Local(p.1.clone()))
         });
 
         // inferring body
@@ -639,7 +636,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                                     // Defining field with it's type, if it exists
                                     Some(typ) => {
                                         self.resolver.redefine_local(
-                                            &self.module.source,
                                             &field.0,
                                             &field.1,
                                             typ.clone(),
@@ -732,12 +728,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 }
             }
             Pattern::BindTo(name) => {
-                self.resolver.define(
-                    &self.module.source,
-                    &case.address,
-                    &name,
-                    Def::Local(inferred_what.clone()),
-                );
+                self.resolver
+                    .define(&case.address, &name, Def::Local(inferred_what.clone()));
             }
             Pattern::Or(pat1, pat2) => {
                 self.analyze_pattern(inferred_what.clone(), case, &pat1);
@@ -875,16 +867,16 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 value,
                 op,
             } => self.infer_unary(location, op, *value),
-            Expression::PrefixVar { location, name } => self
-                .infer_get(location.clone(), name)
-                .unwrap_typ(&self.module.source, &location),
+            Expression::PrefixVar { location, name } => {
+                self.infer_get(location.clone(), name).unwrap_typ(&location)
+            }
             Expression::SuffixVar {
                 location,
                 container,
                 name,
             } => self
                 .infer_field_access(location.clone(), *container, name)
-                .unwrap_typ(&self.module.source, &location),
+                .unwrap_typ(&location),
             Expression::Call {
                 location,
                 what,

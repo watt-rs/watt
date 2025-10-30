@@ -105,12 +105,12 @@ fn gen_pattern(pattern: Pattern, body: Either<Block, Expression>) -> js::Tokens 
             Pattern::Unwrap { en, fields } => {
                 new $("$$")UnwrapPattern(
                     $(match en {
-                        Expression::SuffixVar { name, .. } => $(quoted(name.as_str())),
+                        Expression::SuffixVar { name, .. } => $(quoted(try_escape_js(&name))),
                         _ => $(quoted("unreachable"))
                     }),
-                    [$(for field in fields.clone() join (, ) => $(quoted(field.1.as_str())))],
+                    [$(for field in fields.clone() join (, ) => $(quoted(try_escape_js(&field.1))))],
                     function($("$$fields")) {
-                        $(for field in fields => let $(field.1.as_str()) = $("$$fields").$(field.1.as_str());$['\r'])
+                        $(for field in fields => let $(try_escape_js(&field.1)) = $("$$fields").$(try_escape_js(&field.1));$['\r'])
                         $(match body {
                             Either::Left(block) => $(gen_block_expr(block)),
                             Either::Right(expr) => return $(gen_expression(expr))
@@ -130,7 +130,7 @@ fn gen_pattern(pattern: Pattern, body: Either<Block, Expression>) -> js::Tokens 
             // BindTo(var) pattern
             Pattern::BindTo(var) => {
                 new $("$$")BindPattern(function($("$$it")) {
-                    $(var.as_str()) = $("$$it")
+                    $(try_escape_js(var.as_str())) = $("$$it")
                     $(match body {
                         Either::Left(block) => $(gen_block_expr(block)),
                         Either::Right(expr) => return $(gen_expression(expr))
@@ -141,7 +141,7 @@ fn gen_pattern(pattern: Pattern, body: Either<Block, Expression>) -> js::Tokens 
             Pattern::Variant(var) => {
                 new $("$$")VariantPattern(
                     $(match var {
-                        Expression::SuffixVar { name, .. } => $(quoted(name.as_str())),
+                        Expression::SuffixVar { name, .. } => $(quoted(try_escape_js(name.as_str()))),
                         _ => $(quoted("unreachable"))
                     }),
                     function() {
@@ -220,7 +220,7 @@ pub fn gen_expression(expr: Expression) -> js::Tokens {
         Expression::Function { params, body, .. } => {
             // function ($param, $param, n...)
             quote! {
-                function ($(for param in params join (, ) => $(param.name.to_string()))) {
+                function ($(for param in params join (, ) => $(try_escape_js(&param.name)))) {
                     $(match body {
                         Either::Left(block) => $(gen_block_expr(block)),
                         Either::Right(expr) => return $(gen_expression(*expr))
@@ -321,7 +321,7 @@ pub fn gen_declaration(decl: Declaration) -> js::Tokens {
         } => {
             // function $name($param, $param, n...)
             quote! {
-                export function $(try_escape_js(&name))($(for param in params join (, ) => $(param.name.to_string()))) {
+                export function $(try_escape_js(&name))($(for param in params join (, ) => $(try_escape_js(&param.name)))) {
                     $(match body {
                         Either::Left(block) => $(gen_block_expr(block)),
                         Either::Right(expr) => return $(gen_expression(expr))
@@ -343,7 +343,7 @@ pub fn gen_declaration(decl: Declaration) -> js::Tokens {
                 $(for decl in &declarations {
                     $(match decl {
                         Declaration::Function { name, params, body, .. } => {
-                            $(try_escape_js(name))($(for param in params join (, ) => $(param.name.to_string()))) {
+                            $(try_escape_js(name))($(for param in params join (, ) => $(try_escape_js(&param.name)))) {
                                 let self = this;
                                 $(match body {
                                     Either::Left(block) => $(gen_block_expr(block.clone())),
@@ -382,8 +382,8 @@ pub fn gen_declaration(decl: Declaration) -> js::Tokens {
                     $generated_constructor
                     $generated_methods
                 }
-                export function $(try_escape_js(&name))($(for field in constructor.clone() join (, ) => $(field.name.as_str()))) {
-                    return new $("$")$(try_escape_js(&name))($(for field in constructor join (, ) => $(field.name.as_str())));
+                export function $(try_escape_js(&name))($(for field in constructor.clone() join (, ) => $(try_escape_js(&field.name)))) {
+                    return new $("$")$(try_escape_js(&name))($(for field in constructor join (, ) => $(try_escape_js(&field.name))));
                 }
             }
         }
@@ -396,11 +396,11 @@ pub fn gen_declaration(decl: Declaration) -> js::Tokens {
             //    n...
             // })
             let variants: js::Tokens = quote!($(for variant in variants join(,$['\r']) =>
-                $(variant.name.as_str()): ($(for param in variant.params.clone() join (, ) => $(param.name.as_str()))) => ({
+                $(variant.name.as_str()): ($(for param in variant.params.clone() join (, ) => $(try_escape_js(&param.name)))) => ({
                     $("$meta"): "Enum",
                     $("$enum"): $(quoted(name.as_str())),
                     $("$variant"): $(quoted(variant.name.as_str())),
-                    $(for param in variant.params.clone() join (, ) => $(param.name.as_str()): $(param.name.as_str()))
+                    $(for param in variant.params.clone() join (, ) => $(try_escape_js(&param.name)): $(try_escape_js(&param.name)))
                 })
             ));
 
@@ -415,7 +415,7 @@ pub fn gen_declaration(decl: Declaration) -> js::Tokens {
             name, params, body, ..
         } => {
             quote! {
-                export function $(try_escape_js(&name))($(for param in params join (, ) => $(param.name.to_string()))) {
+                export function $(try_escape_js(&name))($(for param in params join (, ) => $(try_escape_js(&param.name)))) {
                     $(body.to_string())
                 }
             }
