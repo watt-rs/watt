@@ -36,6 +36,22 @@ pub enum TypeckRelated {
         #[label()]
         span: SourceSpan,
     },
+    #[error("defined here...")]
+    #[diagnostic(severity(hint))]
+    DefinedHere {
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label()]
+        span: SourceSpan,
+    },
+    #[error("used here...")]
+    #[diagnostic(severity(hint))]
+    UsedHere {
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label()]
+        span: SourceSpan,
+    },
 }
 
 /// Typechecking error
@@ -71,15 +87,9 @@ implements all trait functions with `pub` modifier."
         )
     )]
     CouldNotUnifyTraitAndTyp {
-        #[source_code]
-        first_src: Arc<NamedSource<String>>,
-        #[label("could not unify this...")]
-        first_span: SourceSpan,
+        #[related]
+        related: Vec<TypeckRelated>,
         tr: Typ,
-        #[source_code]
-        second_src: Arc<NamedSource<String>>,
-        #[label("with this")]
-        second_span: SourceSpan,
         ty: Typ,
     },
     #[error("could not use value {v} as type.")]
@@ -304,18 +314,6 @@ implements all trait functions with `pub` modifier."
         span: SourceSpan,
         expected: Typ,
         got: Typ,
-    },
-    #[error("call expression return type is void.")]
-    #[diagnostic(code(typeck::call_expr_return_type_is_void))]
-    CallExprReturnTypeIsVoid {
-        #[source_code]
-        fn_src: Arc<NamedSource<String>>,
-        #[label("function defined here.")]
-        definition_span: SourceSpan,
-        #[source_code]
-        call_src: Arc<NamedSource<String>>,
-        #[label("function call occured here.")]
-        span: SourceSpan,
     },
     #[error("wrong unwrap pattern. expected variant of enum, got {got:?}")]
     #[diagnostic(code(typeck::wrong_unwrap_pattern))]

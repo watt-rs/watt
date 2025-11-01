@@ -100,11 +100,17 @@ impl<'cx> EquationsSolver<'cx> {
                         Typ::Trait(tr.clone())
                     } else {
                         bail!(TypeckError::CouldNotUnifyTraitAndTyp {
-                            first_src: l1.source,
-                            first_span: l1.span.clone().into(),
+                            related: vec![
+                                TypeckRelated::DefinedHere {
+                                    src: l1.source,
+                                    span: l1.span.into()
+                                },
+                                TypeckRelated::UsedHere {
+                                    src: l2.source,
+                                    span: l2.span.into()
+                                }
+                            ],
                             tr: t1.clone(),
-                            second_src: l2.source,
-                            second_span: l2.span.clone().into(),
                             ty: t2.clone()
                         })
                     }
