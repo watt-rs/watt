@@ -3,10 +3,10 @@ use once_cell::sync::Lazy;
 use regex::bytes::Regex;
 
 /// Regex
-const RX_SNAKE_CASE: Lazy<Regex> = Lazy::new(|| Regex::new("^[a-z0-9_]+$").unwrap());
-const RX_CAMEL_CASE: Lazy<Regex> =
+static RX_SNAKE_CASE: Lazy<Regex> = Lazy::new(|| Regex::new("^[a-z0-9_]+$").unwrap());
+static RX_CAMEL_CASE: Lazy<Regex> =
     Lazy::new(|| Regex::new("^[a-z1-9]+(?:[A-Z][a-z1-9]+)+$").unwrap());
-const RX_PASCAL_CASE: Lazy<Regex> = Lazy::new(|| Regex::new("^(?:[A-Z][a-z1-9]+)+$").unwrap());
+static RX_PASCAL_CASE: Lazy<Regex> = Lazy::new(|| Regex::new("^(?:[A-Z][a-z1-9]+)+$").unwrap());
 
 /// Checking given string is `snake_case`
 pub fn is_snake_case(string: &str) -> bool {

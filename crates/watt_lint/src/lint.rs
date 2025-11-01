@@ -129,7 +129,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                 ..
             } => {
                 // Checking trait name is in `PascalCase`
-                if !case::is_pascal_case(&name) {
+                if !case::is_pascal_case(name) {
                     warn!(
                         self,
                         LintWarning::WrongTypeName {
@@ -170,7 +170,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                 ..
             } => {
                 // Checking function name is in `snake_case`
-                if !case::is_snake_case(&name) {
+                if !case::is_snake_case(name) {
                     warn!(
                         self,
                         LintWarning::WrongVariantName {
@@ -197,7 +197,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                 ..
             } => {
                 // Checking variable name is in `snake_case`
-                if !case::is_snake_case(&name) {
+                if !case::is_snake_case(name) {
                     warn!(
                         self,
                         LintWarning::WrongVariantName {
@@ -220,7 +220,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     Either::Right(expr) => self.lint_expr(expr),
                 }
                 // Checking function name is in `snake_case`
-                if !case::is_snake_case(&name) {
+                if !case::is_snake_case(name) {
                     warn!(
                         self,
                         LintWarning::WrongFunctionName {
@@ -246,7 +246,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
     /// Lints block
     fn lint_block(&self, block: &Block) {
         // Checking that block has at least 1 statement
-        if block.body.len() < 1 {
+        if block.body.is_empty() {
             warn!(
                 self,
                 LintWarning::EmptyBlock {
@@ -272,7 +272,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                 ..
             } => {
                 // Checking variable is in `snake_case`
-                if !case::is_snake_case(&name) {
+                if !case::is_snake_case(name) {
                     warn!(
                         self,
                         LintWarning::WrongVariableName {

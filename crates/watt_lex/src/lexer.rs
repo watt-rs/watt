@@ -51,7 +51,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
         // Lexer
         Lexer {
             cursor: Cursor::new(code),
-            source: source,
+            source,
             tokens: vec![],
             keywords: keywords_map,
         }
