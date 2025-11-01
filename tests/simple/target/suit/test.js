@@ -12,10 +12,10 @@ import * as internal from "../suit/internal.js"
 import {Option} from "../std/option.js"
 
 export class $Test {
-    constructor(name, function$) {
+    constructor(function$) {
         this.$meta = "Type";
         this.$type = "Test";
-        this.name = name
+        this.name = internal.function_name(function$)
         this.function$ = function$
     }
     run() {
@@ -27,6 +27,6 @@ export class $Test {
         return self.function$
     }
 }
-export function Test(name, function$) {
-    return new $Test(name, function$);
+export function Test(function$) {
+    return new $Test(function$);
 }

@@ -37,7 +37,7 @@ export class $List {
     delete$(index) {
         let self = this;
         return (() => {
-            if (index > 0 && index < self.len()) {
+            if (index > -1 && index < self.len()) {
                 self.list.splice(index, 1);
             }
         })()
@@ -65,7 +65,7 @@ export class $List {
     get$(index) {
         let self = this;
         return (() => {
-            if (index > 0 && index < self.len()) {
+            if (index > -1 && index < self.len()) {
                 return Option.Some(list_get(self.list, index))
             }
             else {

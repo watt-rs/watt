@@ -1,12 +1,27 @@
+/// Imports
 use suit/test for Test
 use suit/run as test_runner
 use suit/assert for assert_eq
 use std/list for List
 
-fn test_success() {
+/// Simple test for +, - operations
+fn additive_test() {
     assert_eq(2 + 2, 4);
+    assert_eq(63 - 17, 46);
 }
 
+/// Simple test for *, / operations
+fn multiple_test() {
+    assert_eq(34 * -2, -68);
+    assert_eq(250 * 3, 750);
+    assert_eq(10 / -2.5, -4);
+    assert_eq(20 / 2, 10)
+}
+
+
 fn main() {
-    let test = Test(111, test_success)
+    let tests = List();
+    tests.push(Test(additive_test));
+    tests.push(Test(multiple_test));
+    test_runner.run(tests);
 }

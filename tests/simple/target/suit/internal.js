@@ -20,3 +20,7 @@ export function try$(function$) {
     }
 
 }
+
+export function function_name(function$) {
+    return function$.name;
+}
