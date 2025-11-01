@@ -10,7 +10,7 @@ url = "2.5.7"
 console = "0.16.1"
 indicatif = "0.18.0"
 camino = "1.1.10"
-miette = { version = "7.6.0", features = ["fancy"] }
+miette = { git = "https://github.com/watt-rs/miette.git", features = ["fancy"] }
 thiserror = "2.0.12"
 petgraph = "0.8.2"
 watt_common = { path = "../watt_common" }

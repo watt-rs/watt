@@ -6,5 +6,5 @@ edition = "2024"
 [dependencies]
 watt_common = { path = "../watt_common" }
 thiserror = "2.0.12"
-miette = { version = "7.6.0", features = ["fancy"] }
+miette = { git = "https://github.com/watt-rs/miette.git", features = ["fancy"] }
 ecow = "0.2.6"

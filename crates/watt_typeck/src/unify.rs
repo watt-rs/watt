@@ -5,6 +5,7 @@ use crate::{
     typ::{PreludeType, Typ},
     warnings::TypeckWarning,
 };
+use log::trace;
 use watt_common::{address::Address, bail, warn};
 
 /// Equation var
@@ -17,79 +18,48 @@ pub enum Equation {
     UnifyMany(Vec<Var>),
 }
 
-/// `PartialEq` implementation
-impl PartialEq for Equation {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Unify((_, a), (_, b)), Self::Unify((_, a2), (_, b2))) => a == a2 && b == b2,
-            (Self::UnifyMany(vec1), Self::UnifyMany(vec2)) => {
-                // Checking length and equality of Vec<Typ>
-                vec1.len() == vec2.len()
-                    && vec1
-                        .iter()
-                        .zip(vec2.iter())
-                        .all(|((_, t1), (_, t2))| t1 == t2)
-            }
-            _ => false,
-        }
-    }
-}
-
 /// Equations solver
 pub struct EquationsSolver<'cx> {
     /// Package context
     package: &'cx PackageCx<'cx>,
-    /// Cached equations
-    cached: Vec<(Equation, Typ)>,
 }
 
 /// Implementation
 impl<'cx> EquationsSolver<'cx> {
     /// Creates new equations solver
     pub fn new(package: &'cx PackageCx<'cx>) -> Self {
-        Self {
-            package,
-            cached: Vec::new(),
-        }
+        Self { package }
     }
 
     /// Solves the equation
     pub fn solve(&mut self, equation: Equation) -> Typ {
-        // Checking for cached
-        match self.cached.iter().find(|(eq, _)| eq == &equation) {
-            // If solution cached
-            Some(cached) => cached.1.clone(),
-            // Else, solving and caching
-            None => {
-                // Solving
-                let result = match equation.clone() {
-                    Equation::Unify(v1, v2) => self.unify(v1.0, v1.1, v2.0, v2.1),
-                    Equation::UnifyMany(items) => {
-                        if !items.is_empty() {
-                            let mut v1: Option<Var> = None;
-                            for v2 in items {
-                                v1 = Some(match v1 {
-                                    Some(v1) => (
-                                        v1.0.clone() + v2.0.clone(),
-                                        self.unify(v1.0, v1.1, v2.0, v2.1),
-                                    ),
-                                    None => (v2.0, v2.1),
-                                });
-                            }
-                            v1.unwrap().1
-                        } else {
-                            Typ::Unit
-                        }
+        trace!("solving equation: {equation:?}");
+        // Solving
+        match equation.clone() {
+            Equation::Unify(v1, v2) => self.unify(v1.0, v1.1, v2.0, v2.1),
+            Equation::UnifyMany(items) => {
+                if !items.is_empty() {
+                    let mut v1: Option<Var> = None;
+                    for v2 in items {
+                        v1 = Some(match v1 {
+                            Some(v1) => (
+                                v1.0.clone() + v2.0.clone(),
+                                self.unify(v1.0, v1.1, v2.0, v2.1),
+                            ),
+                            None => (v2.0, v2.1),
+                        });
                     }
-                };
-                self.cached.push((equation, result.clone()));
-                result
+                    v1.unwrap().1
+                } else {
+                    Typ::Unit
+                }
             }
         }
     }
 
     /// Unifies two types
     pub fn unify(&mut self, l1: Address, t1: Typ, l2: Address, t2: Typ) -> Typ {
+        trace!("unifying: {t1:?} && {t2:?}");
         if t1 != t2 {
             match (&t1, &t2) {
                 (Typ::Prelude(a), Typ::Prelude(b)) => match (a, b) {

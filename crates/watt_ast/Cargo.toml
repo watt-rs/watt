@@ -7,4 +7,4 @@ edition = "2024"
 watt_lex = { path = "../watt_lex" }
 watt_common = { path = "../watt_common" }
 ecow = "0.2.6"
-miette = { version = "7.6.0", features = ["fancy"] }
+miette = { git = "https://github.com/watt-rs/miette.git", features = ["fancy"] }

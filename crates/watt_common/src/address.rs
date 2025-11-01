@@ -1,16 +1,18 @@
-use miette::NamedSource;
 /// Imports
+use miette::NamedSource;
 use std::{
+    fmt::Debug,
     ops::{Add, Range},
     sync::Arc,
 };
 
 /// Address structure
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 pub struct Address {
     pub source: Arc<NamedSource<String>>,
     pub span: Range<usize>,
 }
+
 /// Address implementation
 impl Address {
     /// New address with column
@@ -25,6 +27,14 @@ impl Address {
         Address { source, span }
     }
 }
+
+/// Debug implementation
+impl Debug for Address {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Address({}..{})", self.span.start, self.span.end)
+    }
+}
+
 /// Add implementation
 impl Add for Address {
     type Output = Address;

@@ -8,7 +8,7 @@ watt_lex = { path = "../watt_lex" }
 watt_parse = { path = "../watt_parse" }
 watt_common = { path = "../watt_common" }
 watt_ast = { path = "../watt_ast" }
-miette = { version = "7.6.0", features = ["fancy"] }
+miette = { git = "https://github.com/watt-rs/miette.git", features = ["fancy"] }
 ecow = "0.2.6"
 camino = "1.1.10"
 thiserror = "2.0.12"

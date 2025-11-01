@@ -5,7 +5,7 @@ use crate::{
 };
 use camino::Utf8PathBuf;
 use ecow::EcoString;
-use log::{info, trace};
+use log::info;
 use std::collections::HashMap;
 use watt_common::{package::DraftPackage, rc_ptr::RcPtr};
 use watt_typeck::{cx::root::RootCx, typ::Module};
@@ -46,7 +46,7 @@ impl<'out> ProjectCompiler<'out> {
     /// Compiles project
     pub fn compile(&mut self) -> Vec<CompletedPackage> {
         // Compiling
-        trace!("Compiling project...");
+        info!("Compiling project...");
         // Context
         let mut root_cx = RootCx {
             modules: HashMap::new(),

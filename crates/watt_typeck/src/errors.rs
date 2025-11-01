@@ -21,7 +21,7 @@ unsafe impl Sync for CustomType {}
 #[derive(Debug, Error, Diagnostic)]
 pub enum TypeckRelated {
     #[error("this...")]
-    #[diagnostic(severity(info))]
+    #[diagnostic(severity(hint))]
     This {
         #[source_code]
         src: Arc<NamedSource<String>>,
@@ -29,7 +29,7 @@ pub enum TypeckRelated {
         span: SourceSpan,
     },
     #[error("with this.")]
-    #[diagnostic(severity(info))]
+    #[diagnostic(severity(hint))]
     WithThis {
         #[source_code]
         src: Arc<NamedSource<String>>,

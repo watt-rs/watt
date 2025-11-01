@@ -11,7 +11,7 @@ watt_ast = { path = "../watt_ast" }
 watt_typeck = { path = "../watt_typeck" }
 watt_gen = { path = "../watt_gen" }
 watt_lint = { path = "../watt_lint" }
-miette = { version = "7.6.0", features = ["fancy"] }
+miette = { git = "https://github.com/watt-rs/miette.git", features = ["fancy"] }
 ecow = "0.2.6"
 camino = "1.1.10"
 thiserror = "2.0.12"

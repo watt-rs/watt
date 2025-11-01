@@ -9,7 +9,7 @@ watt_common = { path = "../watt_common" }
 watt_compile = { path = "../watt_compile" }
 camino = "1.1.10"
 thiserror = "2.0.12"
-miette = { version = "7.6.0", features = ["fancy"] }
+miette = { git = "https://github.com/watt-rs/miette.git", features = ["fancy"] }
 log = "0.4.27"
 pretty_env_logger = "0.4"
 ecow = "0.2.6"

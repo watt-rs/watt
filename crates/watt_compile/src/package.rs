@@ -5,7 +5,7 @@ use crate::{
 };
 use camino::{Utf8Path, Utf8PathBuf};
 use ecow::EcoString;
-use log::{error, info, trace};
+use log::{error, info};
 use miette::NamedSource;
 use petgraph::{Direction, prelude::DiGraphMap};
 use std::{
@@ -166,7 +166,7 @@ impl<'cx> PackageCompiler<'cx> {
     /// Compiles package
     /// returns analyzed modules
     pub fn compile(&mut self) -> CompletedPackage {
-        trace!("Compiling package: {}", self.package.draft.path);
+        info!("Compiling package: {}", self.package.draft.path);
 
         // Collecting sources
         let mut loaded_modules = HashMap::new();

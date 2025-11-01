@@ -8,5 +8,5 @@ watt_common = { path = "../watt_common" }
 watt_lex = { path = "../watt_lex" }
 watt_ast = { path = "../watt_ast" }
 thiserror = "2.0.12"
-miette = { version = "7.6.0", features = ["fancy"] }
+miette = { git = "https://github.com/watt-rs/miette.git", features = ["fancy"] }
 ecow = "0.2.6"

@@ -18,5 +18,5 @@ export function test_success() {
 }
 
 export function main() {
-    let test = Test("test", test_success)
+    let test = Test(111, test_success)
 }
