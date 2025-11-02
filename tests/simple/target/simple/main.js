@@ -25,9 +25,19 @@ export function multiple_test() {
     return assert_eq(20 / 2, 10)
 }
 
+export function non_exhaustive_warning() {
+    let result = $$match(true, [
+        new $$EqPattern(true, function() {
+            return 1
+        })
+    ])
+    return assert_eq(result, 1)
+}
+
 export function main() {
     let tests = List()
     tests.push(Test(additive_test));
     tests.push(Test(multiple_test));
+    tests.push(Test(non_exhaustive_warning));
     test_runner.run(tests);
 }

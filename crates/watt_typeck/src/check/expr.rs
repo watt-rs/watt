@@ -8,15 +8,16 @@ use crate::{
         resolve::{Def, ModDef},
         rib::RibKind,
     },
-    typ::{CustomType, Enum, Function, PreludeType, Trait, Typ, Type},
+    typ::{CustomType, Enum, Function, Parameter, PreludeType, Trait, Typ, Type},
     unify::Equation,
     utils::CallResult,
     warnings::TypeckWarning,
 };
 use ecow::EcoString;
-use std::{cell::RefCell, collections::HashMap};
+use indexmap::IndexMap;
+use std::cell::RefCell;
 use watt_ast::ast::{
-    BinaryOp, Block, Case, Either, ElseBranch, Expression, Parameter, Pattern, Publicity, TypePath,
+    self, BinaryOp, Block, Case, Either, ElseBranch, Expression, Pattern, Publicity, TypePath,
     UnaryOp,
 };
 use watt_common::{address::Address, bail, rc_ptr::RcPtr, warn};
@@ -413,7 +414,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 let borrowed = ty.borrow();
                 borrowed.params.iter().zip(args).for_each(|(a, b)| {
                     self.solver
-                        .solve(Equation::Unify((borrowed.location.clone(), a.clone()), b));
+                        .solve(Equation::Unify((a.location.clone(), a.typ.clone()), b));
                 });
                 CallResult::FromType(Typ::Custom(ty.clone()))
             }
@@ -423,7 +424,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 Typ::Function(f) => {
                     f.params.iter().zip(args).for_each(|(a, b)| {
                         self.solver
-                            .solve(Equation::Unify((f.location.clone(), a.clone()), b));
+                            .solve(Equation::Unify((a.location.clone(), a.typ.clone()), b));
                     });
                     CallResult::FromFunction(f.ret.clone(), f.clone())
                 }
@@ -526,7 +527,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 name: EcoString::from("$annotated"),
                 params: params
                     .into_iter()
-                    .map(|p| self.infer_type_annotation(p))
+                    .map(|p| Parameter {
+                        location: p.get_location(),
+                        typ: self.infer_type_annotation(p),
+                    })
                     .collect(),
                 ret: ret.map_or(Typ::Unit, |t| self.infer_type_annotation(*t)),
             })),
@@ -563,25 +567,33 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     fn infer_anonymous_fn(
         &mut self,
         location: Address,
-        params: Vec<Parameter>,
+        params: Vec<ast::Parameter>,
         body: Either<Block, Box<Expression>>,
         ret_type: Option<TypePath>,
     ) -> Typ {
         // inferring return type
         let ret = ret_type.map_or(Typ::Unit, |t| self.infer_type_annotation(t));
 
-        // inferring params
+        // inferred params
         let params = params
             .into_iter()
-            .map(|p| (p.name, self.infer_type_annotation(p.typ.clone())))
-            .collect::<HashMap<EcoString, Typ>>();
+            .map(|p| {
+                (
+                    p.name,
+                    Parameter {
+                        location: p.location,
+                        typ: self.infer_type_annotation(p.typ),
+                    },
+                )
+            })
+            .collect::<IndexMap<EcoString, Parameter>>();
 
-        // creating and defining function
+        // creating function
         let function = Function {
             source: self.module.source.clone(),
             location: location.clone(),
             name: EcoString::from("$anonymous"),
-            params: params.clone().into_values().collect::<Vec<Typ>>(),
+            params: params.clone().into_values().collect(),
             ret: ret.clone(),
         };
 
@@ -589,10 +601,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         self.resolver.push_rib(RibKind::Function);
 
         // defining params in new scope
-        params.iter().for_each(|p| {
-            self.resolver
-                .define(&location, p.0, Def::Local(p.1.clone()))
-        });
+        params
+            .into_iter()
+            .for_each(|p| self.resolver.define(&location, &p.0, Def::Local(p.1.typ)));
 
         // inferring body
         let (block_location, inferred_block) = match body {
@@ -739,7 +750,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     }
 
     /// Infers pattern matching
-    pub(crate) fn infer_pattern_matching(&mut self, what: Expression, cases: Vec<Case>) -> Typ {
+    pub(crate) fn infer_pattern_matching(
+        &mut self,
+        location: Address,
+        what: Expression,
+        cases: Vec<Case>,
+    ) -> Typ {
         // inferring matchable
         let inferred_what = self.infer_expr(what);
         // to unify
@@ -763,7 +779,18 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         let typ = self.solver.solve(Equation::UnifyMany(to_unify));
         let checked = ExMatchCx::check(self, inferred_what, cases);
         // checking all cases covered
-        if checked { typ } else { Typ::Unit }
+        if checked {
+            typ
+        } else {
+            warn!(
+                self.package,
+                TypeckWarning::NonExhaustive {
+                    src: location.source,
+                    span: location.span.into()
+                }
+            );
+            Typ::Unit
+        }
     }
 
     /// Infers if
@@ -893,7 +920,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 body,
                 typ,
             } => self.infer_anonymous_fn(location, params, body, typ),
-            Expression::Match { value, cases, .. } => self.infer_pattern_matching(*value, cases),
+            Expression::Match {
+                location,
+                value,
+                cases,
+                ..
+            } => self.infer_pattern_matching(location, *value, cases),
             Expression::If {
                 location,
                 logical,

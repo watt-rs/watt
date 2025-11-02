@@ -15,13 +15,20 @@ pub enum PreludeType {
     String,
 }
 
+/// Parameter
+#[derive(Clone, PartialEq)]
+pub struct Parameter {
+    pub location: Address,
+    pub typ: Typ,
+}
+
 /// Custom type
 #[derive(Clone)]
 pub struct Type {
     pub source: Arc<NamedSource<String>>,
     pub location: Address,
     pub name: EcoString,
-    pub params: Vec<Typ>,
+    pub params: Vec<Parameter>,
     pub env: HashMap<EcoString, WithPublicity<Typ>>,
 }
 
@@ -70,7 +77,7 @@ pub struct TraitFunction {
     pub source: Arc<NamedSource<String>>,
     pub location: Address,
     pub name: EcoString,
-    pub params: Vec<Typ>,
+    pub params: Vec<Parameter>,
     pub ret: Typ,
 }
 
@@ -128,7 +135,7 @@ pub struct Function {
     pub source: Arc<NamedSource<String>>,
     pub location: Address,
     pub name: EcoString,
-    pub params: Vec<Typ>,
+    pub params: Vec<Parameter>,
     pub ret: Typ,
 }
 

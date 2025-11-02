@@ -85,10 +85,18 @@ impl<'cx> EquationsSolver<'cx> {
                         warn!(
                             self.package,
                             TypeckWarning::UnitAndDynUnification {
-                                first_src: l1.source,
-                                first_span: l1.span.clone().into(),
-                                second_src: l2.source,
-                                second_span: l2.span.clone().into(),
+                                related: vec![
+                                    TypeckRelated::ThisType {
+                                        src: l1.source,
+                                        span: l1.span.into(),
+                                        t: t1,
+                                    },
+                                    TypeckRelated::ThisType {
+                                        src: l2.source,
+                                        span: l2.span.into(),
+                                        t: t2
+                                    }
+                                ]
                             }
                         );
                         Typ::Dyn
@@ -101,13 +109,15 @@ impl<'cx> EquationsSolver<'cx> {
                     } else {
                         bail!(TypeckError::CouldNotUnifyTraitAndTyp {
                             related: vec![
-                                TypeckRelated::DefinedHere {
+                                TypeckRelated::ThisType {
                                     src: l1.source,
-                                    span: l1.span.into()
+                                    span: l1.span.into(),
+                                    t: t1.clone(),
                                 },
-                                TypeckRelated::UsedHere {
+                                TypeckRelated::ThisType {
                                     src: l2.source,
-                                    span: l2.span.into()
+                                    span: l2.span.into(),
+                                    t: t2.clone()
                                 }
                             ],
                             tr: t1.clone(),
@@ -119,13 +129,15 @@ impl<'cx> EquationsSolver<'cx> {
                     t1: t1.clone(),
                     t2: t2.clone(),
                     related: vec![
-                        TypeckRelated::This {
+                        TypeckRelated::ThisType {
                             src: l1.source,
-                            span: l1.span.into()
+                            span: l1.span.into(),
+                            t: t1,
                         },
-                        TypeckRelated::WithThis {
+                        TypeckRelated::ThisType {
                             src: l2.source,
-                            span: l2.span.into()
+                            span: l2.span.into(),
+                            t: t2
                         }
                     ]
                 }),

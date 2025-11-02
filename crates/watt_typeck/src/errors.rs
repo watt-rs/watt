@@ -28,6 +28,15 @@ pub enum TypeckRelated {
         #[label()]
         span: SourceSpan,
     },
+    #[error("this type is {t:?}")]
+    #[diagnostic(severity(hint))]
+    ThisType {
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label()]
+        span: SourceSpan,
+        t: Typ,
+    },
     #[error("with this.")]
     #[diagnostic(severity(hint))]
     WithThis {

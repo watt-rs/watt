@@ -18,10 +18,20 @@ fn multiple_test() {
     assert_eq(20 / 2, 10)
 }
 
+/// Not exhaustive warning test
+fn non_exhaustive_warning() {
+    let result = match true {
+        true -> 1
+        // false is not matched => exhaustive warning
+    };
+    assert_eq(result, 1)
+}
 
+/// Main function
 fn main() {
     let tests = List();
     tests.push(Test(additive_test));
     tests.push(Test(multiple_test));
+    tests.push(Test(non_exhaustive_warning));
     test_runner.run(tests);
 }

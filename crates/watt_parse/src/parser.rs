@@ -56,13 +56,13 @@ impl<'file_path> Parser<'file_path> {
         // parsing statement before reaching
         // end of file, or a `}`
         let mut nodes: Vec<Statement> = Vec::new();
-        self.consume(TokenKind::Lbrace);
         let start_span = self.peek().address.clone();
+        self.consume(TokenKind::Lbrace);
         while !self.check(TokenKind::Rbrace) {
             nodes.push(self.statement());
         }
-        let end_span = self.previous().address.clone();
         self.consume(TokenKind::Rbrace);
+        let end_span = self.previous().address.clone();
 
         Block {
             location: start_span + end_span,

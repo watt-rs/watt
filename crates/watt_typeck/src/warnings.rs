@@ -3,6 +3,8 @@ use miette::{Diagnostic, NamedSource, SourceSpan};
 use std::sync::Arc;
 use thiserror::Error;
 
+use crate::errors::TypeckRelated;
+
 /// Typeck warning
 #[derive(Debug, Error, Diagnostic)]
 pub enum TypeckWarning {
@@ -37,14 +39,20 @@ pub enum TypeckWarning {
         severity(warning)
     )]
     UnitAndDynUnification {
+        #[related]
+        related: Vec<TypeckRelated>,
+    },
+    #[error("non exhaustive expression.")]
+    #[diagnostic(
+        code(typeck::warn::non_exhaustive),
+        help("type is downcasted to unit."),
+        severity(warning)
+    )]
+    NonExhaustive {
         #[source_code]
-        first_src: Arc<NamedSource<String>>,
-        #[label("unify this...")]
-        first_span: SourceSpan,
-        #[source_code]
-        second_src: Arc<NamedSource<String>>,
-        #[label("and this is unsafe.")]
-        second_span: SourceSpan,
+        src: Arc<NamedSource<String>>,
+        #[label()]
+        span: SourceSpan,
     },
     #[error("found todo.")]
     #[diagnostic(

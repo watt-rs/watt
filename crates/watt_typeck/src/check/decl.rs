@@ -6,14 +6,15 @@ use crate::{
         resolve::{Def, ModDef},
         rib::RibKind,
     },
-    typ::{CustomType, Enum, EnumVariant, Function, Trait, Typ, Type, WithPublicity},
+    typ::{CustomType, Enum, EnumVariant, Function, Parameter, Trait, Typ, Type, WithPublicity},
     unify::Equation,
 };
 use ecow::EcoString;
+use indexmap::IndexMap;
 use std::{cell::RefCell, collections::HashMap};
 use watt_ast::ast::{
-    self, Block, Declaration, Dependency, Either, EnumConstructor, Expression, Parameter,
-    Publicity, TypePath, UseKind,
+    self, Block, Declaration, Dependency, Either, EnumConstructor, Expression, Publicity, TypePath,
+    UseKind,
 };
 use watt_common::{address::Address, bail, rc_ptr::RcPtr};
 
@@ -27,7 +28,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         name: EcoString,
         type_: RcPtr<RefCell<Type>>,
         publicity: Publicity,
-        params: Vec<Parameter>,
+        params: Vec<ast::Parameter>,
         body: Either<Block, Expression>,
         ret_type: Option<TypePath>,
     ) {
@@ -35,15 +36,24 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         let ret = ret_type.map_or(Typ::Unit, |t| self.infer_type_annotation(t));
         self.resolver.push_rib(RibKind::Function);
 
-        // inferring params
+        // inferred params
         let params = params
             .into_iter()
-            .map(|p| (p.name, self.infer_type_annotation(p.typ.clone())))
-            .collect::<HashMap<EcoString, Typ>>();
+            .map(|p| {
+                (
+                    p.name,
+                    Parameter {
+                        location: p.location,
+                        typ: self.infer_type_annotation(p.typ),
+                    },
+                )
+            })
+            .collect::<IndexMap<EcoString, Parameter>>();
 
+        // Defining params
         params.iter().for_each(|p| {
             self.resolver
-                .define(&location, p.0, Def::Local(p.1.clone()))
+                .define(&location, &p.0, Def::Local(p.1.typ.clone()))
         });
 
         // creating and defining function
@@ -51,7 +61,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             source: self.module.source.clone(),
             location: location.clone(),
             name: name.clone(),
-            params: params.into_values().collect::<Vec<Typ>>(),
+            params: params.into_values().collect(),
             ret: ret.clone(),
         };
 
@@ -96,26 +106,29 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         location: Address,
         name: EcoString,
         publicity: Publicity,
-        params: Vec<Parameter>,
+        params: Vec<ast::Parameter>,
         declarations: Vec<Declaration>,
     ) {
-        // inferred params vector and map
-        let mut inferred_params = Vec::with_capacity(params.len());
-        let mut inferred_params_map = HashMap::with_capacity(params.len());
-
-        // inferring params
-        for p in params {
-            let typ = self.infer_type_annotation(p.typ);
-            inferred_params.push(typ.clone());
-            inferred_params_map.insert(p.name, (p.location, typ));
-        }
+        // inferred params
+        let params = params
+            .into_iter()
+            .map(|p| {
+                (
+                    p.name,
+                    Parameter {
+                        location: p.location,
+                        typ: self.infer_type_annotation(p.typ),
+                    },
+                )
+            })
+            .collect::<IndexMap<EcoString, Parameter>>();
 
         // construction type
         let type_ = RcPtr::new(RefCell::new(Type {
             source: location.source.clone(),
             location: location.clone(),
             name: name.clone(),
-            params: inferred_params,
+            params: params.clone().into_values().collect(),
             env: HashMap::new(),
         }));
 
@@ -133,8 +146,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         self.resolver.push_rib(RibKind::ConstructorParams);
 
         // params
-        inferred_params_map.into_iter().for_each(|p| {
-            self.resolver.define(&p.1.0, &p.0, Def::Local(p.1.1));
+        params.into_iter().for_each(|p| {
+            self.resolver
+                .define(&p.1.location, &p.0, Def::Local(p.1.typ));
         });
 
         // fields env start
@@ -228,7 +242,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                             params: f
                                 .params
                                 .into_iter()
-                                .map(|param| self.infer_type_annotation(param.typ))
+                                .map(|p| Parameter {
+                                    location: p.location,
+                                    typ: self.infer_type_annotation(p.typ),
+                                })
                                 .collect(),
                             ret: f.typ.map_or(Typ::Unit, |t| self.infer_type_annotation(t)),
                         }),
@@ -295,25 +312,33 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         location: Address,
         publicity: Publicity,
         name: EcoString,
-        params: Vec<Parameter>,
+        params: Vec<ast::Parameter>,
         body: Either<Block, Expression>,
         ret_type: Option<TypePath>,
     ) {
         // inferring return type
         let ret = ret_type.map_or(Typ::Unit, |t| self.infer_type_annotation(t));
 
-        // inferring params
+        // inferred params
         let params = params
             .into_iter()
-            .map(|p| (p.name, self.infer_type_annotation(p.typ.clone())))
-            .collect::<HashMap<EcoString, Typ>>();
+            .map(|p| {
+                (
+                    p.name,
+                    Parameter {
+                        location: p.location,
+                        typ: self.infer_type_annotation(p.typ),
+                    },
+                )
+            })
+            .collect::<IndexMap<EcoString, Parameter>>();
 
         // creating and defining function
         let function = Function {
             source: self.module.source.clone(),
             location: location.clone(),
             name: name.clone(),
-            params: params.clone().into_values().collect::<Vec<Typ>>(),
+            params: params.clone().into_values().collect(),
             ret: ret.clone(),
         };
         self.resolver.define(
@@ -331,7 +356,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // defining params in new scope
         params.iter().for_each(|p| {
             self.resolver
-                .define(&location, p.0, Def::Local(p.1.clone()))
+                .define(&location, p.0, Def::Local(p.1.typ.clone()))
         });
 
         // inferring body
@@ -352,7 +377,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         location: Address,
         publicity: Publicity,
         name: EcoString,
-        params: Vec<Parameter>,
+        params: Vec<ast::Parameter>,
         ret_type: Option<TypePath>,
     ) {
         // inferring return type
@@ -361,15 +386,18 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // inferring params
         let params = params
             .into_iter()
-            .map(|p| (p.name, self.infer_type_annotation(p.typ.clone())))
-            .collect::<HashMap<EcoString, Typ>>();
+            .map(|p| Parameter {
+                location: p.location,
+                typ: self.infer_type_annotation(p.typ.clone()),
+            })
+            .collect::<Vec<Parameter>>();
 
         // creating and defining function
         let function = Function {
             source: self.module.source.clone(),
             location: location.clone(),
             name: name.clone(),
-            params: params.clone().into_values().collect::<Vec<Typ>>(),
+            params: params,
             ret: ret.clone(),
         };
         self.resolver.define(
