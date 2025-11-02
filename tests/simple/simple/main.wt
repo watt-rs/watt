@@ -20,9 +20,11 @@ fn multiple_test() {
 
 /// Not exhaustive warning test
 fn non_exhaustive_warning() {
+    // provides exhaustiveness warning
+    // and infers to unit
     let result = match true {
         true -> 1
-        // false is not matched => exhaustive warning
+        // false is not matched
     };
     assert_eq(result, 1)
 }

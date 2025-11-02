@@ -45,7 +45,7 @@ pub enum TypeckWarning {
     #[error("non exhaustive expression.")]
     #[diagnostic(
         code(typeck::warn::non_exhaustive),
-        help("type is downcasted to unit."),
+        help("type was equated to unit."),
         severity(warning)
     )]
     NonExhaustive {
