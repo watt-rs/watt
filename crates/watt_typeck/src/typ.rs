@@ -6,7 +6,8 @@ use std::{cell::RefCell, collections::HashMap, fmt::Debug, sync::Arc};
 use watt_ast::ast::Publicity;
 use watt_common::{address::Address, rc_ptr::RcPtr};
 
-/// Prelude type
+/// Represetns prelude
+/// (or build-in type)
 #[derive(Debug, Clone, PartialEq)]
 pub enum PreludeType {
     Int,

@@ -5,35 +5,65 @@ use std::sync::Arc;
 use watt_common::address::Address;
 
 /// Dependency path
+///
+/// # Example
+/// `this/is/some/module`
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct DependencyPath {
     pub address: Address,
     pub module: EcoString,
 }
 
-/// Type path
+/// Represents type path (type annotation)
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum TypePath {
-    Local {
-        location: Address,
-        name: EcoString,
-    },
+    /// Represents path to local user-defined
+    /// or prelude type.
+    ///
+    /// # Example
+    /// ```rust
+    /// let a: int = 5;
+    /// ```
+    ///
+    Local { location: Address, name: EcoString },
+    /// Represents path to user-defined
+    /// type used from module.
+    ///
+    /// # Example
+    /// ```rust
+    /// let a: module.Ty = 5;
+    /// ```
+    ///
     Module {
         location: Address,
         module: EcoString,
         name: EcoString,
     },
+    /// Represents function signature,
+    /// used to determine function params and
+    /// result type.
+    ///
+    /// # Example
+    /// ```rust
+    /// let sum: fn(int, int): int = fn(a: int, b: int) {
+    ///     a + n
+    /// };
+    /// ```
+    ///
     Function {
         location: Address,
         params: Vec<TypePath>,
         ret: Option<Box<TypePath>>,
     },
-    Unit {
-        location: Address,
-    },
+    /// Represents unit/none type.
+    ///
+    /// function returns
+    /// that type by default
+    ///
+    Unit { location: Address },
 }
 
-/// Type path implementation
+/// Implementation
 impl TypePath {
     pub fn get_location(&self) -> Address {
         match self {
@@ -45,19 +75,57 @@ impl TypePath {
     }
 }
 
-/// Parameter
+/// Represents function or type parameter
+/// as key value pair.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Parameter {
+    /// Parameter name location
+    ///
+    /// ```
+    /// fn some(a: int) {
+    ///         ^ refs to this only
+    /// }
+    /// ```
     pub location: Address,
+    /// Represents parameter name
     pub name: EcoString,
+    /// Represents parameter type annotation
+    ///
+    /// ```
+    /// fn some(a: int) {
+    ///            ^^^ like this
+    /// }
+    /// ```
     pub typ: TypePath,
 }
 
 /// Enum constructor
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnumConstructor {
+    /// Represents enum constructor location
+    ///
+    /// # Example
+    /// ```
+    /// enum Pot {
+    ///     Full(flower: Flower),
+    ///     ^^^^^^^^^^^^^^^^^^^^
+    ///     this is s captured by span
+    /// }
+    /// ```
     pub location: Address,
+    /// Represents variant name
     pub name: EcoString,
+    /// Represents variant parameters / fields
+    ///
+    /// # Example
+    /// ```
+    /// enum Color {
+    ///     Rgb(r: int, g: int, b: int),
+    ///         ^^^^^^^^^^^^^^^^^^^^^^
+    ///                this
+    ///     Hex(code: string)
+    /// }
+    /// ```
     pub params: Vec<Parameter>,
 }
 
@@ -112,42 +180,173 @@ pub enum UnaryOp {
 /// Publicity
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Publicity {
+    /// Represents `pub` publicity
+    ///
+    /// # Example
+    /// ```
+    /// pub fn sum(a: int, b: int): int {
+    /// ^^^
+    /// this
+    ///     a + b
+    /// }
+    /// ```
+    ///
     Public,
+    /// Represents default private publicity.
     Private,
 }
 
 /// Pattern
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Pattern {
-    // Unwrap enum pattern
-    // `Pot.Full { flower, .. }`
+    /// Represents enum fields unwrap pattern
+    ///
+    /// # Example
+    /// ```
+    /// let a = Option.Some(3);
+    /// let result = match a {
+    ///  Option.None -> -1,
+    ///  Option.Some(value) -> value
+    ///              ^^^^^
+    ///               this
+    /// };
+    /// ```
+    ///
     Unwrap {
         en: Expression,
         fields: Vec<(Address, EcoString)>,
     },
-    // Enum variants
+    /// Represents just enum variant pattern
+    ///
+    /// # Example
+    /// ```
+    /// let a = Color.Rgb(3, 4, 5);
+    /// let hex_code: dyn = match a {
+    ///  Color.Hex(code) -> code,
+    ///           ^^^^^
+    ///         fields unwrap here
+    ///  Color.Rgb -> ""
+    ///        ^^^
+    ///      no fields unwrap here.
+    /// };
+    /// ```
+    ///
+    /// Using variant pattern instead of Unwrap
+    /// pattern with enum variant that contain fields
+    /// is available. There won't be an error like in Rust.
+    ///
     Variant(Expression),
-    // `123456`
+    /// Represents integer pattern, example: `123`
     Int(EcoString),
-    // `1.34`
+    /// Represents float pattern, example: `1.34`
     Float(EcoString),
-    // Bool value `true` / `false
+    /// Represents bool pattern: `true` / `false
     Bool(EcoString),
-    // "Hello, world!"
+    /// Represents string pattern: "Hello, world!"
     String(EcoString),
-    // Bind pattern
+    /// Represents bind pattern
+    ///
+    /// # Example
+    /// ```
+    /// let a = Option.None();
+    /// match a {
+    ///  Option.Some -> ...
+    ///  none -> ...
+    ///  ^^^
+    ///  passes any original value, that we matching
+    ///  to the case body as variable with specified
+    ///  named
+    /// }
+    /// ```
     BindTo(EcoString),
-    // Wildcard pattern
+    /// Represents wilcard pattern
+    ///
+    /// # Example
+    /// ```
+    /// let a = Option.None();
+    /// match a {
+    ///  Option.Some -> ...
+    ///  _ -> ...
+    ///  ^^^
+    ///  it doesn't pass original value as variable with
+    ///  specified name, instead of BindTo pattern. Wildcard pattern
+    ///  just ignores that value.
+    ///  We can describe this pattern like: Otherwise, Else, AnyOther
+    /// };
+    /// ```
     Wildcard,
     // Two patterns in one
+    ///
+    /// # Example 1
+    /// ```
+    /// enum Animal {
+    ///    Bear,
+    ///    Cat,
+    ///    Dog,
+    ///    Rabbit
+    /// }
+    ///
+    /// fn is_pet(animal: Animal): bool {
+    ///  match animal {
+    ///   Animal.Cat | Animal.Dog -> true
+    ///   ^^^^^^^^^^^^^^^^^^^^^^^
+    ///      two patterns or more separated by bar
+    ///      that will be represented as Or(a, Or(b, c)) pattern
+    ///   _ -> false
+    ///  }
+    /// }
+    /// ```
+    ///
+    /// # Example 2 (Important)
+    /// ```
+    /// enum Animal {
+    ///    Bear,
+    ///    Cat(food: int),
+    ///    Dog(food: int),
+    ///    Rabbit
+    /// }
+    ///
+    /// fn is_pet(animal: Animal): bool {
+    ///  match animal {
+    ///   Animal.Cat(food) | Animal.Dog(food) -> true
+    ///   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ///      two patterns or more can be any patterns,
+    ///      but if first pattern is Unwrap, all others should
+    ///      be Unwrap patterns too. Moreover, both patterns
+    ///      should unwrap fields with same names and types.
+    ///
+    ///   _ -> false
+    ///  }
+    /// }
+    /// ```
+    ///
     Or(Box<Pattern>, Box<Pattern>),
 }
 
 /// Case
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Case {
+    /// Case location
+    ///
+    /// ```
+    /// match a {
+    ///     Option.Some(value) -> {  < captures full case body
+    ///     }                        < with provided case pattern.
+    /// }
+    /// ```
+    ///
     pub address: Address,
+    /// Pattern
+    ///
+    /// match a {
+    ///     Option.Some(value) -> {
+    ///     ^^^^^^^^^^^^^^^^^^
+    ///   this part is a pattern
+    ///     }
+    /// }
+    /// ```
     pub pattern: Pattern,
+    /// Body of case
     pub body: Either<Block, Expression>,
 }
 

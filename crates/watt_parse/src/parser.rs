@@ -785,6 +785,37 @@ impl<'file_path> Parser<'file_path> {
         }
     }
 
+    /// Variant pattern prefix.
+    /// Example: `Option.Some`
+    fn variant_pattern_prefix(&mut self) -> Expression {
+        // variable
+        let variable = self.consume(TokenKind::Id).clone();
+
+        // result node
+        let mut result = Expression::PrefixVar {
+            location: variable.address,
+            name: variable.value,
+        };
+
+        // checking for dots and parens
+        loop {
+            // checking for chain `a.b.c.d`
+            if self.check(TokenKind::Dot) {
+                self.consume(TokenKind::Dot);
+                let variable = self.consume(TokenKind::Id).clone();
+                result = Expression::SuffixVar {
+                    location: variable.address,
+                    container: Box::new(result),
+                    name: variable.value,
+                };
+                continue;
+            }
+            // breaking cycle
+            break;
+        }
+        result
+    }
+
     /// Pattern parsing
     fn pattern(&mut self) -> Pattern {
         // Parsing single pattern
@@ -808,17 +839,17 @@ impl<'file_path> Parser<'file_path> {
             }
             // If identifier presented
             else {
-                // If dot or paren presented -> enum patterns
-                if self.check_next(TokenKind::Dot) || self.check_next(TokenKind::Lparen) {
-                    // Parsing variant
-                    let value = self.variable();
+                // If dot presented -> enum patterns
+                if self.check_next(TokenKind::Dot) {
+                    // Parsing variant pattern prefix
+                    let value = self.variant_pattern_prefix();
                     // Checking for unwrap of enum
-                    if self.check(TokenKind::Lbrace) {
-                        // { .., n fields }
-                        self.consume(TokenKind::Lbrace);
+                    if self.check(TokenKind::Lparen) {
+                        // (.., n fields)
+                        self.consume(TokenKind::Lparen);
                         let mut fields = Vec::new();
-                        // Checking for close of braces
-                        if self.check(TokenKind::Rbrace) {
+                        // Checking for close of parens
+                        if self.check(TokenKind::Rparen) {
                             self.advance();
                             return Pattern::Unwrap { en: value, fields };
                         }
@@ -830,7 +861,7 @@ impl<'file_path> Parser<'file_path> {
                             let field = self.consume(TokenKind::Id).clone();
                             fields.push((field.address, field.value));
                         }
-                        self.consume(TokenKind::Rbrace);
+                        self.consume(TokenKind::Rparen);
                         // As result, enum unwrap pattern
                         Pattern::Unwrap { en: value, fields }
                     }
