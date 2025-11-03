@@ -1,6 +1,8 @@
 import {
     $$match,
     $$equals,
+    $$todo,
+    $$range,
     $$EqPattern,
     $$UnwrapPattern,
     $$WildcardPattern,
@@ -34,10 +36,34 @@ export function non_exhaustive_warning() {
     return assert_eq(result, 1)
 }
 
+export function for_loop_test() {
+    let r1 = 0
+    for (const i of $$range(0, 10, 0)) {
+        r1 = i
+    }
+    assert_eq(r1, 9);
+    let r2 = 0
+    for (const i of $$range(0, 10, 1)) {
+        r2 = i
+    }
+    assert_eq(r2, 10);
+    let r3 = 0
+    for (const i of $$range(10, 0, 0)) {
+        r3 = i
+    }
+    assert_eq(r3, 1);
+    let r4 = 0
+    for (const i of $$range(10, 0, 1)) {
+        r4 = i
+    }
+    return assert_eq(r4, 0)
+}
+
 export function main() {
     let tests = List()
     tests.push(Test(additive_test));
     tests.push(Test(multiple_test));
     tests.push(Test(non_exhaustive_warning));
+    tests.push(Test(for_loop_test));
     test_runner.run(tests);
 }

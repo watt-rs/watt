@@ -766,25 +766,6 @@ impl<'file_path> Parser<'file_path> {
         left
     }
 
-    /// Expr parsing
-    fn expr(&mut self) -> Expression {
-        self.logical_expr()
-    }
-
-    /// Loop statement parsing
-    fn loop_stmt(&mut self) -> Statement {
-        let start_span = self.consume(TokenKind::Loop).address.clone();
-        let logical = self.expr();
-        let body = self.block_or_expr();
-        let end_span = self.previous().address.clone();
-
-        Statement::Loop {
-            location: start_span + end_span,
-            logical,
-            body,
-        }
-    }
-
     /// Variant pattern prefix.
     /// Example: `Option.Some`
     fn variant_pattern_prefix(&mut self) -> Expression {
@@ -836,6 +817,11 @@ impl<'file_path> Parser<'file_path> {
                 } else {
                     Pattern::Int(value.value)
                 }
+            }
+            // If wildcard presented
+            else if self.check(TokenKind::Wildcard) {
+                self.advance();
+                Pattern::Wildcard
             }
             // If identifier presented
             else {
@@ -898,46 +884,24 @@ impl<'file_path> Parser<'file_path> {
         self.consume(TokenKind::Lbrace);
         let mut cases = Vec::new();
         while !self.check(TokenKind::Rbrace) {
-            // If default
-            if self.check_ch("_") {
-                // Start address of case
-                let start_span = self.consume(TokenKind::Id).address.clone();
-                // -> { body, ... }
-                self.consume(TokenKind::Arrow);
-                let body = if self.check(TokenKind::Lbrace) {
-                    Either::Left(self.block())
-                } else {
-                    Either::Right(self.expr())
-                };
-                // End address of case
-                let end_span = self.previous().address.clone();
-                cases.push(Case {
-                    address: start_span + end_span,
-                    pattern: Pattern::Wildcard,
-                    body,
-                });
-            }
-            // If pattern
-            else {
-                // Start address of case
-                let start_span = self.peek().address.clone();
-                // Pattern of case
-                let pattern = self.pattern();
-                // -> { body, ... }
-                self.consume(TokenKind::Arrow);
-                let body = if self.check(TokenKind::Lbrace) {
-                    Either::Left(self.block())
-                } else {
-                    Either::Right(self.expr())
-                };
-                // End address of case
-                let end_span = self.previous().address.clone();
-                cases.push(Case {
-                    address: start_span + end_span,
-                    pattern,
-                    body,
-                });
-            }
+            // Start address of case
+            let start_span = self.peek().address.clone();
+            // Pattern of case
+            let pattern = self.pattern();
+            // -> { body, ... }
+            self.consume(TokenKind::Arrow);
+            let body = if self.check(TokenKind::Lbrace) {
+                Either::Left(self.block())
+            } else {
+                Either::Right(self.expr())
+            };
+            // End address of case
+            let end_span = self.previous().address.clone();
+            cases.push(Case {
+                address: start_span + end_span,
+                pattern,
+                body,
+            });
         }
         self.consume(TokenKind::Rbrace);
 
@@ -948,6 +912,69 @@ impl<'file_path> Parser<'file_path> {
             location: start_address + end_address,
             value: Box::new(value),
             cases,
+        }
+    }
+
+    /// Expr parsing
+    fn expr(&mut self) -> Expression {
+        self.logical_expr()
+    }
+
+    /// Loop statement parsing
+    fn loop_stmt(&mut self) -> Statement {
+        let start_span = self.consume(TokenKind::Loop).address.clone();
+        let logical = self.expr();
+        let body = self.block_or_expr();
+        let end_span = self.previous().address.clone();
+
+        Statement::Loop {
+            location: start_span + end_span,
+            logical,
+            body,
+        }
+    }
+
+    /// Range parsing
+    fn range(&mut self) -> Range {
+        // from..
+        let from = self.expr();
+        self.consume(TokenKind::Range);
+        // Checking for `=`
+        // If found => including last
+        if self.check(TokenKind::Assign) {
+            self.advance();
+            let to = self.expr();
+            Range::IncludeLast {
+                location: from.location() + to.location(),
+                from,
+                to,
+            }
+        }
+        // Else => excluding last
+        else {
+            let to = self.expr();
+            Range::ExcludeLast {
+                location: from.location() + to.location(),
+                from,
+                to,
+            }
+        }
+    }
+
+    /// For statement parsing
+    fn for_stmt(&mut self) -> Statement {
+        let start_span = self.consume(TokenKind::For).address.clone();
+        let name = self.consume(TokenKind::Id).value.clone();
+        self.consume(TokenKind::In);
+        let range = self.range();
+        let body = self.block_or_expr();
+        let end_span = self.previous().address.clone();
+
+        Statement::For {
+            location: start_span + end_span,
+            name,
+            range,
+            body,
         }
     }
 
@@ -1339,6 +1366,7 @@ impl<'file_path> Parser<'file_path> {
         // Parsing statement
         let stmt = match self.peek().tk_type {
             TokenKind::Loop => self.loop_stmt(),
+            TokenKind::For => self.for_stmt(),
             TokenKind::Let => self.let_stmt(),
             TokenKind::Id => {
                 let pos = self.current;
@@ -1426,14 +1454,6 @@ impl<'file_path> Parser<'file_path> {
     fn check_next(&self, tk_type: TokenKind) -> bool {
         match self.tokens.get(self.current as usize + 1) {
             Some(tk) => tk.tk_type == tk_type,
-            None => false,
-        }
-    }
-
-    /// Check current token value is equal to tk_value
-    fn check_ch(&self, tk_value: &str) -> bool {
-        match self.tokens.get(self.current as usize) {
-            Some(tk) => tk.value == tk_value,
             None => false,
         }
     }

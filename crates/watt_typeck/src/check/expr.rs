@@ -865,7 +865,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Typ::Unit
         }
     }
-
+    
     /// Infers expression
     pub(crate) fn infer_expr(&mut self, expr: Expression) -> Typ {
         match expr {

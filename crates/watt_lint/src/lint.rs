@@ -4,7 +4,7 @@ use crate::{
     consts,
     warnings::LintWarning,
 };
-use watt_ast::ast::{Block, Declaration, Either, ElseBranch, Expression, Module, Statement};
+use watt_ast::ast::{Block, Declaration, Either, ElseBranch, Expression, Module, Range, Statement};
 use watt_common::{package::DraftPackage, warn};
 
 /// Linting context
@@ -297,6 +297,13 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     Either::Right(expr) => self.lint_expr(expr),
                 }
             }
+            Statement::For { range, body, .. } => {
+                self.lint_range(range);
+                match body {
+                    Either::Left(block) => self.lint_block(block),
+                    Either::Right(expr) => self.lint_expr(expr),
+                }
+            }
             Statement::Semi(expr) => {
                 self.lint_expr(expr);
             }
@@ -385,5 +392,15 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
             }
             _ => {}
         }
+    }
+
+    /// Lints range
+    fn lint_range(&self, range: &Range) {
+        let (from, to) = match range {
+            Range::ExcludeLast { from, to, .. } => (from, to),
+            Range::IncludeLast { from, to, .. } => (from, to),
+        };
+        self.lint_expr(&from);
+        self.lint_expr(&to);
     }
 }

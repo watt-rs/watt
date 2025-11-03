@@ -2,8 +2,8 @@
 use ecow::EcoString;
 use genco::{lang::js, quote, tokens::quoted};
 use watt_ast::ast::{
-    BinaryOp, Block, Declaration, Either, ElseBranch, Expression, Module, Pattern, Statement,
-    UnaryOp, UseKind,
+    BinaryOp, Block, Declaration, Either, ElseBranch, Expression, Module, Pattern, Range,
+    Statement, UnaryOp, UseKind,
 };
 
 /// Replaces js identifiers equal
@@ -160,6 +160,18 @@ fn gen_pattern(pattern: Pattern, body: Either<Block, Expression>) -> js::Tokens 
     }
 }
 
+/// Generates range code
+fn gen_range(range: Range) -> js::Tokens {
+    match range {
+        Range::ExcludeLast { from, to, .. } => {
+            quote!($("$$range")($(gen_expression(from)), $(gen_expression(to)), 0))
+        }
+        Range::IncludeLast { from, to, .. } => {
+            quote!($("$$range")($(gen_expression(from)), $(gen_expression(to)), 1))
+        }
+    }
+}
+
 /// Generates expression code
 pub fn gen_expression(expr: Expression) -> js::Tokens {
     match expr {
@@ -286,12 +298,23 @@ pub fn gen_expression(expr: Expression) -> js::Tokens {
     }
 }
 
-/// Generates statement
+/// Generates statement code
 pub fn gen_statement(stmt: Statement) -> js::Tokens {
     match stmt {
-        // While statement
+        // Loop statement
         Statement::Loop { logical, body, .. } => quote! {
             while ($(gen_expression(logical))) {
+                $(match body {
+                    Either::Left(block) => $(gen_block(block)),
+                    Either::Right(expr) => $(gen_expression(expr));
+                })
+            }
+        },
+        // For statement
+        Statement::For {
+            name, range, body, ..
+        } => quote! {
+            for (const $(name.as_str()) of $(gen_range(range))) {
                 $(match body {
                     Either::Left(block) => $(gen_block(block)),
                     Either::Right(expr) => $(gen_expression(expr));
@@ -313,7 +336,7 @@ pub fn gen_statement(stmt: Statement) -> js::Tokens {
     }
 }
 
-/// Generates declaration
+/// Generates declaration code
 pub fn gen_declaration(decl: Declaration) -> js::Tokens {
     match decl {
         Declaration::Function {
@@ -436,14 +459,14 @@ pub fn gen_declaration(decl: Declaration) -> js::Tokens {
     }
 }
 
-/// Generates block
+/// Generates block code
 pub fn gen_block(block: Block) -> js::Tokens {
     quote! {
         $(for stmt in block.body join ($['\r']) => $(gen_statement(stmt)))
     }
 }
 
-/// Generates block with last statement as return
+/// Generates block code with last statement as return
 pub fn gen_block_expr(mut block: Block) -> js::Tokens {
     let last = match block.body.pop() {
         Some(last) => last,
@@ -458,7 +481,7 @@ pub fn gen_block_expr(mut block: Block) -> js::Tokens {
     }
 }
 
-/// Generates module
+/// Generates module code
 pub fn gen_module(name: &EcoString, module: &Module) -> js::Tokens {
     // Segments amount for dependencies
     let name_segments_amount = name.split("/").count();
@@ -473,6 +496,8 @@ pub fn gen_module(name: &EcoString, module: &Module) -> js::Tokens {
         import {
             $("$$match"),
             $("$$equals"),
+            $("$$todo"),
+            $("$$range"),
             $("$$EqPattern"),
             $("$$UnwrapPattern"),
             $("$$WildcardPattern"),
@@ -497,7 +522,7 @@ pub fn gen_module(name: &EcoString, module: &Module) -> js::Tokens {
     }
 }
 
-/// Generates prelude
+/// Generates prelude code
 pub fn gen_prelude() -> js::Tokens {
     quote! {
         // EnumEquals$fn
@@ -673,10 +698,28 @@ pub fn gen_prelude() -> js::Tokens {
         export function $("$$todo")() {
             throw "reached todo code.";
         }
+
+        // Range$Fn
+        export function $("$$range")(from, to, offset) {
+            const result = [];
+            // 0..5
+            if (from < to) {
+                for (let i = from; i < to + offset; i += 1) {
+                    result.push(i);
+                }
+            }
+            // 5..0
+            else {
+                for (let i = from; i > to - offset; i -= 1) {
+                    result.push(i);
+                }
+            }
+            return result;
+        }
     }
 }
 
-/// Generates index file
+/// Generates index file code
 pub fn gen_index(main_module: String) -> js::Tokens {
     quote! {
         import { main } from $(quoted(format!("./{main_module}.js")))

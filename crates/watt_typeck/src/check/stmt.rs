@@ -13,8 +13,8 @@ use watt_common::{address::Address, bail};
 
 /// Statements iferring
 impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
-    /// Analyzes while
-    fn analyze_while(
+    /// Analyzes loop
+    fn analyze_loop(
         &mut self,
         location: Address,
         logical: Expression,
@@ -31,6 +31,82 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 span: location.span.into()
             }),
         }
+        // inferring block
+        let _ = match body {
+            Either::Left(block) => self.infer_block(block),
+            Either::Right(expr) => self.infer_expr(expr),
+        };
+        // popping rib
+        self.resolver.pop_rib();
+    }
+
+    /// Analyzes range
+    fn analyze_range(&mut self, range: Range) {
+        match range {
+            Range::ExcludeLast { location, from, to } => {
+                // Inferring from and to expression
+                let inferred_from = self.infer_expr(from);
+                let inferred_to = self.infer_expr(to);
+                // Checking both are ints
+                let typ = Typ::Prelude(PreludeType::Int);
+                if inferred_from != typ {
+                    bail!(TypeckError::TypesMissmatch {
+                        src: location.source,
+                        span: location.span.into(),
+                        expected: typ,
+                        got: inferred_from
+                    })
+                }
+                if inferred_to != typ {
+                    bail!(TypeckError::TypesMissmatch {
+                        src: location.source,
+                        span: location.span.into(),
+                        expected: typ,
+                        got: inferred_from
+                    })
+                }
+            }
+            Range::IncludeLast { location, from, to } => {
+                // Inferring from and to expression
+                let inferred_from = self.infer_expr(from);
+                let inferred_to = self.infer_expr(to);
+                // Checking both are ints
+                let typ = Typ::Prelude(PreludeType::Int);
+                if inferred_from != typ {
+                    bail!(TypeckError::TypesMissmatch {
+                        src: location.source,
+                        span: location.span.into(),
+                        expected: typ,
+                        got: inferred_from
+                    })
+                }
+                if inferred_to != typ {
+                    bail!(TypeckError::TypesMissmatch {
+                        src: location.source,
+                        span: location.span.into(),
+                        expected: typ,
+                        got: inferred_from
+                    })
+                }
+            }
+        }
+    }
+
+    /// Analyzes for
+    fn analyze_for(
+        &mut self,
+        location: Address,
+        name: EcoString,
+        range: Range,
+        body: Either<Block, Expression>,
+    ) {
+        // pushing rib
+        self.resolver.push_rib(RibKind::Loop);
+        // defining variable for iterations
+        self.resolver
+            .define(&location, &name, Def::Local(Typ::Prelude(PreludeType::Int)));
+        // analyzing range
+        self.analyze_range(range);
         // inferring block
         let _ = match body {
             Either::Left(block) => self.infer_block(block),
@@ -61,11 +137,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 self.resolver
                     .define(&location, &name, Def::Local(annotated))
             }
-            None => self.resolver.define(
-                &location,
-                &name,
-                Def::Local(inferred_value),
-            ),
+            None => self
+                .resolver
+                .define(&location, &name, Def::Local(inferred_value)),
         }
     }
 
@@ -106,7 +180,16 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 logical,
                 body,
             } => {
-                self.analyze_while(location, logical, body);
+                self.analyze_loop(location, logical, body);
+                Typ::Unit
+            }
+            Statement::For {
+                location,
+                name,
+                range,
+                body,
+            } => {
+                self.analyze_for(location, name, range, body);
                 Typ::Unit
             }
             Statement::Semi(expr) => {

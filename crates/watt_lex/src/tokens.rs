@@ -41,7 +41,8 @@ pub enum TokenKind {
     Loop,      // loop
     Type,      // type
     Enum,      // enum
-    Dot,       // dot
+    Dot,       // .
+    Range,     // ..
     Greater,   // >
     Less,      // <
     GreaterEq, // >=
@@ -55,6 +56,7 @@ pub enum TokenKind {
     Colon,     // :
     Semicolon, // ;
     Bang,      // !
+    Wildcard,  // _
     In,        // in
     Unit,      // unit
     As,        // as

@@ -353,7 +353,24 @@ pub struct Case {
 /// Use kind
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum UseKind {
+    /// Represents import of module as given name
+    ///
+    /// # Example
+    /// ```
+    /// use some/module as name
+    /// ```
     AsName(EcoString),
+    /// Represents import of module contents separated by commad
+    ///
+    /// # Example 1
+    /// ```
+    /// use some/module for Ty
+    /// ```
+    ///
+    /// # Example 2
+    /// ```
+    /// use some/module for Ty, Ty2
+    /// ```
     ForNames(Vec<EcoString>),
 }
 
@@ -368,6 +385,33 @@ pub enum ElseBranch {
     Else {
         location: Address,
         body: Either<Block, Expression>,
+    },
+}
+
+/// Range
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Range {
+    /// If range excludes last value
+    ///
+    /// # Example
+    /// ```
+    /// 0..30
+    /// ```
+    ExcludeLast {
+        location: Address,
+        from: Expression,
+        to: Expression,
+    },
+    /// If range includes last value
+    ///
+    /// # Example
+    /// ```
+    /// 0..=30
+    /// ```
+    IncludeLast {
+        location: Address,
+        from: Expression,
+        to: Expression,
     },
 }
 
@@ -539,6 +583,18 @@ pub enum Statement {
         logical: Expression,
         body: Either<Block, Expression>,
     },
+    /// Represents `for` loop
+    ///
+    /// for `name` in `range` {
+    ///     ...
+    /// }
+    ///
+    For {
+        location: Address,
+        name: EcoString,
+        range: Range,
+        body: Either<Block, Expression>,
+    },
     /// Represents semi colon expression
     Semi(Expression),
 }
@@ -551,6 +607,7 @@ impl Statement {
             Statement::VarAssign { location, .. } => location.clone(),
             Statement::Expr(expression) => expression.location(),
             Statement::Loop { location, .. } => location.clone(),
+            Statement::For { location, .. } => location.clone(),
             Statement::Semi(expression) => expression.location(),
         }
     }

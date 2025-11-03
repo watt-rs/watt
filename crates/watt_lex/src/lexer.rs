@@ -152,7 +152,13 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
                 '[' => self.add_tk(TokenKind::Lbracket, "["),
                 ']' => self.add_tk(TokenKind::Rbracket, "]"),
                 ',' => self.add_tk(TokenKind::Comma, ","),
-                '.' => self.add_tk(TokenKind::Dot, "."),
+                '.' => {
+                    if self.is_match('.') {
+                        self.add_tk(TokenKind::Range, "..")
+                    } else {
+                        self.add_tk(TokenKind::Dot, ".");
+                    }
+                }
                 ':' => self.add_tk(TokenKind::Colon, ":"),
                 ';' => self.add_tk(TokenKind::Semicolon, ";"),
                 '<' => {
@@ -198,6 +204,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
                     let tk = self.scan_multiline_string();
                     self.tokens.push(tk);
                 }
+                '_' => self.add_tk(TokenKind::Wildcard, "_"),
                 _ => {
                     // numbers
                     if self.is_digit(ch) {

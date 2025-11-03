@@ -29,11 +29,43 @@ fn non_exhaustive_warning() {
     assert_eq(result, 1)
 }
 
+/// For loop test
+fn for_loop_test() {
+    // First subtest
+    let r1 = 0;
+    for i in 0..10 {
+        r1 = i;
+    };
+    assert_eq(r1, 9);
+
+    // Second subtest
+    let r2 = 0;
+    for i in 0..=10 {
+        r2 = i;
+    };
+    assert_eq(r2, 10);
+
+    // Third subtest
+    let r3 = 0;
+    for i in 10..0 {
+        r3 = i;
+    };
+    assert_eq(r3, 1);
+
+    // Fourth subtest
+    let r4 = 0;
+    for i in 10..=0 {
+        r4 = i;
+    };
+    assert_eq(r4, 0)
+}
+
 /// Main function
 fn main() {
     let tests = List();
     tests.push(Test(additive_test));
     tests.push(Test(multiple_test));
     tests.push(Test(non_exhaustive_warning));
+    tests.push(Test(for_loop_test));
     test_runner.run(tests);
 }
