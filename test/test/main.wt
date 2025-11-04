@@ -1,9 +1,11 @@
 use std/io as io
-use std/list for List
 
-fn a(): dyn =
-    io.println("hello, world!")
+fn a(): string =
+    b()
+
+fn b(): string =
+    "Hello, world!"
 
 fn main() {
-    a();
+    io.println(a());
 }

@@ -1,6 +1,8 @@
 import {
     $$match,
     $$equals,
+    $$todo,
+    $$range,
     $$EqPattern,
     $$UnwrapPattern,
     $$WildcardPattern,
@@ -9,7 +11,6 @@ import {
 } from "../prelude.js"
 
 import {panic} from "../std/rt.js"
-import {unreachable} from "../std/unreachable.js"
 
 export const Result = {
     Ok: (value) => ({
@@ -39,7 +40,7 @@ export function unwrap(result) {
         new $$VariantPattern(
             "Err",
             function() {
-                return panic("unwrap on error result.")
+                return panic("unwrap on `Result.Err`")
             }
         )
     ])

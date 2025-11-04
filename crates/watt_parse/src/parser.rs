@@ -1,25 +1,26 @@
 /// Imports
 use crate::errors::ParseError;
-use ecow::EcoString;
 use miette::NamedSource;
 use std::sync::Arc;
 use watt_ast::ast::*;
-use watt_common::address::Address;
 use watt_common::bail;
 use watt_lex::tokens::{Token, TokenKind};
 
 /// Parser structure
-pub struct Parser<'file_path> {
+pub struct Parser<'file> {
+    /// Tokens buffer
     tokens: Vec<Token>,
-    current: u128,
-    source: &'file_path Arc<NamedSource<String>>,
+    /// Current index
+    pub(crate) current: u128,
+    /// Source file
+    pub(crate) source: &'file Arc<NamedSource<String>>,
 }
 
 /// Parser implementation
 #[allow(unused_qualifications)]
-impl<'file_path> Parser<'file_path> {
+impl<'file> Parser<'file> {
     /// New parser
-    pub fn new(tokens: Vec<Token>, source: &'file_path Arc<NamedSource<String>>) -> Self {
+    pub fn new(tokens: Vec<Token>, source: &'file Arc<NamedSource<String>>) -> Self {
         Parser {
             tokens,
             current: 0,
@@ -52,7 +53,7 @@ impl<'file_path> Parser<'file_path> {
     }
 
     /// Block parsing
-    fn block(&mut self) -> Block {
+    pub(crate) fn block(&mut self) -> Block {
         // parsing statement before reaching
         // end of file, or a `}`
         let mut nodes: Vec<Statement> = Vec::new();
@@ -71,7 +72,7 @@ impl<'file_path> Parser<'file_path> {
     }
 
     /// Block or expr parsing
-    fn block_or_expr(&mut self) -> Either<Block, Expression> {
+    pub(crate) fn block_or_expr(&mut self) -> Either<Block, Expression> {
         // if lbrace passed
         if self.check(TokenKind::Lbrace) {
             // parsing statement before reaching
@@ -97,7 +98,7 @@ impl<'file_path> Parser<'file_path> {
     }
 
     /// Block or box expr parsing
-    fn block_or_box_expr(&mut self) -> Either<Block, Box<Expression>> {
+    pub(crate) fn block_or_box_expr(&mut self) -> Either<Block, Box<Expression>> {
         // if lbrace passed
         if self.check(TokenKind::Lbrace) {
             // parsing statement before reaching
@@ -119,862 +120,6 @@ impl<'file_path> Parser<'file_path> {
             self.consume(TokenKind::Assign);
             // parsing single expression
             Either::Right(Box::new(self.expr()))
-        }
-    }
-
-    /// Arguments parsing `($expr, $expr, n...)`
-    fn args(&mut self) -> Vec<Expression> {
-        // result list
-        let mut nodes: Vec<Expression> = Vec::new();
-
-        // `(Expression, Expression, n...)`
-        self.consume(TokenKind::Lparen);
-        if !self.check(TokenKind::Rparen) {
-            nodes.push(self.expr());
-            while self.check(TokenKind::Comma) {
-                self.consume(TokenKind::Comma);
-                nodes.push(self.expr());
-            }
-        }
-        self.consume(TokenKind::Rparen);
-
-        nodes
-    }
-
-    /// Depednecy path parsing
-    fn dependency_path(&mut self) -> DependencyPath {
-        // module name string
-        let mut module = EcoString::new();
-        // start address
-        let start_address = self.peek().address.clone();
-
-        // first `id`
-        module.push_str(&self.consume(TokenKind::Id).value.clone());
-
-        // while path separator exists, parsing new segment
-        while self.check(TokenKind::Slash) {
-            self.consume(TokenKind::Slash);
-            module.push('/');
-            module.push_str(&self.consume(TokenKind::Id).value.clone());
-        }
-
-        // end address
-        let end_address = self.previous().address.clone();
-
-        DependencyPath {
-            address: start_address + end_address,
-            module,
-        }
-    }
-
-    /// Type annotation parsing
-    fn type_annotation(&mut self) -> TypePath {
-        // If function type annotation
-        if self.check(TokenKind::Fn) {
-            // start of span `fn (...): ...`
-            let start_address = self.peek().address.clone();
-            self.consume(TokenKind::Fn);
-            // params
-            let mut params: Vec<TypePath> = Vec::new();
-
-            // `($type, $type, n )`
-            self.consume(TokenKind::Lparen);
-            if !self.check(TokenKind::Rparen) {
-                params.push(self.type_annotation());
-
-                while self.check(TokenKind::Comma) {
-                    self.consume(TokenKind::Comma);
-                    params.push(self.type_annotation());
-                }
-            }
-            self.consume(TokenKind::Rparen);
-
-            // : $ret
-            let ret = if self.check(TokenKind::Colon) {
-                self.consume(TokenKind::Colon);
-                Some(Box::new(self.type_annotation()))
-            } else {
-                None
-            };
-            // end of span `fn (...): ...`
-            let end_address = self.previous().address.clone();
-            // function type path
-            TypePath::Function {
-                location: start_address + end_address,
-                params,
-                ret,
-            }
-        }
-        // If unit type annotation
-        else if self.check(TokenKind::Lparen) {
-            // ()
-            let start_address = self.advance().address.clone();
-            let end_address = self.consume(TokenKind::Rparen).address.clone();
-            TypePath::Unit {
-                location: start_address + end_address,
-            }
-        }
-        // Else, type name annotation
-        else {
-            // start address of `type.annotation`
-            let start_address = self.peek().address.clone();
-            // fisrt id
-            let first_id = self.consume(TokenKind::Id).clone();
-            // if dot found
-            if self.check(TokenKind::Dot) {
-                // consuming dot
-                self.consume(TokenKind::Dot);
-                // end address of `module.definition`
-                let end_address = self.peek().address.clone();
-                // module type path
-                TypePath::Module {
-                    location: start_address + end_address,
-                    module: first_id.value,
-                    name: self.consume(TokenKind::Id).value.clone(),
-                }
-            }
-            // else
-            else {
-                // local type path
-                TypePath::Local {
-                    location: start_address,
-                    name: first_id.value,
-                }
-            }
-        }
-    }
-
-    /// Single parameter parsing
-    fn parameter(&mut self) -> Parameter {
-        // `$name: $typ`
-        let name = self.consume(TokenKind::Id).clone();
-        self.consume(TokenKind::Colon);
-        let typ = self.type_annotation();
-
-        Parameter {
-            location: name.address,
-            name: name.value,
-            typ,
-        }
-    }
-
-    /// Parameters parsing `($name: $type, $name: $type, n )`
-    fn parameters(&mut self) -> Vec<Parameter> {
-        // result list
-        let mut params: Vec<Parameter> = Vec::new();
-
-        // `($name: $type, $name: $type, n )`
-        self.consume(TokenKind::Lparen);
-        if !self.check(TokenKind::Rparen) {
-            params.push(self.parameter());
-
-            while self.check(TokenKind::Comma) {
-                self.consume(TokenKind::Comma);
-                params.push(self.parameter());
-            }
-        }
-        self.consume(TokenKind::Rparen);
-
-        params
-    }
-
-    /// Anonymous fn expr
-    fn anonymous_fn_expr(&mut self) -> Expression {
-        // start span `fn (): ... {}`
-        let start_span = self.peek().address.clone();
-        self.consume(TokenKind::Fn);
-
-        // params
-        let mut params: Vec<Parameter> = Vec::new();
-        if self.check(TokenKind::Lparen) {
-            params = self.parameters();
-        }
-
-        // return type
-        // if type specified
-        let typ = if self.check(TokenKind::Colon) {
-            // `: $type`
-            self.consume(TokenKind::Colon);
-            Some(self.type_annotation())
-        }
-        // else
-        else {
-            None
-        };
-        // end span `fn (): ... {}`
-        let end_span = self.previous().address.clone();
-
-        // body
-        let body = self.block_or_box_expr();
-
-        Expression::Function {
-            location: start_span + end_span,
-            params,
-            body,
-            typ,
-        }
-    }
-
-    /// Else parsing
-    fn else_branch(&mut self) -> ElseBranch {
-        let start_span = self.consume(TokenKind::Else).address.clone();
-        let body = self.block_or_expr();
-        let end_span = self.previous().address.clone();
-
-        ElseBranch::Else {
-            location: start_span + end_span,
-            body,
-        }
-    }
-
-    /// Elif parsing
-    fn elif_branch(&mut self) -> ElseBranch {
-        let start_span = self.consume(TokenKind::Elif).address.clone();
-        let logical = self.expr();
-        let body = self.block_or_expr();
-        let end_span = self.previous().address.clone();
-
-        ElseBranch::Elif {
-            location: start_span + end_span,
-            logical,
-            body,
-        }
-    }
-
-    /// If expression parsing
-    fn if_expr(&mut self) -> Expression {
-        let start_span = self.consume(TokenKind::If).address.clone();
-        let logical = self.expr();
-        let body = self.block_or_box_expr();
-        let end_span = self.previous().address.clone();
-        let mut else_branches = Vec::new();
-
-        // elif parsing
-        while self.check(TokenKind::Elif) {
-            else_branches.push(self.elif_branch());
-        }
-
-        // else parsing
-        if self.check(TokenKind::Else) {
-            else_branches.push(self.else_branch());
-        }
-
-        Expression::If {
-            location: start_span + end_span,
-            logical: Box::new(logical),
-            body,
-            else_branches,
-        }
-    }
-
-    /// Variable parsing
-    fn variable(&mut self) -> Expression {
-        // start address `id...`
-        let start_address = self.peek().address.clone();
-
-        // variable
-        let variable = self.consume(TokenKind::Id).clone();
-
-        // result node
-        let mut result = Expression::PrefixVar {
-            location: variable.address,
-            name: variable.value,
-        };
-
-        // checking for dots and parens
-        loop {
-            // checking for chain `a.b.c.d`
-            if self.check(TokenKind::Dot) {
-                self.consume(TokenKind::Dot);
-                let variable = self.consume(TokenKind::Id).clone();
-                result = Expression::SuffixVar {
-                    location: variable.address,
-                    container: Box::new(result),
-                    name: variable.value,
-                };
-                continue;
-            }
-            // checking for call
-            if self.check(TokenKind::Lparen) {
-                let args = self.args();
-                let end_address = self.previous().address.clone();
-                result = Expression::Call {
-                    location: start_address.clone() + end_address,
-                    what: Box::new(result),
-                    args,
-                };
-                continue;
-            }
-            // breaking cycle
-            break;
-        }
-        result
-    }
-
-    /// Assignment parsing
-    fn assignment(&mut self, address: Address, variable: Expression) -> Statement {
-        match variable {
-            Expression::Call { location, .. } => bail!(ParseError::InvalidAssignmentOperation {
-                src: location.source,
-                span: location.span.into()
-            }),
-            _ => {
-                let op = self.advance().clone();
-                match op.tk_type {
-                    TokenKind::Assign => {
-                        let start_address = variable.location();
-                        let expr = self.expr();
-                        let end_address = self.previous().address.clone();
-                        Statement::VarAssign {
-                            location: start_address + end_address,
-                            what: variable,
-                            value: expr,
-                        }
-                    }
-                    TokenKind::AddAssign => {
-                        let start_address = variable.location();
-                        let expr = Box::new(self.expr());
-                        let end_address = self.previous().address.clone();
-                        Statement::VarAssign {
-                            location: address.clone() + end_address.clone(),
-                            what: variable.clone(),
-                            value: Expression::Bin {
-                                location: start_address + end_address,
-                                left: Box::new(variable),
-                                right: expr,
-                                op: BinaryOp::Add,
-                            },
-                        }
-                    }
-                    TokenKind::SubAssign => {
-                        let start_address = variable.location();
-                        let expr = Box::new(self.expr());
-                        let end_address = self.previous().address.clone();
-                        Statement::VarAssign {
-                            location: address + end_address.clone(),
-                            what: variable.clone(),
-                            value: Expression::Bin {
-                                location: start_address + end_address,
-                                left: Box::new(variable),
-                                right: expr,
-                                op: BinaryOp::Sub,
-                            },
-                        }
-                    }
-                    TokenKind::MulAssign => {
-                        let start_address = variable.location();
-                        let expr = Box::new(self.expr());
-                        let end_address = self.previous().address.clone();
-                        Statement::VarAssign {
-                            location: address + end_address.clone(),
-                            what: variable.clone(),
-                            value: Expression::Bin {
-                                location: start_address + end_address,
-                                left: Box::new(variable),
-                                right: expr,
-                                op: BinaryOp::Mul,
-                            },
-                        }
-                    }
-                    TokenKind::DivAssign => {
-                        let start_address = variable.location();
-                        let expr = Box::new(self.expr());
-                        let end_address = self.previous().address.clone();
-                        Statement::VarAssign {
-                            location: address + end_address.clone(),
-                            what: variable.clone(),
-                            value: Expression::Bin {
-                                location: start_address + end_address,
-                                left: Box::new(variable),
-                                right: expr,
-                                op: BinaryOp::Div,
-                            },
-                        }
-                    }
-                    _ => bail!(ParseError::InvalidAssignmentOperator {
-                        src: address.source,
-                        span: op.address.span.into(),
-                        op: op.value
-                    }),
-                }
-            }
-        }
-    }
-
-    /// Let statement parsing
-    fn let_stmt(&mut self) -> Statement {
-        // start address
-        let start_address = self.peek().address.clone();
-
-        // `let $id`
-        self.consume(TokenKind::Let);
-        let name = self.consume(TokenKind::Id).clone();
-
-        // if type specified
-        let typ = if self.check(TokenKind::Colon) {
-            // `: $type`
-            self.consume(TokenKind::Colon);
-            Option::Some(self.type_annotation())
-        }
-        // else
-        else {
-            // setting type to None
-            Option::None
-        };
-
-        // `= $value`
-        self.consume(TokenKind::Assign);
-        let value = self.expr();
-
-        // end address
-        let end_address = self.previous().address.clone();
-
-        Statement::VarDef {
-            location: start_address + end_address,
-            name: name.value,
-            typ,
-            value,
-        }
-    }
-
-    /// Grouping expr `( expr )`
-    fn grouping_expr(&mut self) -> Expression {
-        // `($expr)`
-        self.consume(TokenKind::Lparen);
-        let expr = self.expr();
-        self.consume(TokenKind::Rparen);
-
-        expr
-    }
-
-    /// Todo expr `todo`
-    #[inline]
-    fn todo_expr(&mut self) -> Expression {
-        Expression::Todo {
-            location: self.advance().address.clone(),
-        }
-    }
-
-    /// Primary expr parsing
-    fn primary_expr(&mut self) -> Expression {
-        match self.peek().tk_type {
-            TokenKind::Id => self.variable(),
-            TokenKind::Number => {
-                let value = self.advance().clone();
-                if value.value.contains(".") {
-                    Expression::Float {
-                        location: value.address,
-                        value: value.value,
-                    }
-                } else {
-                    Expression::Int {
-                        location: value.address,
-                        value: value.value,
-                    }
-                }
-            }
-            TokenKind::Text => {
-                let value = self.advance().clone();
-                Expression::String {
-                    location: value.address,
-                    value: value.value,
-                }
-            }
-            TokenKind::Bool => {
-                let value = self.advance().clone();
-                Expression::Bool {
-                    location: value.address,
-                    value: value.value,
-                }
-            }
-            TokenKind::Todo => self.todo_expr(),
-            TokenKind::Lparen => self.grouping_expr(),
-            TokenKind::Fn => self.anonymous_fn_expr(),
-            TokenKind::Match => self.pattern_matching(),
-            TokenKind::If => self.if_expr(),
-            _ => {
-                let token = self.peek().clone();
-                bail!(ParseError::UnexpectedExpressionToken {
-                    src: token.address.source,
-                    span: token.address.span.into(),
-                    unexpected: token.value
-                });
-            }
-        }
-    }
-
-    /// Unary expr `!` and `-` parsing
-    fn unary_expr(&mut self) -> Expression {
-        if self.check(TokenKind::Bang) || self.check(TokenKind::Minus) {
-            let op = self.advance().clone();
-
-            Expression::Unary {
-                location: op.address,
-                op: match op.tk_type {
-                    TokenKind::Minus => UnaryOp::Neg,
-                    TokenKind::Bang => UnaryOp::Bang,
-                    _ => unreachable!(),
-                },
-                value: Box::new(self.primary_expr()),
-            }
-        } else {
-            self.primary_expr()
-        }
-    }
-
-    /// Binary operations `*`, `/`, `%`, `^`, `&`, `|` parsing
-    fn multiplicative_expr(&mut self) -> Expression {
-        let mut start_location = self.peek().address.clone();
-        let mut left = self.unary_expr();
-
-        while self.check(TokenKind::Star)
-            || self.check(TokenKind::Slash)
-            || self.check(TokenKind::Percent)
-            || self.check(TokenKind::Caret)
-            || self.check(TokenKind::Ampersand)
-            || self.check(TokenKind::Bar)
-        {
-            let op = self.peek().clone();
-            self.current += 1;
-            let right = self.unary_expr();
-            let end_location = self.previous().address.clone();
-            left = Expression::Bin {
-                location: start_location + end_location,
-                left: Box::new(left),
-                right: Box::new(right),
-                op: match op.tk_type {
-                    TokenKind::Star => BinaryOp::Mul,
-                    TokenKind::Slash => BinaryOp::Div,
-                    TokenKind::Ampersand => BinaryOp::BitwiseAnd,
-                    TokenKind::Bar => BinaryOp::BitwiseOr,
-                    TokenKind::Percent => BinaryOp::Mod,
-                    _ => unreachable!(),
-                },
-            };
-            start_location = self.peek().address.clone();
-        }
-
-        left
-    }
-
-    /// Binary operations `+`, `-`, '<>' parsing
-    fn additive_expr(&mut self) -> Expression {
-        let mut start_location = self.peek().address.clone();
-        let mut left = self.multiplicative_expr();
-
-        while self.check(TokenKind::Plus)
-            || self.check(TokenKind::Minus)
-            || self.check(TokenKind::Concat)
-        {
-            let op = self.peek().clone();
-            self.current += 1;
-            let right = self.multiplicative_expr();
-            let end_location = self.previous().address.clone();
-            left = Expression::Bin {
-                location: start_location + end_location,
-                left: Box::new(left),
-                right: Box::new(right),
-                op: match op.tk_type {
-                    TokenKind::Plus => BinaryOp::Add,
-                    TokenKind::Minus => BinaryOp::Sub,
-                    TokenKind::Concat => BinaryOp::Concat,
-                    _ => unreachable!(),
-                },
-            };
-            start_location = self.peek().address.clone();
-        }
-
-        left
-    }
-
-    /// Compare operations `<`, `>`, `<=`, `>=` parsing
-    fn compare_expr(&mut self) -> Expression {
-        let start_location = self.peek().address.clone();
-        let mut left = self.additive_expr();
-
-        if self.check(TokenKind::Greater)
-            || self.check(TokenKind::GreaterEq)
-            || self.check(TokenKind::Less)
-            || self.check(TokenKind::LessEq)
-        {
-            let op = self.advance().clone();
-            let right = self.additive_expr();
-            let end_location = self.previous().address.clone();
-            left = Expression::Bin {
-                location: start_location + end_location,
-                left: Box::new(left),
-                right: Box::new(right),
-                op: match op.tk_type {
-                    TokenKind::Greater => BinaryOp::Gt,
-                    TokenKind::GreaterEq => BinaryOp::Ge,
-                    TokenKind::Less => BinaryOp::Lt,
-                    TokenKind::LessEq => BinaryOp::Le,
-                    _ => unreachable!(),
-                },
-            };
-        }
-
-        left
-    }
-
-    /// Equality operations `==`, `!=` parsing
-    fn equality_expr(&mut self) -> Expression {
-        let start_location = self.peek().address.clone();
-        let mut left = self.compare_expr();
-
-        if self.check(TokenKind::Eq) || self.check(TokenKind::NotEq) {
-            let op = self.advance().clone();
-            let right = self.compare_expr();
-            let end_location = self.previous().address.clone();
-            left = Expression::Bin {
-                location: start_location + end_location,
-                left: Box::new(left),
-                right: Box::new(right),
-                op: match op.tk_type {
-                    TokenKind::Eq => BinaryOp::Eq,
-                    TokenKind::NotEq => BinaryOp::NotEq,
-                    _ => unreachable!(),
-                },
-            };
-        }
-
-        left
-    }
-
-    /// Logical operations `and`, `or` parsing
-    fn logical_expr(&mut self) -> Expression {
-        let mut start_location = self.peek().address.clone();
-        let mut left = self.equality_expr();
-
-        while self.check(TokenKind::And) || self.check(TokenKind::Or) {
-            let op = self.advance().clone();
-            let right = self.equality_expr();
-            let end_location = self.previous().address.clone();
-            left = Expression::Bin {
-                location: start_location + end_location,
-                left: Box::new(left),
-                right: Box::new(right),
-                op: match op.tk_type {
-                    TokenKind::And => BinaryOp::And,
-                    TokenKind::Or => BinaryOp::Or,
-                    _ => unreachable!(),
-                },
-            };
-            start_location = self.peek().address.clone();
-        }
-
-        left
-    }
-
-    /// Variant pattern prefix.
-    /// Example: `Option.Some`
-    fn variant_pattern_prefix(&mut self) -> Expression {
-        // variable
-        let variable = self.consume(TokenKind::Id).clone();
-
-        // result node
-        let mut result = Expression::PrefixVar {
-            location: variable.address,
-            name: variable.value,
-        };
-
-        // checking for dots and parens
-        loop {
-            // checking for chain `a.b.c.d`
-            if self.check(TokenKind::Dot) {
-                self.consume(TokenKind::Dot);
-                let variable = self.consume(TokenKind::Id).clone();
-                result = Expression::SuffixVar {
-                    location: variable.address,
-                    container: Box::new(result),
-                    name: variable.value,
-                };
-                continue;
-            }
-            // breaking cycle
-            break;
-        }
-        result
-    }
-
-    /// Pattern parsing
-    fn pattern(&mut self) -> Pattern {
-        // Parsing single pattern
-        let pattern =
-            // If string presented
-            if self.check(TokenKind::Text) {
-                Pattern::String(self.advance().value.clone())
-            }
-            // If bool presented
-            else if self.check(TokenKind::Bool) {
-                Pattern::Bool(self.advance().value.clone())
-            }
-            // If number presented
-            else if self.check(TokenKind::Number) {
-                let value = self.advance().clone();
-                if value.value.contains(".") {
-                    Pattern::Float(value.value)
-                } else {
-                    Pattern::Int(value.value)
-                }
-            }
-            // If wildcard presented
-            else if self.check(TokenKind::Wildcard) {
-                self.advance();
-                Pattern::Wildcard
-            }
-            // If identifier presented
-            else {
-                // If dot presented -> enum patterns
-                if self.check_next(TokenKind::Dot) {
-                    // Parsing variant pattern prefix
-                    let value = self.variant_pattern_prefix();
-                    // Checking for unwrap of enum
-                    if self.check(TokenKind::Lparen) {
-                        // (.., n fields)
-                        self.consume(TokenKind::Lparen);
-                        let mut fields = Vec::new();
-                        // Checking for close of parens
-                        if self.check(TokenKind::Rparen) {
-                            self.advance();
-                            return Pattern::Unwrap { en: value, fields };
-                        }
-                        // Parsing field names
-                        let field = self.consume(TokenKind::Id).clone();
-                        fields.push((field.address, field.value));
-                        while self.check(TokenKind::Comma) {
-                            self.advance();
-                            let field = self.consume(TokenKind::Id).clone();
-                            fields.push((field.address, field.value));
-                        }
-                        self.consume(TokenKind::Rparen);
-                        // As result, enum unwrap pattern
-                        Pattern::Unwrap { en: value, fields }
-                    }
-                    // If no unwrap, returning just as value
-                    else {
-                        Pattern::Variant(value)
-                    }
-                }
-                // If not -> bind pattern
-                else {
-                    Pattern::BindTo(self.consume(TokenKind::Id).value.clone())
-                }
-            };
-        // Checking if more patterns presented
-        if self.check(TokenKind::Bar) {
-            // Parsing `or` pattern
-            self.consume(TokenKind::Bar);
-            Pattern::Or(Box::new(pattern), Box::new(self.pattern()))
-        } else {
-            pattern
-        }
-    }
-
-    /// Pattern match parsing
-    fn pattern_matching(&mut self) -> Expression {
-        // Start address
-        let start_address = self.peek().address.clone();
-
-        // `match value { patterns, ... }`
-        self.consume(TokenKind::Match);
-        let value = self.expr();
-
-        // Cases
-        self.consume(TokenKind::Lbrace);
-        let mut cases = Vec::new();
-        while !self.check(TokenKind::Rbrace) {
-            // Start address of case
-            let start_span = self.peek().address.clone();
-            // Pattern of case
-            let pattern = self.pattern();
-            // -> { body, ... }
-            self.consume(TokenKind::Arrow);
-            let body = if self.check(TokenKind::Lbrace) {
-                Either::Left(self.block())
-            } else {
-                Either::Right(self.expr())
-            };
-            // End address of case
-            let end_span = self.previous().address.clone();
-            cases.push(Case {
-                address: start_span + end_span,
-                pattern,
-                body,
-            });
-        }
-        self.consume(TokenKind::Rbrace);
-
-        // End address
-        let end_address = self.previous().address.clone();
-
-        Expression::Match {
-            location: start_address + end_address,
-            value: Box::new(value),
-            cases,
-        }
-    }
-
-    /// Expr parsing
-    fn expr(&mut self) -> Expression {
-        self.logical_expr()
-    }
-
-    /// Loop statement parsing
-    fn loop_stmt(&mut self) -> Statement {
-        let start_span = self.consume(TokenKind::Loop).address.clone();
-        let logical = self.expr();
-        let body = self.block_or_expr();
-        let end_span = self.previous().address.clone();
-
-        Statement::Loop {
-            location: start_span + end_span,
-            logical,
-            body,
-        }
-    }
-
-    /// Range parsing
-    fn range(&mut self) -> Range {
-        // from..
-        let from = self.expr();
-        self.consume(TokenKind::Range);
-        // Checking for `=`
-        // If found => including last
-        if self.check(TokenKind::Assign) {
-            self.advance();
-            let to = self.expr();
-            Range::IncludeLast {
-                location: from.location() + to.location(),
-                from,
-                to,
-            }
-        }
-        // Else => excluding last
-        else {
-            let to = self.expr();
-            Range::ExcludeLast {
-                location: from.location() + to.location(),
-                from,
-                to,
-            }
-        }
-    }
-
-    /// For statement parsing
-    fn for_stmt(&mut self) -> Statement {
-        let start_span = self.consume(TokenKind::For).address.clone();
-        let name = self.consume(TokenKind::Id).value.clone();
-        self.consume(TokenKind::In);
-        let range = self.range();
-        let body = self.block_or_expr();
-        let end_span = self.previous().address.clone();
-
-        Statement::For {
-            location: start_span + end_span,
-            name,
-            range,
-            body,
         }
     }
 
@@ -1351,67 +496,12 @@ impl<'file_path> Parser<'file_path> {
         }
     }
 
-    /// Expression statement parsing
-    fn expr_statement(&mut self) -> Statement {
-        let expr = self.expr();
-        if self.check(TokenKind::Semicolon) {
-            Statement::Semi(expr)
-        } else {
-            Statement::Expr(expr)
-        }
-    }
-
-    /// Statement parsing
-    fn statement(&mut self) -> Statement {
-        // Parsing statement
-        let stmt = match self.peek().tk_type {
-            TokenKind::Loop => self.loop_stmt(),
-            TokenKind::For => self.for_stmt(),
-            TokenKind::Let => self.let_stmt(),
-            TokenKind::Id => {
-                let pos = self.current;
-                let start = self.peek().address.clone();
-                let variable = self.variable();
-                let end = self.peek().address.clone();
-                match self.peek().tk_type {
-                    TokenKind::AddAssign
-                    | TokenKind::DivAssign
-                    | TokenKind::MulAssign
-                    | TokenKind::SubAssign
-                    | TokenKind::Assign => self.assignment(start + end, variable),
-                    _ => {
-                        self.current = pos; // recovering to old position, if not an assignment
-                        self.expr_statement()
-                    }
-                }
-            }
-            _ => self.expr_statement(),
-        };
-        // If `;` presented
-        if self.check(TokenKind::Semicolon) {
-            self.advance();
-            stmt
-        }
-        // If not
-        else {
-            // Checking for closing brace `}`
-            if self.check(TokenKind::Rbrace) {
-                stmt
-            } else {
-                bail!(ParseError::ExpectedSemicolon {
-                    src: self.source.clone(),
-                    span: stmt.location().span.into()
-                })
-            }
-        }
-    }
-
     /*
      helper functions
     */
 
     /// Gets current token, then adds 1 to current.
-    fn advance(&mut self) -> &Token {
+    pub(crate) fn advance(&mut self) -> &Token {
         match self.tokens.get(self.current as usize) {
             Some(tk) => {
                 self.current += 1;
@@ -1423,7 +513,7 @@ impl<'file_path> Parser<'file_path> {
 
     /// Consumes token by kind, if expected kind doesn't equal
     /// current token kind - raises error.
-    fn consume(&mut self, tk_type: TokenKind) -> &Token {
+    pub(crate) fn consume(&mut self, tk_type: TokenKind) -> &Token {
         match self.tokens.get(self.current as usize) {
             Some(tk) => {
                 self.current += 1;
@@ -1442,8 +532,13 @@ impl<'file_path> Parser<'file_path> {
         }
     }
 
+    /// Skips one token by adding 1 to current
+    pub(crate) fn bump(&mut self) {
+        self.current += 1;
+    }
+
     /// Check current token type is equal to tk_type
-    fn check(&self, tk_type: TokenKind) -> bool {
+    pub(crate) fn check(&self, tk_type: TokenKind) -> bool {
         match self.tokens.get(self.current as usize) {
             Some(tk) => tk.tk_type == tk_type,
             None => false,
@@ -1451,7 +546,7 @@ impl<'file_path> Parser<'file_path> {
     }
 
     /// Check next token type is equal to tk_type
-    fn check_next(&self, tk_type: TokenKind) -> bool {
+    pub(crate) fn check_next(&self, tk_type: TokenKind) -> bool {
         match self.tokens.get(self.current as usize + 1) {
             Some(tk) => tk.tk_type == tk_type,
             None => false,
@@ -1459,7 +554,7 @@ impl<'file_path> Parser<'file_path> {
     }
 
     /// Peeks current token, if eof raises error
-    fn peek(&self) -> &Token {
+    pub(crate) fn peek(&self) -> &Token {
         match self.tokens.get(self.current as usize) {
             Some(tk) => tk,
             None => bail!(ParseError::UnexpectedEof),
@@ -1467,7 +562,7 @@ impl<'file_path> Parser<'file_path> {
     }
 
     /// Peeks previous token, if eof raises error
-    fn previous(&self) -> &Token {
+    pub(crate) fn previous(&self) -> &Token {
         match self.tokens.get((self.current - 1) as usize) {
             Some(tk) => tk,
             None => bail!(ParseError::UnexpectedEof),
@@ -1475,7 +570,7 @@ impl<'file_path> Parser<'file_path> {
     }
 
     /// Check `self.current >= self.tokens.len()`
-    fn is_at_end(&self) -> bool {
+    pub(crate) fn is_at_end(&self) -> bool {
         self.current as usize >= self.tokens.len()
     }
 }

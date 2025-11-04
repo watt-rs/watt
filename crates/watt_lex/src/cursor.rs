@@ -1,5 +1,5 @@
 /// Lexer cursor
-pub struct Cursor<'cursor> {
+pub(crate) struct Cursor<'cursor> {
     pub(crate) code: &'cursor [char],
     pub(crate) current: usize,
 }
@@ -9,6 +9,13 @@ impl<'cursor> Cursor<'cursor> {
     /// New cursor
     pub fn new(code: &'cursor [char]) -> Self {
         Cursor { code, current: 0 }
+    }
+
+    /// Skips `n` chars
+    pub fn bump(&mut self) -> char {
+        let ch = self.peek();
+        self.current += 1;
+        ch
     }
 
     /// Peeks current char

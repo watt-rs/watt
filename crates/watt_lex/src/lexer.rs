@@ -11,9 +11,13 @@ use watt_common::bail;
 
 /// Lexer structure
 pub struct Lexer<'source, 'cursor> {
+    /// Cursor, used to jump back and forth
     cursor: Cursor<'cursor>,
+    /// Source code
     source: &'source Arc<NamedSource<String>>,
+    /// Result tokens
     tokens: Vec<Token>,
+    /// Keywords map
     keywords: HashMap<&'static str, TokenKind>,
 }
 
@@ -466,9 +470,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
     /// Eats character from cursor and returns it,
     /// adding 1 to `column` and `cursor.current`
     fn advance(&mut self) -> char {
-        let ch: char = self.cursor.char_at(0);
-        self.cursor.current += 1;
-        ch
+        self.cursor.bump()
     }
 
     /// Checking current character is equal to `ch`
