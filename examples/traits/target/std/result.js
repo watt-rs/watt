@@ -1,6 +1,8 @@
 import {
     $$match,
     $$equals,
+    $$todo,
+    $$range,
     $$EqPattern,
     $$UnwrapPattern,
     $$WildcardPattern,

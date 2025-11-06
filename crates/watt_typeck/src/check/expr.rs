@@ -8,19 +8,19 @@ use crate::{
         resolve::{Def, ModDef},
         rib::RibKind,
     },
-    typ::{CustomType, Enum, Function, Parameter, PreludeType, Trait, Typ, Type},
+    typ::{CustomType, Enum, Function, Parameter, PreludeType, Struct, Trait, Typ},
     unify::Equation,
     utils::CallResult,
     warnings::TypeckWarning,
 };
 use ecow::EcoString;
 use indexmap::IndexMap;
-use std::cell::RefCell;
+use std::{cell::RefCell, rc::Rc};
 use watt_ast::ast::{
     self, BinaryOp, Block, Case, Either, ElseBranch, Expression, Pattern, Publicity, TypePath,
     UnaryOp,
 };
-use watt_common::{address::Address, bail, rc_ptr::RcPtr, warn};
+use watt_common::{address::Address, bail, warn};
 
 /// Expressions inferring
 impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
@@ -259,7 +259,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// Infers enum field access
     fn infer_enum_field_access(
         &self,
-        en: RcPtr<Enum>,
+        en: &Rc<Enum>,
         field_location: Address,
         field_name: EcoString,
     ) -> Res {
@@ -278,7 +278,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// Infers type field access
     fn infer_type_field_access(
         &self,
-        ty: RcPtr<RefCell<Type>>,
+        ty: &Rc<RefCell<Struct>>,
         field_location: Address,
         field_name: EcoString,
     ) -> Res {
@@ -292,7 +292,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 _ => match self.resolver.contains_type_rib() {
                     // If type is same
                     Some(t) => {
-                        if *t == ty {
+                        if t == ty {
                             Res::Value(typ.value.clone())
                         } else {
                             bail!(TypeckError::FieldIsPrivate {
@@ -324,7 +324,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// Infers trait field access
     fn infer_trait_field_access(
         &self,
-        tr: RcPtr<Trait>,
+        tr: &Rc<Trait>,
         field_location: Address,
         field_name: EcoString,
     ) -> Res {
@@ -355,18 +355,17 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             }
             // Enum field access
             Res::Custom(CustomType::Enum(en)) => {
-                self.infer_enum_field_access(en.clone(), field_location, field_name)
+                self.infer_enum_field_access(&en, field_location, field_name)
             }
             // Type field access
             Res::Value(typ) => match typ {
                 // Custom Type
-                Typ::Custom(ty) => {
-                    self.infer_type_field_access(ty.clone(), field_location, field_name)
+                Typ::Struct(ty) => {
+                    let res = self.infer_type_field_access(&ty, field_location, field_name);
+                    res
                 }
                 // Trait
-                Typ::Trait(tr) => {
-                    self.infer_trait_field_access(tr.clone(), field_location, field_name)
-                }
+                Typ::Trait(tr) => self.infer_trait_field_access(&tr, field_location, field_name),
                 // Dyn
                 Typ::Dyn => {
                     // Returning `dyn` like field type,
@@ -410,13 +409,13 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             .collect::<Vec<(Address, Typ)>>();
         match &function {
             // Custom type
-            Res::Custom(CustomType::Type(ty)) => {
+            Res::Custom(CustomType::Struct(ty)) => {
                 let borrowed = ty.borrow();
                 borrowed.params.iter().zip(args).for_each(|(a, b)| {
                     self.solver
                         .solve(Equation::Unify((a.location.clone(), a.typ.clone()), b));
                 });
-                CallResult::FromType(Typ::Custom(ty.clone()))
+                CallResult::FromType(Typ::Struct(ty.clone()))
             }
             // Value
             Res::Value(t) => match t {
@@ -476,7 +475,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 "unit" => Typ::Unit,
                 _ => match self.resolver.resolve_type(&name, &location) {
                     CustomType::Enum(en) => Typ::Enum(en.clone()),
-                    CustomType::Type(ty) => Typ::Custom(ty.clone()),
+                    CustomType::Struct(ty) => Typ::Struct(ty.clone()),
                     CustomType::Trait(tr) => Typ::Trait(tr.clone()),
                 },
             },
@@ -493,7 +492,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                             if t.publicity != Publicity::Private {
                                 match &t.value {
                                     CustomType::Enum(en) => Typ::Enum(en.clone()),
-                                    CustomType::Type(ty) => Typ::Custom(ty.clone()),
+                                    CustomType::Struct(ty) => Typ::Struct(ty.clone()),
                                     CustomType::Trait(tr) => Typ::Trait(tr.clone()),
                                 }
                             } else {
@@ -521,14 +520,15 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 location,
                 params,
                 ret,
-            } => Typ::Function(RcPtr::new(Function {
+            } => Typ::Function(Rc::new(Function {
                 source: self.module.source.clone(),
                 location,
+                uid: self.fresh_id(),
                 name: EcoString::from("$annotated"),
                 params: params
                     .into_iter()
                     .map(|p| Parameter {
-                        location: p.get_location(),
+                        location: p.location(),
                         typ: self.infer_type_annotation(p),
                     })
                     .collect(),
@@ -592,6 +592,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         let function = Function {
             source: self.module.source.clone(),
             location: location.clone(),
+            uid: self.fresh_id(),
             name: EcoString::from("$anonymous"),
             params: params.clone().into_values().collect(),
             ret: ret.clone(),
@@ -601,9 +602,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         self.resolver.push_rib(RibKind::Function);
 
         // defining params in new scope
-        params
-            .into_iter()
-            .for_each(|p| self.resolver.define(&location, &p.0, Def::Local(p.1.typ)));
+        params.into_iter().for_each(|p| {
+            self.resolver
+                .define(&location, &p.0, Def::Local(p.1.typ), false)
+        });
 
         // inferring body
         let (block_location, inferred_block) = match body {
@@ -617,7 +619,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         self.resolver.pop_rib();
 
         // result
-        Typ::Function(RcPtr::new(function))
+        Typ::Function(Rc::new(function))
     }
 
     /// Analyzes single pattern
@@ -646,10 +648,11 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                                 match variant.params.get(&field.1) {
                                     // Defining field with it's type, if it exists
                                     Some(typ) => {
-                                        self.resolver.redefine_local(
+                                        self.resolver.define(
                                             &field.0,
                                             &field.1,
-                                            typ.clone(),
+                                            Def::Local(typ.clone()),
+                                            true,
                                         );
                                     }
                                     None => bail!(TypeckError::EnumVariantFieldIsNotDefined {
@@ -739,8 +742,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 }
             }
             Pattern::BindTo(name) => {
-                self.resolver
-                    .define(&case.address, &name, Def::Local(inferred_what.clone()));
+                self.resolver.define(
+                    &case.address,
+                    &name,
+                    Def::Local(inferred_what.clone()),
+                    false,
+                );
             }
             Pattern::Or(pat1, pat2) => {
                 self.analyze_pattern(inferred_what.clone(), case, &pat1);
@@ -865,7 +872,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Typ::Unit
         }
     }
-    
+
     /// Infers expression
     pub(crate) fn infer_expr(&mut self, expr: Expression) -> Typ {
         match expr {

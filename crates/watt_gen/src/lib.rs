@@ -357,26 +357,22 @@ pub fn gen_declaration(decl: Declaration) -> js::Tokens {
         },
         Declaration::TypeDeclaration {
             name,
-            mut declarations,
+            methods,
+            fields,
             constructor,
             ..
         } => {
             // Methods
             let generated_methods = quote! {
-                $(for decl in &declarations {
-                    $(match decl {
-                        Declaration::Function { name, params, body, .. } => {
-                            $(try_escape_js(name))($(for param in params join (, ) => $(try_escape_js(&param.name)))) {
-                                let self = this;
-                                $(match body {
-                                    Either::Left(block) => $(gen_block_expr(block.clone())),
-                                    Either::Right(expr) => return $(gen_expression(expr.clone()))
-                                })
-                            }
-                            $['\r']
-                        }
-                        _ => $(quote!())
-                    })
+                $(for decl in methods {
+                    $(try_escape_js(decl.name.as_str()))($(for param in decl.params join (, ) => $(try_escape_js(&param.name)))) {
+                        let self = this;
+                        $(match decl.body {
+                            Either::Left(block) => $(gen_block_expr(block.clone())),
+                            Either::Right(expr) => return $(gen_expression(expr.clone()))
+                        })
+                    }
+                    $['\r']
                 })
             };
 
@@ -386,14 +382,9 @@ pub fn gen_declaration(decl: Declaration) -> js::Tokens {
                 constructor($(for field in constructor.clone() join (, ) => $(try_escape_js(&field.name)))) {
                     this.$("$meta") = "Type";
                     this.$("$type") = $(quoted(name.to_string()));
-                    $(for decl in std::mem::take(&mut declarations) {
-                        $(match decl {
-                            Declaration::VarDef { name, value, .. } => {
-                                this.$(try_escape_js(&name)) = $(gen_expression(value))
-                                $['\r']
-                            }
-                            _ => $(quote!())
-                        })
+                    $(for decl in fields {
+                        this.$(try_escape_js(&decl.name)) = $(gen_expression(decl.value))
+                        $['\r']
                     })
                 }
             };

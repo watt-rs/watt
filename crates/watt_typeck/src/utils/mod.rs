@@ -1,11 +1,11 @@
 /// Imports
 use crate::typ::{Function, Typ};
-use watt_common::rc_ptr::RcPtr;
+use std::rc::Rc;
 
 /// Call result
 #[allow(clippy::enum_variant_names)]
 pub enum CallResult {
-    FromFunction(Typ, RcPtr<Function>),
+    FromFunction(Typ, Rc<Function>),
     FromType(Typ),
     FromEnum(Typ),
     FromDyn,

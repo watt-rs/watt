@@ -1,11 +1,11 @@
 /// Imports
 use crate::{
     errors::TypeckError,
-    typ::{Typ, Type},
+    typ::{Struct, Typ},
 };
 use ecow::EcoString;
-use std::{cell::RefCell, collections::HashMap};
-use watt_common::{address::Address, bail, rc_ptr::RcPtr};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use watt_common::{address::Address, bail};
 
 /// Rib kind
 #[derive(PartialEq)]
@@ -16,7 +16,7 @@ pub enum RibKind {
     ConstructorParams,
     Fields,
     Pattern,
-    Type(RcPtr<RefCell<Type>>),
+    Struct(Rc<RefCell<Struct>>),
 }
 
 /// Rib
@@ -51,16 +51,20 @@ impl RibsStack {
     }
 
     /// Defines variable
-    pub fn define(&mut self, address: &Address, name: &EcoString, variable: Typ) {
+    pub fn define(&mut self, address: &Address, name: &EcoString, typ: Typ, redefine: bool) {
         match self.stack.last_mut() {
             Some(env) => {
-                if !env.1.contains_key(name) {
-                    env.1.insert(name.clone(), variable);
+                if redefine {
+                    env.1.insert(name.clone(), typ);
                 } else {
-                    bail!(TypeckError::VariableIsAlreadyDefined {
-                        src: address.source.clone(),
-                        span: address.span.clone().into()
-                    })
+                    if !env.1.contains_key(name) {
+                        env.1.insert(name.clone(), typ);
+                    } else {
+                        bail!(TypeckError::VariableIsAlreadyDefined {
+                            src: address.source.clone(),
+                            span: address.span.clone().into()
+                        })
+                    }
                 }
             }
             None => todo!(),
@@ -111,10 +115,10 @@ impl RibsStack {
     }
 
     /// Checks type exists in hierarchy
-    pub fn contains_type(&self) -> Option<&RcPtr<RefCell<Type>>> {
+    pub fn contains_type(&self) -> Option<&Rc<RefCell<Struct>>> {
         for env in self.stack.iter().rev() {
             match &env.0 {
-                RibKind::Type(typ) => return Some(typ),
+                RibKind::Struct(typ) => return Some(typ),
                 _ => continue,
             }
         }

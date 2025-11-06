@@ -1,6 +1,8 @@
 import {
     $$match,
     $$equals,
+    $$todo,
+    $$range,
     $$EqPattern,
     $$UnwrapPattern,
     $$WildcardPattern,
@@ -56,7 +58,5 @@ export function main() {
     bark(dog);
     bark(dog2);
     let dalmatian = dog2
-    dalmatian.specific();
-    let dalmatian2 = dog2
-    return dalmatian2.specific()
+    return dalmatian.specific()
 }

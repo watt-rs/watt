@@ -36,7 +36,8 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                 location,
                 name,
                 constructor,
-                declarations,
+                methods,
+                fields,
                 ..
             } => {
                 // Checking type name is in `PascalCase`
@@ -62,9 +63,47 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     )
                 }
 
-                // Declarations
-                for decl in declarations {
-                    self.lint_decl(decl);
+                // Methods
+                for decl in methods {
+                    match &decl.body {
+                        Either::Left(block) => self.lint_block(block),
+                        Either::Right(expr) => self.lint_expr(expr),
+                    }
+                    // Checking function name is in `snake_case`
+                    if !case::is_snake_case(&decl.name) {
+                        warn!(
+                            self,
+                            LintWarning::WrongFunctionName {
+                                src: location.source.clone(),
+                                span: location.span.clone().into()
+                            }
+                        )
+                    }
+                    // Checking that function has < consts::MAX_PARAMS params.
+                    if decl.params.len() > consts::MAX_PARAMS {
+                        warn!(
+                            self,
+                            LintWarning::TooManyParamsInAnFn {
+                                src: location.source.clone(),
+                                span: location.span.clone().into()
+                            }
+                        )
+                    }
+                }
+
+                // Fields
+                for decl in fields {
+                    // Checking variable name is in `snake_case`
+                    if !case::is_snake_case(&decl.name) {
+                        warn!(
+                            self,
+                            LintWarning::WrongVariantName {
+                                src: location.source.clone(),
+                                span: location.span.clone().into()
+                            }
+                        )
+                    }
+                    self.lint_expr(&decl.value);
                 }
             }
             Declaration::EnumDeclaration {

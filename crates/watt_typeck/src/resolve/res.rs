@@ -4,14 +4,15 @@ use crate::{
     typ::{CustomType, Enum, EnumVariant, Typ},
 };
 use ecow::EcoString;
-use watt_common::{address::Address, bail, rc_ptr::RcPtr};
+use std::rc::Rc;
+use watt_common::{address::Address, bail};
 
 // Resolution
 #[derive(Debug, Clone)]
 pub enum Res {
     Module(EcoString),
     Custom(CustomType),
-    Variant(RcPtr<Enum>, EnumVariant),
+    Variant(Rc<Enum>, EnumVariant),
     Value(Typ),
 }
 

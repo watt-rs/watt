@@ -243,6 +243,77 @@ impl<'file> Parser<'file> {
         }
     }
 
+    /// Type field
+    fn field(&mut self, publicity: Publicity) -> Field {
+        // start address
+        let start_address = self.peek().address.clone();
+
+        // field name
+        let name = self.consume(TokenKind::Id).value.clone();
+
+        // type annotation
+        self.consume(TokenKind::Colon);
+        let typ = self.type_annotation();
+
+        // value
+        self.consume(TokenKind::Assign);
+        let value = self.expr();
+
+        // end address
+        let end_address = self.previous().address.clone();
+
+        Field {
+            location: start_address + end_address,
+            publicity,
+            name,
+            value,
+            typ,
+        }
+    }
+
+    /// Type method
+    fn method(&mut self, publicity: Publicity) -> Method {
+        // start address
+        let start_address = self.peek().address.clone();
+        self.consume(TokenKind::Fn);
+
+        // method name
+        let name = self.consume(TokenKind::Id).value.clone();
+
+        // params
+        let mut params: Vec<Parameter> = Vec::new();
+        if self.check(TokenKind::Lparen) {
+            params = self.parameters();
+        }
+
+        // return type
+        // if type specified
+        let typ = if self.check(TokenKind::Colon) {
+            // `: $type`
+            self.consume(TokenKind::Colon);
+            Some(self.type_annotation())
+        }
+        // else
+        else {
+            None
+        };
+
+        // body
+        let body = self.block_or_expr();
+
+        // end address
+        let end_address = self.previous().address.clone();
+
+        Method {
+            location: start_address + end_address,
+            publicity,
+            name,
+            params,
+            body,
+            typ,
+        }
+    }
+
     /// Type declaration parsing
     fn type_declaration(&mut self, publicity: Publicity) -> Declaration {
         // start address
@@ -261,7 +332,8 @@ impl<'file> Parser<'file> {
         }
 
         // type contents
-        let mut declarations = Vec::new();
+        let mut fields = Vec::new();
+        let mut methods = Vec::new();
 
         // body parsing
         if self.check(TokenKind::Lbrace) {
@@ -269,19 +341,15 @@ impl<'file> Parser<'file> {
             while !self.check(TokenKind::Rbrace) {
                 let location = self.peek().clone();
                 match self.peek().tk_type {
-                    TokenKind::Fn => declarations.push(self.fn_declaration(Publicity::Private)),
-                    TokenKind::Let => declarations.push(self.let_declaration(Publicity::Private)),
+                    // private field or method declaration
+                    TokenKind::Fn => methods.push(self.method(Publicity::Private)),
+                    TokenKind::Id => fields.push(self.field(Publicity::Private)),
+                    // public field or method declaration
                     TokenKind::Pub => {
-                        // pub
                         self.consume(TokenKind::Pub);
-                        // let or fn declaration
                         match self.peek().tk_type {
-                            TokenKind::Fn => {
-                                declarations.push(self.fn_declaration(Publicity::Public))
-                            }
-                            TokenKind::Let => {
-                                declarations.push(self.let_declaration(Publicity::Public))
-                            }
+                            TokenKind::Fn => methods.push(self.method(Publicity::Public)),
+                            TokenKind::Id => fields.push(self.field(Publicity::Public)),
                             _ => {
                                 let end = self.previous().clone();
                                 bail!(ParseError::UnexpectedNodeInTypeBody {
@@ -314,7 +382,8 @@ impl<'file> Parser<'file> {
             publicity,
             name: name.value,
             constructor,
-            declarations,
+            fields,
+            methods,
         }
     }
 

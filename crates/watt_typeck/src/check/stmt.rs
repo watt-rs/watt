@@ -103,8 +103,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // pushing rib
         self.resolver.push_rib(RibKind::Loop);
         // defining variable for iterations
-        self.resolver
-            .define(&location, &name, Def::Local(Typ::Prelude(PreludeType::Int)));
+        self.resolver.define(
+            &location,
+            &name,
+            Def::Local(Typ::Prelude(PreludeType::Int)),
+            false,
+        );
         // analyzing range
         self.analyze_range(range);
         // inferring block
@@ -128,18 +132,18 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         let inferred_value = self.infer_expr(value);
         match typ {
             Some(annotated_path) => {
-                let annotated_location = annotated_path.get_location();
+                let annotated_location = annotated_path.location();
                 let annotated = self.infer_type_annotation(annotated_path);
                 self.solver.solve(Equation::Unify(
                     (annotated_location, annotated.clone()),
                     (value_location.clone(), inferred_value.clone()),
                 ));
                 self.resolver
-                    .define(&location, &name, Def::Local(annotated))
+                    .define(&location, &name, Def::Local(annotated), false)
             }
             None => self
                 .resolver
-                .define(&location, &name, Def::Local(inferred_value)),
+                .define(&location, &name, Def::Local(inferred_value), false),
         }
     }
 

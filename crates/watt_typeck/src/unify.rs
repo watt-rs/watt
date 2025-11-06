@@ -103,7 +103,7 @@ impl<'cx> EquationsSolver<'cx> {
                     }
                     _ => Typ::Dyn,
                 },
-                (Typ::Trait(tr), Typ::Custom(ty)) | (Typ::Custom(ty), Typ::Trait(tr)) => {
+                (Typ::Trait(tr), Typ::Struct(ty)) | (Typ::Struct(ty), Typ::Trait(tr)) => {
                     if ty.borrow().is_impls(tr.clone()) {
                         Typ::Trait(tr.clone())
                     } else {

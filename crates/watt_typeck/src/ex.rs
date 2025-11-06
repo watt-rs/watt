@@ -6,8 +6,9 @@ use crate::{
     typ::{Enum, EnumVariant, PreludeType, Typ},
 };
 use ecow::EcoString;
+use std::rc::Rc;
 use watt_ast::ast::{Case, Pattern};
-use watt_common::{address::Address, bail, rc_ptr::RcPtr};
+use watt_common::{address::Address, bail};
 
 /// Exhaustiveness check of pattern matching
 pub struct ExMatchCx<'module_cx, 'pkg, 'cx> {
@@ -37,7 +38,7 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
             //
             // So, checking for default patterns
             // `BindTo` and `Wildcard`
-            Typ::Custom(_) => ex.has_default_pattern(&ex.cases),
+            Typ::Struct(_) => ex.has_default_pattern(&ex.cases),
             // All trait values
             // could not be covered,
             // because it's a ref type.
@@ -238,7 +239,7 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
 
     /// Checks that all possible
     /// enum variants are covered
-    fn check_enum_variants_covered(&mut self, en: RcPtr<Enum>) -> bool {
+    fn check_enum_variants_covered(&mut self, en: Rc<Enum>) -> bool {
         // Matched variants
         let mut matched_variants = Vec::new();
         // Matching all cases

@@ -3,20 +3,21 @@ use crate::{
     cx::module::ModuleCx,
     errors::TypeckError,
     resolve::{
+        res::Res,
         resolve::{Def, ModDef},
         rib::RibKind,
     },
-    typ::{CustomType, Enum, EnumVariant, Function, Parameter, Trait, Typ, Type, WithPublicity},
+    typ::{CustomType, Function, Parameter, Struct, Typ, WithPublicity},
     unify::Equation,
 };
 use ecow::EcoString;
 use indexmap::IndexMap;
-use std::{cell::RefCell, collections::HashMap};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use watt_ast::ast::{
-    self, Block, Declaration, Dependency, Either, EnumConstructor, Expression, Publicity, TypePath,
+    self, Block, Declaration, Dependency, Either, Expression, Field, Method, Publicity, TypePath,
     UseKind,
 };
-use watt_common::{address::Address, bail, rc_ptr::RcPtr};
+use watt_common::{address::Address, bail};
 
 /// Declaraton analyze
 impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
@@ -26,7 +27,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         &mut self,
         location: Address,
         name: EcoString,
-        type_: RcPtr<RefCell<Type>>,
+        strct: Rc<RefCell<Struct>>,
         publicity: Publicity,
         params: Vec<ast::Parameter>,
         body: Either<Block, Expression>,
@@ -53,31 +54,32 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // Defining params
         params.iter().for_each(|p| {
             self.resolver
-                .define(&location, &p.0, Def::Local(p.1.typ.clone()))
+                .define(&location, &p.0, Def::Local(p.1.typ.clone()), false)
         });
 
         // creating and defining function
         let function = Function {
             source: self.module.source.clone(),
             location: location.clone(),
+            uid: self.fresh_id(),
             name: name.clone(),
             params: params.into_values().collect(),
             ret: ret.clone(),
         };
 
         // defining function, if not already defined
-        if type_.borrow().env.contains_key(&name) {
+        if strct.borrow().env.contains_key(&name) {
             bail!(TypeckError::MethodIsAlreadyDefined {
                 src: self.module.source.clone(),
                 span: location.span.into(),
                 m: name
             })
         } else {
-            type_.borrow_mut().env.insert(
+            strct.borrow_mut().env.insert(
                 name,
                 WithPublicity {
                     publicity,
-                    value: Typ::Function(RcPtr::new(function)),
+                    value: Typ::Function(Rc::new(function)),
                 },
             );
         }
@@ -85,7 +87,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         self.resolver.define(
             &location,
             &"self".into(),
-            Def::Local(Typ::Custom(type_.clone())),
+            Def::Local(Typ::Struct(strct.clone())),
+            false,
         );
 
         // inferring body
@@ -100,15 +103,25 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         self.resolver.pop_rib();
     }
 
-    /// Analyzes type
-    fn analyze_type(
+    /// Reanalyzes struct and analyzes it's methods and fields
+    fn late_analyze_struct(
         &mut self,
         location: Address,
         name: EcoString,
         publicity: Publicity,
         params: Vec<ast::Parameter>,
-        declarations: Vec<Declaration>,
+        fields: Vec<Field>,
+        methods: Vec<Method>,
     ) {
+        // Requesting struct
+        let typ = match self.resolver.resolve(&location, &name) {
+            Res::Custom(ty) => match ty {
+                CustomType::Struct(ty) => ty,
+                _ => unreachable!(),
+            },
+            _ => unreachable!(),
+        };
+
         // inferred params
         let params = params
             .into_iter()
@@ -124,9 +137,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             .collect::<IndexMap<EcoString, Parameter>>();
 
         // construction type
-        let type_ = RcPtr::new(RefCell::new(Type {
+        let type_ = Rc::new(RefCell::new(Struct {
             source: location.source.clone(),
             location: location.clone(),
+            uid: typ.borrow().uid,
             name: name.clone(),
             params: params.clone().into_values().collect(),
             env: HashMap::new(),
@@ -138,8 +152,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             &name,
             Def::Module(ModDef::CustomType(WithPublicity {
                 publicity,
-                value: CustomType::Type(type_.clone()),
+                value: CustomType::Struct(type_.clone()),
             })),
+            true,
         );
 
         // params env start
@@ -148,24 +163,24 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // params
         params.into_iter().for_each(|p| {
             self.resolver
-                .define(&p.1.location, &p.0, Def::Local(p.1.typ));
+                .define(&p.1.location, &p.0, Def::Local(p.1.typ), false);
         });
 
         // fields env start
         self.resolver.push_rib(RibKind::Fields);
 
         // analyzing fields
-        declarations.iter().cloned().for_each(|f| {
-            if let Declaration::VarDef {
-                location,
-                name,
-                value,
-                typ,
-                ..
-            } = f
-            {
-                self.analyze_let_define(location, name, value, typ)
-            }
+        fields.iter().cloned().for_each(|f| {
+            let inferred_location = f.value.location();
+            let inferred = self.infer_expr(f.value);
+            let type_annotation_location = f.typ.location();
+            let type_annotation = self.infer_type_annotation(f.typ);
+            self.solver.solve(Equation::Unify(
+                (inferred_location, inferred),
+                (type_annotation_location, type_annotation.clone()),
+            ));
+            self.resolver
+                .define(&location, &f.name, Def::Local(type_annotation), false)
         });
 
         // fields env end
@@ -179,135 +194,39 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
         // adding fields to type env
         let mut borrowed = type_.borrow_mut();
-        declarations.iter().cloned().for_each(|f| {
-            if let Declaration::VarDef {
-                publicity, name, ..
-            } = f
-            {
-                borrowed.env.insert(
-                    name.clone(),
-                    WithPublicity {
-                        publicity,
-                        value: analyzed_fields.get(&name).unwrap().clone(),
-                    },
-                );
-            }
+        fields.iter().cloned().for_each(|f| {
+            borrowed.env.insert(
+                f.name.clone(),
+                WithPublicity {
+                    publicity: f.publicity,
+                    value: analyzed_fields.get(&f.name).unwrap().clone(),
+                },
+            );
         });
         drop(borrowed);
 
         // type env start
-        self.resolver.push_rib(RibKind::Type(type_.clone()));
+        self.resolver.push_rib(RibKind::Struct(type_.clone()));
 
-        // adding functions
-        declarations.into_iter().for_each(|f| {
-            if let Declaration::Function {
-                location,
-                publicity,
-                name,
-                params,
-                body,
-                typ,
-            } = f
-            {
-                self.analyze_method(location, name, type_.clone(), publicity, params, body, typ);
-            }
+        // adding methods to type env
+        methods.into_iter().for_each(|m| {
+            self.analyze_method(
+                m.location,
+                m.name,
+                type_.clone(),
+                m.publicity,
+                m.params,
+                m.body,
+                m.typ,
+            );
         });
 
         // type env end
         self.resolver.pop_rib();
     }
 
-    /// Analyzes trait
-    fn analyze_trait(
-        &mut self,
-        location: Address,
-        publicity: Publicity,
-        name: EcoString,
-        functions: Vec<ast::TraitFunction>,
-    ) {
-        // construction trait
-        let trait_ = RcPtr::new(Trait {
-            source: self.module.source.clone(),
-            location: location.clone(),
-            name: name.clone(),
-            functions: functions
-                .into_iter()
-                .map(|f| {
-                    (
-                        f.name.clone(),
-                        RcPtr::new(Function {
-                            source: self.module.source.clone(),
-                            location: f.location,
-                            name: f.name,
-                            params: f
-                                .params
-                                .into_iter()
-                                .map(|p| Parameter {
-                                    location: p.location,
-                                    typ: self.infer_type_annotation(p.typ),
-                                })
-                                .collect(),
-                            ret: f.typ.map_or(Typ::Unit, |t| self.infer_type_annotation(t)),
-                        }),
-                    )
-                })
-                .collect(),
-        });
-
-        // defining type, if not already defined
-        self.resolver.define(
-            &location,
-            &name,
-            Def::Module(ModDef::CustomType(WithPublicity {
-                publicity,
-                value: CustomType::Trait(trait_.clone()),
-            })),
-        );
-    }
-
-    /// Analyzes enum
-    fn analyze_enum(
-        &mut self,
-        location: Address,
-        name: EcoString,
-        publicity: Publicity,
-        variants: Vec<EnumConstructor>,
-    ) {
-        // inferred variants
-        let inferred_variants = variants
-            .into_iter()
-            .map(|v| EnumVariant {
-                location: v.location,
-                name: v.name,
-                params: v
-                    .params
-                    .into_iter()
-                    .map(|param| (param.name, self.infer_type_annotation(param.typ)))
-                    .collect(),
-            })
-            .collect::<Vec<EnumVariant>>();
-
-        // construction enum
-        let enum_ = RcPtr::new(Enum {
-            source: location.source.clone(),
-            location: location.clone(),
-            name: name.clone(),
-            variants: inferred_variants,
-        });
-
-        // defining enum, if not already defined
-        self.resolver.define(
-            &location,
-            &name,
-            Def::Module(ModDef::CustomType(WithPublicity {
-                publicity,
-                value: CustomType::Enum(enum_),
-            })),
-        );
-    }
-
-    /// Analyzes funciton declaration
-    fn analyze_function_decl(
+    /// Reanalyzes funciton and analyzes it's body.
+    fn late_analyze_function_decl(
         &mut self,
         location: Address,
         publicity: Publicity,
@@ -337,6 +256,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         let function = Function {
             source: self.module.source.clone(),
             location: location.clone(),
+            uid: self.fresh_id(),
             name: name.clone(),
             params: params.clone().into_values().collect(),
             ret: ret.clone(),
@@ -346,8 +266,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             &name,
             Def::Module(ModDef::Variable(WithPublicity {
                 publicity,
-                value: Typ::Function(RcPtr::new(function)),
+                value: Typ::Function(Rc::new(function)),
             })),
+            true,
         );
 
         // pushing new scope
@@ -356,7 +277,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // defining params in new scope
         params.iter().for_each(|p| {
             self.resolver
-                .define(&location, p.0, Def::Local(p.1.typ.clone()))
+                .define(&location, p.0, Def::Local(p.1.typ.clone()), false)
         });
 
         // inferring body
@@ -371,47 +292,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         self.resolver.pop_rib();
     }
 
-    /// Analyzes extern function declaration
-    fn analyze_extern(
-        &mut self,
-        location: Address,
-        publicity: Publicity,
-        name: EcoString,
-        params: Vec<ast::Parameter>,
-        ret_type: Option<TypePath>,
-    ) {
-        // inferring return type
-        let ret = ret_type.map_or(Typ::Unit, |t| self.infer_type_annotation(t));
-
-        // inferring params
-        let params = params
-            .into_iter()
-            .map(|p| Parameter {
-                location: p.location,
-                typ: self.infer_type_annotation(p.typ.clone()),
-            })
-            .collect::<Vec<Parameter>>();
-
-        // creating and defining function
-        let function = Function {
-            source: self.module.source.clone(),
-            location: location.clone(),
-            name: name.clone(),
-            params: params,
-            ret: ret.clone(),
-        };
-        self.resolver.define(
-            &location,
-            &name,
-            Def::Module(ModDef::Variable(WithPublicity {
-                publicity,
-                value: Typ::Function(RcPtr::new(function)),
-            })),
-        );
-    }
-
     /// Analyzes define
-    pub(crate) fn analyze_define(
+    pub(crate) fn late_analyze_define(
         &mut self,
         location: Address,
         publicity: Publicity,
@@ -422,7 +304,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         let inferred_value = self.infer_expr(value);
         match typ {
             Some(annotated_path) => {
-                let annotated_location = annotated_path.get_location();
+                let annotated_location = annotated_path.location();
                 let annotated = self.infer_type_annotation(annotated_path);
                 self.solver.solve(Equation::Unify(
                     (annotated_location, annotated.clone()),
@@ -435,6 +317,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                         publicity,
                         value: annotated,
                     })),
+                    false,
                 )
             }
             None => self.resolver.define(
@@ -444,41 +327,29 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     publicity,
                     value: inferred_value,
                 })),
+                false,
             ),
         }
     }
 
-    /// Analyzes declaration
-    pub fn analyze_declaration(&mut self, declaration: Declaration) {
+    /// Late declaration analysis
+    pub fn late_analyze_declaration(&mut self, declaration: Declaration) {
         match declaration {
             Declaration::TypeDeclaration {
                 location,
                 name,
                 publicity,
                 constructor,
-                declarations,
-            } => self.analyze_type(location, name, publicity, constructor, declarations),
-            Declaration::EnumDeclaration {
-                location,
-                name,
-                publicity,
-                variants,
-            } => self.analyze_enum(location, name, publicity, variants),
-            Declaration::ExternFunction {
-                location,
-                name,
-                publicity,
-                params,
-                typ,
-                ..
-            } => self.analyze_extern(location, publicity, name, params, typ),
+                fields,
+                methods,
+            } => self.late_analyze_struct(location, name, publicity, constructor, fields, methods),
             Declaration::VarDef {
                 location,
                 publicity,
                 name,
                 value,
                 typ,
-            } => self.analyze_define(location, publicity, name, value, typ),
+            } => self.late_analyze_define(location, publicity, name, value, typ),
             Declaration::Function {
                 location,
                 publicity,
@@ -486,13 +357,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 params,
                 body,
                 typ,
-            } => self.analyze_function_decl(location, publicity, name, params, body, typ),
-            Declaration::TraitDeclaration {
-                location,
-                name,
-                publicity,
-                functions,
-            } => self.analyze_trait(location, publicity, name, functions),
+            } => self.late_analyze_function_decl(location, publicity, name, params, body, typ),
+            // Extern functions, enums and traits does not need any late analysys
+            _ => {}
         }
     }
 

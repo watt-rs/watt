@@ -5,10 +5,10 @@ use crate::{
         res::Res,
         rib::{Rib, RibKind, RibsStack},
     },
-    typ::{CustomType, Module, Typ, Type, WithPublicity},
+    typ::{CustomType, Module, Typ, Struct, WithPublicity},
 };
 use ecow::EcoString;
-use std::{cell::RefCell, collections::HashMap, fmt::Debug};
+use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc};
 use watt_common::{address::Address, bail, rc_ptr::RcPtr};
 
 /// Definition
@@ -77,48 +77,49 @@ impl ModuleResolver {
 
     /// Creates definition, if no definition
     /// with same name is already defined.
-    pub fn define(&mut self, address: &Address, name: &EcoString, def: Def) {
+    pub fn define(&mut self, address: &Address, name: &EcoString, def: Def, redefine: bool) {
         // Checking def
         match def {
             // If module
             Def::Module(mod_def) => {
-                // Checking already defined
-                match self.mod_defs.get(name) {
-                    // If already defined
-                    Some(_) => match mod_def {
-                        // Custom type
-                        ModDef::CustomType(_) => {
-                            bail!(TypeckError::TypeIsAlreadyDefined {
-                                src: address.source.clone(),
-                                span: address.span.clone().into(),
-                                t: name.clone()
-                            })
+                // If redefinition allowed
+                if redefine {
+                    self.mod_defs.insert(name.clone(), mod_def);
+                }
+                // Else, Checking already defined
+                else {
+                    match self.mod_defs.get(name) {
+                        // If already defined
+                        Some(_) => match mod_def {
+                            // Custom type
+                            ModDef::CustomType(_) => {
+                                bail!(TypeckError::TypeIsAlreadyDefined {
+                                    src: address.source.clone(),
+                                    span: address.span.clone().into(),
+                                    t: name.clone()
+                                })
+                            }
+                            // Variable
+                            ModDef::Variable(_) => {
+                                bail!(TypeckError::VariableIsAlreadyDefined {
+                                    src: address.source.clone(),
+                                    span: address.span.clone().into(),
+                                })
+                            }
+                        },
+                        // If not
+                        None => {
+                            self.mod_defs.insert(name.clone(), mod_def);
                         }
-                        // Variable
-                        ModDef::Variable(_) => {
-                            bail!(TypeckError::VariableIsAlreadyDefined {
-                                src: address.source.clone(),
-                                span: address.span.clone().into(),
-                            })
-                        }
-                    },
-                    // If not
-                    None => {
-                        self.mod_defs.insert(name.clone(), mod_def);
                     }
                 }
             }
             // If local
             Def::Local(local_def) => {
-                self.ribs_stack.define(address, name, local_def);
+                self.ribs_stack
+                    .define(address, name, local_def, redefine);
             }
         }
-    }
-
-    /// Defines local variable.
-    /// If definition exists, checks types equality.
-    pub fn redefine_local(&mut self, address: &Address, name: &EcoString, typ: Typ) {
-        self.ribs_stack.redefine(address, name, typ);
     }
 
     /// Resolves up a value
@@ -195,7 +196,7 @@ impl ModuleResolver {
     }
 
     /// Contains type rib
-    pub fn contains_type_rib(&self) -> Option<&RcPtr<RefCell<Type>>> {
+    pub fn contains_type_rib(&self) -> Option<&Rc<RefCell<Struct>>> {
         self.ribs_stack.contains_type()
     }
 

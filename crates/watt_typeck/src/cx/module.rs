@@ -3,7 +3,8 @@ use crate::{
     cx::package::PackageCx, resolve::resolve::ModuleResolver, typ::Module, unify::EquationsSolver,
 };
 use ecow::EcoString;
-use watt_ast::ast;
+use log::info;
+use watt_ast::ast::{self};
 
 /// Module ctx
 pub struct ModuleCx<'pkg, 'cx> {
@@ -16,14 +17,12 @@ pub struct ModuleCx<'pkg, 'cx> {
     pub(crate) package: &'cx PackageCx<'cx>,
     /// Equations solver
     pub(crate) solver: EquationsSolver<'cx>,
+    /// Last uid
+    last_uid: usize,
 }
 
 /// Implementation
-impl<'pkg, 'cx> ModuleCx<'pkg, 'cx>
-where
-    'pkg: 'cx,
-    'cx: 'pkg,
-{
+impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// Creates new module analyzer
     pub fn new(
         module: &'pkg ast::Module,
@@ -36,21 +35,46 @@ where
             resolver: ModuleResolver::new(),
             package,
             solver: EquationsSolver::new(package),
+            last_uid: 0,
         }
     }
 
     /// Performs analyze of module
     pub fn analyze(&mut self) -> Module {
+        // 1. Performing imports
+        info!("Performing imports...");
         for import in self.module.dependencies.clone() {
             self.perform_import(import)
         }
-        for definition in self.module.declarations.clone() {
-            self.analyze_declaration(definition)
+
+        // 2. Early definitions
+        info!("Performing early analysis... Stage: early definitions.");
+        for definition in &self.module.declarations {
+            self.early_define(definition);
         }
+
+        // 3. Early analysys
+        info!("Performing early analysis... Stage: early analysis.");
+        for definition in &self.module.declarations {
+            self.early_analyze(definition)
+        }
+
+        // 4. Late analysys
+        info!("Performing late analysys...");
+        for definition in self.module.declarations.clone() {
+            self.late_analyze_declaration(definition);
+        }
+
         Module {
             source: self.module.source.clone(),
             name: self.module_name.clone(),
             fields: self.resolver.collect(),
         }
+    }
+
+    /// Generates fresh uid
+    pub fn fresh_id(&mut self) -> usize {
+        self.last_uid += 1;
+        return self.last_uid - 1;
     }
 }

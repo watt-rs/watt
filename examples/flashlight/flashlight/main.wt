@@ -6,7 +6,7 @@ enum Power {
 }
 
 type Flashlight(powered: Power) {
-  let is_powered = powered
+  is_powered: Power = powered
 
   pub fn power(on: Power) {
     self.is_powered = on;

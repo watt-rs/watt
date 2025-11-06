@@ -65,7 +65,7 @@ pub enum TypePath {
 
 /// Implementation
 impl TypePath {
-    pub fn get_location(&self) -> Address {
+    pub fn location(&self) -> Address {
         match self {
             TypePath::Local { location, .. } => location.clone(),
             TypePath::Module { location, .. } => location.clone(),
@@ -633,22 +633,22 @@ pub struct Dependency {
 /// Field
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Field {
-    location: Address,
-    publicity: Publicity,
-    name: EcoString,
-    value: Expression,
-    typ: Option<TypePath>,
+    pub location: Address,
+    pub publicity: Publicity,
+    pub name: EcoString,
+    pub value: Expression,
+    pub typ: TypePath,
 }
 
 /// Method
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Method {
-    location: Address,
-    publicity: Publicity,
-    name: EcoString,
-    params: Vec<Parameter>,
-    body: Either<Block, Expression>,
-    typ: Option<TypePath>,
+    pub location: Address,
+    pub publicity: Publicity,
+    pub name: EcoString,
+    pub params: Vec<Parameter>,
+    pub body: Either<Block, Expression>,
+    pub typ: Option<TypePath>,
 }
 
 /// Trait Function
@@ -677,7 +677,8 @@ pub enum Declaration {
         name: EcoString,
         publicity: Publicity,
         constructor: Vec<Parameter>,
-        declarations: Vec<Declaration>,
+        fields: Vec<Field>,
+        methods: Vec<Method>,
     },
     /// Represents enum declaration
     ///
