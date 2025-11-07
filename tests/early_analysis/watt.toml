@@ -1,0 +1,8 @@
+[pkg]
+pkg = "app"
+name = "early_analysis"
+main = "early_analysis/main"
+dependencies = []
+
+[lints]
+disabled = []
