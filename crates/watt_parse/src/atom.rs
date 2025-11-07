@@ -63,6 +63,14 @@ impl<'file> Parser<'file> {
             // start of span `fn (...): ...`
             let start_address = self.peek().address.clone();
             self.consume(TokenKind::Fn);
+
+            // generics
+            let generics = if self.check(TokenKind::Less) {
+                self.generics()
+            } else {
+                Vec::new()
+            };
+
             // params
             let mut params: Vec<TypePath> = Vec::new();
 
@@ -90,6 +98,7 @@ impl<'file> Parser<'file> {
             // function type path
             TypePath::Function {
                 location: start_address + end_address,
+                generics,
                 params,
                 ret,
             }
@@ -115,19 +124,35 @@ impl<'file> Parser<'file> {
                 self.consume(TokenKind::Dot);
                 // end address of `module.definition`
                 let end_address = self.peek().address.clone();
+                // second id
+                let second_id = self.consume(TokenKind::Id).clone();
+                // generics
+                let generics = if self.check(TokenKind::Less) {
+                    self.generic_args()
+                } else {
+                    Vec::new()
+                };
                 // module type path
                 TypePath::Module {
                     location: start_address + end_address,
                     module: first_id.value,
-                    name: self.consume(TokenKind::Id).value.clone(),
+                    name: second_id.value,
+                    generics,
                 }
             }
             // else
             else {
+                // generics
+                let generics = if self.check(TokenKind::Less) {
+                    self.generic_args()
+                } else {
+                    Vec::new()
+                };
                 // local type path
                 TypePath::Local {
                     location: start_address,
                     name: first_id.value,
+                    generics,
                 }
             }
         }
@@ -147,7 +172,7 @@ impl<'file> Parser<'file> {
         }
     }
 
-    /// Generics arguments `<T, U, K, V, $name, $name, ...>`
+    /// Generics parameters `<T, U, K, V, $name, $name, ...>`
     pub(crate) fn generics(&mut self) -> Vec<EcoString> {
         // result list
         let mut params = Vec::new();
@@ -160,6 +185,26 @@ impl<'file> Parser<'file> {
             while self.check(TokenKind::Comma) {
                 self.consume(TokenKind::Comma);
                 params.push(self.consume(TokenKind::Id).value.clone());
+            }
+        }
+        self.consume(TokenKind::Greater);
+
+        params
+    }
+
+    /// Generics arguments `<$type, $type, ...>`
+    pub(crate) fn generic_args(&mut self) -> Vec<TypePath> {
+        // result list
+        let mut params = Vec::new();
+
+        // `($name: $type, $name: $type, n )`
+        self.consume(TokenKind::Less);
+        if !self.check(TokenKind::Greater) {
+            params.push(self.type_annotation());
+
+            while self.check(TokenKind::Comma) {
+                self.consume(TokenKind::Comma);
+                params.push(self.type_annotation());
             }
         }
         self.consume(TokenKind::Greater);

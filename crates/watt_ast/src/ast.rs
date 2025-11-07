@@ -25,19 +25,24 @@ pub enum TypePath {
     /// let a: int = 5;
     /// ```
     ///
-    Local { location: Address, name: EcoString },
+    Local {
+        location: Address,
+        name: EcoString,
+        generics: Vec<TypePath>,
+    },
     /// Represents path to user-defined
     /// type used from module.
     ///
     /// # Example
     /// ```rust
-    /// let a: module.Ty = 5;
+    /// let a: module.Ty<...> = 5;
     /// ```
     ///
     Module {
         location: Address,
         module: EcoString,
         name: EcoString,
+        generics: Vec<TypePath>,
     },
     /// Represents function signature,
     /// used to determine function params and
@@ -52,6 +57,7 @@ pub enum TypePath {
     ///
     Function {
         location: Address,
+        generics: Vec<EcoString>,
         params: Vec<TypePath>,
         ret: Option<Box<TypePath>>,
     },

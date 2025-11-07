@@ -20,7 +20,7 @@ impl<'file> Parser<'file> {
         };
 
         // params
-        let params = if self.check(TokenKind::Less) {
+        let params = if self.check(TokenKind::Lparen) {
             self.parameters()
         } else {
             Vec::new()

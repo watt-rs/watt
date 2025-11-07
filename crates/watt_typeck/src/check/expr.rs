@@ -1,7 +1,7 @@
 /// Imports
 use crate::{
     cx::module::ModuleCx,
-    errors::TypeckError,
+    errors::{TypeckError, TypeckRelated},
     ex::ExMatchCx,
     resolve::{
         res::Res,
@@ -15,7 +15,7 @@ use crate::{
 };
 use ecow::EcoString;
 use indexmap::IndexMap;
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use watt_ast::ast::{
     self, BinaryOp, Block, Case, Either, ElseBranch, Expression, Pattern, Publicity, TypePath,
     UnaryOp,
@@ -258,11 +258,15 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
     /// Infers enum field access
     fn infer_enum_field_access(
-        &self,
+        &mut self,
         en: &Rc<Enum>,
         field_location: Address,
         field_name: EcoString,
     ) -> Res {
+        // Instantiating
+        let en = self
+            .solver
+            .instantiate_enum(en.clone(), &mut HashMap::new());
         // Finding variant
         match en.variants.iter().find(|var| var.name == field_name) {
             Some(variant) => Res::Variant(en.clone(), variant.clone()),
@@ -410,6 +414,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         match &function {
             // Custom type
             Res::Custom(CustomType::Struct(ty)) => {
+                let ty = self
+                    .solver
+                    .instantiate_struct(ty.clone(), &mut HashMap::new());
                 let borrowed = ty.borrow();
                 borrowed.params.iter().zip(args).for_each(|(a, b)| {
                     self.solver
@@ -421,11 +428,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Res::Value(t) => match t {
                 // Function
                 Typ::Function(f) => {
-                    f.params.iter().zip(args).for_each(|(a, b)| {
+                    let function = self
+                        .solver
+                        .instantiate_function(f.clone(), &mut HashMap::new());
+                    function.params.iter().zip(args).for_each(|(a, b)| {
                         self.solver
                             .solve(Equation::Unify((a.location.clone(), a.typ.clone()), b));
                     });
-                    CallResult::FromFunction(f.ret.clone(), f.clone())
+                    CallResult::FromFunction(function.ret.clone(), function.clone())
                 }
                 // Dyn
                 Typ::Dyn => {
@@ -465,77 +475,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
     /// Infers type annotation
     pub(crate) fn infer_type_annotation(&mut self, path: TypePath) -> Typ {
-        match path {
-            TypePath::Local { location, name } => match name.as_str() {
-                "int" => Typ::Prelude(PreludeType::Int),
-                "float" => Typ::Prelude(PreludeType::Float),
-                "bool" => Typ::Prelude(PreludeType::Bool),
-                "string" => Typ::Prelude(PreludeType::String),
-                "dyn" => Typ::Dyn,
-                "unit" => Typ::Unit,
-                _ => match self.resolver.resolve_type(&name, &location) {
-                    CustomType::Enum(en) => Typ::Enum(en.clone()),
-                    CustomType::Struct(ty) => Typ::Struct(ty.clone()),
-                    CustomType::Trait(tr) => Typ::Trait(tr.clone()),
-                },
-            },
-            TypePath::Module {
-                location,
-                module,
-                name,
-            } => {
-                let m = self.resolver.resolve_module(&module);
-
-                match m.fields.get(&name) {
-                    Some(field) => match field {
-                        ModDef::CustomType(t) => {
-                            if t.publicity != Publicity::Private {
-                                match &t.value {
-                                    CustomType::Enum(en) => Typ::Enum(en.clone()),
-                                    CustomType::Struct(ty) => Typ::Struct(ty.clone()),
-                                    CustomType::Trait(tr) => Typ::Trait(tr.clone()),
-                                }
-                            } else {
-                                bail!(TypeckError::TypeIsPrivate {
-                                    src: self.module.source.clone(),
-                                    span: location.span.into(),
-                                    t: t.value.clone()
-                                })
-                            }
-                        }
-                        ModDef::Variable(_) => bail!(TypeckError::CouldNotUseValueAsType {
-                            src: self.module.source.clone(),
-                            span: location.clone().span.into(),
-                            v: name
-                        }),
-                    },
-                    None => bail!(TypeckError::TypeIsNotDefined {
-                        src: self.module.source.clone(),
-                        span: location.span.into(),
-                        t: format!("{module}.{name}").into()
-                    }),
-                }
-            }
-            TypePath::Function {
-                location,
-                params,
-                ret,
-            } => Typ::Function(Rc::new(Function {
-                source: self.module.source.clone(),
-                location,
-                uid: self.fresh_id(),
-                name: EcoString::from("$annotated"),
-                params: params
-                    .into_iter()
-                    .map(|p| Parameter {
-                        location: p.location(),
-                        typ: self.infer_type_annotation(p),
-                    })
-                    .collect(),
-                ret: ret.map_or(Typ::Unit, |t| self.infer_type_annotation(*t)),
-            })),
-            TypePath::Unit { .. } => Typ::Unit,
-        }
+        self.solver.type_from_ast(path)
     }
 
     /// Infers resolution
@@ -567,10 +507,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     fn infer_anonymous_fn(
         &mut self,
         location: Address,
+        generics: Vec<EcoString>,
         params: Vec<ast::Parameter>,
         body: Either<Block, Box<Expression>>,
         ret_type: Option<TypePath>,
     ) -> Typ {
+        // entering generic scope
+        self.generics.enter(generics);
+
         // inferring return type
         let ret = ret_type.map_or(Typ::Unit, |t| self.infer_type_annotation(t));
 
@@ -617,6 +561,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             (block_location, inferred_block),
         ));
         self.resolver.pop_rib();
+
+        // exiting generic scop
+        self.generics.exit();
 
         // result
         Typ::Function(Rc::new(function))
@@ -924,10 +871,11 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             },
             Expression::Function {
                 location,
+                generics,
                 params,
                 body,
                 typ,
-            } => self.infer_anonymous_fn(location, params, body, typ),
+            } => self.infer_anonymous_fn(location, generics, params, body, typ),
             Expression::Match {
                 location,
                 value,

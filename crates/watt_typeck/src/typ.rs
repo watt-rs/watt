@@ -30,6 +30,7 @@ pub struct Struct {
     pub location: Address,
     pub uid: usize,
     pub name: EcoString,
+    pub generics: Vec<EcoString>,
     pub params: Vec<Parameter>,
     pub env: HashMap<EcoString, WithPublicity<Typ>>,
 }
@@ -127,6 +128,7 @@ pub struct Enum {
     pub location: Address,
     pub uid: usize,
     pub name: EcoString,
+    pub generics: Vec<EcoString>,
     pub variants: Vec<EnumVariant>,
 }
 
@@ -151,6 +153,7 @@ pub struct Function {
     pub location: Address,
     pub uid: usize,
     pub name: EcoString,
+    pub generics: Vec<EcoString>,
     pub params: Vec<Parameter>,
     pub ret: Typ,
 }
@@ -218,7 +221,7 @@ pub enum Typ {
     /// Unbound type variable
     Unbound(usize),
     /// Generic type variable
-    Generic(usize),
+    Generic(EcoString),
     /// `Void` / `Unit` type
     Unit,
     /// Dynamic type

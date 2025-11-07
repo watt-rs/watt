@@ -1,11 +1,14 @@
 /// Imports
 use crate::{
-    cx::package::PackageCx,
+    cx::{module::ModuleCx, package::PackageCx},
     errors::{TypeckError, TypeckRelated},
-    typ::{Enum, EnumVariant, Function, Parameter, PreludeType, Struct, Typ},
+    resolve::resolve::ModuleResolver,
+    typ::{CustomType, Enum, EnumVariant, Function, Parameter, PreludeType, Struct, Typ},
 };
+use ecow::EcoString;
 use log::trace;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use watt_ast::ast::TypePath;
 use watt_common::{address::Address, bail};
 
 /// Equation var
@@ -21,6 +24,7 @@ pub enum Equation {
 /// Equations solver
 pub struct EquationsSolver<'cx> {
     /// Package context
+    #[allow(unused)]
     package: &'cx PackageCx<'cx>,
     /// Type variable last id
     last_typ_var_id: usize,
@@ -65,9 +69,116 @@ impl<'cx> EquationsSolver<'cx> {
         }
     }
 
+    /// Gives type from ast
+    pub fn type_from_ast(
+        &mut self,
+        path: TypePath,
+        map: HashMap<EcoString, TypePath>,
+        resolver: &ModuleResolver,
+    ) -> Typ {
+        match path {
+            TypePath::Local {
+                location,
+                name,
+                generics,
+            } => match name.as_str() {
+                "int" if generics.len() == 0 => Typ::Prelude(PreludeType::Int),
+                "float" if generics.len() == 0 => Typ::Prelude(PreludeType::Float),
+                "bool" if generics.len() == 0 => Typ::Prelude(PreludeType::Bool),
+                "string" if generics.len() == 0 => Typ::Prelude(PreludeType::String),
+                "dyn" if generics.len() == 0 => Typ::Dyn,
+                "unit" if generics.len() == 0 => Typ::Unit,
+                _ => match map.get(&name) {
+                    Some(g) => self.type_from_ast(g.clone(), map, resolver),
+                    None => match resolver.resolve_type(&name, &location) {
+                        CustomType::Enum(en) => Typ::Enum(if generics.len() != en.generics.len() {
+                            bail!(TypeckError::ArityMissmatch {
+                                related: vec![TypeckRelated::This {
+                                    src: en.location.source.clone(),
+                                    span: location.span.into()
+                                }],
+                                expected: en.generics.len(),
+                                got: generics.len()
+                            })
+                        } else {
+                            self.type_from_ast(en.clone(), map, resolver)
+                        }),
+                        CustomType::Struct(ty) => {
+                            Typ::Struct(self.type_from_ast(ty.clone(), map, resolver))
+                        }
+                        CustomType::Trait(tr) => Typ::Trait(tr.clone()),
+                    },
+                },
+            },
+            TypePath::Module {
+                location,
+                module,
+                name,
+                generics,
+            } => {
+                let m = self.resolver.resolve_module(&module);
+
+                match m.fields.get(&name) {
+                    Some(field) => match field {
+                        ModDef::CustomType(t) => {
+                            if t.publicity != Publicity::Private {
+                                match &t.value {
+                                    CustomType::Enum(en) => Typ::Enum(en.clone()),
+                                    CustomType::Struct(ty) => Typ::Struct(ty.clone()),
+                                    CustomType::Trait(tr) => Typ::Trait(tr.clone()),
+                                }
+                            } else {
+                                bail!(TypeckError::TypeIsPrivate {
+                                    src: self.module.source.clone(),
+                                    span: location.span.into(),
+                                    t: t.value.clone()
+                                })
+                            }
+                        }
+                        ModDef::Variable(_) => bail!(TypeckError::CouldNotUseValueAsType {
+                            src: self.module.source.clone(),
+                            span: location.clone().span.into(),
+                            v: name
+                        }),
+                    },
+                    None => bail!(TypeckError::TypeIsNotDefined {
+                        src: self.module.source.clone(),
+                        span: location.span.into(),
+                        t: format!("{module}.{name}").into()
+                    }),
+                }
+            }
+            TypePath::Function {
+                location,
+                generics,
+                params,
+                ret,
+            } => {
+                self.generics.enter(generics);
+                let function = Typ::Function(Rc::new(Function {
+                    source: self.module.source.clone(),
+                    location,
+                    uid: self.fresh_id(),
+                    name: EcoString::from("$annotated"),
+                    params: params
+                        .into_iter()
+                        .map(|p| Parameter {
+                            location: p.location(),
+                            typ: self.infer_type_annotation(p),
+                        })
+                        .collect(),
+                    ret: ret.map_or(Typ::Unit, |t| self.infer_type_annotation(*t)),
+                }));
+                self.generics.exit();
+                function
+            }
+            TypePath::Unit { .. } => Typ::Unit,
+        }
+    }
+
     /// Instantiates type by replacing
     /// Generic(id) -> Unbound($id)
-    pub fn instantiate(&mut self, t: Typ, generics: &mut HashMap<usize, usize>) -> Typ {
+    pub fn instantiate(&mut self, t: Typ, generics: &mut HashMap<EcoString, usize>) -> Typ {
         match t {
             Typ::Prelude(_) | Typ::Unit | Typ::Dyn => t,
             Typ::Unbound(_) => t,
@@ -81,74 +192,101 @@ impl<'cx> EquationsSolver<'cx> {
                     Typ::Unbound(fresh)
                 }
             }
-            Typ::Function(rc) => {
-                let params = rc
-                    .params
-                    .iter()
-                    .cloned()
-                    .map(|p| Parameter {
-                        location: p.location,
-                        typ: self.instantiate(p.typ, generics),
-                    })
-                    .collect();
-
-                let ret = self.instantiate(rc.ret.clone(), generics);
-                Typ::Function(Rc::new(Function {
-                    source: rc.source.clone(),
-                    location: rc.location.clone(),
-                    uid: rc.uid,
-                    name: rc.name.clone(),
-                    params,
-                    ret,
-                }))
-            }
-            Typ::Struct(rc) => {
-                let strct = rc.borrow();
-                let params = strct
-                    .params
-                    .iter()
-                    .cloned()
-                    .map(|p| Parameter {
-                        location: p.location,
-                        typ: self.instantiate(p.typ, generics),
-                    })
-                    .collect();
-
-                Typ::Struct(Rc::new(RefCell::new(Struct {
-                    source: strct.source.clone(),
-                    location: strct.location.clone(),
-                    uid: strct.uid,
-                    name: strct.name.clone(),
-                    params,
-                    env: strct.env.clone(),
-                })))
-            }
-            Typ::Enum(en) => {
-                let variants = en
-                    .variants
-                    .iter()
-                    .cloned()
-                    .map(|v| EnumVariant {
-                        location: v.location,
-                        name: v.name,
-                        params: v
-                            .params
-                            .into_iter()
-                            .map(|p| (p.0, self.instantiate(p.1, generics)))
-                            .collect(),
-                    })
-                    .collect();
-
-                Typ::Enum(Rc::new(Enum {
-                    source: en.source.clone(),
-                    location: en.location.clone(),
-                    uid: en.uid,
-                    name: en.name.clone(),
-                    variants,
-                }))
-            }
+            Typ::Function(rc) => Typ::Function(self.instantiate_function(rc, generics)),
+            Typ::Struct(rc) => Typ::Struct(self.instantiate_struct(rc, generics)),
+            Typ::Enum(rc) => Typ::Enum(self.instantiate_enum(rc, generics)),
             Typ::Trait(rc) => Typ::Trait(rc.clone()),
         }
+    }
+
+    /// Instantiates struct by replacing
+    /// Generic(id) -> Unbound($id)
+    pub fn instantiate_struct(
+        &mut self,
+        rc: Rc<RefCell<Struct>>,
+        generics: &mut HashMap<EcoString, usize>,
+    ) -> Rc<RefCell<Struct>> {
+        let strct = rc.borrow();
+        let params = strct
+            .params
+            .iter()
+            .cloned()
+            .map(|p| Parameter {
+                location: p.location,
+                typ: self.instantiate(p.typ, generics),
+            })
+            .collect();
+
+        Rc::new(RefCell::new(Struct {
+            source: strct.source.clone(),
+            location: strct.location.clone(),
+            uid: strct.uid,
+            generics: strct.generics.clone(),
+            name: strct.name.clone(),
+            params,
+            env: strct.env.clone(),
+        }))
+    }
+
+    /// Instantiates enum by replacing
+    /// Generic(id) -> Unbound($id)
+    pub fn instantiate_enum(
+        &mut self,
+        rc: Rc<Enum>,
+        generics: &mut HashMap<EcoString, usize>,
+    ) -> Rc<Enum> {
+        let variants = rc
+            .variants
+            .iter()
+            .cloned()
+            .map(|v| EnumVariant {
+                location: v.location,
+                name: v.name,
+                params: v
+                    .params
+                    .into_iter()
+                    .map(|p| (p.0, self.instantiate(p.1, generics)))
+                    .collect(),
+            })
+            .collect();
+
+        Rc::new(Enum {
+            source: rc.source.clone(),
+            location: rc.location.clone(),
+            uid: rc.uid,
+            generics: rc.generics.clone(),
+            name: rc.name.clone(),
+            variants,
+        })
+    }
+
+    /// Instantiates function by replacing
+    /// Generic(id) -> Unbound($id)
+    pub fn instantiate_function(
+        &mut self,
+        rc: Rc<Function>,
+        generics: &mut HashMap<EcoString, usize>,
+    ) -> Rc<Function> {
+        let params = rc
+            .params
+            .iter()
+            .cloned()
+            .map(|p| Parameter {
+                location: p.location,
+                typ: self.instantiate(p.typ, generics),
+            })
+            .collect();
+
+        let ret = self.instantiate(rc.ret.clone(), generics);
+        Rc::new(Function {
+            source: rc.source.clone(),
+            location: rc.location.clone(),
+            uid: rc.uid,
+            name: rc.name.clone(),
+            generics: rc.generics.clone(),
+            params,
+            ret,
+        })
     }
 
     /// Unifies two types

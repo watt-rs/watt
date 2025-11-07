@@ -24,6 +24,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             location: location.clone(),
             uid: self.fresh_id(),
             name: name.clone(),
+            generics: Vec::new(),
             params: Vec::new(),
             env: HashMap::new(),
         })));
@@ -52,6 +53,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             location: location.clone(),
             uid: self.fresh_id(),
             name: name.clone(),
+            generics: Vec::new(),
             params: Vec::new(),
             ret: Typ::Unit,
         }));
@@ -75,6 +77,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             location: location.clone(),
             uid: self.fresh_id(),
             name: name.clone(),
+            generics: Vec::new(),
             variants: Vec::new(),
         }));
         // Defining enum
@@ -119,6 +122,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             location: location.clone(),
             uid: self.fresh_id(),
             name: name.clone(),
+            generics: Vec::new(),
             params: Vec::new(),
             ret: Typ::Unit,
         }));
@@ -139,13 +143,13 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         &mut self,
         location: Address,
         name: EcoString,
-        generics: Vec<String>,
-        params: Vec<ast::Parameter>,
+        generics: Vec<EcoString>,
+        constructor: Vec<ast::Parameter>,
         fields: Vec<Field>,
         methods: Vec<Method>,
     ) {
         // Entering generics scope
-        self.generics.enter(generics);
+        self.generics.enter(generics.clone());
 
         // Requesting type
         let typ = match self.resolver.resolve(&location, &name) {
@@ -157,8 +161,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         };
         let mut borrowed = typ.borrow_mut();
 
-        // Inferring params
-        let params = params
+        // Inferring constructor params
+        let constructor = constructor
             .into_iter()
             .map(|p| Parameter {
                 location: p.location,
@@ -179,6 +183,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
         // Adding methods to type env
         methods.iter().cloned().for_each(|m| {
+            // Entering generics scope
+            self.generics.enter(m.generics.clone());
+
             // Inferring return type
             let ret = m.typ.map_or(Typ::Unit, |t| self.infer_type_annotation(t));
             self.resolver.push_rib(RibKind::Function);
@@ -207,6 +214,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     value: Typ::Function(Rc::new(Function {
                         source: m.location.source.clone(),
                         location: m.location,
+                        generics: m.generics,
                         uid: self.fresh_id(),
                         name: m.name,
                         params,
@@ -214,10 +222,16 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     })),
                 },
             );
+
+            // Exiting generics scope
+            self.generics.exit();
         });
 
         // Adding params
-        borrowed.params = params;
+        borrowed.params = constructor;
+
+        // Adding generics
+        borrowed.generics = generics;
 
         // Exiting generics scope
         self.generics.exit();
@@ -229,12 +243,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         location: Address,
         name: EcoString,
         publicity: Publicity,
-        generics: Vec<String>,
+        generics: Vec<EcoString>,
         params: Vec<ast::Parameter>,
         ret_type: Option<TypePath>,
     ) {
         // Entering generics scope
-        self.generics.enter(generics);
+        self.generics.enter(generics.clone());
 
         // Requesting function
         let function = match self.resolver.resolve(&location, &name) {
@@ -275,6 +289,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             location: location.clone(),
             uid: function.uid,
             name: name.clone(),
+            generics,
             params: params.into_values().collect(),
             ret: ret.clone(),
         });
@@ -298,10 +313,11 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         location: Address,
         publicity: Publicity,
         name: EcoString,
+        generics: Vec<EcoString>,
         variants: Vec<EnumConstructor>,
     ) {
         // Entering generics scope
-        self.generics.enter(generics);
+        self.generics.enter(generics.clone());
 
         // Requesting type
         let typ = match self.resolver.resolve(&location, &name) {
@@ -332,6 +348,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             location: location.clone(),
             uid: typ.uid,
             name: name.clone(),
+            generics,
             variants: inferred_variants,
         });
 
@@ -383,6 +400,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                             location: f.location,
                             name: f.name,
                             uid: self.fresh_id(),
+                            generics: Vec::new(),
                             params: f
                                 .params
                                 .into_iter()
@@ -416,11 +434,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         location: Address,
         name: EcoString,
         publicity: Publicity,
+        generics: Vec<EcoString>,
         params: Vec<ast::Parameter>,
         ret_type: Option<TypePath>,
     ) {
         // Entering generics scope
-        self.generics.enter(generics);
+        self.generics.enter(generics.clone());
 
         // Requesting function
         let function = match self.resolver.resolve(&location, &name) {
@@ -461,6 +480,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             location: location.clone(),
             uid: function.uid,
             name: name.clone(),
+            generics,
             params: params.into_values().collect(),
             ret: ret.clone(),
         });

@@ -86,6 +86,14 @@ pub enum TypeckError {
         t1: Typ,
         t2: Typ,
     },
+    #[error("arity missmatch. expected {expected}, got {got}")]
+    #[diagnostic(code(typeck::arity_missmatch))]
+    ArityMissmatch {
+        #[related]
+        related: Vec<TypeckRelated>,
+        expected: usize,
+        got: usize,
+    },
     #[error("found types recursion.")]
     #[diagnostic(code(typeck::types_recursion))]
     TypesRecursion {

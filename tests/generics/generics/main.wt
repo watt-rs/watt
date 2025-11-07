@@ -7,5 +7,6 @@ fn test<T>(val: bool, a: T, b: T): T {
 }
 
 fn main() {
-    let res = test(false, 3, 4)
+    let res = test(false, 3, 4);
+    io.println(res)
 }

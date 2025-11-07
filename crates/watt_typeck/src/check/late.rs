@@ -29,10 +29,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         name: EcoString,
         strct: Rc<RefCell<Struct>>,
         publicity: Publicity,
+        generics: Vec<EcoString>,
         params: Vec<ast::Parameter>,
         body: Either<Block, Expression>,
         ret_type: Option<TypePath>,
     ) {
+        // entering generics scope
+        self.generics.enter(generics.clone());
+
         // inferring return type
         let ret = ret_type.map_or(Typ::Unit, |t| self.infer_type_annotation(t));
         self.resolver.push_rib(RibKind::Function);
@@ -63,6 +67,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             location: location.clone(),
             uid: self.fresh_id(),
             name: name.clone(),
+            generics,
             params: params.into_values().collect(),
             ret: ret.clone(),
         };
@@ -101,6 +106,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             (block_location, inferred_block),
         ));
         self.resolver.pop_rib();
+
+        // exiting generics scope
+        self.generics.exit();
     }
 
     /// Reanalyzes struct and analyzes it's methods and fields
@@ -109,10 +117,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         location: Address,
         name: EcoString,
         publicity: Publicity,
+        generics: Vec<EcoString>,
         params: Vec<ast::Parameter>,
         fields: Vec<Field>,
         methods: Vec<Method>,
     ) {
+        // entering generics scope
+        self.generics.enter(generics.clone());
+
         // Requesting struct
         let typ = match self.resolver.resolve(&location, &name) {
             Res::Custom(ty) => match ty {
@@ -142,6 +154,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             location: location.clone(),
             uid: typ.borrow().uid,
             name: name.clone(),
+            generics,
             params: params.clone().into_values().collect(),
             env: HashMap::new(),
         }));
@@ -215,6 +228,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 m.name,
                 type_.clone(),
                 m.publicity,
+                m.generics,
                 m.params,
                 m.body,
                 m.typ,
@@ -223,6 +237,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
         // type env end
         self.resolver.pop_rib();
+
+        // exiting generics scope
+        self.generics.exit();
     }
 
     /// Reanalyzes funciton and analyzes it's body.
@@ -231,10 +248,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         location: Address,
         publicity: Publicity,
         name: EcoString,
+        generics: Vec<EcoString>,
         params: Vec<ast::Parameter>,
         body: Either<Block, Expression>,
         ret_type: Option<TypePath>,
     ) {
+        // entering generics scope
+        self.generics.enter(generics.clone());
+
         // inferring return type
         let ret = ret_type.map_or(Typ::Unit, |t| self.infer_type_annotation(t));
 
@@ -258,6 +279,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             location: location.clone(),
             uid: self.fresh_id(),
             name: name.clone(),
+            generics,
             params: params.clone().into_values().collect(),
             ret: ret.clone(),
         };
@@ -290,6 +312,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             (block_location, inferred_block),
         ));
         self.resolver.pop_rib();
+
+        // exiting generics scope
+        self.generics.exit();
     }
 
     /// Analyzes define
@@ -339,10 +364,20 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 location,
                 name,
                 publicity,
+                generics,
                 constructor,
                 fields,
                 methods,
-            } => self.late_analyze_struct(location, name, publicity, constructor, fields, methods),
+                ..
+            } => self.late_analyze_struct(
+                location,
+                name,
+                publicity,
+                generics,
+                constructor,
+                fields,
+                methods,
+            ),
             Declaration::VarDef {
                 location,
                 publicity,
@@ -354,10 +389,13 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 location,
                 publicity,
                 name,
+                generics,
                 params,
                 body,
                 typ,
-            } => self.late_analyze_function_decl(location, publicity, name, params, body, typ),
+                ..
+            } => self
+                .late_analyze_function_decl(location, publicity, name, generics, params, body, typ),
             // Extern functions, enums and traits does not need any late analysys
             _ => {}
         }
