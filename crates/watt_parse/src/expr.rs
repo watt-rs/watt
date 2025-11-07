@@ -1,6 +1,6 @@
 /// Imports
 use crate::{errors::ParseError, parser::Parser};
-use watt_ast::ast::{BinaryOp, Case, Either, ElseBranch, Expression, Parameter, Pattern, UnaryOp};
+use watt_ast::ast::{BinaryOp, Case, Either, ElseBranch, Expression, Pattern, UnaryOp};
 use watt_common::bail;
 use watt_lex::tokens::TokenKind;
 
@@ -12,11 +12,19 @@ impl<'file> Parser<'file> {
         let start_span = self.peek().address.clone();
         self.consume(TokenKind::Fn);
 
+        // generics
+        let generics = if self.check(TokenKind::Less) {
+            self.generics()
+        } else {
+            Vec::new()
+        };
+
         // params
-        let mut params: Vec<Parameter> = Vec::new();
-        if self.check(TokenKind::Lparen) {
-            params = self.parameters();
-        }
+        let params = if self.check(TokenKind::Less) {
+            self.parameters()
+        } else {
+            Vec::new()
+        };
 
         // return type
         // if type specified
@@ -37,6 +45,7 @@ impl<'file> Parser<'file> {
 
         Expression::Function {
             location: start_span + end_span,
+            generics,
             params,
             body,
             typ,

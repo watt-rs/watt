@@ -139,10 +139,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         &mut self,
         location: Address,
         name: EcoString,
+        generics: Vec<String>,
         params: Vec<ast::Parameter>,
         fields: Vec<Field>,
         methods: Vec<Method>,
     ) {
+        // Entering generics scope
+        self.generics.enter(generics);
+
         // Requesting type
         let typ = match self.resolver.resolve(&location, &name) {
             Res::Custom(ty) => match ty {
@@ -213,7 +217,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         });
 
         // Adding params
-        borrowed.params = params
+        borrowed.params = params;
+
+        // Exiting generics scope
+        self.generics.exit();
     }
 
     /// Early analyzes function by inferencing it's params and ret typ
@@ -222,9 +229,13 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         location: Address,
         name: EcoString,
         publicity: Publicity,
+        generics: Vec<String>,
         params: Vec<ast::Parameter>,
         ret_type: Option<TypePath>,
     ) {
+        // Entering generics scope
+        self.generics.enter(generics);
+
         // Requesting function
         let function = match self.resolver.resolve(&location, &name) {
             Res::Value(ty) => match ty {
@@ -276,6 +287,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             })),
             true,
         );
+
+        // Exiting generics scope
+        self.generics.exit();
     }
 
     /// Early analyzes enum by inferencing it's variants
@@ -286,6 +300,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         name: EcoString,
         variants: Vec<EnumConstructor>,
     ) {
+        // Entering generics scope
+        self.generics.enter(generics);
+
         // Requesting type
         let typ = match self.resolver.resolve(&location, &name) {
             Res::Custom(ty) => match ty {
@@ -328,6 +345,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             })),
             true,
         );
+
+        // Exiting generics scope
+        self.generics.exit();
     }
 
     /// Early analyzes trait by inferencing it's functions
@@ -399,6 +419,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         params: Vec<ast::Parameter>,
         ret_type: Option<TypePath>,
     ) {
+        // Entering generics scope
+        self.generics.enter(generics);
+
         // Requesting function
         let function = match self.resolver.resolve(&location, &name) {
             Res::Value(ty) => match ty {
@@ -450,6 +473,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             })),
             true,
         );
+
+        // Exiting generics scope
+        self.generics.exit();
     }
 
     /// Early defines declaration
@@ -499,15 +525,17 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 name,
                 constructor,
                 fields,
+                generics,
                 methods,
                 ..
-            } => self.early_analyze_struct(location, name, constructor, fields, methods),
+            } => self.early_analyze_struct(location, name, generics, constructor, fields, methods),
             Declaration::EnumDeclaration {
                 location,
                 name,
                 publicity,
+                generics,
                 variants,
-            } => self.early_analyze_enum(location, publicity, name, variants),
+            } => self.early_analyze_enum(location, publicity, name, generics, variants),
             Declaration::TraitDeclaration {
                 location,
                 name,
@@ -518,18 +546,20 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 location,
                 name,
                 publicity,
+                generics,
                 params,
                 typ,
                 ..
-            } => self.early_analyze_extern(location, name, publicity, params, typ),
+            } => self.early_analyze_extern(location, name, publicity, generics, params, typ),
             Declaration::Function {
                 location,
                 publicity,
                 name,
+                generics,
                 params,
                 typ,
                 ..
-            } => self.early_analyze_function_decl(location, name, publicity, params, typ),
+            } => self.early_analyze_function_decl(location, name, publicity, generics, params, typ),
             _ => {}
         }
     }

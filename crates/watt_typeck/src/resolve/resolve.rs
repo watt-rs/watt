@@ -5,7 +5,7 @@ use crate::{
         res::Res,
         rib::{Rib, RibKind, RibsStack},
     },
-    typ::{CustomType, Module, Typ, Struct, WithPublicity},
+    typ::{CustomType, Module, Struct, Typ, WithPublicity},
 };
 use ecow::EcoString;
 use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc};
@@ -116,8 +116,7 @@ impl ModuleResolver {
             }
             // If local
             Def::Local(local_def) => {
-                self.ribs_stack
-                    .define(address, name, local_def, redefine);
+                self.ribs_stack.define(address, name, local_def, redefine);
             }
         }
     }

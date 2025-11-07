@@ -1,0 +1,11 @@
+fn test<T>(val: bool, a: T, b: T): T {
+    if val {
+        a
+    } else {
+        b
+    }
+}
+
+fn main() {
+    let res = test(false, 3, 4)
+}

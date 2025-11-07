@@ -206,32 +206,23 @@ impl Debug for Module {
 }
 
 /// Typ
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Typ {
+    /// Prelude type
     Prelude(PreludeType),
+    /// User-defined types
     Struct(Rc<RefCell<Struct>>),
     Trait(Rc<Trait>),
     Enum(Rc<Enum>),
     Function(Rc<Function>),
-    Dyn,
+    /// Unbound type variable
+    Unbound(usize),
+    /// Generic type variable
+    Generic(usize),
+    /// `Void` / `Unit` type
     Unit,
-}
-
-/// PartialEq implementation
-impl PartialEq for Typ {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Typ::Prelude(a), Typ::Prelude(b)) => a == b,
-            (Typ::Struct(a), Typ::Struct(b)) => a == b,
-            (Typ::Enum(a), Typ::Enum(b)) => a == b,
-            (Typ::Trait(a), Typ::Trait(b)) => a == b,
-            (Typ::Function(a), Typ::Function(b)) => a == b,
-            (Typ::Unit, Typ::Unit) => true,
-            (other, Typ::Dyn) => other != &Typ::Unit,
-            (Typ::Dyn, other) => other != &Typ::Unit,
-            _ => false,
-        }
-    }
+    /// Dynamic type
+    Dyn,
 }
 
 /// Debug implementation
@@ -242,8 +233,10 @@ impl Debug for Typ {
             Self::Struct(custom) => write!(f, "Type(Struct({}))", custom.borrow().name),
             Self::Enum(custom_enum) => write!(f, "Type(Enum({}))", custom_enum.name),
             Self::Function(function) => write!(f, "Type(Function({}))", function.name),
-            Self::Dyn => write!(f, "Type(Dyn)"),
+            Self::Unbound(var) => write!(f, "Type(Unbound({var:?}))"),
+            Self::Generic(var) => write!(f, "Type(Generic({var:?}))"),
             Self::Unit => write!(f, "Type(Unit)"),
+            Self::Dyn => write!(f, "Type(Dyn)"),
             Self::Trait(custom_trait) => write!(f, "Type(Trait({}))", custom_trait.name),
         }
     }

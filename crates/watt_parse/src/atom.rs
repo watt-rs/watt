@@ -147,10 +147,30 @@ impl<'file> Parser<'file> {
         }
     }
 
+    /// Generics arguments `<T, U, K, V, $name, $name, ...>`
+    pub(crate) fn generics(&mut self) -> Vec<EcoString> {
+        // result list
+        let mut params = Vec::new();
+
+        // `($name: $type, $name: $type, n )`
+        self.consume(TokenKind::Less);
+        if !self.check(TokenKind::Greater) {
+            params.push(self.consume(TokenKind::Id).value.clone());
+
+            while self.check(TokenKind::Comma) {
+                self.consume(TokenKind::Comma);
+                params.push(self.consume(TokenKind::Id).value.clone());
+            }
+        }
+        self.consume(TokenKind::Greater);
+
+        params
+    }
+
     /// Parameters parsing `($name: $type, $name: $type, n )`
     pub(crate) fn parameters(&mut self) -> Vec<Parameter> {
         // result list
-        let mut params: Vec<Parameter> = Vec::new();
+        let mut params = Vec::new();
 
         // `($name: $type, $name: $type, n )`
         self.consume(TokenKind::Lparen);

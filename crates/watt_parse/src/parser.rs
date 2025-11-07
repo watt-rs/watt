@@ -132,11 +132,19 @@ impl<'file> Parser<'file> {
         // function name
         let name = self.consume(TokenKind::Id).value.clone();
 
+        // generics
+        let generics = if self.check(TokenKind::Less) {
+            self.generics()
+        } else {
+            Vec::new()
+        };
+
         // params
-        let mut params: Vec<Parameter> = Vec::new();
-        if self.check(TokenKind::Lparen) {
-            params = self.parameters();
-        }
+        let params = if self.check(TokenKind::Less) {
+            self.parameters()
+        } else {
+            Vec::new()
+        };
 
         // return type
         // if type specified
@@ -160,6 +168,7 @@ impl<'file> Parser<'file> {
             location: start_location + end_location,
             publicity,
             name,
+            generics,
             params,
             body,
             typ,
@@ -208,11 +217,19 @@ impl<'file> Parser<'file> {
         // function name
         let name = self.consume(TokenKind::Id).value.clone();
 
+        // generics
+        let generics = if self.check(TokenKind::Less) {
+            self.generics()
+        } else {
+            Vec::new()
+        };
+
         // params
-        let mut params: Vec<Parameter> = Vec::new();
-        if self.check(TokenKind::Lparen) {
-            params = self.parameters();
-        }
+        let params = if self.check(TokenKind::Less) {
+            self.parameters()
+        } else {
+            Vec::new()
+        };
 
         // return type
         // if type specified
@@ -237,6 +254,7 @@ impl<'file> Parser<'file> {
             location: start_location + end_location,
             name,
             publicity,
+            generics,
             params,
             typ,
             body,
@@ -280,11 +298,19 @@ impl<'file> Parser<'file> {
         // method name
         let name = self.consume(TokenKind::Id).value.clone();
 
+        // generics
+        let generics = if self.check(TokenKind::Less) {
+            self.generics()
+        } else {
+            Vec::new()
+        };
+
         // params
-        let mut params: Vec<Parameter> = Vec::new();
-        if self.check(TokenKind::Lparen) {
-            params = self.parameters();
-        }
+        let params = if self.check(TokenKind::Less) {
+            self.parameters()
+        } else {
+            Vec::new()
+        };
 
         // return type
         // if type specified
@@ -308,6 +334,7 @@ impl<'file> Parser<'file> {
             location: start_address + end_address,
             publicity,
             name,
+            generics,
             params,
             body,
             typ,
@@ -325,11 +352,19 @@ impl<'file> Parser<'file> {
         // type name
         let name = self.consume(TokenKind::Id).clone();
 
+        // generics
+        let generics = if self.check(TokenKind::Less) {
+            self.generics()
+        } else {
+            Vec::new()
+        };
+
         // params
-        let mut constructor: Vec<Parameter> = Vec::new();
-        if self.check(TokenKind::Lparen) {
-            constructor = self.parameters();
-        }
+        let constructor = if self.check(TokenKind::Less) {
+            self.parameters()
+        } else {
+            Vec::new()
+        };
 
         // type contents
         let mut fields = Vec::new();
@@ -381,6 +416,7 @@ impl<'file> Parser<'file> {
             location: start_address + end_address,
             publicity,
             name: name.value,
+            generics,
             constructor,
             fields,
             methods,
@@ -466,6 +502,13 @@ impl<'file> Parser<'file> {
         // creating type address
         let end_location = self.previous().address.clone();
 
+        // generics
+        let generics = if self.check(TokenKind::Less) {
+            self.generics()
+        } else {
+            Vec::new()
+        };
+
         // type contents
         let mut variants = Vec::new();
 
@@ -501,6 +544,7 @@ impl<'file> Parser<'file> {
             location: start_location + end_location,
             publicity,
             name: name.value,
+            generics,
             variants,
         }
     }

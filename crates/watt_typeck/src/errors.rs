@@ -86,6 +86,14 @@ pub enum TypeckError {
         t1: Typ,
         t2: Typ,
     },
+    #[error("found types recursion.")]
+    #[diagnostic(code(typeck::types_recursion))]
+    TypesRecursion {
+        #[related]
+        related: Vec<TypeckRelated>,
+        t1: Typ,
+        t2: Typ,
+    },
     #[error("could not unify trait {tr:?} and {ty:?}.")]
     #[diagnostic(
         code(typeck::could_not_unify_trait_and_typ),

@@ -23,6 +23,7 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
     /// are covered.
     pub fn check(cx: &'module_cx mut ModuleCx<'pkg, 'cx>, value: Typ, cases: Vec<Case>) -> bool {
         // Match cx
+        let value = cx.solver.apply(value);
         let mut ex = Self { cx, value, cases };
         // Matching value
         match &ex.value {
@@ -75,6 +76,10 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
             // So, checking for default patterns
             // `BindTo` and `Wildcard`
             Typ::Unit => ex.has_default_pattern(&ex.cases),
+            // Unbound type
+            Typ::Unbound(_) => ex.has_default_pattern(&ex.cases),
+            // Generic type
+            Typ::Generic(_) => unreachable!(),
         }
     }
 

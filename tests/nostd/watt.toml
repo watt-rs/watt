@@ -1,0 +1,8 @@
+[pkg]
+pkg = "app"
+name = "nostd"
+main = "nostd/main"
+dependencies = []
+
+[lints]
+disabled = []

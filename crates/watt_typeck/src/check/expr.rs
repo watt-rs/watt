@@ -875,7 +875,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
     /// Infers expression
     pub(crate) fn infer_expr(&mut self, expr: Expression) -> Typ {
-        match expr {
+        // Inferring expression
+        let result = match expr {
             Expression::Float { .. } => Typ::Prelude(PreludeType::Float),
             Expression::Int { .. } => Typ::Prelude(PreludeType::Int),
             Expression::String { .. } => Typ::Prelude(PreludeType::String),
@@ -939,6 +940,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 body,
                 else_branches,
             } => self.infer_if(location, *logical, body, else_branches),
-        }
+        };
+        // Applying substs
+        self.solver.apply(result)
     }
 }

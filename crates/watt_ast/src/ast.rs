@@ -493,12 +493,13 @@ pub enum Expression {
     },
     /// Represents anonymous function
     ///
-    /// fn(...) {
+    /// fn<...>(...) {
     ///     ...
     /// }
     ///
     Function {
         location: Address,
+        generics: Vec<EcoString>,
         params: Vec<Parameter>,
         body: Either<Block, Box<Expression>>,
         typ: Option<TypePath>,
@@ -646,6 +647,7 @@ pub struct Method {
     pub location: Address,
     pub publicity: Publicity,
     pub name: EcoString,
+    pub generics: Vec<EcoString>,
     pub params: Vec<Parameter>,
     pub body: Either<Block, Expression>,
     pub typ: Option<TypePath>,
@@ -676,6 +678,7 @@ pub enum Declaration {
         location: Address,
         name: EcoString,
         publicity: Publicity,
+        generics: Vec<EcoString>,
         constructor: Vec<Parameter>,
         fields: Vec<Field>,
         methods: Vec<Method>,
@@ -692,6 +695,7 @@ pub enum Declaration {
         location: Address,
         name: EcoString,
         publicity: Publicity,
+        generics: Vec<EcoString>,
         variants: Vec<EnumConstructor>,
     },
     /// Represents trait declaration
@@ -715,6 +719,7 @@ pub enum Declaration {
         location: Address,
         name: EcoString,
         publicity: Publicity,
+        generics: Vec<EcoString>,
         params: Vec<Parameter>,
         typ: Option<TypePath>,
         body: EcoString,
@@ -735,6 +740,7 @@ pub enum Declaration {
         location: Address,
         publicity: Publicity,
         name: EcoString,
+        generics: Vec<EcoString>,
         params: Vec<Parameter>,
         body: Either<Block, Expression>,
         typ: Option<TypePath>,
