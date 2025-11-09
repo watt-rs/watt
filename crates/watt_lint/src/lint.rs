@@ -35,8 +35,6 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
             Declaration::TypeDeclaration {
                 location,
                 name,
-                constructor,
-                methods,
                 fields,
                 ..
             } => {
@@ -51,46 +49,6 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     )
                 }
 
-                // Checking that constructor has < consts::MAX_PARAMS params.
-                if constructor.len() > consts::MAX_PARAMS {
-                    warn!(
-                        self,
-                        LintWarning::TooManyParams {
-                            src: location.source.clone(),
-                            span: location.span.clone().into(),
-                            name: name.clone()
-                        }
-                    )
-                }
-
-                // Methods
-                for decl in methods {
-                    match &decl.body {
-                        Either::Left(block) => self.lint_block(block),
-                        Either::Right(expr) => self.lint_expr(expr),
-                    }
-                    // Checking function name is in `snake_case`
-                    if !case::is_snake_case(&decl.name) {
-                        warn!(
-                            self,
-                            LintWarning::WrongFunctionName {
-                                src: location.source.clone(),
-                                span: location.span.clone().into()
-                            }
-                        )
-                    }
-                    // Checking that function has < consts::MAX_PARAMS params.
-                    if decl.params.len() > consts::MAX_PARAMS {
-                        warn!(
-                            self,
-                            LintWarning::TooManyParamsInAnFn {
-                                src: location.source.clone(),
-                                span: location.span.clone().into()
-                            }
-                        )
-                    }
-                }
-
                 // Fields
                 for decl in fields {
                     // Checking variable name is in `snake_case`
@@ -103,7 +61,6 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                             }
                         )
                     }
-                    self.lint_expr(&decl.value);
                 }
             }
             Declaration::EnumDeclaration {
@@ -156,47 +113,6 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                                 src: location.source.clone(),
                                 span: variant.location.span.clone().into(),
                                 name: name.clone()
-                            }
-                        )
-                    }
-                }
-            }
-            Declaration::TraitDeclaration {
-                location,
-                name,
-                functions,
-                ..
-            } => {
-                // Checking trait name is in `PascalCase`
-                if !case::is_pascal_case(name) {
-                    warn!(
-                        self,
-                        LintWarning::WrongTypeName {
-                            src: location.source.clone(),
-                            span: location.span.clone().into()
-                        }
-                    )
-                }
-
-                // Linting functions
-                for function in functions {
-                    // Checking function name is in `snake_case`
-                    if !case::is_snake_case(&function.name) {
-                        warn!(
-                            self,
-                            LintWarning::WrongFunctionName {
-                                src: location.source.clone(),
-                                span: function.location.span.clone().into()
-                            }
-                        )
-                    }
-                    // Checking that function has < consts::MAX_PARAMS params.
-                    if function.params.len() > consts::MAX_PARAMS {
-                        warn!(
-                            self,
-                            LintWarning::TooManyParamsInAnFn {
-                                src: location.source.clone(),
-                                span: location.span.clone().into()
                             }
                         )
                     }

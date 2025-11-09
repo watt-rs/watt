@@ -1,0 +1,7 @@
+type Mammoth[T] {
+    iceberg: T
+}
+
+fn main() {
+    let iceberge: Mammoth[int] = Mammoth(3)
+}

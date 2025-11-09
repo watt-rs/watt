@@ -113,21 +113,37 @@ impl<'file> Parser<'file> {
             if self.check(TokenKind::Dot) {
                 // consuming dot
                 self.consume(TokenKind::Dot);
+                // second id
+                let second_id = self.consume(TokenKind::Id).clone();
                 // end address of `module.definition`
                 let end_address = self.peek().address.clone();
+                // generic
+                let generics = if self.check(TokenKind::Lbracket) {
+                    self.generic_args()
+                } else {
+                    Vec::new()
+                };
                 // module type path
                 TypePath::Module {
                     location: start_address + end_address,
                     module: first_id.value,
-                    name: self.consume(TokenKind::Id).value.clone(),
+                    name: second_id.value,
+                    generics,
                 }
             }
             // else
             else {
+                // generic
+                let generics = if self.check(TokenKind::Lbracket) {
+                    self.generic_args()
+                } else {
+                    Vec::new()
+                };
                 // local type path
                 TypePath::Local {
                     location: start_address,
                     name: first_id.value,
+                    generics,
                 }
             }
         }
@@ -147,12 +163,12 @@ impl<'file> Parser<'file> {
         }
     }
 
-    /// Parameters parsing `($name: $type, $name: $type, n )`
+    /// Parameters parsing `($name: $type, $name: $type, ..n)`
     pub(crate) fn parameters(&mut self) -> Vec<Parameter> {
         // result list
         let mut params: Vec<Parameter> = Vec::new();
 
-        // `($name: $type, $name: $type, n )`
+        // `($name: $type, $name: $type, ..n)`
         self.consume(TokenKind::Lparen);
         if !self.check(TokenKind::Rparen) {
             params.push(self.parameter());
@@ -167,6 +183,45 @@ impl<'file> Parser<'file> {
         params
     }
 
+    /// Generic parameters parsing `[$name, $name ..n]`
+    pub(crate) fn generics(&mut self) -> Vec<EcoString> {
+        // result list
+        let mut params: Vec<EcoString> = Vec::new();
+
+        // `[$name: $type, $name: $type, ..n]`
+        self.consume(TokenKind::Lbracket);
+        if !self.check(TokenKind::Rbracket) {
+            params.push(self.consume(TokenKind::Id).value.clone());
+
+            while self.check(TokenKind::Comma) {
+                self.consume(TokenKind::Comma);
+                params.push(self.consume(TokenKind::Id).value.clone());
+            }
+        }
+        self.consume(TokenKind::Rbracket);
+
+        params
+    }
+
+    /// Generic arguments parsing `[$type, $type ..n]`
+    pub(crate) fn generic_args(&mut self) -> Vec<TypePath> {
+        // result list
+        let mut params: Vec<TypePath> = Vec::new();
+
+        // `[$type, $type ..n]`
+        self.consume(TokenKind::Lparen);
+        if !self.check(TokenKind::Rparen) {
+            params.push(self.type_annotation());
+
+            while self.check(TokenKind::Comma) {
+                self.consume(TokenKind::Comma);
+                params.push(self.type_annotation());
+            }
+        }
+        self.consume(TokenKind::Rparen);
+
+        params
+    }
     /// Parses range
     ///
     /// # Example
