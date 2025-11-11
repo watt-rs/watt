@@ -11,27 +11,6 @@ use ecow::EcoString;
 use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc};
 use watt_common::{address::Address, bail, rc_ptr::RcPtr};
 
-/// Definition
-pub enum Def {
-    /// Module definition
-    Module(ModDef),
-    /// Local definition
-    Local(Typ),
-}
-
-/// Module definition
-///
-/// CustomType, Variable
-/// definitions for module
-///
-#[derive(Clone)]
-pub enum ModDef {
-    /// Custom type
-    CustomType(WithPublicity<CustomType>),
-    /// Variable
-    Variable(WithPublicity<Typ>),
-}
-
 /// Debug implementation
 impl Debug for ModDef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
