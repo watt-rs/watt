@@ -1,123 +1,196 @@
 /// Imports
 use crate::{
     errors::TypeckError,
-    resolve::{
+    resolve::rib::{Rib, RibsStack},
+    typ::{
+        def::{ModuleDef, TypeDef},
         res::Res,
-        rib::{Rib, RibKind, RibsStack},
+        typ::Module,
     },
-    typ::{CustomType, Module, Typ, Struct, WithPublicity},
 };
 use ecow::EcoString;
-use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc};
+use std::collections::HashMap;
 use watt_common::{address::Address, bail, rc_ptr::RcPtr};
 
-/// Debug implementation
-impl Debug for ModDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ModDef::CustomType(ty) => write!(f, "ModDef({ty:?})"),
-            ModDef::Variable(var) => write!(f, "ModDef({var:?})"),
-        }
-    }
-}
-
-/// Module resolver
+/// Resolves names and types within a module.
 ///
-/// * rib_stack - stack of ribs for nested scopes
-/// * definitions - module definitions
+/// `ModuleResolver` is responsible for managing module-level scope, tracking
+/// definitions, and handling imports. It is used during type checking and
+/// name resolution to determine what each identifier refers to.
+///
+/// # Fields
+///
+/// - `ribs_stack: RibsStack`
+///   A stack of "ribs", representing nested scopes inside the module.
+///   Each rib holds bindings for a single lexical scope. The stack structure
+///   allows proper shadowing and scope resolution.
+///
+/// - `mod_defs: HashMap<EcoString, ModuleDef>`
+///   The definitions present directly in the module, keyed by their names.
+///   This includes user-defined types (`Type`) and constants (`Const`).
+///
+/// - `imported_modules: HashMap<EcoString, RcPtr<Module>>`
+///   Modules that have been imported into the current module.
+///   Allows resolution of identifiers that are qualified with module paths.
+///
+/// - `imported_defs: HashMap<EcoString, ModuleDef>`
+///   Definitions imported from other modules, keyed by their local names.
+///   Enables access to external types and constants without fully qualifying them.
+///
+#[derive(Default)]
 pub struct ModuleResolver {
     /// Ribs stack of module
     ribs_stack: RibsStack,
     /// Module definitions
-    mod_defs: HashMap<EcoString, ModDef>,
+    module_defs: HashMap<EcoString, ModuleDef>,
     /// Imported modules
     pub imported_modules: HashMap<EcoString, RcPtr<Module>>,
-    /// Imported modules
-    pub imported_defs: HashMap<EcoString, ModDef>,
+    /// Imported definitions
+    pub imported_defs: HashMap<EcoString, ModuleDef>,
 }
 
 /// Implementation
-impl Default for ModuleResolver {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl ModuleResolver {
-    /// Creates new module resolver
-    pub fn new() -> Self {
-        Self {
-            ribs_stack: RibsStack::new(),
-            mod_defs: HashMap::new(),
-            imported_modules: HashMap::new(),
-            imported_defs: HashMap::new(),
-        }
-    }
-
-    /// Creates definition, if no definition
-    /// with same name is already defined.
-    pub fn define(&mut self, address: &Address, name: &EcoString, def: Def, redefine: bool) {
-        // Checking def
-        match def {
-            // If module
-            Def::Module(mod_def) => {
-                // If redefinition allowed
-                if redefine {
-                    self.mod_defs.insert(name.clone(), mod_def);
-                }
-                // Else, Checking already defined
-                else {
-                    match self.mod_defs.get(name) {
-                        // If already defined
-                        Some(_) => match mod_def {
-                            // Custom type
-                            ModDef::CustomType(_) => {
-                                bail!(TypeckError::TypeIsAlreadyDefined {
-                                    src: address.source.clone(),
-                                    span: address.span.clone().into(),
-                                    t: name.clone()
-                                })
-                            }
-                            // Variable
-                            ModDef::Variable(_) => {
-                                bail!(TypeckError::VariableIsAlreadyDefined {
-                                    src: address.source.clone(),
-                                    span: address.span.clone().into(),
-                                })
-                            }
-                        },
-                        // If not
-                        None => {
-                            self.mod_defs.insert(name.clone(), mod_def);
-                        }
+    /// Defines a module-level item (type or constant) if it is not already defined.
+    ///
+    /// This method inserts a new definition into the module's namespace. It performs
+    /// checks to ensure that no conflicting definition exists unless `redefine` is true.
+    ///
+    /// # Parameters
+    ///
+    /// - `address: &Address`
+    ///   The source location of the definition, used for error reporting.
+    ///
+    /// - `name: &EcoString`
+    ///   The identifier name for the definition.
+    ///
+    /// - `def: ModuleDef`
+    ///   The definition to insert (type or constant).
+    ///
+    /// - `redefine: bool`
+    ///   Allows overwriting an existing definition. This is used during the
+    ///   **late analysis pass** to replace temporary definitions created
+    ///   during the **early analysis pass**.
+    ///
+    /// # Behavior
+    ///
+    /// - If `redefine` is `true`, the new definition always replaces any existing one.
+    /// - If `redefine` is `false`:
+    ///   - If a type with the same name exists, a `TypeckError::TypeIsAlreadyDefined` is raised.
+    ///   - If a constant with the same name exists, a `TypeckError::VariableIsAlreadyDefined` is raised.
+    ///   - Otherwise, the new definition is inserted successfully.
+    ///
+    /// # Important
+    ///
+    /// - This method ensures that the module maintains a consistent namespace.
+    /// - The `redefine` flag is essential for the two-phase analysis process,
+    ///   where early passes may create temporary definitions that need to be
+    ///   replaced in the late analysis pass.
+    ///
+    pub fn define_module(
+        &mut self,
+        address: &Address,
+        name: &EcoString,
+        def: ModuleDef,
+        redefine: bool,
+    ) {
+        if redefine {
+            self.module_defs.insert(name.clone(), def);
+        } else {
+            match self.module_defs.get(name) {
+                Some(found) => match found {
+                    ModuleDef::Type(_) => {
+                        bail!(TypeckError::TypeIsAlreadyDefined {
+                            src: address.source.clone(),
+                            span: address.span.clone().into(),
+                            t: name.clone()
+                        })
                     }
+                    ModuleDef::Const(_) => {
+                        bail!(TypeckError::VariableIsAlreadyDefined {
+                            src: address.source.clone(),
+                            span: address.span.clone().into(),
+                        })
+                    }
+                },
+                None => {
+                    self.module_defs.insert(name.clone(), def);
                 }
-            }
-            // If local
-            Def::Local(local_def) => {
-                self.ribs_stack
-                    .define(address, name, local_def, redefine);
             }
         }
     }
 
-    /// Resolves up a value
-    /// Raises error if variable is not found.
+    /// Resolves an identifier to its corresponding value, type, or module.
+    ///
+    /// This method looks up the given `name` in the current module's namespace
+    /// and imported modules/definitions. It follows a structured lookup order
+    /// to ensure correct scoping and resolution of identifiers. If the identifier
+    /// cannot be found, it raises a `TypeckError::CouldNotResolve`.
+    ///
+    /// # Parameters
+    ///
+    /// - `address: &Address`
+    ///   The source code location of the identifier being resolved, used for
+    ///   error reporting.
+    ///
+    /// - `name: &EcoString`
+    ///   The identifier to resolve.
+    ///
+    /// # Resolution Flow
+    ///
+    /// 1. **Ribs stack lookup (local and nested scopes)**
+    ///    The method first searches the `ribs_stack`, which represents nested
+    ///    lexical scopes. If a binding is found here, it is returned as
+    ///    `Res::Value(typ)`. This ensures that local variables shadow module-level
+    ///    definitions.
+    ///
+    /// 2. **Module definitions lookup**
+    ///    If the identifier is not found in the local ribs, the resolver checks
+    ///    `module_defs`, which contains definitions directly declared in the module:
+    ///    - `ModuleDef::Type` -> returned as `Res::Custom(TypeDef)`
+    ///    - `ModuleDef::Const` -> returned as `Res::Value(Typ)`
+    ///
+    /// 3. **Imported definitions lookup**
+    ///    If the identifier is not present in local module definitions, the resolver
+    ///    checks `imported_defs`, which contains definitions imported from other
+    ///    modules. The resolution behaves similarly to module definitions:
+    ///    - `ModuleDef::Type` -> `Res::Custom(TypeDef)`
+    ///    - `ModuleDef::Const` -> `Res::Value(Typ)`
+    ///
+    /// 4. **Imported modules lookup**
+    ///    If the identifier is not found in definitions, the resolver checks
+    ///    `imported_modules`. If found, the identifier resolves to a module:
+    ///    - returned as `Res::Module(name.clone())`
+    ///
+    /// 5. **Error if not found**
+    ///    If the identifier cannot be found in any of the above cases, the
+    ///    resolver raises a `TypeckError::CouldNotResolve` with the given source
+    ///    location and the unresolved name.
+    ///
+    /// # Returns
+    ///
+    /// A `Res` enum indicating the resolved entity:
+    /// - `Res::Module(EcoString)` -> a module
+    /// - `Res::Custom(TypeDef)` -> a user-defined type
+    /// - `Res::Value(Typ)` -> a value or constant
+    ///
+    /// `Res::Variant(Rc<Enum>, EnumVariant)` will be never returned
+    ///
     pub fn resolve(&self, address: &Address, name: &EcoString) -> Res {
         // Checking existence in ribs
         match self.ribs_stack.lookup(name) {
             Some(typ) => Res::Value(typ),
-            None => match self.mod_defs.get(name) {
+            None => match self.module_defs.get(name) {
                 // Checking existence in module definitions
                 Some(typ) => match typ {
-                    ModDef::CustomType(ty) => Res::Custom(ty.value.clone()),
-                    ModDef::Variable(var) => Res::Value(var.value.clone()),
+                    ModuleDef::Type(ty) => Res::Custom(ty.value.clone()),
+                    ModuleDef::Const(ty) => Res::Value(ty.value.clone()),
                 },
                 None => match self.imported_defs.get(name) {
                     // Checking existence in imported defs
                     Some(typ) => match typ {
-                        ModDef::CustomType(ty) => Res::Custom(ty.value.clone()),
-                        ModDef::Variable(var) => Res::Value(var.value.clone()),
+                        ModuleDef::Type(ty) => Res::Custom(ty.value.clone()),
+                        ModuleDef::Const(ty) => Res::Value(ty.value.clone()),
                     },
                     None => match self.imported_modules.get(name) {
                         // Checking existence in modules
@@ -133,14 +206,43 @@ impl ModuleResolver {
         }
     }
 
-    /// Resolves up a type
-    /// Raises error if variable is not found.
-    pub fn resolve_type(&self, name: &EcoString, address: &Address) -> CustomType {
+    /// Resolves an identifier to its corresponding type.
+    ///
+    /// This method looks up the given `name` in the current module's namespace
+    /// and imported definitions. It follows a structured lookup order
+    /// to ensure correct scoping and resolution of identifiers.
+    ///
+    /// # Parameters
+    ///
+    /// - `address: &Address`
+    ///   The source code location of the identifier being resolved, used for
+    ///   error reporting.
+    ///
+    /// - `name: &EcoString`
+    ///   The type name to resolve.
+    ///
+    /// # Resolution Flow
+    ///
+    /// 1. **Module definitions**
+    ///    The method first checks `module_defs`
+    ///    for the type existence (`TypeDef`).
+    ///
+    /// 2. **Imported definitions lookup**
+    ///    If the identifier is not present in module definitions, the resolver
+    ///    checks `imported_defs` for the type existence (`TypeDef`), which contains
+    ///    definitions imported from other modules.
+    ///
+    /// # Errors
+    ///
+    /// - Raises `TypeckError::TypeIsNotDefined` if the type cannot be resolved.
+    /// - Raises `TypeckError::CouldNotUseValueAsType` if the const shadows the type name.
+    ///
+    pub fn resolve_type(&self, address: &Address, name: &EcoString) -> TypeDef {
         // Checking existence in module definitions
-        match self.mod_defs.get(name) {
+        match self.module_defs.get(name) {
             Some(typ) => match typ {
-                ModDef::CustomType(ty) => ty.value.clone(),
-                ModDef::Variable(_) => bail!(TypeckError::CouldNotUseValueAsType {
+                ModuleDef::Type(ty) => ty.value.clone(),
+                ModuleDef::Const(_) => bail!(TypeckError::CouldNotUseValueAsType {
                     src: address.source.clone(),
                     span: address.clone().span.into(),
                     v: name.clone()
@@ -149,8 +251,8 @@ impl ModuleResolver {
             None => match self.imported_defs.get(name) {
                 // Checking existence in imported defs
                 Some(typ) => match typ {
-                    ModDef::CustomType(ty) => ty.value.clone(),
-                    ModDef::Variable(_) => bail!(TypeckError::CouldNotUseValueAsType {
+                    ModuleDef::Type(ty) => ty.value.clone(),
+                    ModuleDef::Const(_) => bail!(TypeckError::CouldNotUseValueAsType {
                         src: address.source.clone(),
                         span: address.clone().span.into(),
                         v: name.clone()
@@ -165,41 +267,60 @@ impl ModuleResolver {
         }
     }
 
-    /// Resolves up a module
+    /// Resolves a module by its name in the imported modules.
+    ///
+    /// # Parameters
+    /// - `name: &EcoString` — The name of the module to resolve.
+    ///
+    /// # Returns
+    /// - A reference to the `Module` if it exists in `imported_modules`.
+    ///
+    /// # Errors
+    /// - Raises `TypeckError::ModuleIsNotDefined` if the module is not imported.
     pub fn resolve_module(&self, name: &EcoString) -> &Module {
-        // Checking existence in module definitions
         match self.imported_modules.get(name) {
             Some(m) => m,
             None => bail!(TypeckError::ModuleIsNotDefined { m: name.clone() }),
         }
     }
 
-    /// Contains type rib
-    pub fn contains_type_rib(&self) -> Option<&Rc<RefCell<Struct>>> {
-        self.ribs_stack.contains_type()
+    /// Pushes a new rib onto the ribs stack.
+    ///
+    /// Ribs represent lexical scopes (e.g., for function bodies or blocks).
+    /// Pushing a rib creates a new nested scope for variable bindings.
+    pub fn push_rib(&mut self) {
+        self.ribs_stack.push();
     }
 
-    /// Contains rib with specifix kind
-    pub fn contains_rib(&self, kind: RibKind) -> bool {
-        self.ribs_stack.contains_rib(kind)
-    }
-
-    /// Pushes rib
-    pub fn push_rib(&mut self, kind: RibKind) {
-        self.ribs_stack.push(kind);
-    }
-
-    /// Pops rib
+    /// Pops the top rib from the ribs stack.
+    ///
+    /// Returns the popped `Rib` if it exists. Popping a rib exits
+    /// the current scope and removes all bindings defined in that scope.
     pub fn pop_rib(&mut self) -> Option<Rib> {
         self.ribs_stack.pop()
     }
 
-    /// Collects fields from resolver
-    pub fn collect(&mut self) -> HashMap<EcoString, ModDef> {
-        self.mod_defs.drain().collect()
+    /// Collects and drains all module definitions.
+    ///
+    /// This method removes all current definitions from `module_defs` and
+    /// returns them as a `HashMap`. Useful for exporting definitions after
+    /// analysis or for module construction.
+    ///
+    /// # Returns
+    /// A `HashMap<EcoString, ModuleDef>` containing all collected definitions.
+    pub fn collect(&mut self) -> HashMap<EcoString, ModuleDef> {
+        self.module_defs.drain().collect()
     }
 
-    /// Imports module as name
+    /// Imports a module under a given alias.
+    ///
+    /// # Parameters
+    /// - `address: &Address` — The source location for error reporting.
+    /// - `name: EcoString` — The alias under which the module should be imported.
+    /// - `module: RcPtr<Module>` — The module to import.
+    ///
+    /// # Errors
+    /// - Raises `TypeckError::ModuleIsAlreadyImportedAs` if the alias is already used.
     pub fn import_as(&mut self, address: &Address, name: EcoString, module: RcPtr<Module>) {
         match self.imported_modules.get(&name) {
             Some(module) => bail!(TypeckError::ModuleIsAlreadyImportedAs {
@@ -212,14 +333,26 @@ impl ModuleResolver {
         };
     }
 
-    /// Imports names from module
+    /// Imports specific names (definitions) from a module.
+    ///
+    /// # Parameters
+    /// - `address: &Address` — Source location for error reporting.
+    /// - `names: Vec<EcoString>` — Names of definitions to import from the module.
+    /// - `module: RcPtr<Module>` — The module to import from.
+    ///
+    /// # Behavior
+    /// For each name:
+    /// 1. Checks if the name exists in the module's fields.
+    /// 2. Checks if the name was already imported from another module.
+    /// 3. Inserts the definition into `imported_defs` if both checks pass.
+    ///
+    /// # Errors
+    /// - `TypeckError::ModuleFieldIsNotDefined` if the name does not exist in the module.
+    /// - `TypeckError::DefIsAlreadyImported` if the name has already been imported.
     pub fn import_for(&mut self, address: &Address, names: Vec<EcoString>, module: RcPtr<Module>) {
-        // Importing names
         for name in names {
-            // Checking name existence
             match module.fields.get(&name) {
                 Some(def) => match self.imported_defs.get(&name) {
-                    // Checking name is already imported from other module
                     Some(already) => bail!(TypeckError::DefIsAlreadyImported {
                         src: address.source.clone(),
                         span: address.span.clone().into(),
