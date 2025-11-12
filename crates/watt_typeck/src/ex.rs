@@ -2,8 +2,10 @@
 use crate::{
     cx::module::ModuleCx,
     errors::ExError,
-    resolve::res::Res,
-    typ::{Enum, EnumVariant, PreludeType, Typ},
+    typ::{
+        res::Res,
+        typ::{Enum, EnumVariant, PreludeType, Typ},
+    },
 };
 use ecow::EcoString;
 use std::rc::Rc;
@@ -39,13 +41,6 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
             // So, checking for default patterns
             // `BindTo` and `Wildcard`
             Typ::Struct(_) => ex.has_default_pattern(&ex.cases),
-            // All trait values
-            // could not be covered,
-            // because it's a ref type.
-            //
-            // So, checking for default patterns
-            // `BindTo` and `Wildcard`
-            Typ::Trait(_) => ex.has_default_pattern(&ex.cases),
             // All enum variant values
             // could be covered, so
             // checking it
@@ -60,14 +55,6 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
             // So, checking for default patterns
             // `BindTo` and `Wildcard`
             Typ::Function(_) => ex.has_default_pattern(&ex.cases),
-            // All dyn value
-            // could not be covered,
-            // because it's a dynamic type
-            // with unknown constraints
-            //
-            // So, checking for default patterns
-            // `BindTo` and `Wildcard`
-            Typ::Dyn => ex.has_default_pattern(&ex.cases),
             // Could not cover unit
             // values, becuase...
             // it's nothing =)
@@ -75,6 +62,22 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
             // So, checking for default patterns
             // `BindTo` and `Wildcard`
             Typ::Unit => ex.has_default_pattern(&ex.cases),
+            // All unbounds values
+            // could not be covered,
+            // because it's a unknown type
+            // with unknown constraints
+            //
+            // So, checking for default patterns
+            // `BindTo` and `Wildcard`
+            Typ::Unbound(_) => ex.has_default_pattern(&ex.cases),
+            // All generic values
+            // could not be covered,
+            // because it's a unknown type
+            // with unknown constraints
+            //
+            // So, checking for default patterns
+            // `BindTo` and `Wildcard`
+            Typ::Generic(_) => ex.has_default_pattern(&ex.cases),
         }
     }
 

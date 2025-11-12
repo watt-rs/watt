@@ -26,6 +26,16 @@ pub enum ModuleDef {
     Const(WithPublicity<Typ>),
 }
 
+/// Debug implementation
+impl Debug for ModuleDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ModuleDef::Type(ty) => write!(f, "Type({ty:?})"),
+            ModuleDef::Const(ty) => write!(f, "Const({ty:?})"),
+        }
+    }
+}
+
 /// Represents a type definition for a resolver
 ///
 /// # Variants

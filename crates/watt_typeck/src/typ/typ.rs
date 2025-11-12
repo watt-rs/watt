@@ -81,10 +81,15 @@ pub struct Parameter {
 /// - `name: EcoString`
 ///   The identifier of the generic parameter, e.g., `T`, `U`.
 ///
+/// - `typ: Typ`
+///   The type represented as `Typ::Generic(id)` used in
+///   type instantiation
+///
 #[derive(Clone, PartialEq)]
 pub struct GenericParameter {
     pub location: Address,
     pub name: EcoString,
+    pub typ: Typ,
 }
 
 /// Represents a field of a struct.
@@ -357,7 +362,7 @@ pub enum Typ {
     Unbound(usize),
     /// Generic type variable
     /// (will be replaced with unbounds, during type instantiation)
-    Generic(EcoString),
+    Generic(usize),
     /// Unit type, representing `()`
     Unit,
 }
