@@ -23,7 +23,7 @@ pub struct EquationsSolver<'cx> {
     /// Package context
     package: &'cx PackageCx<'cx>,
     /// Module hydrator
-    hydrator: Hydrator,
+    pub(crate) hydrator: Hydrator,
 }
 
 /// Implementation

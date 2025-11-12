@@ -29,6 +29,14 @@ pub enum TypeckRelated {
         #[label()]
         span: SourceSpan,
     },
+    #[error("here...")]
+    #[diagnostic(severity(hint))]
+    Here {
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label()]
+        span: SourceSpan,
+    },
     #[error("this type is {t:?}")]
     #[diagnostic(severity(hint))]
     ThisType {

@@ -117,4 +117,16 @@ impl Hydrator {
         self.last_unbound_id += 1;
         self.last_unbound_id
     }
+
+    /// Generates fresh unique id
+    /// for the unbound type variable.
+    ///
+    /// Then creates substitution, returns
+    /// unbound type variable unique id
+    ///
+    pub fn bind(&mut self, to: Typ) -> usize {
+        let id = self.fresh();
+        self.substitute(id, to);
+        id
+    }
 }

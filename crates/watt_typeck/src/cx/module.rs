@@ -1,6 +1,7 @@
 /// Imports
 use crate::{
-    cx::package::PackageCx, resolve::resolve::ModuleResolver, typ::Module, unify::EquationsSolver,
+    cx::package::PackageCx, inference::EquationsSolver, resolve::resolve::ModuleResolver,
+    typ::Module,
 };
 use ecow::EcoString;
 use log::info;

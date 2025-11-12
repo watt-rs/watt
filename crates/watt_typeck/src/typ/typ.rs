@@ -82,14 +82,14 @@ pub struct Parameter {
 ///   The identifier of the generic parameter, e.g., `T`, `U`.
 ///
 /// - `typ: Typ`
-///   The type represented as `Typ::Generic(id)` used in
+///   The type represented as generic id used in
 ///   type instantiation
 ///
 #[derive(Clone, PartialEq)]
 pub struct GenericParameter {
     pub location: Address,
     pub name: EcoString,
-    pub typ: Typ,
+    pub typ: usize,
 }
 
 /// Represents a field of a struct.
