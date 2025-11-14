@@ -1,5 +1,5 @@
 ⚡ **Watt is friednly, lightweight, programming language written in Rust for the JavaScript platform.**
-(and unsafe rigth now)
+(and raw rigth now)
 
 🔦 Simple example:
 ```
