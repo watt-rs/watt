@@ -1,10 +1,9 @@
-enum Result[V, E] {
-    Ok(value: V),
-    Error(error: E)
+type Apply[T] {
+    function: fn(T): T
 }
 
 fn main() {
-    let a = Result.Ok(3);
-    a = Result.Error(false);
-    let b: Result[int, int] = a;
+    let a: Apply[int] = Apply(fn(a: int): int {
+        a
+    });
 }

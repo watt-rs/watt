@@ -154,6 +154,13 @@ impl EquationsSolver {
                     }
                     t1
                 }
+                (Typ::Function(f1), Typ::Function(f2)) => {
+                    f1.params.iter().zip(&f2.params).for_each(|(p1, p2)| {
+                        self.unify(l1.clone(), p1.typ.clone(), l2.clone(), p2.typ.clone());
+                    });
+                    self.unify(l1.clone(), f1.ret.clone(), l2.clone(), f2.ret.clone());
+                    t1
+                }
                 _ => bail!(TypeckError::CouldNotUnify {
                     t1: t1.clone(),
                     t2: t2.clone(),

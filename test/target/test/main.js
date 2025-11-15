@@ -10,23 +10,19 @@ import {
     $$VariantPattern,
 } from "../prelude.js"
 
-export const Result = {
-    Ok: (value) => ({
-        $meta: "Enum",
-        $enum: "Result",
-        $variant: "Ok",
-        value: value
-    }),
-    Error: (error) => ({
-        $meta: "Enum",
-        $enum: "Result",
-        $variant: "Error",
-        error: error
-    })
-};
+export class $Apply {
+    constructor(function$) {
+        this.$meta = "Type";
+        this.$type = "Apply";
+        this.function$ = function$
+    }
+}
+export function Apply(function$) {
+    return new $Apply(function$);
+}
 
 export function main() {
-    let a = Result.Ok(3)
-    a = Result.Error(4)
-    let b = a
+    let a = Apply(function (a) {
+        return a
+    })
 }
