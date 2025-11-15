@@ -8,7 +8,7 @@ use crate::{
     },
 };
 use ecow::EcoString;
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 use watt_ast::ast::{Case, Pattern};
 use watt_common::{address::Address, bail};
 
@@ -40,14 +40,14 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
             //
             // So, checking for default patterns
             // `BindTo` and `Wildcard`
-            Typ::Struct(_) => ex.has_default_pattern(&ex.cases),
+            Typ::Struct(_, _) => ex.has_default_pattern(&ex.cases),
             // All enum variant values
             // could be covered, so
             // checking it
             //
             // So, checking for default patterns
             // `BindTo` and `Wildcard`
-            Typ::Enum(en) => ex.check_enum_variants_covered(en.clone()),
+            Typ::Enum(en, _) => ex.check_enum_variants_covered(en.clone()),
             // All function values
             // cold not be covered,
             // becuase it's a ref type.
@@ -242,7 +242,7 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
 
     /// Checks that all possible
     /// enum variants are covered
-    fn check_enum_variants_covered(&mut self, en: Rc<Enum>) -> bool {
+    fn check_enum_variants_covered(&mut self, en: Rc<RefCell<Enum>>) -> bool {
         // Matched variants
         let mut matched_variants = Vec::new();
         // Matching all cases
@@ -252,6 +252,6 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
         // Deleting duplicates
         matched_variants.dedup();
         // Checking all patterns covered
-        matched_variants.len() == en.variants.len()
+        matched_variants.len() == en.borrow().variants.len()
     }
 }

@@ -1,7 +1,7 @@
 /// Imports
 use crate::{
     cx::package::PackageCx, inference::EquationsSolver, resolve::resolve::ModuleResolver,
-    typ::Module,
+    typ::typ::Module,
 };
 use ecow::EcoString;
 use log::info;
@@ -17,7 +17,7 @@ pub struct ModuleCx<'pkg, 'cx> {
     /// Root package context
     pub(crate) package: &'cx PackageCx<'cx>,
     /// Equations solver
-    pub(crate) solver: EquationsSolver<'cx>,
+    pub(crate) solver: EquationsSolver,
     /// Last uid
     last_uid: usize,
 }
@@ -33,9 +33,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         Self {
             module,
             module_name,
-            resolver: ModuleResolver::new(),
+            resolver: ModuleResolver::default(),
             package,
-            solver: EquationsSolver::new(package),
+            solver: EquationsSolver::default(),
             last_uid: 0,
         }
     }
@@ -54,13 +54,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             self.early_define(definition);
         }
 
-        // 3. Early analysys
-        info!("Performing early analysis... Stage: early analysis.");
-        for definition in &self.module.declarations {
-            self.early_analyze(definition)
-        }
-
-        // 4. Late analysys
+        // 3. Late analysys
         info!("Performing late analysys...");
         for definition in self.module.declarations.clone() {
             self.late_analyze_declaration(definition);

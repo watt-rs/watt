@@ -1,11 +1,10 @@
 /// Imports
+use crate::{inference::hydrator::Hydrator, typ::def::ModuleDef};
 use ecow::EcoString;
 use miette::NamedSource;
-use std::{collections::HashMap, fmt::Debug, rc::Rc, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc, sync::Arc};
 use watt_ast::ast::Publicity;
 use watt_common::address::Address;
-
-use crate::typ::def::ModuleDef;
 
 /// Represents built-in or prelude types in the language.
 ///
@@ -44,10 +43,10 @@ pub enum PreludeType {
     String,
 }
 
-/// Represents a function parameter in the language.
+/// Represents a function or enum variant parameter in the language.
 ///
 /// A `Parameter` stores the information about a single parameter
-/// of a function, including its type and its location from the
+/// of a function or enum, including its type and its location from the
 /// source code file.
 ///
 /// # Fields
@@ -74,22 +73,23 @@ pub struct Parameter {
 ///
 /// # Fields
 ///
-/// - `location: Address`
-///   The location in the source code where this generic parameter
-///   is declared.
-///
 /// - `name: EcoString`
 ///   The identifier of the generic parameter, e.g., `T`, `U`.
 ///
-/// - `typ: Typ`
-///   The type represented as generic id used in
-///   type instantiation
+/// - `typ: usize`
+///   Generic ID
 ///
 #[derive(Clone, PartialEq)]
 pub struct GenericParameter {
-    pub location: Address,
     pub name: EcoString,
-    pub typ: usize,
+    pub id: usize,
+}
+
+/// Debug implementation
+impl Debug for GenericParameter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.name, self.id)
+    }
 }
 
 /// Represents a field of a struct.
@@ -107,13 +107,20 @@ pub struct GenericParameter {
 ///   Includes fields type annotation span too.
 ///
 /// - `typ: Typ`
-///   The type of the field
+///   The type  of the field
 ///
 #[derive(Clone, PartialEq)]
 pub struct Field {
     pub name: EcoString,
     pub location: Address,
     pub typ: Typ,
+}
+
+/// Debug implementation
+impl Debug for Field {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {:?}", self.name, self.typ)
+    }
 }
 
 /// Represents a user-defined structure.
@@ -181,16 +188,14 @@ impl PartialEq for Struct {
 /// - `name: EcoString`
 ///   The identifier of the variant, e.g., `Some`, `None`.
 ///
-/// - `params: HashMap<EcoString, Typ>`
-///   Optional named parameters (fields) for the variant, mapping
-///   field names to their types. Useful for enum variants that
-///   carry data.
+/// - `fields: Vec<Field>`
+///   Optional named parameters (fields) for the variant.
 ///
 #[derive(Clone, PartialEq)]
 pub struct EnumVariant {
     pub location: Address,
     pub name: EcoString,
-    pub params: HashMap<EcoString, Typ>,
+    pub fields: Vec<Field>,
 }
 
 /// Debug implementation for `EnumVariant`
@@ -333,7 +338,23 @@ pub struct Module {
 /// Debug implementation for `Module`
 impl Debug for Module {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Prelude({})", self.name)
+        write!(f, "Module({})", self.name)
+    }
+}
+
+/// Represents a generic arguments
+/// substitutions
+#[derive(Clone, PartialEq)]
+pub struct GenericArgs {
+    /// Substitutions of generics,
+    /// `Generic(id)` -> `Typ`
+    pub subtitutions: HashMap<usize, Typ>,
+}
+
+/// Debug implementation
+impl Debug for GenericArgs {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.subtitutions)
     }
 }
 
@@ -347,14 +368,14 @@ impl Debug for Module {
 /// - unbound types for type inference
 /// - generic type variables
 ///
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Typ {
     /// Prelude primitive types
     Prelude(PreludeType),
-    /// User-defined struct type
-    Struct(Rc<Struct>),
-    /// User-defined enum type
-    Enum(Rc<Enum>),
+    /// User-defined struct type with substitutions
+    Struct(Rc<RefCell<Struct>>, GenericArgs),
+    /// User-defined enum type with substitutions
+    Enum(Rc<RefCell<Enum>>, GenericArgs),
     /// Function type
     Function(Rc<Function>),
     /// Unbound type with unique id used during type inference.
@@ -367,20 +388,61 @@ pub enum Typ {
     Unit,
 }
 
-/// PartialEq implementation for `Typ`
-///
-/// Two types are equal if they represent the same kind and
-/// their inner data (structs, enums, functions, or prelude type) are equal.
-/// `Unbound` and `Generic` are not compared in this implementation.
-impl PartialEq for Typ {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Typ::Prelude(a), Typ::Prelude(b)) => a == b,
-            (Typ::Struct(a), Typ::Struct(b)) => a == b,
-            (Typ::Enum(a), Typ::Enum(b)) => a == b,
-            (Typ::Function(a), Typ::Function(b)) => a == b,
-            (Typ::Unit, Typ::Unit) => true,
-            _ => false,
+/// `Typ` methods implementation
+impl Typ {
+    /// Retrieves fields and applies
+    /// substitution by hydrator.
+    ///
+    /// # Notes
+    /// If `Typ` isn't `Typ::Struct(_, _)`, will
+    /// return empty vector.
+    pub fn fields(&self, hydrator: &mut Hydrator) -> Vec<Field> {
+        match self {
+            Typ::Struct(strct, generics) => strct
+                .borrow()
+                .fields
+                .iter()
+                .map(|field| Field {
+                    location: field.location.clone(),
+                    name: field.name.clone(),
+                    typ: hydrator
+                        .instantiate(field.typ.clone(), &mut generics.subtitutions.clone()),
+                })
+                .collect(),
+
+            _ => vec![],
+        }
+    }
+
+    /// Retrieves variants and applies
+    /// substitution by hydrator.
+    ///
+    /// # Notes
+    /// If `Typ` isn't `Typ::Struct(_, _)`, will
+    /// return empty vector.
+    pub fn variants(&self, hydrator: &mut Hydrator) -> Vec<EnumVariant> {
+        // Matching self
+        match self {
+            Typ::Enum(en, generics) => en
+                .borrow()
+                .variants
+                .iter()
+                .map(|var| EnumVariant {
+                    location: var.location.clone(),
+                    name: var.name.clone(),
+                    fields: var
+                        .fields
+                        .iter()
+                        .map(|field| Field {
+                            location: field.location.clone(),
+                            name: field.name.clone(),
+                            typ: hydrator
+                                .instantiate(field.typ.clone(), &mut generics.subtitutions.clone()),
+                        })
+                        .collect(),
+                })
+                .collect(),
+            _ => todo!(),
         }
     }
 }
@@ -391,13 +453,38 @@ impl PartialEq for Typ {
 impl Debug for Typ {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Prelude(prelude) => write!(f, "Type(Prelude({prelude:?}))"),
-            Self::Struct(custom) => write!(f, "Type(Struct({}))", custom.name),
-            Self::Enum(custom_enum) => write!(f, "Type(Enum({}))", custom_enum.name),
-            Self::Function(function) => write!(f, "Type(Function({}))", function.name),
-            Self::Unbound(id) => write!(f, "Type(Unbound({}))", id),
-            Self::Generic(name) => write!(f, "Type(Generic({}))", name),
-            Self::Unit => write!(f, "Type(Unit)"),
+            Self::Prelude(prelude) => write!(f, "{prelude:?}"),
+            Self::Struct(custom, args) => {
+                write!(
+                    f,
+                    "{}{:?}",
+                    custom.borrow().name,
+                    args.subtitutions.values()
+                )
+            }
+            Self::Enum(custom_enum, args) => {
+                write!(
+                    f,
+                    "{}{:?}",
+                    custom_enum.borrow().name,
+                    args.subtitutions.values()
+                )
+            }
+            Self::Function(function) => {
+                write!(
+                    f,
+                    "{:?} -> {:?}",
+                    function
+                        .params
+                        .iter()
+                        .map(|p| p.typ.clone())
+                        .collect::<Vec<Typ>>(),
+                    function.ret
+                )
+            }
+            Self::Unbound(id) => write!(f, "u{}", id),
+            Self::Generic(id) => write!(f, "g{}", id),
+            Self::Unit => write!(f, "Unit"),
         }
     }
 }

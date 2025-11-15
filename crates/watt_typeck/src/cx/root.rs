@@ -1,8 +1,8 @@
 /// Imports
-use crate::typ::Module;
+use crate::typ::typ::Module;
 use ecow::EcoString;
-use watt_common::rc_ptr::RcPtr;
 use std::collections::HashMap;
+use watt_common::rc_ptr::RcPtr;
 
 /// Root ctx
 pub struct RootCx {

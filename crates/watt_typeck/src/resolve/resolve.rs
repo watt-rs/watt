@@ -5,7 +5,7 @@ use crate::{
     typ::{
         def::{ModuleDef, TypeDef},
         res::Res,
-        typ::Module,
+        typ::{Module, Typ},
     },
 };
 use ecow::EcoString;
@@ -106,7 +106,7 @@ impl ModuleResolver {
                             t: name.clone()
                         })
                     }
-                    ModuleDef::Const(_) => {
+                    ModuleDef::Const(_) | ModuleDef::Function(_) => {
                         bail!(TypeckError::VariableIsAlreadyDefined {
                             src: address.source.clone(),
                             span: address.span.clone().into(),
@@ -118,6 +118,43 @@ impl ModuleResolver {
                 }
             }
         }
+    }
+
+    /// Defines a local-level item (local variable) if it is not already defined.
+    ///
+    /// This method inserts a new definition into the last rib's scope. It performs
+    /// checks to ensure that no conflicting definition exists unless `redefine` is true.
+    ///
+    /// # Parameters
+    ///
+    /// - `address: &Address`
+    ///   The source location of the definition, used for error reporting.
+    ///
+    /// - `name: &EcoString`
+    ///   The identifier name for the definition.
+    ///
+    /// - `def: ModuleDef`
+    ///   The definition to insert (type or constant).
+    ///
+    /// - `redefine: bool`
+    ///   Allows overwriting an existing definition. This is used during the
+    ///   **late analysis pass** to replace temporary definitions created
+    ///   during the **early analysis pass**.
+    ///
+    /// # Behavior
+    ///
+    /// - If `redefine` is `true`, the new definition always replaces any existing one.
+    /// - If `redefine` is `false`:
+    ///   - If a variable with the same name exists, a `TypeckError::VariableIsAlreadyDefined` is raised.
+    ///   - Otherwise, the new definition is inserted successfully.
+    ///
+    /// # Important
+    ///
+    /// - This method ensures that the rib maintains a consistent scope.
+    /// - The `redefine` flag is essential for temp variables.
+    ///
+    pub fn define_local(&mut self, address: &Address, name: &EcoString, typ: Typ, redefine: bool) {
+        self.ribs_stack.define(address, name, typ, redefine);
     }
 
     /// Resolves an identifier to its corresponding value, type, or module.
@@ -185,12 +222,14 @@ impl ModuleResolver {
                 Some(typ) => match typ {
                     ModuleDef::Type(ty) => Res::Custom(ty.value.clone()),
                     ModuleDef::Const(ty) => Res::Value(ty.value.clone()),
+                    ModuleDef::Function(ty) => Res::Value(Typ::Function(ty.value.clone())),
                 },
                 None => match self.imported_defs.get(name) {
                     // Checking existence in imported defs
                     Some(typ) => match typ {
                         ModuleDef::Type(ty) => Res::Custom(ty.value.clone()),
                         ModuleDef::Const(ty) => Res::Value(ty.value.clone()),
+                        ModuleDef::Function(ty) => Res::Value(Typ::Function(ty.value.clone())),
                     },
                     None => match self.imported_modules.get(name) {
                         // Checking existence in modules
@@ -242,21 +281,25 @@ impl ModuleResolver {
         match self.module_defs.get(name) {
             Some(typ) => match typ {
                 ModuleDef::Type(ty) => ty.value.clone(),
-                ModuleDef::Const(_) => bail!(TypeckError::CouldNotUseValueAsType {
-                    src: address.source.clone(),
-                    span: address.clone().span.into(),
-                    v: name.clone()
-                }),
+                ModuleDef::Const(_) | ModuleDef::Function(_) => {
+                    bail!(TypeckError::CouldNotUseValueAsType {
+                        src: address.source.clone(),
+                        span: address.clone().span.into(),
+                        v: name.clone()
+                    })
+                }
             },
             None => match self.imported_defs.get(name) {
                 // Checking existence in imported defs
                 Some(typ) => match typ {
                     ModuleDef::Type(ty) => ty.value.clone(),
-                    ModuleDef::Const(_) => bail!(TypeckError::CouldNotUseValueAsType {
-                        src: address.source.clone(),
-                        span: address.clone().span.into(),
-                        v: name.clone()
-                    }),
+                    ModuleDef::Const(_) | ModuleDef::Function(_) => {
+                        bail!(TypeckError::CouldNotUseValueAsType {
+                            src: address.source.clone(),
+                            span: address.clone().span.into(),
+                            v: name.clone()
+                        })
+                    }
                 },
                 None => bail!(TypeckError::TypeIsNotDefined {
                     src: address.source.clone(),

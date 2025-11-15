@@ -1,20 +1,25 @@
 /// Imports
+use crate::typ::typ::GenericParameter;
 use ecow::EcoString;
+use indexmap::IndexMap;
 
 /// Represents a stack-based context for managing generic type parameters
 /// during type inference and hydration.
 ///
 /// The `Generics` structure maintains a stack of generic scopes.
-/// Each scope (a `Vec<EcoString>`) contains the names of generic type
-/// parameters that are currently in scope.
+/// Each scope (a `HashMap<usize>`) contains the names of generic type
+/// parameters that are currently in scope and their ID's.
 ///
 /// This allows the type checker and hydrator to correctly resolve
 /// generic type names to their bound variables in nested or shadowed contexts.
 ///
 /// # Fields
 ///
-/// - `stack: Vec<Vec<EcoString>>` — A stack of scopes, where each scope holds the names
-///   of generics currently active within that scope.
+/// - `stack: Vec<HashMap<EcoString, usize>>` — A stack of scopes,
+///   where each scope holds the names of generics currently active within that scope.
+///
+/// - `last_generic_id: usize` — Last generic id, used to
+///   generate fresh UID's for generics.
 ///
 /// # Example
 ///
@@ -35,7 +40,8 @@ use ecow::EcoString;
 ///
 #[derive(Default)]
 pub struct Generics {
-    stack: Vec<Vec<EcoString>>,
+    stack: Vec<IndexMap<EcoString, usize>>,
+    last_generic_id: usize,
 }
 
 /// Implementation
@@ -43,8 +49,25 @@ impl Generics {
     /// Pushes the scope onto the stack
     /// and inserts given generic arguments
     /// in it.
-    pub fn push_scope(&mut self, generics: Vec<EcoString>) {
-        self.stack.push(generics);
+    ///
+    /// Returns unique ID's of given generic
+    /// arguments.
+    pub fn push_scope(&mut self, generics: Vec<EcoString>) -> Vec<GenericParameter> {
+        let generics: IndexMap<EcoString, usize> =
+            generics.into_iter().map(|g| (g, self.fresh())).collect();
+        self.stack.push(generics.clone());
+        generics
+            .into_iter()
+            .map(|g| GenericParameter { name: g.0, id: g.1 })
+            .collect()
+    }
+
+    /// Pushes the scope onto the stack
+    /// and inserts given generic arguments
+    /// in it.
+    pub fn push_generated_scope(&mut self, generics: Vec<GenericParameter>) {
+        self.stack
+            .push(generics.into_iter().map(|g| (g.name, g.id)).collect());
     }
 
     /// Pops scope from the stack
@@ -52,9 +75,19 @@ impl Generics {
         self.stack.pop();
     }
 
-    /// Checks last scope
-    /// contains generic name
-    pub fn contains(&self, name: &EcoString) -> bool {
-        self.stack.last().map_or(false, |s| s.contains(name))
+    /// Returns generic ID from the last scope,
+    /// if generic exists
+    pub fn get(&self, name: &EcoString) -> Option<usize> {
+        self.stack
+            .last()
+            .map_or(None, |s| s.get(name).map(|it| *it))
+    }
+
+    /// Generates fresh unique id
+    /// for the unbound type variable.
+    ///
+    pub fn fresh(&mut self) -> usize {
+        self.last_generic_id += 1;
+        self.last_generic_id
     }
 }

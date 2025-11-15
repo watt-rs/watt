@@ -13,7 +13,7 @@ use std::{
     fs,
     sync::Arc,
 };
-use watt_ast::ast;
+use watt_ast::ast::{self};
 use watt_common::{bail, package::DraftPackage, rc_ptr::RcPtr};
 use watt_gen::gen_module;
 use watt_lex::lexer::Lexer;
@@ -21,7 +21,7 @@ use watt_lint::lint::LintCx;
 use watt_parse::parser::Parser;
 use watt_typeck::{
     cx::{module::ModuleCx, package::PackageCx, root::RootCx},
-    typ::Module,
+    typ::typ::Module,
 };
 
 /// Completed module

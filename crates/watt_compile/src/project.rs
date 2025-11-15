@@ -8,7 +8,7 @@ use ecow::EcoString;
 use log::info;
 use std::collections::HashMap;
 use watt_common::{package::DraftPackage, rc_ptr::RcPtr};
-use watt_typeck::{cx::root::RootCx, typ::Module};
+use watt_typeck::{cx::root::RootCx, typ::typ::Module};
 
 /// Project compiler
 pub struct ProjectCompiler<'out> {

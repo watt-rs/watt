@@ -3,11 +3,10 @@ use crate::{
     errors::TypeckError,
     typ::{
         def::TypeDef,
-        typ::{Enum, EnumVariant, Typ},
+        typ::{EnumVariant, Typ},
     },
 };
 use ecow::EcoString;
-use std::rc::Rc;
 use watt_common::{address::Address, bail};
 
 /// Represents the result of a name/type resolution.
@@ -24,9 +23,9 @@ use watt_common::{address::Address, bail};
 /// - `Custom(TypeDef)`
 ///   The identifier resolves to a user-defined type (struct or enum).
 ///
-/// - `Variant(Rc<Enum>, EnumVariant)`
+/// - `Variant(Typ, EnumVariant)`
 ///   The identifier resolves to a specific enum variant. Stores a reference
-///   to the enum and the resolved variant.
+///   to the enum instance and the resolved variant.
 ///
 /// - `Value(Typ)`
 ///   The identifier resolves directly to a type/value, which can be any
@@ -36,7 +35,7 @@ use watt_common::{address::Address, bail};
 pub enum Res {
     Module(EcoString),
     Custom(TypeDef),
-    Variant(Rc<Enum>, EnumVariant),
+    Variant(Typ, EnumVariant),
     Value(Typ),
 }
 

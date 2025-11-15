@@ -1,6 +1,8 @@
 import {
     $$match,
     $$equals,
+    $$todo,
+    $$range,
     $$EqPattern,
     $$UnwrapPattern,
     $$WildcardPattern,
@@ -8,13 +10,20 @@ import {
     $$VariantPattern,
 } from "../prelude.js"
 
-import * as io from "../std/io.js"
-import {List} from "../std/list.js"
-
-export function a() {
-    return io.println("hello, world!")
-}
+export const Option = {
+    Some: (value) => ({
+        $meta: "Enum",
+        $enum: "Option",
+        $variant: "Some",
+        value: value
+    }),
+    None: () => ({
+        $meta: "Enum",
+        $enum: "Option",
+        $variant: "None",
+    })
+};
 
 export function main() {
-    a();
+    let a = Option.None()
 }

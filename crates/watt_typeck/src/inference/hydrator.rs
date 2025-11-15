@@ -1,6 +1,9 @@
 /// Imports
-use crate::{inference::generics::Generics, typ::typ::Typ};
-use std::collections::HashMap;
+use crate::{
+    inference::generics::Generics,
+    typ::typ::{Function, GenericArgs, GenericParameter, Parameter, Typ},
+};
+use std::{collections::HashMap, rc::Rc};
 
 /// Performs type variable substitution and instantiation during type inference.
 ///
@@ -70,7 +73,7 @@ pub struct Hydrator {
     last_unbound_id: usize,
 
     /// The currently active generic scopes.
-    generics: Generics,
+    pub(crate) generics: Generics,
 }
 
 /// Implementation
@@ -106,6 +109,26 @@ impl Hydrator {
                 .substitutions
                 .get(&usize)
                 .map_or(it, |s| self.apply(s.clone())),
+            Typ::Enum(en, args) => Typ::Enum(
+                en,
+                GenericArgs {
+                    subtitutions: args
+                        .subtitutions
+                        .iter()
+                        .map(|it| (it.0.clone(), self.apply(it.1.clone())))
+                        .collect(),
+                },
+            ),
+            Typ::Struct(ty, args) => Typ::Struct(
+                ty,
+                GenericArgs {
+                    subtitutions: args
+                        .subtitutions
+                        .iter()
+                        .map(|it| (it.0.clone(), self.apply(it.1.clone())))
+                        .collect(),
+                },
+            ),
             other => other,
         }
     }
@@ -128,5 +151,93 @@ impl Hydrator {
         let id = self.fresh();
         self.substitute(id, to);
         id
+    }
+
+    /// Instantiates type by replacing
+    /// Generic(id) -> Unbound($id)
+    pub fn instantiate(&mut self, t: Typ, generics: &mut HashMap<usize, Typ>) -> Typ {
+        match t {
+            Typ::Prelude(_) | Typ::Unit => t,
+            Typ::Unbound(_) => t,
+            Typ::Generic(id) => {
+                // If typ is already specified
+                if let Some(typ) = generics.get(&id) {
+                    typ.clone()
+                } else {
+                    let fresh = Typ::Unbound(self.fresh());
+                    generics.insert(id, fresh.clone());
+                    fresh
+                }
+            }
+            Typ::Function(rc) => Typ::Function(self.mk_function(rc, generics)),
+            Typ::Struct(rc, args) => {
+                let mut instantiated_generics = self.mk_generics(&rc.borrow().generics, generics);
+
+                instantiated_generics.subtitutions = args
+                    .subtitutions
+                    .iter()
+                    .map(|(k, v)| (k.clone(), self.instantiate(v.clone(), generics)))
+                    .collect();
+
+                Typ::Struct(rc, instantiated_generics)
+            }
+            Typ::Enum(rc, args) => {
+                let mut instantiated_generics = self.mk_generics(&rc.borrow().generics, generics);
+
+                instantiated_generics.subtitutions = args
+                    .subtitutions
+                    .iter()
+                    .map(|(k, v)| (k.clone(), self.instantiate(v.clone(), generics)))
+                    .collect();
+
+                Typ::Enum(rc, instantiated_generics)
+            }
+        }
+    }
+
+    /// Instantiates generics with args
+    /// Generic(id) -> Unbound($id)
+    pub fn mk_generics(
+        &mut self,
+        params: &Vec<GenericParameter>,
+        args: &mut HashMap<usize, Typ>,
+    ) -> GenericArgs {
+        println!("making generics {params:?}.");
+        GenericArgs {
+            subtitutions: params
+                .iter()
+                .map(|p| {
+                    let generic_id = p.id.clone();
+                    (generic_id, self.instantiate(Typ::Generic(generic_id), args))
+                })
+                .collect(),
+        }
+    }
+
+    /// Instantiates function by replacing
+    /// Generic(id) -> Unbound($id)
+    pub fn mk_function(
+        &mut self,
+        rc: Rc<Function>,
+        generics: &mut HashMap<usize, Typ>,
+    ) -> Rc<Function> {
+        let params = rc
+            .params
+            .iter()
+            .cloned()
+            .map(|p| Parameter {
+                location: p.location,
+                typ: self.instantiate(p.typ, generics),
+            })
+            .collect();
+
+        let ret = self.instantiate(rc.ret.clone(), generics);
+        Rc::new(Function {
+            location: rc.location.clone(),
+            name: rc.name.clone(),
+            generics: rc.generics.clone(),
+            params,
+            ret,
+        })
     }
 }

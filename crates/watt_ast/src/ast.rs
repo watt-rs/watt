@@ -35,7 +35,7 @@ pub enum TypePath {
     ///
     /// # Example
     /// ```rust
-    /// let a: module.Ty = 5;
+    /// let a: module.Typ = 5;
     /// ```
     ///
     Module {
@@ -369,12 +369,12 @@ pub enum UseKind {
     ///
     /// # Example 1
     /// ```
-    /// use some/module for Ty
+    /// use some/module for Typ
     /// ```
     ///
     /// # Example 2
     /// ```
-    /// use some/module for Ty, Ty2
+    /// use some/module for Typ, Ty2
     /// ```
     ForNames(Vec<EcoString>),
 }

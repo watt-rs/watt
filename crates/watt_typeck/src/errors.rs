@@ -1,7 +1,8 @@
 /// Imports
-use crate::{
-    typ::{def::ModuleDef, res::Res},
-    typ::{def::TypeDef, typ::Typ},
+use crate::typ::{
+    def::{ModuleDef, TypeDef},
+    res::Res,
+    typ::{Typ},
 };
 use ecow::EcoString;
 use miette::{Diagnostic, NamedSource, SourceSpan};
@@ -15,6 +16,8 @@ unsafe impl Send for Typ {}
 unsafe impl Sync for Typ {}
 unsafe impl Send for Res {}
 unsafe impl Sync for Res {}
+unsafe impl Send for ModuleDef {}
+unsafe impl Sync for ModuleDef {}
 unsafe impl Send for TypeDef {}
 unsafe impl Sync for TypeDef {}
 

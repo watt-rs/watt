@@ -162,3 +162,20 @@ export function $$match(value, patterns) {
 export function $$todo() {
     throw "reached todo code.";
 }
+
+export function $$range(from, to, offset) {
+    const result = [];
+
+    if (from < to) {
+        for (let i = from; i < to + offset; i += 1) {
+            result.push(i);
+        }
+    }
+
+    else {
+        for (let i = from; i > to - offset; i -= 1) {
+            result.push(i);
+        }
+    }
+    return result;
+}

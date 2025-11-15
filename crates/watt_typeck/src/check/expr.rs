@@ -3,19 +3,17 @@ use crate::{
     cx::module::ModuleCx,
     errors::TypeckError,
     ex::ExMatchCx,
-    resolve::{
+    inference::equation::Equation,
+    typ::{
+        def::{ModuleDef, TypeDef},
         res::Res,
-        resolve::{Def, ModDef},
-        rib::RibKind,
+        typ::{Function, Parameter, PreludeType, Typ},
     },
-    typ::{CustomType, Enum, Function, Parameter, PreludeType, Struct, Trait, Typ},
-    unify::Equation,
-    utils::CallResult,
     warnings::TypeckWarning,
 };
 use ecow::EcoString;
 use indexmap::IndexMap;
-use std::{cell::RefCell, rc::Rc};
+use std::{collections::HashMap, rc::Rc};
 use watt_ast::ast::{
     self, BinaryOp, Block, Case, Either, ElseBranch, Expression, Pattern, Publicity, TypePath,
     UnaryOp,
@@ -218,7 +216,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 // If field exists
                 // checking it's publicity
                 Some(def) => match def {
-                    ModDef::CustomType(ty) => {
+                    ModuleDef::Type(ty) => {
                         match ty.publicity {
                             // If field is public, we resolved field
                             Publicity::Public => Res::Custom(ty.value.clone()),
@@ -230,10 +228,22 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                             }),
                         }
                     }
-                    ModDef::Variable(var) => {
+                    ModuleDef::Const(var) => {
                         match var.publicity {
-                            // If field is public, we resolved field
+                            // If coonstant is public, we resolved field
                             Publicity::Public => Res::Value(var.value.clone()),
+                            // Else, raising `module field is private`
+                            _ => bail!(TypeckError::ModuleFieldIsPrivate {
+                                src: self.module.source.clone(),
+                                span: field_location.span.into(),
+                                name: field_name
+                            }),
+                        }
+                    }
+                    ModuleDef::Function(f) => {
+                        match f.publicity {
+                            // If coonstant is public, we resolved field
+                            Publicity::Public => Res::Value(Typ::Function(f.value.clone())),
                             // Else, raising `module field is private`
                             _ => bail!(TypeckError::ModuleFieldIsPrivate {
                                 src: self.module.source.clone(),
@@ -258,82 +268,47 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
     /// Infers enum field access
     fn infer_enum_field_access(
-        &self,
-        en: &Rc<Enum>,
-        field_location: Address,
-        field_name: EcoString,
-    ) -> Res {
-        // Finding variant
-        match en.variants.iter().find(|var| var.name == field_name) {
-            Some(variant) => Res::Variant(en.clone(), variant.clone()),
-            None => bail!(TypeckError::EnumVariantIsNotDefined {
-                src: self.module.source.clone(),
-                span: field_location.span.into(),
-                e: en.name.clone(),
-                variant: field_name
-            }),
-        }
-    }
-
-    /// Infers type field access
-    fn infer_type_field_access(
-        &self,
-        ty: &Rc<RefCell<Struct>>,
+        &mut self,
+        ty: Typ,
+        name: EcoString,
         field_location: Address,
         field_name: EcoString,
     ) -> Res {
         // Finding field
-        let borrowed = ty.borrow();
-        match borrowed.env.get(&field_name) {
-            Some(typ) => match typ.publicity {
-                // Checking publicity
-                Publicity::Public => Res::Value(typ.value.clone()),
-                // Checking environments stack contains type
-                _ => match self.resolver.contains_type_rib() {
-                    // If type is same
-                    Some(t) => {
-                        if t == ty {
-                            Res::Value(typ.value.clone())
-                        } else {
-                            bail!(TypeckError::FieldIsPrivate {
-                                src: self.module.source.clone(),
-                                span: field_location.span.into(),
-                                t: borrowed.name.clone(),
-                                field: field_name
-                            });
-                        }
-                    }
-                    // Else
-                    None => bail!(TypeckError::FieldIsPrivate {
-                        src: self.module.source.clone(),
-                        span: field_location.span.into(),
-                        t: borrowed.name.clone(),
-                        field: field_name
-                    }),
-                },
-            },
+        match ty
+            .variants(&mut self.solver.hydrator)
+            .iter()
+            .find(|f| f.name == field_name)
+        {
+            Some(f) => Res::Variant(ty, f.clone()),
             None => bail!(TypeckError::FieldIsNotDefined {
                 src: self.module.source.clone(),
                 span: field_location.span.into(),
-                t: borrowed.name.clone(),
+                t: name,
                 field: field_name
             }),
         }
     }
 
-    /// Infers trait field access
-    fn infer_trait_field_access(
-        &self,
-        tr: &Rc<Trait>,
+    /// Infers struct field access
+    fn infer_struct_field_access(
+        &mut self,
+        ty: Typ,
+        name: EcoString,
         field_location: Address,
         field_name: EcoString,
     ) -> Res {
-        match tr.functions.get(&field_name) {
-            Some(function) => Res::Value(Typ::Function(function.clone())),
+        // Finding field
+        match ty
+            .fields(&mut self.solver.hydrator)
+            .iter()
+            .find(|f| f.name == field_name)
+        {
+            Some(f) => Res::Value(f.typ.clone()),
             None => bail!(TypeckError::FieldIsNotDefined {
                 src: self.module.source.clone(),
                 span: field_location.span.into(),
-                t: tr.name.clone(),
+                t: name,
                 field: field_name
             }),
         }
@@ -354,30 +329,31 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 self.infer_module_field_access(name.clone(), field_location, field_name)
             }
             // Enum field access
-            Res::Custom(CustomType::Enum(en)) => {
-                self.infer_enum_field_access(&en, field_location, field_name)
+            Res::Custom(TypeDef::Enum(en)) => {
+                let instantiated = Typ::Enum(
+                    en.clone(),
+                    self.solver
+                        .hydrator
+                        .mk_generics(&en.borrow().generics, &mut HashMap::new()),
+                );
+                self.infer_enum_field_access(
+                    instantiated,
+                    en.borrow().name.clone(),
+                    field_location,
+                    field_name,
+                )
             }
             // Type field access
             Res::Value(typ) => match typ {
                 // Custom Type
-                Typ::Struct(ty) => {
-                    let res = self.infer_type_field_access(&ty, field_location, field_name);
-                    res
-                }
-                // Trait
-                Typ::Trait(tr) => self.infer_trait_field_access(&tr, field_location, field_name),
-                // Dyn
-                Typ::Dyn => {
-                    // Returning `dyn` like field type,
-                    // but emitting warning
-                    warn!(
-                        self.package,
-                        TypeckWarning::AccessOfDynField {
-                            src: self.module.source.clone(),
-                            span: field_location.span.into()
-                        }
+                it @ Typ::Struct(ty, _) => {
+                    let res = self.infer_struct_field_access(
+                        it.clone(),
+                        ty.borrow().name.clone(),
+                        field_location,
+                        field_name,
                     );
-                    Res::Value(Typ::Dyn)
+                    res
                 }
                 // Else
                 _ => bail!(TypeckError::CouldNotResolveFieldsIn {
@@ -401,44 +377,42 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         location: Address,
         what: Expression,
         args: Vec<Expression>,
-    ) -> CallResult {
+    ) -> Res {
         let function = self.infer_resolution(what);
         let args = args
             .iter()
             .map(|a| (a.location(), self.infer_expr(a.clone())))
             .collect::<Vec<(Address, Typ)>>();
-        match &function {
+
+        match function.clone() {
             // Custom type
-            Res::Custom(CustomType::Struct(ty)) => {
-                let borrowed = ty.borrow();
-                borrowed.params.iter().zip(args).for_each(|(a, b)| {
+            Res::Custom(TypeDef::Struct(ty)) => {
+                let instantiated = Typ::Struct(
+                    ty.clone(),
                     self.solver
-                        .solve(Equation::Unify((a.location.clone(), a.typ.clone()), b));
-                });
-                CallResult::FromType(Typ::Struct(ty.clone()))
+                        .hydrator
+                        .mk_generics(&ty.borrow().generics, &mut HashMap::new()),
+                );
+
+                instantiated
+                    .fields(&mut self.solver.hydrator)
+                    .into_iter()
+                    .zip(args)
+                    .for_each(|(p, a)| {
+                        self.solver.solve(Equation::Unify((p.location, p.typ), a));
+                    });
+
+                Res::Value(instantiated)
             }
             // Value
             Res::Value(t) => match t {
                 // Function
                 Typ::Function(f) => {
-                    f.params.iter().zip(args).for_each(|(a, b)| {
-                        self.solver
-                            .solve(Equation::Unify((a.location.clone(), a.typ.clone()), b));
+                    let f = self.solver.hydrator.mk_function(f, &mut HashMap::new());
+                    f.params.iter().cloned().zip(args).for_each(|(p, a)| {
+                        self.solver.unify(p.location, p.typ, a.0, a.1);
                     });
-                    CallResult::FromFunction(f.ret.clone(), f.clone())
-                }
-                // Dyn
-                Typ::Dyn => {
-                    // Returning `dyn` call result,
-                    // but emitting warning
-                    warn!(
-                        self.package,
-                        TypeckWarning::CallOfDyn {
-                            src: self.module.source.clone(),
-                            span: location.span.into()
-                        }
-                    );
-                    CallResult::FromDyn
+                    Res::Value(Typ::Function(f))
                 }
                 // Else
                 _ => bail!(TypeckError::CouldNotCall {
@@ -449,11 +423,11 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             },
             // Variant
             Res::Variant(en, variant) => {
-                variant.params.iter().zip(args).for_each(|(a, b)| {
-                    self.solver
-                        .solve(Equation::Unify((variant.location.clone(), a.1.clone()), b));
+                variant.fields.iter().cloned().zip(args).for_each(|(p, a)| {
+                    self.solver.solve(Equation::Unify((p.location, p.typ), a));
                 });
-                CallResult::FromEnum(Typ::Enum(en.clone()))
+
+                Res::Value(en)
             }
             _ => bail!(TypeckError::CouldNotCall {
                 src: self.module.source.clone(),
@@ -462,7 +436,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             }),
         }
     }
-
 
     /// Infers resolution
     pub(crate) fn infer_resolution(&mut self, expr: Expression) -> Res {
@@ -477,12 +450,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 location,
                 what,
                 args,
-            } => match self.infer_call(location.clone(), *what, args) {
-                CallResult::FromFunction(typ, _) => Res::Value(typ),
-                CallResult::FromType(t) => Res::Value(t),
-                CallResult::FromEnum(e) => Res::Value(e),
-                CallResult::FromDyn => Res::Value(Typ::Dyn),
-            },
+            } => self.infer_call(location.clone(), *what, args),
             expr => bail!(TypeckError::UnexpectedExprInResolution {
                 expr: format!("{expr:?}").into()
             }),
@@ -516,22 +484,20 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
         // creating function
         let function = Function {
-            source: self.module.source.clone(),
             location: location.clone(),
-            uid: self.fresh_id(),
             name: EcoString::from("$anonymous"),
+            generics: Vec::new(),
             params: params.clone().into_values().collect(),
             ret: ret.clone(),
         };
 
         // pushing new scope
-        self.resolver.push_rib(RibKind::Function);
+        self.resolver.push_rib();
 
         // defining params in new scope
-        params.into_iter().for_each(|p| {
-            self.resolver
-                .define(&location, &p.0, Def::Local(p.1.typ), false)
-        });
+        params
+            .into_iter()
+            .for_each(|p| self.resolver.define_local(&location, &p.0, p.1.typ, false));
 
         // inferring body
         let (block_location, inferred_block) = match body {
@@ -559,34 +525,24 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 match &res {
                     Res::Variant(en, variant) => {
                         // If types aren't equal
-                        let en_typ = Typ::Enum(en.clone());
-                        if inferred_what != en_typ {
+                        if inferred_what != *en {
                             bail!(TypeckError::TypesMissmatch {
                                 src: self.module.source.clone(),
                                 span: case.address.span.clone().into(),
-                                expected: en_typ,
+                                expected: en.clone(),
                                 got: inferred_what.clone()
                             });
                         }
                         // If types equal, checking fields existence
                         else {
                             fields.into_iter().for_each(|field| {
-                                match variant.params.get(&field.1) {
-                                    // Defining field with it's type, if it exists
-                                    Some(typ) => {
-                                        self.resolver.define(
-                                            &field.0,
-                                            &field.1,
-                                            Def::Local(typ.clone()),
-                                            true,
-                                        );
-                                    }
-                                    None => bail!(TypeckError::EnumVariantFieldIsNotDefined {
+                                if !variant.fields.iter().any(|f| f.name == field.1) {
+                                    bail!(TypeckError::EnumVariantFieldIsNotDefined {
                                         src: self.module.source.clone(),
-                                        span: case.address.span.clone().into(),
+                                        span: field.0.span.into(),
                                         res: res.clone(),
                                         field: field.1
-                                    }),
+                                    })
                                 }
                             });
                         }
@@ -650,12 +606,11 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 match &res {
                     Res::Variant(en, _) => {
                         // If types aren't equal
-                        let en_typ = Typ::Enum(en.clone());
-                        if inferred_what != en_typ {
+                        if inferred_what != *en {
                             bail!(TypeckError::TypesMissmatch {
                                 src: self.module.source.clone(),
                                 span: case.address.span.clone().into(),
-                                expected: en_typ,
+                                expected: en.clone(),
                                 got: inferred_what.clone()
                             });
                         }
@@ -668,12 +623,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 }
             }
             Pattern::BindTo(name) => {
-                self.resolver.define(
-                    &case.address,
-                    &name,
-                    Def::Local(inferred_what.clone()),
-                    false,
-                );
+                self.resolver
+                    .define_local(&case.address, &name, inferred_what.clone(), false);
             }
             Pattern::Or(pat1, pat2) => {
                 self.analyze_pattern(inferred_what.clone(), case, &pat1);
@@ -696,7 +647,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // type checking cases
         for case in cases.clone() {
             // pattern scope start
-            self.resolver.push_rib(RibKind::Pattern);
+            self.resolver.push_rib();
             // analyzing pattern
             self.analyze_pattern(inferred_what.clone(), &case, &case.pattern);
             // analyzing body
@@ -735,7 +686,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         else_branches: Vec<ElseBranch>,
     ) -> Typ {
         // pushing rib
-        self.resolver.push_rib(RibKind::Conditional);
+        self.resolver.push_rib();
         // inferring logical
         let inferred_logical = self.infer_expr(logical);
         match inferred_logical {
@@ -801,7 +752,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
     /// Infers expression
     pub(crate) fn infer_expr(&mut self, expr: Expression) -> Typ {
-        match expr {
+        // Inferencing expression
+        let result = match expr {
             Expression::Float { .. } => Typ::Prelude(PreludeType::Float),
             Expression::Int { .. } => Typ::Prelude(PreludeType::Int),
             Expression::String { .. } => Typ::Prelude(PreludeType::String),
@@ -841,12 +793,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 location,
                 what,
                 args,
-            } => match self.infer_call(location.clone(), *what, args) {
-                CallResult::FromFunction(typ, _) => typ,
-                CallResult::FromType(t) => t,
-                CallResult::FromEnum(e) => e,
-                CallResult::FromDyn => Typ::Dyn,
-            },
+            } => self
+                .infer_call(location.clone(), *what, args)
+                .unwrap_typ(&location),
             Expression::Function {
                 location,
                 params,
@@ -865,6 +814,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 body,
                 else_branches,
             } => self.infer_if(location, *logical, body, else_branches),
-        }
+        };
+        // Applying substs
+        self.solver.hydrator.apply(result)
     }
 }

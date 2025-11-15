@@ -1,11 +1,9 @@
-use std/io as io
-
-fn a(): string =
-    b()
-
-fn b(): string =
-    "Hello, world!"
+enum Option[T] {
+    Some(value: T),
+    None
+}
 
 fn main() {
-    io.println(a());
+    let a: Option[int] = Option.None();
+    a = Option.Some(true);
 }

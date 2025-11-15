@@ -209,8 +209,8 @@ impl<'file> Parser<'file> {
         let mut params: Vec<TypePath> = Vec::new();
 
         // `[$type, $type ..n]`
-        self.consume(TokenKind::Lparen);
-        if !self.check(TokenKind::Rparen) {
+        self.consume(TokenKind::Lbracket);
+        if !self.check(TokenKind::Rbracket) {
             params.push(self.type_annotation());
 
             while self.check(TokenKind::Comma) {
@@ -218,7 +218,7 @@ impl<'file> Parser<'file> {
                 params.push(self.type_annotation());
             }
         }
-        self.consume(TokenKind::Rparen);
+        self.consume(TokenKind::Rbracket);
 
         params
     }

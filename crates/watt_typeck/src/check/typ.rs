@@ -4,28 +4,22 @@ use crate::{
     errors::{TypeckError, TypeckRelated},
     typ::{
         def::{ModuleDef, TypeDef},
-        typ::{Enum, Function, Parameter, PreludeType, Struct, Typ},
+        typ::{Enum, Function, GenericArgs, Parameter, PreludeType, Struct, Typ},
     },
 };
 use ecow::EcoString;
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 use watt_ast::ast::{Publicity, TypePath};
 use watt_common::{address::Address, bail};
 
 /// Implementation
 impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
-    /// Ensures generic parameters arity is correct
-    fn ensure_generic_params_arity<F>(
-        &self,
-        location: &Address,
-        expected: usize,
-        got: usize,
-        typ: F,
-    ) -> Typ
+    /// Ensures no generic parameters given
+    fn ensure_no_generics<F>(&self, location: &Address, got: usize, typ: F) -> Typ
     where
         F: FnOnce() -> Typ,
     {
-        if expected == got {
+        if got == 0 {
             typ()
         } else {
             bail!(TypeckError::ArityMissmatch {
@@ -33,7 +27,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     src: location.source.clone(),
                     span: location.span.clone().into()
                 }],
-                expected,
+                expected: 0,
                 got
             })
         }
@@ -62,24 +56,26 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     ) -> Typ {
         match name.as_str() {
             // Prelude types
-            "int" => self.ensure_generic_params_arity(&location, 0, generics.len(), || {
-                Typ::Prelude(PreludeType::Int)
-            }),
-            "float" => self.ensure_generic_params_arity(&location, 0, generics.len(), || {
+            "int" => self
+                .ensure_no_generics(&location, generics.len(), || Typ::Prelude(PreludeType::Int)),
+            "float" => self.ensure_no_generics(&location, generics.len(), || {
                 Typ::Prelude(PreludeType::Float)
             }),
-            "bool" => self.ensure_generic_params_arity(&location, 0, generics.len(), || {
+            "bool" => self.ensure_no_generics(&location, generics.len(), || {
                 Typ::Prelude(PreludeType::Bool)
             }),
-            "string" => self.ensure_generic_params_arity(&location, 0, generics.len(), || {
+            "string" => self.ensure_no_generics(&location, generics.len(), || {
                 Typ::Prelude(PreludeType::String)
             }),
-            "unit" => self.ensure_generic_params_arity(&location, 0, generics.len(), || Typ::Unit),
+            "unit" => self.ensure_no_generics(&location, generics.len(), || Typ::Unit),
 
             // User-defined types
-            _ => match self.resolver.resolve_type(&location, &name) {
-                TypeDef::Enum(en) => self.instantiate_enum_type(&location, en, generics),
-                TypeDef::Struct(st) => self.instantiate_struct_type(&location, st, generics),
+            _ => match self.solver.hydrator.generics.get(&name) {
+                Some(id) => Typ::Generic(id),
+                None => match self.resolver.resolve_type(&location, &name) {
+                    TypeDef::Enum(en) => self.instantiate_enum_type(&location, en, generics),
+                    TypeDef::Struct(st) => self.instantiate_struct_type(&location, st, generics),
+                },
             },
         }
     }
@@ -103,11 +99,13 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 span: location.span.into(),
                 def: def.value.clone()
             }),
-            Some(ModuleDef::Const(_)) => bail!(TypeckError::CouldNotUseValueAsType {
-                src: self.module.source.clone(),
-                span: location.span.into(),
-                v: name
-            }),
+            Some(ModuleDef::Const(_)) | Some(ModuleDef::Function(_)) => {
+                bail!(TypeckError::CouldNotUseValueAsType {
+                    src: self.module.source.clone(),
+                    span: location.span.into(),
+                    v: name
+                })
+            }
             None => bail!(TypeckError::TypeIsNotDefined {
                 src: self.module.source.clone(),
                 span: location.span.into(),
@@ -121,7 +119,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
     }
 
-    /// Infers a function type annotation like `(int, string) -> bool`.
+    /// Infers a function type annotation like `fn(int, string): bool`.
     fn infer_function_type_path(
         &mut self,
         location: Address,
@@ -147,44 +145,50 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     fn instantiate_enum_type(
         &mut self,
         location: &Address,
-        en: Rc<Enum>,
+        en: Rc<RefCell<Enum>>,
         generics: Vec<TypePath>,
     ) -> Typ {
-        self.check_generic_params_arity(location, en.generics.len(), generics.len());
+        self.check_generic_params_arity(location, en.borrow().generics.len(), generics.len());
 
-        let mut substitutions = en
-            .generics
-            .iter()
-            .zip(generics)
-            .map(|(param, arg)| {
-                let ty = self.infer_type_annotation(arg);
-                (param.typ, self.solver.hydrator.bind(ty))
-            })
-            .collect();
+        let substitutions = GenericArgs {
+            subtitutions: en
+                .borrow()
+                .generics
+                .iter()
+                .zip(generics)
+                .map(|(param, arg)| {
+                    let ty = self.infer_type_annotation(arg);
+                    (param.id, ty)
+                })
+                .collect(),
+        };
 
-        Typ::Enum(self.solver.instantiate_enum(en, &mut substitutions))
+        Typ::Enum(en, substitutions)
     }
 
     /// Instantiates a struct type with its generic parameters.
     fn instantiate_struct_type(
         &mut self,
         location: &Address,
-        st: Rc<Struct>,
+        st: Rc<RefCell<Struct>>,
         generics: Vec<TypePath>,
     ) -> Typ {
-        self.check_generic_params_arity(location, st.generics.len(), generics.len());
+        self.check_generic_params_arity(location, st.borrow().generics.len(), generics.len());
 
-        let mut substitutions = st
-            .generics
-            .iter()
-            .zip(generics)
-            .map(|(param, arg)| {
-                let ty = self.infer_type_annotation(arg);
-                (param.typ, self.solver.hydrator.bind(ty))
-            })
-            .collect();
+        let substitutions = GenericArgs {
+            subtitutions: st
+                .borrow()
+                .generics
+                .iter()
+                .zip(generics)
+                .map(|(param, arg)| {
+                    let ty = self.infer_type_annotation(arg);
+                    (param.id, ty)
+                })
+                .collect(),
+        };
 
-        Typ::Struct(self.solver.instantiate_struct(st, &mut substitutions))
+        Typ::Struct(st, substitutions)
     }
 
     /// Infers a type annotation from a [`TypePath`].
@@ -199,7 +203,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// Each branch validates generic parameters count and ensures
     /// access visibility for types imported from other modules.
     pub(crate) fn infer_type_annotation(&mut self, path: TypePath) -> Typ {
-        match path {
+        match path.clone() {
             TypePath::Local {
                 location,
                 name,

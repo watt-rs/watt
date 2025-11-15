@@ -2,9 +2,8 @@
 use crate::{
     cx::module::ModuleCx,
     errors::TypeckError,
-    resolve::{resolve::Def, rib::RibKind},
-    typ::{PreludeType, Typ},
-    unify::Equation,
+    inference::equation::Equation,
+    typ::typ::{PreludeType, Typ},
 };
 use ecow::EcoString;
 use watt_ast::ast::*;
@@ -21,7 +20,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         body: Either<Block, Expression>,
     ) {
         // pushing rib
-        self.resolver.push_rib(RibKind::Loop);
+        self.resolver.push_rib();
         // inferring logical
         let inferred_logical = self.infer_expr(logical);
         match inferred_logical {
@@ -101,14 +100,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         body: Either<Block, Expression>,
     ) {
         // pushing rib
-        self.resolver.push_rib(RibKind::Loop);
+        self.resolver.push_rib();
         // defining variable for iterations
-        self.resolver.define(
-            &location,
-            &name,
-            Def::Local(Typ::Prelude(PreludeType::Int)),
-            false,
-        );
+        self.resolver
+            .define_local(&location, &name, Typ::Prelude(PreludeType::Int), false);
         // analyzing range
         self.analyze_range(range);
         // inferring block
@@ -139,11 +134,11 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     (value_location.clone(), inferred_value.clone()),
                 ));
                 self.resolver
-                    .define(&location, &name, Def::Local(annotated), false)
+                    .define_local(&location, &name, annotated, false)
             }
             None => self
                 .resolver
-                .define(&location, &name, Def::Local(inferred_value), false),
+                .define_local(&location, &name, inferred_value, false),
         }
     }
 

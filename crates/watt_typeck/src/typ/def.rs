@@ -1,6 +1,6 @@
 /// Imports
-use crate::typ::typ::{Enum, Struct, Typ, WithPublicity};
-use std::{fmt::Debug, rc::Rc};
+use crate::typ::typ::{Enum, Function, Struct, Typ, WithPublicity};
+use std::{cell::RefCell, fmt::Debug, rc::Rc};
 
 /// Represents a module definition for a resolver.
 ///
@@ -14,14 +14,19 @@ use std::{fmt::Debug, rc::Rc};
 ///   Contains information about generics, fields, etc.
 ///
 /// - `Const(WithPublicity<Typ>)`
-///   Represents a constant variable with a fully inferred type.
+///   Represents a constant variable with a fully inferenced type.
 ///   The type of a constant **cannot** be `Typ::Generic` or `Typ::Unbound`; it must
 ///   be fully concrete (`Prelude`, `Struct`, `Enum`, `Function`, or `Unit`).
+///
+/// - `Function(WithPublicity<Rc<Function>>)`
+///   Represents a function.
 ///
 #[derive(Clone)]
 pub enum ModuleDef {
     /// User-defined type
     Type(WithPublicity<TypeDef>),
+    /// Function
+    Function(WithPublicity<Rc<Function>>),
     /// Constant with fully inferred type
     Const(WithPublicity<Typ>),
 }
@@ -32,6 +37,7 @@ impl Debug for ModuleDef {
         match self {
             ModuleDef::Type(ty) => write!(f, "Type({ty:?})"),
             ModuleDef::Const(ty) => write!(f, "Const({ty:?})"),
+            ModuleDef::Function(ty) => write!(f, "Function({ty:?})"),
         }
     }
 }
@@ -40,16 +46,16 @@ impl Debug for ModuleDef {
 ///
 /// # Variants
 ///
-/// - `Enum(Rc<Enum>)`
+/// - `Enum(Rc<RefCell<Enum>>)`
 ///   Represents enum type definition
 ///
-/// - `Struct(Rc<Struct>)`
+/// - `Struct(Rc<RefCell<Struct>>)`
 ///   Represents struct type definition
 ///
 #[derive(Clone, PartialEq)]
 pub enum TypeDef {
-    Enum(Rc<Enum>),
-    Struct(Rc<Struct>),
+    Enum(Rc<RefCell<Enum>>),
+    Struct(Rc<RefCell<Struct>>),
 }
 
 /// Debug implementation
