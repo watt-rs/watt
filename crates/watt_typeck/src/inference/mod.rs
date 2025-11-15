@@ -131,7 +131,7 @@ impl EquationsSolver {
                             .into_iter()
                             .zip(t2.fields(&mut self.hydrator))
                             .for_each(|(a, b)| {
-                                self.unify(a.location, a.typ, b.location, b.typ);
+                                self.unify(l1.clone(), a.typ, l2.clone(), b.typ);
                             });
                     }
                     t1
@@ -144,9 +144,9 @@ impl EquationsSolver {
                             .for_each(|(v1, v2)| {
                                 v1.fields.iter().zip(v2.fields).for_each(|(a, b)| {
                                     self.unify(
-                                        a.location.clone(),
+                                        l1.clone(),
                                         a.typ.clone(),
-                                        b.location.clone(),
+                                        l2.clone(),
                                         b.typ.clone(),
                                     );
                                 });

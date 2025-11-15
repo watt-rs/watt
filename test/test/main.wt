@@ -1,9 +1,10 @@
-enum Option[T] {
-    Some(value: T),
-    None
+enum Result[V, E] {
+    Ok(value: V),
+    Error(error: E)
 }
 
 fn main() {
-    let a: Option[int] = Option.None();
-    a = Option.Some(true);
+    let a = Result.Ok(3);
+    a = Result.Error(false);
+    let b: Result[int, int] = a;
 }

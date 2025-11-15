@@ -10,20 +10,23 @@ import {
     $$VariantPattern,
 } from "../prelude.js"
 
-export const Option = {
-    Some: (value) => ({
+export const Result = {
+    Ok: (value) => ({
         $meta: "Enum",
-        $enum: "Option",
-        $variant: "Some",
+        $enum: "Result",
+        $variant: "Ok",
         value: value
     }),
-    None: () => ({
+    Error: (error) => ({
         $meta: "Enum",
-        $enum: "Option",
-        $variant: "None",
+        $enum: "Result",
+        $variant: "Error",
+        error: error
     })
 };
 
 export function main() {
-    let a = Option.None()
+    let a = Result.Ok(3)
+    a = Result.Error(4)
+    let b = a
 }
