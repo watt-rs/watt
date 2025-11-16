@@ -2,7 +2,7 @@
 use crate::typ::{
     def::{ModuleDef, TypeDef},
     res::Res,
-    typ::{Typ},
+    typ::Typ,
 };
 use ecow::EcoString;
 use miette::{Diagnostic, NamedSource, SourceSpan};
@@ -89,6 +89,14 @@ pub enum TypeckError {
         #[label("this is not defined.")]
         span: SourceSpan,
         name: EcoString,
+    },
+    #[error("could not assign value to a constant.")]
+    #[diagnostic(code(typeck::could_not_assign_constant))]
+    CouldNotAssignConstant {
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label("this is unavailable.")]
+        span: SourceSpan,
     },
     #[error("could not unify {t1:?} and {t2:?}.")]
     #[diagnostic(code(typeck::could_not_unify))]

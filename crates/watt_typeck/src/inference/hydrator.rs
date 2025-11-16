@@ -200,7 +200,6 @@ impl Hydrator {
         params: &Vec<GenericParameter>,
         args: &mut HashMap<usize, Typ>,
     ) -> GenericArgs {
-        println!("making generics {params:?}.");
         GenericArgs {
             subtitutions: params
                 .iter()

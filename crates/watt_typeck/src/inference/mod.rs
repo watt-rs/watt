@@ -56,7 +56,6 @@ impl EquationsSolver {
         let t1 = self.apply(t1);
         let t2 = self.apply(t2);
         // Unifying
-        println!("unifying: {t1:?} && {t2:?}");
         if t1 != t2 {
             match (&t1, &t2) {
                 (Typ::Prelude(a), Typ::Prelude(b)) => match (a, b) {

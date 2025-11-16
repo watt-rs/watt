@@ -66,8 +66,7 @@ pub enum TokenKind {
     Extern,    // extern
     For,       // for
     Todo,      // todo
-    Trait,     // trait
-    Impl,      // impl
+    Const,     // const
 }
 
 /// Token structure

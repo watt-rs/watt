@@ -690,16 +690,16 @@ pub enum Declaration {
         typ: Option<TypePath>,
         body: EcoString,
     },
-    /// Definition statement
+    /// Constant statement
     ///
-    /// let `name` = `value`
+    /// const `name` = `value`
     ///
-    VarDef {
+    Const {
         location: Address,
         publicity: Publicity,
         name: EcoString,
         value: Expression,
-        typ: Option<TypePath>,
+        typ: TypePath,
     },
     /// Function definition
     Function {

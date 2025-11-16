@@ -28,8 +28,11 @@ use watt_common::{address::Address, bail};
 ///   to the enum instance and the resolved variant.
 ///
 /// - `Value(Typ)`
-///   The identifier resolves directly to a type/value, which can be any
-///   concrete `Typ` (including prelude types, structs, enums, functions, or unit).
+///   The identifier resolves directly to a type/value
+///
+/// - `Const(Typ)`
+///   The identifier resolves directly to a const type/value
+
 ///
 #[derive(Debug, Clone)]
 pub enum Res {
@@ -37,6 +40,7 @@ pub enum Res {
     Custom(TypeDef),
     Variant(Typ, EnumVariant),
     Value(Typ),
+    Const(Typ),
 }
 
 /// Resolution implementation
@@ -57,10 +61,11 @@ impl Res {
     /// # Panics / Errors
     ///
     /// Raises `TypeckError::UnexpectedResolution` if the resolution
-    /// is not a `Res::Value`.
+    /// is not a `Res::Value` or `Res::Const`.
     pub fn unwrap_typ(self, address: &Address) -> Typ {
         match self {
             Res::Value(t) => t,
+            Res::Const(t) => t,
             _ => bail!(TypeckError::UnexpectedResolution {
                 src: address.source.clone(),
                 span: address.clone().span.into(),

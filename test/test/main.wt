@@ -1,12 +1,1 @@
-type Mammoth[T] {
-    iceberg: Iceberg[T]
-}
-
-type Iceberg[T] {
-    value: T
-}
-
-pub fn main() {
-    let mammoth = Mammoth(Iceberg(3));
-    let a: int = mammoth.iceberg;
-}
+const a: int = 4 + 100 * 2

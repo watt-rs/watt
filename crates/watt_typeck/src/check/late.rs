@@ -178,19 +178,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // Popping generics
         self.solver.hydrator.generics.pop_scope();
     }
-
-    /// Analyzes define
-    pub(crate) fn late_analyze_define(
-        &mut self,
-        location: Address,
-        publicity: Publicity,
-        name: EcoString,
-        value: Expression,
-        typ: Option<TypePath>,
-    ) {
-        todo!();
-    }
-
     /// Late declaration analysis
     pub fn late_analyze_declaration(&mut self, declaration: Declaration) {
         match declaration {
@@ -206,22 +193,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 variants,
                 ..
             } => self.late_analyze_enum(location, name, variants),
-            Declaration::ExternFunction {
-                location,
-                name,
-                publicity,
-                generics,
-                params,
-                typ,
-                body,
-            } => todo!(),
-            Declaration::VarDef {
-                location,
-                publicity,
-                name,
-                value,
-                typ,
-            } => todo!(),
             Declaration::Function {
                 location,
                 publicity,
@@ -232,6 +203,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 typ,
             } => self
                 .late_analyze_function_decl(location, publicity, name, generics, params, body, typ),
+            // It's no need to do some other
+            // analysys of extern function or constants
+            _ => {}
         }
     }
 

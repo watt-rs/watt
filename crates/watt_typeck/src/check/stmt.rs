@@ -3,7 +3,10 @@ use crate::{
     cx::module::ModuleCx,
     errors::TypeckError,
     inference::equation::Equation,
-    typ::typ::{PreludeType, Typ},
+    typ::{
+        res::Res,
+        typ::{PreludeType, Typ},
+    },
 };
 use ecow::EcoString;
 use watt_ast::ast::*;
@@ -144,11 +147,17 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
     /// Analyzes assignment
     fn analyze_assignment(&mut self, location: Address, what: Expression, value: Expression) {
-        let inferred_what = self.infer_expr(what);
+        let inferred_what = self.infer_resolution(what);
+        if let Res::Const(_) = inferred_what {
+            bail!(TypeckError::CouldNotAssignConstant {
+                src: location.source.clone(),
+                span: location.span.into(),
+            })
+        }
         let value_location = value.location();
         let inferred_value = self.infer_expr(value);
         self.solver.solve(Equation::Unify(
-            (location, inferred_what),
+            (location.clone(), inferred_what.unwrap_typ(&location)),
             (value_location, inferred_value),
         ));
     }

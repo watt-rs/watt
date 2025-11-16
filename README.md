@@ -2,29 +2,27 @@
 
 🔦 Simple example:
 ```
-use std/io as io
-
 enum Power {
 	On,
 	Off
 }
 
-type Flashlight(powered: Power) {
-  is_powered: Power = powered
+type Flashlight {
+  is_powered: Power
+}
 
-  pub fn power(on: Power) {
-    self.is_powered = on;
-    io.println("power: " <> match self.is_powered {
-      Power.On -> "on"
-      Power.Off -> "off"
-    })
-  }
+pub fn power(flashlight: Flashlight, on: Power) {
+  flashlight.is_powered = on;
+  let result = "power: " <> match flashlight.is_powered {
+    Power.On -> "on"
+    Power.Off -> "off"
+  };
 }
 
 fn main() {
   let flashlight = Flashlight(Power.Off());
-  flashlight.power(Power.On());
-  flashlight.power(Power.Off());
-  flashlight.power(Power.On());
+  power(flashlight, Power.On());
+  power(flashlight, Power.Off());
+  power(flashlight, Power.On());
 }
 ```

@@ -352,8 +352,8 @@ pub fn gen_declaration(decl: Declaration) -> js::Tokens {
                 }
             }
         }
-        Declaration::VarDef { name, value, .. } => quote! {
-            export let $(try_escape_js(&name)) = $(gen_expression(value));
+        Declaration::Const { name, value, .. } => quote! {
+            export const $(try_escape_js(&name)) = $(gen_expression(value));
         },
         Declaration::TypeDeclaration { name, fields, .. } => {
             // constructor($field, $field, n...)

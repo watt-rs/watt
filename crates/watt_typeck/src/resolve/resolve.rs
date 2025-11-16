@@ -209,7 +209,8 @@ impl ModuleResolver {
     /// A `Res` enum indicating the resolved entity:
     /// - `Res::Module(EcoString)` -> a module
     /// - `Res::Custom(TypeDef)` -> a user-defined type
-    /// - `Res::Value(Typ)` -> a value or constant
+    /// - `Res::Value(Typ)` -> a value
+    /// - `Res::Const(Typ)` -> a constant value
     ///
     /// `Res::Variant(Rc<Enum>, EnumVariant)` will be never returned
     ///
@@ -221,14 +222,14 @@ impl ModuleResolver {
                 // Checking existence in module definitions
                 Some(typ) => match typ {
                     ModuleDef::Type(ty) => Res::Custom(ty.value.clone()),
-                    ModuleDef::Const(ty) => Res::Value(ty.value.clone()),
+                    ModuleDef::Const(ty) => Res::Const(ty.value.clone()),
                     ModuleDef::Function(ty) => Res::Value(Typ::Function(ty.value.clone())),
                 },
                 None => match self.imported_defs.get(name) {
                     // Checking existence in imported defs
                     Some(typ) => match typ {
                         ModuleDef::Type(ty) => Res::Custom(ty.value.clone()),
-                        ModuleDef::Const(ty) => Res::Value(ty.value.clone()),
+                        ModuleDef::Const(ty) => Res::Const(ty.value.clone()),
                         ModuleDef::Function(ty) => Res::Value(Typ::Function(ty.value.clone())),
                     },
                     None => match self.imported_modules.get(name) {

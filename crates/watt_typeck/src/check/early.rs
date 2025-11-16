@@ -3,13 +3,14 @@ use std::{cell::RefCell, rc::Rc};
 /// Imports
 use crate::{
     cx::module::ModuleCx,
+    inference::equation::Equation,
     typ::{
         def::{ModuleDef, TypeDef},
         typ::{Enum, Function, Struct, Typ, WithPublicity},
     },
 };
 use ecow::EcoString;
-use watt_ast::ast::{Declaration, Publicity};
+use watt_ast::ast::{Declaration, Expression, Publicity, TypePath};
 use watt_common::address::Address;
 
 /// Early analyze process
@@ -142,6 +143,37 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         self.solver.hydrator.generics.pop_scope();
     }
 
+    /// Defines const variable
+    fn define_const(
+        &mut self,
+        location: Address,
+        publicity: Publicity,
+        name: EcoString,
+        value: Expression,
+        typ: TypePath,
+    ) {
+        // Const inference
+        let annotated_location = typ.location();
+        let annotated = self.infer_type_annotation(typ);
+        let inferred_location = value.location();
+        let inferred = self.infer_expr(value);
+        self.solver.solve(Equation::Unify(
+            (annotated_location, annotated.clone()),
+            (inferred_location, inferred),
+        ));
+
+        // Defining constant
+        self.resolver.define_module(
+            &location,
+            &name,
+            ModuleDef::Const(WithPublicity {
+                publicity,
+                value: annotated,
+            }),
+            false,
+        );
+    }
+
     /// Early defines declaration
     pub(crate) fn early_define(&mut self, declaration: &Declaration) {
         // Matching declaration
@@ -174,7 +206,13 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 name,
                 ..
             } => self.early_define_function_decl(location, publicity, generics, name),
-            _ => {}
+            Declaration::Const {
+                location,
+                publicity,
+                name,
+                value,
+                typ,
+            } => self.define_const(location, publicity, name, value, typ),
         }
     }
 }

@@ -175,29 +175,65 @@ impl<'file> Parser<'file> {
         }
     }
 
-    /// Let declaration parsing
-    fn let_declaration(&mut self, publicity: Publicity) -> Declaration {
-        // `let $id`
-        self.consume(TokenKind::Let);
+    /// Checking expression is const
+    fn check_value_const(&mut self, expr: &Expression) {
+        #[allow(unused_variables)]
+        match expr {
+            // Expressions that depedends on variables
+            // or logical clauses are non-const by default.
+            Expression::PrefixVar { location, .. }
+            | Expression::SuffixVar { location, .. }
+            | Expression::Call { location, .. }
+            | Expression::Function { location, .. }
+            | Expression::Match { location, .. }
+            | Expression::Todo { location }
+            | Expression::If { location, .. } => bail!(ParseError::NonConstExpr {
+                src: self.source.clone(),
+                span: location.span.clone().into(),
+            }),
+            // Literals are const by default.
+            Expression::Int { location, .. }
+            | Expression::Float { location, .. }
+            | Expression::String { location, .. }
+            | Expression::Bool { location, .. } => {}
+            // Binary and unary operations need to be checked.
+            Expression::Bin {
+                location,
+                left,
+                right,
+                op,
+            } => {
+                self.check_value_const(&left);
+                self.check_value_const(&right);
+            }
+            Expression::Unary {
+                location,
+                value,
+                op,
+            } => {
+                self.check_value_const(&value);
+            }
+        }
+    }
+
+    /// Constant declaration parsing
+    fn const_declaration(&mut self, publicity: Publicity) -> Declaration {
+        // `const $id`
+        self.consume(TokenKind::Const);
         let name = self.consume(TokenKind::Id).clone();
 
-        // if type specified
-        let typ = if self.check(TokenKind::Colon) {
-            // `: $type`
-            self.consume(TokenKind::Colon);
-            Option::Some(self.type_annotation())
-        }
-        // else
-        else {
-            // setting type to None
-            Option::None
-        };
+        // `: $type`
+        self.consume(TokenKind::Colon);
+        let typ = self.type_annotation();
 
         // `= $value`
         self.consume(TokenKind::Assign);
         let value = self.expr();
 
-        Declaration::VarDef {
+        // Checking expression is const
+        self.check_value_const(&value);
+
+        Declaration::Const {
             location: name.address,
             publicity,
             name: name.value,
@@ -432,7 +468,7 @@ impl<'file> Parser<'file> {
             TokenKind::Type => self.type_declaration(publicity),
             TokenKind::Fn => self.fn_declaration(publicity),
             TokenKind::Enum => self.enum_declaration(publicity),
-            TokenKind::Let => self.let_declaration(publicity),
+            TokenKind::Const => self.const_declaration(publicity),
             TokenKind::Extern => self.extern_fn_declaration(publicity),
             _ => {
                 let token = self.peek().clone();

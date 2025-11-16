@@ -126,4 +126,15 @@ pub enum ParseError {
         span: SourceSpan,
         unexpected: EcoString,
     },
+    #[error("non-const value.")]
+    #[diagnostic(
+        code(parse::nonconst_expr),
+        help("constant values can't depend on the logical clauses or variables.")
+    )]
+    NonConstExpr {
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label("this can not be used in constant value.")]
+        span: SourceSpan,
+    },
 }

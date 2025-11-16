@@ -145,7 +145,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     )
                 }
             }
-            Declaration::VarDef {
+            Declaration::Const {
                 location,
                 name,
                 value,
