@@ -171,26 +171,24 @@ impl Hydrator {
             }
             Typ::Function(rc) => Typ::Function(self.mk_function(rc, generics)),
             Typ::Struct(rc, args) => {
-                let mut instantiated_generics = self.mk_generics(&rc.borrow().generics, generics);
-
-                instantiated_generics.subtitutions = args
+                let mut args = args
                     .subtitutions
                     .iter()
                     .map(|(k, v)| (k.clone(), self.instantiate(v.clone(), generics)))
                     .collect();
+                let generics = self.mk_generics(&rc.borrow().generics, &mut args);
 
-                Typ::Struct(rc, instantiated_generics)
+                Typ::Struct(rc, generics)
             }
             Typ::Enum(rc, args) => {
-                let mut instantiated_generics = self.mk_generics(&rc.borrow().generics, generics);
-
-                instantiated_generics.subtitutions = args
+                let mut args = args
                     .subtitutions
                     .iter()
                     .map(|(k, v)| (k.clone(), self.instantiate(v.clone(), generics)))
                     .collect();
+                let generics = self.mk_generics(&rc.borrow().generics, &mut args);
 
-                Typ::Enum(rc, instantiated_generics)
+                Typ::Enum(rc, generics)
             }
         }
     }

@@ -1,9 +1,12 @@
-type Apply[T] {
-    function: fn(T): T
+type Mammoth[T] {
+    iceberg: Iceberg[T]
 }
 
-fn main() {
-    let a: Apply[int] = Apply(fn(a: int): int {
-        a
-    });
+type Iceberg[T] {
+    value: T
+}
+
+pub fn main() {
+    let mammoth = Mammoth(Iceberg(3));
+    let a: int = mammoth.iceberg;
 }

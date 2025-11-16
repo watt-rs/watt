@@ -10,19 +10,29 @@ import {
     $$VariantPattern,
 } from "../prelude.js"
 
-export class $Apply {
-    constructor(function$) {
+export class $Mammoth {
+    constructor(iceberg) {
         this.$meta = "Type";
-        this.$type = "Apply";
-        this.function$ = function$
+        this.$type = "Mammoth";
+        this.iceberg = iceberg
     }
 }
-export function Apply(function$) {
-    return new $Apply(function$);
+export function Mammoth(iceberg) {
+    return new $Mammoth(iceberg);
+}
+
+export class $Iceberg {
+    constructor(value) {
+        this.$meta = "Type";
+        this.$type = "Iceberg";
+        this.value = value
+    }
+}
+export function Iceberg(value) {
+    return new $Iceberg(value);
 }
 
 export function main() {
-    let a = Apply(function (a) {
-        return a
-    })
+    let mammoth = Mammoth(Iceberg(3))
+    let a = mammoth.iceberg.value
 }
