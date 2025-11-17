@@ -82,7 +82,7 @@ impl<'hd> HydrationCx<'hd> {
                 Typ::Struct(rc, generics)
             }
             Typ::Enum(rc, args) => {
-                let mut args = args
+                let args = args
                     .subtitutions
                     .iter()
                     .map(|(k, v)| (*k, self.mk_ty(v.clone())))
