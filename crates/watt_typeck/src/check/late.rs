@@ -5,6 +5,7 @@ use crate::{
     inference::equation::Equation,
     typ::{
         def::{ModuleDef, TypeDef},
+        res::Res,
         typ::{Enum, EnumVariant, Field, Function, Parameter, Struct, Typ, WithPublicity},
     },
 };
@@ -28,11 +29,11 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         };
         let borrowed = ty.borrow();
 
-        // Pushing generics
+        // Repushing generics
         self.solver
             .hydrator
             .generics
-            .push_generated_scope(borrowed.generics.clone());
+            .re_push_scope(borrowed.generics.clone());
 
         // Inferencing fields
         let new_struct = Struct {
@@ -70,11 +71,11 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         };
         let borrowed = en.borrow();
 
-        // Pushing generics
+        // Repushing generics
         self.solver
             .hydrator
             .generics
-            .push_generated_scope(borrowed.generics.clone());
+            .re_push_scope(borrowed.generics.clone());
 
         // Inferencing fields
         let new_enum = Enum {
@@ -112,13 +113,21 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         location: Address,
         publicity: Publicity,
         name: EcoString,
-        generics: Vec<EcoString>,
         params: Vec<ast::Parameter>,
         body: Either<Block, Expression>,
         ret_type: Option<TypePath>,
     ) {
+        // Requesting function
+        let f = match self.resolver.resolve(&location, &name) {
+            Res::Value(Typ::Function(f)) => f,
+            _ => unreachable!(),
+        };
+
         // Pushing generics
-        let generics = self.solver.hydrator.generics.push_scope(generics);
+        self.solver
+            .hydrator
+            .generics
+            .re_push_scope(f.generics.clone());
 
         // inferring return type
         let ret = ret_type.map_or(Typ::Unit, |t| self.infer_type_annotation(t));
@@ -141,7 +150,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         let function = Function {
             location: location.clone(),
             name: name.clone(),
-            generics,
+            generics: f.generics.clone(),
             params: params.clone().into_values().collect(),
             ret: ret.clone(),
         };
@@ -178,6 +187,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // Popping generics
         self.solver.hydrator.generics.pop_scope();
     }
+
     /// Late declaration analysis
     pub fn late_analyze_declaration(&mut self, declaration: Declaration) {
         match declaration {
@@ -197,12 +207,11 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 location,
                 publicity,
                 name,
-                generics,
                 params,
                 body,
                 typ,
-            } => self
-                .late_analyze_function_decl(location, publicity, name, generics, params, body, typ),
+                ..
+            } => self.late_analyze_function_decl(location, publicity, name, params, body, typ),
             // It's no need to do some other
             // analysys of extern function or constants
             _ => {}

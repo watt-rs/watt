@@ -50,8 +50,14 @@ impl Generics {
     /// and inserts given generic arguments
     /// in it.
     ///
-    /// Returns unique ID's of given generic
-    /// arguments.
+    /// # Parameters
+    /// - `generics: Vec<EcoString>`
+    ///   Generic parameter names.
+    ///
+    /// # Returns
+    /// - `Vec<GenericParameter>`
+    ///   Created generic parameters info
+    ///
     pub fn push_scope(&mut self, generics: Vec<EcoString>) -> Vec<GenericParameter> {
         let generics: IndexMap<EcoString, usize> =
             generics.into_iter().map(|g| (g, self.fresh())).collect();
@@ -63,9 +69,14 @@ impl Generics {
     }
 
     /// Pushes the scope onto the stack
-    /// and inserts given generic arguments
-    /// in it.
-    pub fn push_generated_scope(&mut self, generics: Vec<GenericParameter>) {
+    /// and inserts already made
+    /// generic parameters in it.
+    ///
+    /// # Parameters
+    /// - `generics: Vec<GenericParameter>`
+    ///   Generic parameters.
+    ///
+    pub fn re_push_scope(&mut self, generics: Vec<GenericParameter>) {
         self.stack
             .push(generics.into_iter().map(|g| (g.name, g.id)).collect());
     }
@@ -75,16 +86,21 @@ impl Generics {
         self.stack.pop();
     }
 
-    /// Returns generic ID from the last scope,
-    /// if generic exists
-    pub fn get(&self, name: &EcoString) -> Option<usize> {
+    /// Returns generic ID by the name
+    /// from the last scope, if generic exists.
+    ///
+    /// # Parameters
+    /// - `name: &str`
+    ///   Name of the generic
+    ///
+    pub fn get(&self, name: &str) -> Option<usize> {
         self.stack
             .last()
             .map_or(None, |s| s.get(name).map(|it| *it))
     }
 
     /// Generates fresh unique id
-    /// for the unbound type variable.
+    /// for the generic type variable.
     ///
     pub fn fresh(&mut self) -> usize {
         self.last_generic_id += 1;
