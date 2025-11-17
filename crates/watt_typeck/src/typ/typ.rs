@@ -405,8 +405,10 @@ impl Typ {
                 .map(|field| Field {
                     location: field.location.clone(),
                     name: field.name.clone(),
-                    typ: hydrator
-                        .instantiate(field.typ.clone(), &mut generics.subtitutions.clone()),
+                    typ: hydrator.hyd().mk_ty(
+                        field.typ.clone(),
+                        &mut generics.subtitutions.clone()
+                    ),
                 })
                 .collect(),
 
@@ -436,8 +438,10 @@ impl Typ {
                         .map(|field| Field {
                             location: field.location.clone(),
                             name: field.name.clone(),
-                            typ: hydrator
-                                .instantiate(field.typ.clone(), &mut generics.subtitutions.clone()),
+                            typ: hydrator.hyd().mk_ty(
+                                field.typ.clone(),
+                                &mut generics.subtitutions.clone()
+                            ),
                         })
                         .collect(),
                 })

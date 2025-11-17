@@ -176,7 +176,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Some(annotated_path) => {
                 let annotated_location = annotated_path.location();
                 let annotated = self.infer_type_annotation(annotated_path);
-                let inferred_value = self.solver.hydrator.instantiate(
+                let inferred_value = self.solver.hydrator.hyd().mk_ty(
                     inferred_value,
                     &mut HashMap::new()
                 );

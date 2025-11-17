@@ -552,6 +552,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     en.clone(),
                     self.solver
                         .hydrator
+                        .hyd()
                         .mk_generics(&en.borrow().generics, &mut HashMap::new()),
                 );
                 self.infer_enum_field_access(
@@ -651,6 +652,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     ty.clone(),
                     self.solver
                         .hydrator
+                        .hyd()
                         .mk_generics(&ty.borrow().generics, &mut HashMap::new()),
                 );
 
@@ -667,7 +669,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             // Value
             Res::Value(Typ::Function(f)) => {
                 self.ensure_arity(location, f.params.len(), args.len());
-                let f = self.solver.hydrator.mk_function(f, &mut HashMap::new());
+                let f = self.solver.hydrator.hyd().mk_function(f, &mut HashMap::new());
                 f.params.iter().cloned().zip(args).for_each(|(p, a)| {
                     self.solver.unify(p.location, p.typ, a.0, a.1);
                 });

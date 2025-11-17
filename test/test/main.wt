@@ -1,7 +1,3 @@
 fn a[T](v: T): T {
     v
 }
-fn main() {
-    let b = a;
-    let c: bool = b;
-}

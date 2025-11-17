@@ -13,7 +13,3 @@ import {
 export function a(v) {
     return v
 }
-
-export function main() {
-    let b = a
-}
