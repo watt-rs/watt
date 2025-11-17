@@ -32,7 +32,6 @@ use watt_common::{address::Address, bail};
 ///
 /// - `Const(Typ)`
 ///   The identifier resolves directly to a const type/value
-
 ///
 #[derive(Debug, Clone)]
 pub enum Res {

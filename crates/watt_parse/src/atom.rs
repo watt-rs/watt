@@ -115,14 +115,14 @@ impl<'file> Parser<'file> {
                 self.consume(TokenKind::Dot);
                 // second id
                 let second_id = self.consume(TokenKind::Id).clone();
-                // end address of `module.definition`
-                let end_address = self.peek().address.clone();
                 // generic
                 let generics = if self.check(TokenKind::Lbracket) {
                     self.generic_args()
                 } else {
                     Vec::new()
                 };
+                // end address of `module.definition`
+                let end_address = self.previous().address.clone();
                 // module type path
                 TypePath::Module {
                     location: start_address + end_address,
@@ -139,9 +139,11 @@ impl<'file> Parser<'file> {
                 } else {
                     Vec::new()
                 };
+                // end address of `module.definition`
+                let end_address = self.previous().address.clone();
                 // local type path
                 TypePath::Local {
-                    location: start_address,
+                    location: start_address + end_address,
                     name: first_id.value,
                     generics,
                 }

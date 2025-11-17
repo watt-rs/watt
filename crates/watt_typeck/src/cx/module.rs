@@ -70,6 +70,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// Generates fresh uid
     pub fn fresh_id(&mut self) -> usize {
         self.last_uid += 1;
-        return self.last_uid - 1;
+        self.last_uid - 1
     }
 }

@@ -226,7 +226,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// - Logical operators (`&&`, `||`, `^`)
     /// - Comparison operators (`<`, `<=`, `>`, `>=`)
     /// - Equality (`==`, `!=`)
-    /// Numeric operators automatically promote `Int × Float` or `Float × Int` to `Float`.
+    ///   Numeric operators automatically promote `Int × Float` or `Float × Int` to `Float`.
     ///
     fn infer_binary(
         &mut self,
@@ -563,24 +563,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 )
             }
             // Type field access
-            Res::Value(typ) => match typ {
-                // Custom Type
-                it @ Typ::Struct(ty, _) => {
-                    let res = self.infer_struct_field_access(
-                        it.clone(),
-                        ty.borrow().name.clone(),
-                        field_location,
-                        field_name,
-                    );
-                    res
-                }
-                // Else
-                _ => bail!(TypeckError::CouldNotResolveFieldsIn {
-                    src: self.module.source.clone(),
-                    span: field_location.span.into(),
-                    res: container_inferred
-                }),
-            },
+            Res::Value(it @ Typ::Struct(ty, _)) => {
+                self.infer_struct_field_access(
+                    it.clone(),
+                    ty.borrow().name.clone(),
+                    field_location,
+                    field_name,
+                )
+            }
             // Else
             _ => bail!(TypeckError::CouldNotResolveFieldsIn {
                 src: self.module.source.clone(),
@@ -676,22 +666,13 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 Res::Value(instantiated)
             }
             // Value
-            Res::Value(t) => match t {
-                // Function
-                Typ::Function(f) => {
-                    self.ensure_arity(location, f.params.len(), args.len());
-                    let f = self.solver.hydrator.mk_function(f, &mut HashMap::new());
-                    f.params.iter().cloned().zip(args).for_each(|(p, a)| {
-                        self.solver.unify(p.location, p.typ, a.0, a.1);
-                    });
-                    Res::Value(Typ::Function(f))
-                }
-                // Else
-                _ => bail!(TypeckError::CouldNotCall {
-                    src: self.module.source.clone(),
-                    span: location.span.into(),
-                    res: function
-                }),
+            Res::Value(Typ::Function(f)) => {
+                self.ensure_arity(location, f.params.len(), args.len());
+                let f = self.solver.hydrator.mk_function(f, &mut HashMap::new());
+                f.params.iter().cloned().zip(args).for_each(|(p, a)| {
+                    self.solver.unify(p.location, p.typ, a.0, a.1);
+                });
+                Res::Value(Typ::Function(f))
             },
             // Variant
             Res::Variant(en, variant) => {

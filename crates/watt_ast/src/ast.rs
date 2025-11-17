@@ -597,7 +597,7 @@ pub enum Statement {
     For {
         location: Address,
         name: EcoString,
-        range: Range,
+        range: Box<Range>,
         body: Either<Block, Expression>,
     },
     /// Represents semi colon expression

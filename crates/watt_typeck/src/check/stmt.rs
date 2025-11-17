@@ -197,7 +197,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 range,
                 body,
             } => {
-                self.analyze_for(location, name, range, body);
+                self.analyze_for(location, name, *range, body);
                 Typ::Unit
             }
             Statement::Semi(expr) => {

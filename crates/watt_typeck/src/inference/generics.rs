@@ -95,8 +95,7 @@ impl Generics {
     ///
     pub fn get(&self, name: &str) -> Option<usize> {
         self.stack
-            .last()
-            .map_or(None, |s| s.get(name).map(|it| *it))
+            .last().and_then(|s| s.get(name).copied())
     }
 
     /// Generates fresh unique id

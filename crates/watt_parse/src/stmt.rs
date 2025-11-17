@@ -149,7 +149,7 @@ impl<'file> Parser<'file> {
         let start_span = self.consume(TokenKind::For).address.clone();
         let name = self.consume(TokenKind::Id).value.clone();
         self.consume(TokenKind::In);
-        let range = self.range();
+        let range = Box::new(self.range());
         let body = self.block_or_expr();
         let end_span = self.previous().address.clone();
 

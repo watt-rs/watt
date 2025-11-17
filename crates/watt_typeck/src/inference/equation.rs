@@ -10,11 +10,11 @@ use watt_common::address::Address;
 /// # Fields
 ///
 /// 1) `Address`
-///   The exact position in the source code where this variable or type expression
-///   originates. This allows precise error reporting when type mismatches occur.
+///    The exact position in the source code where this variable or type expression
+///    originates. This allows precise error reporting when type mismatches occur.
 ///
 /// 1) `Typ`
-///   The actual type (or type expression) being unified or constrained.
+///    The actual type (or type expression) being unified or constrained.
 ///
 pub type Unit = (Address, Typ);
 

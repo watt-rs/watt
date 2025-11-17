@@ -355,7 +355,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
             Range::ExcludeLast { from, to, .. } => (from, to),
             Range::IncludeLast { from, to, .. } => (from, to),
         };
-        self.lint_expr(&from);
-        self.lint_expr(&to);
+        self.lint_expr(from);
+        self.lint_expr(to);
     }
 }

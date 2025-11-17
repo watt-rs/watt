@@ -203,15 +203,15 @@ impl<'file> Parser<'file> {
                 right,
                 op,
             } => {
-                self.check_value_const(&left);
-                self.check_value_const(&right);
+                self.check_value_const(left);
+                self.check_value_const(right);
             }
             Expression::Unary {
                 location,
                 value,
                 op,
             } => {
-                self.check_value_const(&value);
+                self.check_value_const(value);
             }
         }
     }

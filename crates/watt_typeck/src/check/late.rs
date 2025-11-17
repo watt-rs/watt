@@ -38,7 +38,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // Inferencing fields
         let new_struct = Struct {
             location: borrowed.location.clone(),
-            uid: borrowed.uid.clone(),
+            uid: borrowed.uid,
             name: borrowed.name.clone(),
             generics: borrowed.generics.clone(),
             fields: fields
@@ -80,7 +80,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // Inferencing fields
         let new_enum = Enum {
             location: borrowed.location.clone(),
-            uid: borrowed.uid.clone(),
+            uid: borrowed.uid,
             name: borrowed.name.clone(),
             generics: borrowed.generics.clone(),
             variants: variants
@@ -188,6 +188,106 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         self.solver.hydrator.generics.pop_scope();
     }
 
+    /// Analyzes extern funciton body.
+    fn late_analyze_extern_decl(
+        &mut self,
+        location: Address,
+        publicity: Publicity,
+        name: EcoString,
+        params: Vec<ast::Parameter>,
+        ret_type: Option<TypePath>,
+    ) {
+        // Requesting function
+        let f = match self.resolver.resolve(&location, &name) {
+            Res::Value(Typ::Function(f)) => f,
+            _ => unreachable!(),
+        };
+
+        // Pushing generics
+        self.solver
+            .hydrator
+            .generics
+            .re_push_scope(f.generics.clone());
+
+        // inferring return type
+        let ret = ret_type.map_or(Typ::Unit, |t| self.infer_type_annotation(t));
+
+        // inferred params
+        let params = params
+            .into_iter()
+            .map(|p| {
+                (
+                    p.name,
+                    Parameter {
+                        location: p.location,
+                        typ: self.infer_type_annotation(p.typ),
+                    },
+                )
+            })
+            .collect::<IndexMap<EcoString, Parameter>>();
+
+        // creating and defining function
+        let function = Function {
+            location: location.clone(),
+            name: name.clone(),
+            generics: f.generics.clone(),
+            params: params.clone().into_values().collect(),
+            ret: ret.clone(),
+        };
+        self.resolver.define_module(
+            &location,
+            &name,
+            ModuleDef::Function(WithPublicity {
+                publicity,
+                value: Rc::new(function),
+            }),
+            true,
+        );
+
+        // Popping generics
+        self.solver.hydrator.generics.pop_scope();
+    }
+    /// Defines a constant value.
+    ///
+    /// Steps:
+    /// 1. Infer the annotated type (`typ`).
+    /// 2. Infer the expression value.
+    /// 3. Emit a unification equation requiring that the inferred value type
+    ///    equals the annotated type.
+    /// 4. Register the constant under its name.
+    ///
+    /// Constants do not introduce generics or additional scopes.
+    ///
+    fn late_define_const(
+        &mut self,
+        location: Address,
+        publicity: Publicity,
+        name: EcoString,
+        value: Expression,
+        typ: TypePath,
+    ) {
+        // Const inference
+        let annotated_location = typ.location();
+        let annotated = self.infer_type_annotation(typ);
+        let inferred_location = value.location();
+        let inferred = self.infer_expr(value);
+        self.solver.solve(Equation::Unify(
+            (annotated_location, annotated.clone()),
+            (inferred_location, inferred),
+        ));
+
+        // Defining constant
+        self.resolver.define_module(
+            &location,
+            &name,
+            ModuleDef::Const(WithPublicity {
+                publicity,
+                value: annotated,
+            }),
+            false,
+        );
+    }
+
     /// Late declaration analysis
     pub fn late_analyze_declaration(&mut self, declaration: Declaration) {
         match declaration {
@@ -212,9 +312,21 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 typ,
                 ..
             } => self.late_analyze_function_decl(location, publicity, name, params, body, typ),
-            // It's no need to do some other
-            // analysys of extern function or constants
-            _ => {}
+            Declaration::ExternFunction {
+                location,
+                publicity,
+                name,
+                params,
+                typ,
+                ..
+            } => self.late_analyze_extern_decl(location, publicity, name, params, typ),
+            Declaration::Const {
+                location,
+                publicity,
+                name,
+                value,
+                typ
+            } => self.late_define_const(location, publicity, name, value, typ),
         }
     }
 

@@ -103,7 +103,7 @@ impl EquationsSolver {
                     }
                 }
                 (Typ::Unbound(a), b) | (b, Typ::Unbound(a)) => {
-                    if self.occurs(*a, &b) {
+                    if self.occurs(*a, b) {
                         bail!(TypeckError::TypesRecursion {
                             related: vec![
                                 TypeckRelated::ThisType {

@@ -72,17 +72,13 @@ impl RibsStack {
     pub fn define(&mut self, address: &Address, name: &EcoString, typ: Typ, redefine: bool) {
         match self.stack.last_mut() {
             Some(env) => {
-                if redefine {
+                if redefine || !env.contains_key(name) {
                     env.insert(name.clone(), typ);
                 } else {
-                    if !env.contains_key(name) {
-                        env.insert(name.clone(), typ);
-                    } else {
-                        bail!(TypeckError::VariableIsAlreadyDefined {
-                            src: address.source.clone(),
-                            span: address.span.clone().into()
-                        })
-                    }
+                    bail!(TypeckError::VariableIsAlreadyDefined {
+                        src: address.source.clone(),
+                        span: address.span.clone().into()
+                    })
                 }
             }
             None => todo!("No active scope to define variable"),

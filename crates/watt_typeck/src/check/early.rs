@@ -1,7 +1,6 @@
 /// Imports
 use crate::{
     cx::module::ModuleCx,
-    inference::equation::Equation,
     typ::{
         def::{ModuleDef, TypeDef},
         typ::{Enum, Function, Struct, Typ, WithPublicity},
@@ -9,7 +8,7 @@ use crate::{
 };
 use ecow::EcoString;
 use std::{cell::RefCell, rc::Rc};
-use watt_ast::ast::{Declaration, Expression, Publicity, TypePath};
+use watt_ast::ast::{Declaration, Publicity};
 use watt_common::address::Address;
 
 /// Performs the “early” pass of module analysis.
@@ -29,7 +28,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// - empty fields,
     /// - generic params,
     /// - fresh `uid`,
-    /// but without performing any semantic checks.
+    ///   but without performing any semantic checks.
     ///
     /// The full struct body will later be populated in
     /// [`late_analyze_struct`].
@@ -180,48 +179,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         );
     }
 
-    /// Defines a constant value.
-    ///
-    /// Steps:
-    /// 1. Infer the annotated type (`typ`).
-    /// 2. Infer the expression value.
-    /// 3. Emit a unification equation requiring that the inferred value type
-    ///    equals the annotated type.
-    /// 4. Register the constant under its name.
-    ///
-    /// Constants do not introduce generics or additional scopes.
-    /// Further semantic passes do not analyze constants.
-    ///
-    fn define_const(
-        &mut self,
-        location: Address,
-        publicity: Publicity,
-        name: EcoString,
-        value: Expression,
-        typ: TypePath,
-    ) {
-        // Const inference
-        let annotated_location = typ.location();
-        let annotated = self.infer_type_annotation(typ);
-        let inferred_location = value.location();
-        let inferred = self.infer_expr(value);
-        self.solver.solve(Equation::Unify(
-            (annotated_location, annotated.clone()),
-            (inferred_location, inferred),
-        ));
-
-        // Defining constant
-        self.resolver.define_module(
-            &location,
-            &name,
-            ModuleDef::Const(WithPublicity {
-                publicity,
-                value: annotated,
-            }),
-            false,
-        );
-    }
-
     /// Dispatches early-phase definition for any kind of declaration.
     ///
     /// Each declaration type is handled by the corresponding `early_define_*`
@@ -259,13 +216,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 generics,
                 ..
             } => self.early_define_function_decl(location, publicity, generics, name),
-            Declaration::Const {
-                location,
-                publicity,
-                name,
-                value,
-                typ,
-            } => self.define_const(location, publicity, name, value, typ),
+            // We don't need to analyze constants at this time
+            _ => {}
         }
     }
 }

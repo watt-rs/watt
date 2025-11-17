@@ -92,9 +92,7 @@ impl Hydrator {
     /// isn't updating the already created substitution.
     ///
     pub fn substitute(&mut self, id: usize, typ: Typ) {
-        if !self.substitutions.contains_key(&id) {
-            self.substitutions.insert(id, typ);
-        }
+        self.substitutions.entry(id).or_insert(typ);
     }
 
     /// Applies a substitutions for the given typ
@@ -115,7 +113,7 @@ impl Hydrator {
                     subtitutions: args
                         .subtitutions
                         .iter()
-                        .map(|it| (it.0.clone(), self.apply(it.1.clone())))
+                        .map(|it| (*it.0, self.apply(it.1.clone())))
                         .collect(),
                 },
             ),
@@ -125,7 +123,7 @@ impl Hydrator {
                     subtitutions: args
                         .subtitutions
                         .iter()
-                        .map(|it| (it.0.clone(), self.apply(it.1.clone())))
+                        .map(|it| (*it.0, self.apply(it.1.clone())))
                         .collect(),
                 },
             ),
@@ -174,7 +172,7 @@ impl Hydrator {
                 let mut args = args
                     .subtitutions
                     .iter()
-                    .map(|(k, v)| (k.clone(), self.instantiate(v.clone(), generics)))
+                    .map(|(k, v)| (*k, self.instantiate(v.clone(), generics)))
                     .collect();
                 let generics = self.mk_generics(&rc.borrow().generics, &mut args);
 
@@ -184,7 +182,7 @@ impl Hydrator {
                 let mut args = args
                     .subtitutions
                     .iter()
-                    .map(|(k, v)| (k.clone(), self.instantiate(v.clone(), generics)))
+                    .map(|(k, v)| (*k, self.instantiate(v.clone(), generics)))
                     .collect();
                 let generics = self.mk_generics(&rc.borrow().generics, &mut args);
 
@@ -197,14 +195,14 @@ impl Hydrator {
     /// Generic(id) -> Unbound($id)
     pub fn mk_generics(
         &mut self,
-        params: &Vec<GenericParameter>,
+        params: &[GenericParameter],
         args: &mut HashMap<usize, Typ>,
     ) -> GenericArgs {
         GenericArgs {
             subtitutions: params
                 .iter()
                 .map(|p| {
-                    let generic_id = p.id.clone();
+                    let generic_id = p.id;
                     (generic_id, self.instantiate(Typ::Generic(generic_id), args))
                 })
                 .collect(),
