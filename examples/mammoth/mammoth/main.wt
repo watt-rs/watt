@@ -1,7 +1,11 @@
 type Mammoth[T] {
-    iceberg: T
+    value: Iceberg[T]
+}
+
+type Iceberg[T] {
+    value: T
 }
 
 fn main() {
-    let iceberge: Mammoth[int] = Mammoth(3)
+    let a: bool = Mammoth(Iceberg(3))
 }

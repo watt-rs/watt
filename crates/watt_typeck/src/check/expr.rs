@@ -553,7 +553,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     self.solver
                         .hydrator
                         .hyd()
-                        .mk_generics(&en.borrow().generics, &mut HashMap::new()),
+                        .mk_generics(&en.borrow().generics, HashMap::new()),
                 );
                 self.infer_enum_field_access(
                     instantiated,
@@ -653,7 +653,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     self.solver
                         .hydrator
                         .hyd()
-                        .mk_generics(&ty.borrow().generics, &mut HashMap::new()),
+                        .mk_generics(&ty.borrow().generics, HashMap::new()),
                 );
 
                 instantiated
@@ -669,7 +669,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             // Value
             Res::Value(Typ::Function(f)) => {
                 self.ensure_arity(location, f.params.len(), args.len());
-                let f = self.solver.hydrator.hyd().mk_function(f, &mut HashMap::new());
+                let f = self.solver.hydrator.hyd().mk_function(f);
                 f.params.iter().cloned().zip(args).for_each(|(p, a)| {
                     self.solver.unify(p.location, p.typ, a.0, a.1);
                 });
@@ -845,8 +845,19 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                         // If types equal, checking fields existence
                         else {
                             fields.into_iter().for_each(|field| {
-                                if !variant.fields.iter().any(|f| f.name == field.1) {
-                                    bail!(TypeckError::EnumVariantFieldIsNotDefined {
+                                // Defining fields and checking existence
+                                match variant.fields.iter().find(|f| f.name == field.1) {
+                                    // Note: Don't worry about field type instantiation,
+                                    // it was already instantiated by instantiating the enum
+                                    // itself and getting fresh enum variant
+                                    // during variant resolution.
+                                    Some(it) => self.resolver.define_local(
+                                        &case.address,
+                                        &it.name,
+                                        it.typ.clone(),
+                                        false
+                                    ),
+                                    None => bail!(TypeckError::EnumVariantFieldIsNotDefined {
                                         src: self.module.source.clone(),
                                         span: field.0.span.into(),
                                         res: res.clone(),

@@ -165,7 +165,7 @@ impl Debug for Struct {
 /// PartialEq implementation
 ///
 /// Checks equality of the `Struct` by
-/// it's unique identifier, that's given
+/// its unique identifier, that's given
 /// during early type checking phase.
 ///
 impl PartialEq for Struct {
@@ -405,9 +405,8 @@ impl Typ {
                 .map(|field| Field {
                     location: field.location.clone(),
                     name: field.name.clone(),
-                    typ: hydrator.hyd().mk_ty(
+                    typ: hydrator.hyd_m(generics.subtitutions.clone()).mk_ty(
                         field.typ.clone(),
-                        &mut generics.subtitutions.clone()
                     ),
                 })
                 .collect(),
@@ -438,9 +437,8 @@ impl Typ {
                         .map(|field| Field {
                             location: field.location.clone(),
                             name: field.name.clone(),
-                            typ: hydrator.hyd().mk_ty(
+                            typ: hydrator.hyd_m(generics.subtitutions.clone()).mk_ty(
                                 field.typ.clone(),
-                                &mut generics.subtitutions.clone()
                             ),
                         })
                         .collect(),

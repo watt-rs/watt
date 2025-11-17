@@ -1,5 +1,4 @@
 /// Imports
-use std::collections::HashMap;
 use crate::{
     cx::module::ModuleCx,
     errors::TypeckError,
@@ -178,7 +177,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 let annotated = self.infer_type_annotation(annotated_path);
                 let inferred_value = self.solver.hydrator.hyd().mk_ty(
                     inferred_value,
-                    &mut HashMap::new()
                 );
                 self.solver.solve(Equation::Unify(
                     (annotated_location, annotated.clone()),
