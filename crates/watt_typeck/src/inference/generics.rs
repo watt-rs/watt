@@ -68,9 +68,8 @@ impl Generics {
             .collect()
     }
 
-    /// Pushes the scope onto the stack
-    /// and inserts already made
-    /// generic parameters in it.
+    /// Pushes a new scope consisting of **already constructed**
+    /// generic parameters (usually reconstructed from a type).
     ///
     /// # Parameters
     /// - `generics: Vec<GenericParameter>`
@@ -101,6 +100,7 @@ impl Generics {
     /// Generates fresh unique id
     /// for the generic type variable.
     ///
+    #[inline]
     pub fn fresh(&mut self) -> usize {
         self.last_generic_id += 1;
         self.last_generic_id

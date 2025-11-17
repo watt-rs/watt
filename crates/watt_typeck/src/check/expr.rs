@@ -216,7 +216,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// - The resulting `Typ` after applying the operator.
     ///
     /// # Errors
-    /// Emits:
     /// - [`InvalidBinaryOp`]: when operand types do not match operator requirements.
     ///
     /// # Notes
@@ -281,7 +280,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// - The resulting `Typ` after applying the operator.
     ///
     /// # Errors
-    /// - `InvalidUnaryOp`: operand type does not match operator expectation.
+    /// - [`InvalidUnaryOp`]: operand type does not match operator expectation.
     ///
     /// # Notes
     /// - `-` is valid only for `Int` and `Float`.
@@ -672,7 +671,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 f.params.iter().cloned().zip(args).for_each(|(p, a)| {
                     self.solver.unify(p.location, p.typ, a.0, a.1);
                 });
-                Res::Value(Typ::Function(f))
+                Res::Value(f.ret.clone())
             },
             // Variant
             Res::Variant(en, variant) => {

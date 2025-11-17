@@ -18,9 +18,32 @@ use watt_ast::ast::{
 };
 use watt_common::{address::Address, bail};
 
-/// Declaraton analyze
+/// Late declaration analysis pass for the module.
+///
+/// This pass completes the semantic analysis of declarations (structs, enums,
+/// functions, extern functions, constants) after their names and initial shells
+/// have been registered during the early phase.
+///
+/// In this stage:
+/// - Generic parameters are reinstated into the inference context.
+/// - All type annotations are resolved into `Typ`.
+/// - Function bodies are type-checked.
+/// - Struct and enum fields are fully typed.
+/// - Constants are inferred and unified against their annotations.
+/// - All definitions are finalized and registered into the resolver.
+///
 impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
-    /// Analyzes struct fields
+    /// Performs late analysis of a struct declaration.
+    ///
+    /// ## Responsibilities:
+    /// - Re-push the struct's generic parameters into the type hydrator.
+    /// - Infer the types of all fields using `infer_type_annotation`.
+    /// - Rebuild the `Struct` def with resolved field types.
+    /// - Overwrite the existing struct definition with the completed one.
+    ///
+    /// This operation mutates the struct in place, finalizing its type
+    /// structure for the rest of type checking.
+    ///
     fn late_analyze_struct(&mut self, location: Address, name: EcoString, fields: Vec<ast::Field>) {
         // Requesting struct
         let ty = match self.resolver.resolve_type(&location, &name) {
@@ -57,7 +80,17 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         self.solver.hydrator.generics.pop_scope();
     }
 
-    /// Analyzes enum variants
+    /// Performs late analysis of an enum declaration.
+    ///
+    /// ## Responsibilities:
+    /// - Re-push the enum’s generic parameters in the hydrator.
+    /// - Infer the types of all variant fields.
+    /// - Rebuild the `Enum` def with resolved variant field types.
+    /// - Overwrite the existing enum definition with the completed one.
+    ///
+    /// Enum variant fields are treated similarly to struct fields: each
+    /// parameter is analyzed using `infer_type_annotation`.
+    ///
     fn late_analyze_enum(
         &mut self,
         location: Address,
@@ -107,7 +140,23 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         self.solver.hydrator.generics.pop_scope();
     }
 
-    /// Analyzes funciton body.
+    /// Performs late analysis of a user-defined function.
+    ///
+    /// ## Steps:
+    /// - Look up the function shell previously registered by the early pass.
+    /// - Re-push generic parameters into the hydrator.
+    /// - Resolve the return type if annotated; otherwise assume `Unit`.
+    /// - Resolve the types of all parameters, constructing a typed signature.
+    /// - Publish the function signature into the module (so it is visible to
+    ///    recursive calls within its own body).
+    /// - Create a new scope (rib) for local variables.
+    /// - Insert parameters as locals into that scope.
+    /// - Infer the function body (block or expression).
+    /// - Emit a unification equation requiring: `inferred_body_type == return_type`.
+    /// - Pop the local scope.
+    /// - Pop the generic parameter scope.
+    ///
+    /// At the end of this method the function is fully type-checked.
     fn late_analyze_function_decl(
         &mut self,
         location: Address,
@@ -188,7 +237,19 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         self.solver.hydrator.generics.pop_scope();
     }
 
-    /// Analyzes extern funciton body.
+    /// Performs late analysis of an extern function.
+    ///
+    /// ## Unlike normal functions, extern functions:
+    /// - Have no body to analyze.
+    /// - Only require inference of parameter and return type annotations.
+    ///
+    /// ## Steps:
+    /// - Retrieve the function declaration shell.
+    /// - Push generics into the hydrator.
+    /// - Resolve return and parameter types.
+    /// - Publish the completed function signature.
+    /// - Pop the generic scope.
+    ///
     fn late_analyze_extern_decl(
         &mut self,
         location: Address,
@@ -247,16 +308,24 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // Popping generics
         self.solver.hydrator.generics.pop_scope();
     }
-    /// Defines a constant value.
+
+    /// Performs late analysis of a constant definition.
     ///
-    /// Steps:
-    /// 1. Infer the annotated type (`typ`).
-    /// 2. Infer the expression value.
-    /// 3. Emit a unification equation requiring that the inferred value type
-    ///    equals the annotated type.
-    /// 4. Register the constant under its name.
+    /// A constant has:
+    /// - A required type annotation.
+    /// - A value expression which is inferred independently.
     ///
-    /// Constants do not introduce generics or additional scopes.
+    /// ## Procedure:
+    /// 1. Resolve the type annotation.
+    /// 2. Infer the type of the value expression.
+    /// 3. Emit a unification constraint requiring the expression type to match
+    ///    the annotated type.
+    /// 4. Register the constant in the module namespace.
+    ///
+    /// ## Constants do not:
+    /// - Introduce generics.
+    /// - Create scopes.
+    /// - Participate in inference outside their own value.
     ///
     fn late_define_const(
         &mut self,
@@ -288,7 +357,18 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         );
     }
 
-    /// Late declaration analysis
+    /// Dispatches a declaration to the corresponding late analysis routine.
+    ///
+    /// Each declaration variant is fully processed here:
+    /// - Struct → `late_analyze_struct`
+    /// - Enum → `late_analyze_enum`
+    /// - Function → `late_analyze_function_decl`
+    /// - Extern → `late_analyze_extern_decl`
+    /// - Const → `late_define_const`
+    ///
+    /// After this call, each declaration is fully type-analyzed and integrated
+    /// into the module’s type environment.
+    ///
     pub fn late_analyze_declaration(&mut self, declaration: Declaration) {
         match declaration {
             Declaration::TypeDeclaration {
@@ -330,7 +410,18 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
     }
 
-    /// Performs import
+    /// Performs an import of another module into the current resolver scope.
+    ///
+    /// ## Supports:
+    /// - `use foo as name`  → import with renamed binding.
+    /// - `use foo for a,b`  → import selected names.
+    ///
+    /// On success, the referenced module is integrated into the current scope
+    /// according to the chosen `UseKind`.
+    ///
+    /// ## Errors
+    /// - [`TypeckError::ImportOfUnknownModule`]: if module doesn't exist.
+    ///
     pub fn perform_import(&mut self, import: Dependency) {
         match self.package.root.modules.get(&import.path.module) {
             Some(module) => match import.kind {

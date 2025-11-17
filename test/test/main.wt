@@ -1,7 +1,14 @@
-type Mammoth[T] {
-    value: T
+type Apply[T] {
+    function: fn(T): T
+}
+
+fn test[T](value: T): Apply[T] {
+    let a: Apply[T] = Apply(fn(a: T): T {
+        value
+    });
+    a
 }
 
 fn main() {
-    let mammoth = Mammoth(3);
+    let a: Apply[int] = test(3);
 }

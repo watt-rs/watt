@@ -127,6 +127,16 @@ impl Hydrator {
                         .collect(),
                 },
             ),
+            Typ::Function(f) => Typ::Function(Rc::new(Function {
+                location: f.location.clone(),
+                name: f.name.clone(),
+                generics: f.generics.clone(),
+                params: f.params.iter().cloned().map(|p| Parameter {
+                    location: p.location,
+                    typ: self.apply(p.typ),
+                }).collect(),
+                ret: self.apply(f.ret.clone()),
+            })),
             other => other,
         }
     }

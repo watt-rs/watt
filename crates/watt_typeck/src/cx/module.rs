@@ -54,8 +54,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             self.early_define(definition);
         }
 
-        // 3. Late analysys
-        info!("Performing late analysys...");
+        // 3. Late analysis
+        info!("Performing late analysis...");
         for definition in self.module.declarations.clone() {
             self.late_analyze_declaration(definition);
         }

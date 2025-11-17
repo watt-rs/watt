@@ -193,7 +193,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
     /// Infers a type annotation from a [`TypePath`].
     ///
-    /// This function handles:
+    /// ## This function handles:
     /// - Prelude (built-in) types: `int`, `float`, `bool`, `string`, `()`
     /// - User-defined types (enums and structs)
     /// - Module-qualified types (e.g. `math.Vector`)
@@ -202,6 +202,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     ///
     /// Each branch validates generic parameters count and ensures
     /// access visibility for types imported from other modules.
+    /// 
     pub(crate) fn infer_type_annotation(&mut self, path: TypePath) -> Typ {
         match path.clone() {
             TypePath::Local {

@@ -10,24 +10,24 @@ import {
     $$VariantPattern,
 } from "../prelude.js"
 
-export class $Mammoth {
-    constructor(value) {
+export class $Apply {
+    constructor(function$) {
         this.$meta = "Type";
-        this.$type = "Mammoth";
-        this.value = value
+        this.$type = "Apply";
+        this.function$ = function$
     }
 }
-export function Mammoth(value) {
-    return new $Mammoth(value);
+export function Apply(function$) {
+    return new $Apply(function$);
 }
 
-export function println(value) {
-    console.log(value);
+export function test(value) {
+    let a = Apply(function (a) {
+        return value
+    })
+    return a
 }
 
 export function main() {
-    let mammoth = Mammoth(3)
-    for (const i of $$range(0, 1000000, 0)) {
-        println("Hello, world!");
-    }
+    let a = test(3)
 }
