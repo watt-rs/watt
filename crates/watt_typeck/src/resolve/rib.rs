@@ -1,81 +1,105 @@
 /// Imports
-use crate::{
-    errors::TypeckError,
-    typ::{Struct, Typ},
-};
+use crate::{errors::TypeckError, typ::typ::Typ};
 use ecow::EcoString;
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 use watt_common::{address::Address, bail};
 
-/// Rib kind
-#[derive(PartialEq)]
-pub enum RibKind {
-    Function,
-    Loop,
-    Conditional,
-    ConstructorParams,
-    Fields,
-    Pattern,
-    Struct(Rc<RefCell<Struct>>),
-}
+/// A single lexical scope that mappings
+/// variable names to their types.
+///
+/// `Rib` represents a single environment scope, storing variables
+/// declared within that scope. Each `Rib` is typically pushed onto the
+/// `RibsStack` when entering a new block, function.
+///
+/// # Important
+/// - New rib isn't created during `Enum` or `Struct` analysys.
+///
+pub type Rib = HashMap<EcoString, Typ>;
 
-/// Rib
-pub type Rib = (RibKind, HashMap<EcoString, Typ>);
-
-/// Ribs stack
+/// Stack of lexical scopes (ribs).
+///
+/// `RibsStack` manages nested lexical scopes in a module.
+/// Each function, new block, etc. scope is represented by a `Rib`.
+/// The stack structure ensures that variable shadowing, scope exit,
+/// and lookups are handled correctly.
+///
+/// # Important
+/// - New rib isn't created during `Enum` or `Struct` analysys.
+///
+#[derive(Default)]
 pub struct RibsStack {
     stack: Vec<Rib>,
 }
 
-/// Ribs stack implementation
-impl Default for RibsStack {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
+/// Implementation
 impl RibsStack {
-    /// Creates new stack
-    pub fn new() -> Self {
-        Self { stack: Vec::new() }
+    /// Pushes a new, empty rib onto the stack.
+    ///
+    /// Use this when entering a new lexical scope, such 
+    /// as a function body, new block, etc.
+    ///
+    /// # Important
+    /// - New rib isn't created during `Enum` or `Struct` analysys.
+    ///
+    pub fn push(&mut self) {
+        self.stack.push(HashMap::new())
     }
 
-    /// Pushes environment
-    pub fn push(&mut self, environment_type: RibKind) {
-        self.stack.push((environment_type, HashMap::new()))
-    }
-
-    /// Pops environment
+    /// Pops the top rib out the stack.
+    ///
+    /// Returns the popped `Rib` if the stack was not empty.
+    /// Popping a rib removes this rib from the stack.
+    /// 
+    /// Used to exit the scope.
+    /// 
     pub fn pop(&mut self) -> Option<Rib> {
         self.stack.pop()
     }
 
-    /// Defines variable
+    /// Defines a variable in the current scope.
+    ///
+    /// # Parameters
+    /// - `address`: The source location of the variable, used for error reporting.
+    /// - `name`: The variable name.
+    /// - `typ`: The type of the variable.
+    /// - `redefine`: If true, overwrite any existing variable in the current scope.
+    ///
+    /// # Behavior
+    /// - If `redefine` is false and the variable already exists in the current scope,
+    ///   raises `TypeckError::VariableIsAlreadyDefined`.
+    /// - Otherwise, inserts or overwrites the variable in the current scope.
+    /// 
     pub fn define(&mut self, address: &Address, name: &EcoString, typ: Typ, redefine: bool) {
         match self.stack.last_mut() {
             Some(env) => {
-                if redefine {
-                    env.1.insert(name.clone(), typ);
+                if redefine || !env.contains_key(name) {
+                    env.insert(name.clone(), typ);
                 } else {
-                    if !env.1.contains_key(name) {
-                        env.1.insert(name.clone(), typ);
-                    } else {
-                        bail!(TypeckError::VariableIsAlreadyDefined {
-                            src: address.source.clone(),
-                            span: address.span.clone().into()
-                        })
-                    }
+                    bail!(TypeckError::VariableIsAlreadyDefined {
+                        src: address.source.clone(),
+                        span: address.span.clone().into()
+                    })
                 }
             }
-            None => todo!(),
+            None => todo!("No active scope to define variable"),
         }
     }
 
-    /// Defines variable.
-    /// If definition exists, checks types equality.
+    /// Redefines a variable in the current scope with type checking.
+    ///
+    /// # Parameters
+    /// - `address`: Source location of the variable.
+    /// - `name`: The variable name.
+    /// - `variable`: The new type of the variable.
+    ///
+    /// # Behavior
+    /// - If the variable exists, checks that the new type equals the existing type.
+    ///   If not, raises `TypeckError::TypesMissmatch`.
+    /// - If the variable does not exist, inserts it into the current scope.
+    /// 
     pub fn redefine(&mut self, address: &Address, name: &EcoString, variable: Typ) {
         match self.stack.last_mut() {
-            Some(env) => match env.1.get(name) {
+            Some(env) => match env.get(name) {
                 Some(def) => {
                     if def != &variable {
                         bail!(TypeckError::TypesMissmatch {
@@ -87,39 +111,30 @@ impl RibsStack {
                     }
                 }
                 None => {
-                    env.1.insert(name.clone(), variable);
+                    env.insert(name.clone(), variable);
                 }
             },
-            None => todo!(),
+            None => todo!("No active scope to redefine variable"),
         }
     }
 
-    /// Lookups variable
+    /// Looks up a variable by name, searching from innermost to outermost scope.
+    ///
+    /// # Parameters
+    /// - `name`: The variable name to lookup.
+    ///
+    /// # Returns
+    /// - `Some(Typ)` if the variable is found in any scope.
+    /// - `None` if the variable does not exist in any active scope.
+    ///
+    /// # Behavior
+    /// - Iterates the `stack` in reverse order to respect lexical scoping,
+    ///   ensuring that inner scopes shadow outer ones.
+    /// 
     pub fn lookup(&self, name: &EcoString) -> Option<Typ> {
         for env in self.stack.iter().rev() {
-            if env.1.contains_key(name) {
-                return Some(env.1.get(name).unwrap().clone());
-            }
-        }
-        None
-    }
-
-    /// Checks rib with provided env type exists in hierarchy
-    pub fn contains_rib(&self, t: RibKind) -> bool {
-        for env in self.stack.iter().rev() {
-            if env.0 == t {
-                return true;
-            }
-        }
-        false
-    }
-
-    /// Checks type exists in hierarchy
-    pub fn contains_type(&self) -> Option<&Rc<RefCell<Struct>>> {
-        for env in self.stack.iter().rev() {
-            match &env.0 {
-                RibKind::Struct(typ) => return Some(typ),
-                _ => continue,
+            if env.contains_key(name) {
+                return Some(env.get(name).unwrap().clone());
             }
         }
         None

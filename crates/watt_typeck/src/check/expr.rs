@@ -1,21 +1,19 @@
 /// Imports
 use crate::{
     cx::module::ModuleCx,
-    errors::TypeckError,
+    errors::{TypeckError, TypeckRelated},
     ex::ExMatchCx,
-    resolve::{
+    inference::equation::Equation,
+    typ::{
+        def::{ModuleDef, TypeDef},
         res::Res,
-        resolve::{Def, ModDef},
-        rib::RibKind,
+        typ::{Function, Parameter, PreludeType, Typ},
     },
-    typ::{CustomType, Enum, Function, Parameter, PreludeType, Struct, Trait, Typ},
-    unify::Equation,
-    utils::CallResult,
     warnings::TypeckWarning,
 };
 use ecow::EcoString;
 use indexmap::IndexMap;
-use std::{cell::RefCell, rc::Rc};
+use std::{collections::HashMap, rc::Rc};
 use watt_ast::ast::{
     self, BinaryOp, Block, Case, Either, ElseBranch, Expression, Pattern, Publicity, TypePath,
     UnaryOp,
@@ -24,7 +22,211 @@ use watt_common::{address::Address, bail, warn};
 
 /// Expressions inferring
 impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
-    /// Infers binary
+    /// Infers the type of concat expression.
+    ///
+    /// This function:
+    /// - Checks that both the left and right operands are strings.
+    /// - Produces the resulting type, or emits a `TypeckError::InvalidBinaryOp`.
+    ///
+    ///
+    /// # Parameters
+    /// - `location`: Source code address of the binary operator.
+    /// - `left`: Left-hand side type.
+    /// - `right`: Right-hand side type.
+    ///
+    /// # Returns
+    /// -`Typ::String`
+    ///
+    fn infer_binary_concat(&self, location: Address, left: Typ, right: Typ) -> Typ {
+        // Checking prelude types
+        match left {
+            Typ::Prelude(PreludeType::String) => match right {
+                Typ::Prelude(PreludeType::String) => Typ::Prelude(PreludeType::String),
+                _ => bail!(TypeckError::InvalidBinaryOp {
+                    src: self.module.source.clone(),
+                    span: location.span.into(),
+                    a: left,
+                    b: right,
+                    op: BinaryOp::Concat
+                }),
+            },
+            _ => bail!(TypeckError::InvalidBinaryOp {
+                src: self.module.source.clone(),
+                span: location.span.into(),
+                a: left,
+                b: right,
+                op: BinaryOp::Concat
+            }),
+        }
+    }
+
+    /// Infers the type of arithmetical expression.
+    ///
+    /// This function:
+    /// - Checks that both the left and right operands are numeric.
+    /// - Produces the resulting type, or emits a `TypeckError::InvalidBinaryOp`.
+    ///
+    /// # Parameters
+    /// - `location`: Source code address of the binary operator.
+    /// - `left`: Left-hand side type.
+    /// - `op`: Binary operator used for the diagnostics.
+    /// - `right`: Right-hand side type.
+    ///
+    /// # Returns
+    /// - The resulting `Typ` after applying the operator.
+    ///
+    /// # Notes
+    /// Numeric operators automatically promote `Int × Float` or `Float × Int` to `Float`.
+    ///
+    fn infer_binary_arithmetical(
+        &self,
+        location: Address,
+        left: Typ,
+        op: BinaryOp,
+        right: Typ,
+    ) -> Typ {
+        // Checking prelude types
+        match left {
+            Typ::Prelude(PreludeType::Int) => match right {
+                Typ::Prelude(PreludeType::Int) => Typ::Prelude(PreludeType::Int),
+                Typ::Prelude(PreludeType::Float) => Typ::Prelude(PreludeType::Float),
+                _ => bail!(TypeckError::InvalidBinaryOp {
+                    src: self.module.source.clone(),
+                    span: location.span.into(),
+                    a: left,
+                    b: right,
+                    op
+                }),
+            },
+            Typ::Prelude(PreludeType::Float) => match right {
+                Typ::Prelude(PreludeType::Int) => Typ::Prelude(PreludeType::Float),
+                Typ::Prelude(PreludeType::Float) => Typ::Prelude(PreludeType::Float),
+                _ => bail!(TypeckError::InvalidBinaryOp {
+                    src: self.module.source.clone(),
+                    span: location.span.into(),
+                    a: left,
+                    b: right,
+                    op
+                }),
+            },
+            _ => bail!(TypeckError::InvalidBinaryOp {
+                src: self.module.source.clone(),
+                span: location.span.into(),
+                a: left,
+                b: right,
+                op
+            }),
+        }
+    }
+
+    /// Infers the type of an logical expression.
+    ///
+    /// This function:
+    /// - Checks that both the left and right operands are `Typ::Bool`.
+    /// - Produces the resulting type, or emits a `TypeckError::InvalidBinaryOp`.
+    ///
+    /// # Parameters
+    /// - `location`: Source code address of the binary operator.
+    /// - `left`: Left-hand side type.
+    /// - `op`: Binary operator used for the diagnostics.
+    /// - `right`: Right-hand side type.
+    ///
+    /// # Returns
+    /// - `Typ::Bool`
+    ///
+    fn infer_binary_logical(&self, location: Address, left: Typ, op: BinaryOp, right: Typ) -> Typ {
+        // Checking prelude types
+        match left {
+            Typ::Prelude(PreludeType::Bool) => match right {
+                Typ::Prelude(PreludeType::Bool) => Typ::Prelude(PreludeType::Bool),
+                _ => bail!(TypeckError::InvalidBinaryOp {
+                    src: self.module.source.clone(),
+                    span: location.span.into(),
+                    a: left,
+                    b: right,
+                    op
+                }),
+            },
+            _ => bail!(TypeckError::InvalidBinaryOp {
+                src: self.module.source.clone(),
+                span: location.span.into(),
+                a: left,
+                b: right,
+                op
+            }),
+        }
+    }
+
+    /// Infers the type of an compare expression.
+    ///
+    /// This function:
+    /// - Checks that both the left and right operands are numerics.
+    /// - Produces the resulting type, or emits a `TypeckError::InvalidBinaryOp`.
+    ///
+    /// # Parameters
+    /// - `location`: Source code address of the binary operator.
+    /// - `left`: Left-hand side type.
+    /// - `op`: Binary operator used for the diagnostics.
+    /// - `right`: Right-hand side type.
+    ///
+    /// # Returns
+    /// - `Typ::Bool`
+    ///
+    fn infer_binary_compare(&self, location: Address, left: Typ, op: BinaryOp, right: Typ) -> Typ {
+        // Checking prelude types
+        match left {
+            Typ::Prelude(PreludeType::Int) | Typ::Prelude(PreludeType::Float) => match right {
+                Typ::Prelude(PreludeType::Int) | Typ::Prelude(PreludeType::Float) => {
+                    Typ::Prelude(PreludeType::Bool)
+                }
+                _ => bail!(TypeckError::InvalidBinaryOp {
+                    src: self.module.source.clone(),
+                    span: location.span.into(),
+                    a: left,
+                    b: right,
+                    op
+                }),
+            },
+            _ => bail!(TypeckError::InvalidBinaryOp {
+                src: self.module.source.clone(),
+                span: location.span.into(),
+                a: left,
+                b: right,
+                op
+            }),
+        }
+    }
+
+    /// Infers the type of a binary expression.
+    ///
+    /// This function:
+    /// - Infers types of both the left and right operands.
+    /// - Checks whether the operator is applicable to the operand types.
+    /// - Performs type-level computation (e.g., numeric promotion, boolean logic).
+    /// - Produces the resulting type, or emits a `TypeckError::InvalidBinaryOp`
+    ///   if operands are incompatible with the operator.
+    ///
+    /// # Parameters
+    /// - `location`: Source code address of the binary operator.
+    /// - `op`: Binary operator being applied.
+    /// - `left`: Left-hand side expression.
+    /// - `right`: Right-hand side expression.
+    ///
+    /// # Returns
+    /// - The resulting `Typ` after applying the operator.
+    ///
+    /// # Errors
+    /// - [`InvalidBinaryOp`]: when operand types do not match operator requirements.
+    ///
+    /// # Notes
+    /// This function handles:
+    /// - String concatenation (`<>`)
+    /// - Arithmetic operators (`+`, `-`, `*`, `/`, `%`, `&`, `|`)
+    /// - Logical operators (`&&`, `||`, `^`)
+    /// - Comparison operators (`<`, `<=`, `>`, `>=`)
+    /// - Equality (`==`, `!=`)
+    ///   Numeric operators automatically promote `Int × Float` or `Float × Int` to `Float`.
+    ///
     fn infer_binary(
         &mut self,
         location: Address,
@@ -32,35 +234,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         left: Expression,
         right: Expression,
     ) -> Typ {
-        // Inferred left and right `Typ`
-        let left_typ = self.infer_expr(left);
-        let right_typ = self.infer_expr(right);
+        // Inferencing left and right types
+        let left = self.infer_expr(left);
+        let right = self.infer_expr(right);
 
         // Matching operator
         match op {
             // Concat
-            BinaryOp::Concat => {
-                // Checking prelude types
-                match left_typ {
-                    Typ::Prelude(PreludeType::String) => match right_typ {
-                        Typ::Prelude(PreludeType::String) => Typ::Prelude(PreludeType::String),
-                        _ => bail!(TypeckError::InvalidBinaryOp {
-                            src: self.module.source.clone(),
-                            span: location.span.into(),
-                            a: left_typ,
-                            b: right_typ,
-                            op
-                        }),
-                    },
-                    _ => bail!(TypeckError::InvalidBinaryOp {
-                        src: self.module.source.clone(),
-                        span: location.span.into(),
-                        a: left_typ,
-                        b: right_typ,
-                        op
-                    }),
-                }
-            }
+            BinaryOp::Concat => self.infer_binary_concat(location, left, right),
             // Arithmetical
             BinaryOp::Add
             | BinaryOp::Sub
@@ -68,98 +249,45 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             | BinaryOp::Div
             | BinaryOp::BitwiseAnd
             | BinaryOp::BitwiseOr
-            | BinaryOp::Mod => {
-                // Checking prelude types
-                match left_typ {
-                    Typ::Prelude(PreludeType::Int) => match right_typ {
-                        Typ::Prelude(PreludeType::Int) => Typ::Prelude(PreludeType::Int),
-                        Typ::Prelude(PreludeType::Float) => Typ::Prelude(PreludeType::Float),
-                        _ => bail!(TypeckError::InvalidBinaryOp {
-                            src: self.module.source.clone(),
-                            span: location.span.into(),
-                            a: left_typ,
-                            b: right_typ,
-                            op
-                        }),
-                    },
-                    Typ::Prelude(PreludeType::Float) => match right_typ {
-                        Typ::Prelude(PreludeType::Int) => Typ::Prelude(PreludeType::Float),
-                        Typ::Prelude(PreludeType::Float) => Typ::Prelude(PreludeType::Float),
-                        _ => bail!(TypeckError::InvalidBinaryOp {
-                            src: self.module.source.clone(),
-                            span: location.span.into(),
-                            a: left_typ,
-                            b: right_typ,
-                            op
-                        }),
-                    },
-                    _ => bail!(TypeckError::InvalidBinaryOp {
-                        src: self.module.source.clone(),
-                        span: location.span.into(),
-                        a: left_typ,
-                        b: right_typ,
-                        op
-                    }),
-                }
-            }
+            | BinaryOp::Mod => self.infer_binary_arithmetical(location, left, op, right),
             // Logical
             BinaryOp::Xor | BinaryOp::And | BinaryOp::Or => {
-                // Checking prelude types
-                match left_typ {
-                    Typ::Prelude(PreludeType::Bool) => match right_typ {
-                        Typ::Prelude(PreludeType::Bool) => Typ::Prelude(PreludeType::Bool),
-                        _ => bail!(TypeckError::InvalidBinaryOp {
-                            src: self.module.source.clone(),
-                            span: location.span.into(),
-                            a: left_typ,
-                            b: right_typ,
-                            op
-                        }),
-                    },
-                    _ => bail!(TypeckError::InvalidBinaryOp {
-                        src: self.module.source.clone(),
-                        span: location.span.into(),
-                        a: left_typ,
-                        b: right_typ,
-                        op
-                    }),
-                }
+                self.infer_binary_logical(location, left, op, right)
             }
             // Compare
             BinaryOp::Ge | BinaryOp::Gt | BinaryOp::Le | BinaryOp::Lt => {
-                // Checking prelude types
-                match left_typ {
-                    Typ::Prelude(PreludeType::Int) | Typ::Prelude(PreludeType::Float) => {
-                        match right_typ {
-                            Typ::Prelude(PreludeType::Int) | Typ::Prelude(PreludeType::Float) => {
-                                Typ::Prelude(PreludeType::Bool)
-                            }
-                            _ => bail!(TypeckError::InvalidBinaryOp {
-                                src: self.module.source.clone(),
-                                span: location.span.into(),
-                                a: left_typ,
-                                b: right_typ,
-                                op
-                            }),
-                        }
-                    }
-                    _ => bail!(TypeckError::InvalidBinaryOp {
-                        src: self.module.source.clone(),
-                        span: location.span.into(),
-                        a: left_typ,
-                        b: right_typ,
-                        op
-                    }),
-                }
+                self.infer_binary_compare(location, left, op, right)
             }
             // Equality
             BinaryOp::Eq | BinaryOp::NotEq => Typ::Prelude(PreludeType::Bool),
         }
     }
 
-    /// Infers unary
+    /// Infers the type of a unary expression.
+    ///
+    /// This function:
+    /// - Infers the type of the operand.
+    /// - Checks whether the operator is applicable to the operand types.
+    /// - Returns the resulting type, or emits a `TypeckError::InvalidUnaryOp`
+    ///   if the operator cannot be applied.
+    ///
+    /// # Parameters
+    /// - `location`: Source location of the unary operator.
+    /// - `op`: Unary operator (`-` or `!`).
+    /// - `value`: Operand expression.
+    ///
+    /// # Returns
+    /// - The resulting `Typ` after applying the operator.
+    ///
+    /// # Errors
+    /// - [`InvalidUnaryOp`]: operand type does not match operator expectation.
+    ///
+    /// # Notes
+    /// - `-` is valid only for `Int` and `Float`.
+    /// - `!` is valid only for `Bool`.
+    ///
     fn infer_unary(&mut self, location: Address, op: UnaryOp, value: Expression) -> Typ {
-        // Inferred value `Typ`
+        // Inferencing value
         let inferred_value = self.infer_expr(value);
 
         // Checking type is prelude
@@ -199,12 +327,46 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
     }
 
-    /// Infers get
+    /// Resolves a variable or module symbol by name.
+    ///
+    /// # Parameters
+    /// - `location`: Location of the variable reference.
+    /// - `name`: Identifier being resolved.
+    ///
+    /// # Returns
+    /// - A `Res` representing a fully resolved symbol (value, type, module, etc.).
+    ///
+    /// # Errors
+    /// Emitted indirectly through `resolver.resolve` when a symbol is not found.
+    ///
     fn infer_get(&self, location: Address, name: EcoString) -> Res {
         self.resolver.resolve(&location, &name)
     }
 
-    /// Infers module field access
+    /// Resolves a field access on a module (e.g. `Module.field`).
+    ///
+    /// This function:
+    /// - Locates the target module.
+    /// - Locates the requested field inside the module.
+    /// - Checks visibility (`Public`, `Private`).
+    /// - Produces the correct `Res` variant depending on the field kind:
+    ///     - `Type`  → `Res::Custom`
+    ///     - `Const` → `Res::Value`
+    ///     - `Function` → `Res::Value` containing a function type.
+    ///
+    /// # Parameters
+    /// - `field_module`: Name of the module.
+    /// - `field_location`: Source location of the field access.
+    /// - `field_name`: Name of the field inside the module.
+    ///
+    /// # Returns
+    /// - Resolved field as `Res`.
+    ///
+    /// # Errors
+    /// - [`ModuleIsNotDefined`]: when the module could not be resolved.
+    /// - [`ModuleFieldIsNotDefined`]: when the module field is not defined.
+    /// - [`ModuleFieldIsPrivate`]: when the module field is private.
+    ///
     fn infer_module_field_access(
         &self,
         field_module: EcoString,
@@ -218,7 +380,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 // If field exists
                 // checking it's publicity
                 Some(def) => match def {
-                    ModDef::CustomType(ty) => {
+                    ModuleDef::Type(ty) => {
                         match ty.publicity {
                             // If field is public, we resolved field
                             Publicity::Public => Res::Custom(ty.value.clone()),
@@ -230,10 +392,22 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                             }),
                         }
                     }
-                    ModDef::Variable(var) => {
+                    ModuleDef::Const(var) => {
                         match var.publicity {
-                            // If field is public, we resolved field
+                            // If coonstant is public, we resolved field
                             Publicity::Public => Res::Value(var.value.clone()),
+                            // Else, raising `module field is private`
+                            _ => bail!(TypeckError::ModuleFieldIsPrivate {
+                                src: self.module.source.clone(),
+                                span: field_location.span.into(),
+                                name: field_name
+                            }),
+                        }
+                    }
+                    ModuleDef::Function(f) => {
+                        match f.publicity {
+                            // If coonstant is public, we resolved field
+                            Publicity::Public => Res::Value(Typ::Function(f.value.clone())),
                             // Else, raising `module field is private`
                             _ => bail!(TypeckError::ModuleFieldIsPrivate {
                                 src: self.module.source.clone(),
@@ -256,90 +430,109 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
     }
 
-    /// Infers enum field access
+    /// Resolves a field access on an enum type (variant lookup).
+    ///
+    /// This function:
+    /// - Retrieves the list of variants from the enum definition.
+    /// - Searches for a variant with the requested name.
+    /// - Returns `Res::Variant` on success.
+    ///
+    /// # Parameters
+    /// - `ty`: Fully instantiated enum type.
+    /// - `name`: Name of the enum type (used for error reporting).
+    /// - `field_location`: Source location.
+    /// - `field_name`: Name of the variant being accessed.
+    ///
+    /// # Returns
+    /// - `Res::Variant(ty, variant)`
+    ///
+    /// # Errors
+    /// - [`FieldIsNotDefined`]: the variant does not exist in the enum.
+    ///
     fn infer_enum_field_access(
-        &self,
-        en: &Rc<Enum>,
-        field_location: Address,
-        field_name: EcoString,
-    ) -> Res {
-        // Finding variant
-        match en.variants.iter().find(|var| var.name == field_name) {
-            Some(variant) => Res::Variant(en.clone(), variant.clone()),
-            None => bail!(TypeckError::EnumVariantIsNotDefined {
-                src: self.module.source.clone(),
-                span: field_location.span.into(),
-                e: en.name.clone(),
-                variant: field_name
-            }),
-        }
-    }
-
-    /// Infers type field access
-    fn infer_type_field_access(
-        &self,
-        ty: &Rc<RefCell<Struct>>,
+        &mut self,
+        ty: Typ,
+        name: EcoString,
         field_location: Address,
         field_name: EcoString,
     ) -> Res {
         // Finding field
-        let borrowed = ty.borrow();
-        match borrowed.env.get(&field_name) {
-            Some(typ) => match typ.publicity {
-                // Checking publicity
-                Publicity::Public => Res::Value(typ.value.clone()),
-                // Checking environments stack contains type
-                _ => match self.resolver.contains_type_rib() {
-                    // If type is same
-                    Some(t) => {
-                        if t == ty {
-                            Res::Value(typ.value.clone())
-                        } else {
-                            bail!(TypeckError::FieldIsPrivate {
-                                src: self.module.source.clone(),
-                                span: field_location.span.into(),
-                                t: borrowed.name.clone(),
-                                field: field_name
-                            });
-                        }
-                    }
-                    // Else
-                    None => bail!(TypeckError::FieldIsPrivate {
-                        src: self.module.source.clone(),
-                        span: field_location.span.into(),
-                        t: borrowed.name.clone(),
-                        field: field_name
-                    }),
-                },
-            },
+        match ty
+            .variants(&mut self.solver.hydrator)
+            .iter()
+            .find(|f| f.name == field_name)
+        {
+            Some(f) => Res::Variant(ty, f.clone()),
             None => bail!(TypeckError::FieldIsNotDefined {
                 src: self.module.source.clone(),
                 span: field_location.span.into(),
-                t: borrowed.name.clone(),
+                t: name,
                 field: field_name
             }),
         }
     }
 
-    /// Infers trait field access
-    fn infer_trait_field_access(
-        &self,
-        tr: &Rc<Trait>,
+    /// Resolves a field access on a struct type.
+    ///
+    /// This function:
+    /// - Retrieves struct fields via the hydrator.
+    /// - Searches for a field with the requested name.
+    /// - Returns the type of the field inside `Res::Value`.
+    ///
+    /// # Parameters
+    /// - `ty`: Fully instantiated struct type.
+    /// - `name`: Struct name for error reporting.
+    /// - `field_location`: Source code address.
+    /// - `field_name`: Field name.
+    ///
+    /// # Returns
+    /// - `Res::Value(f.typ)` if field exists.
+    ///
+    /// # Errors
+    /// - [`FieldIsNotDefined`]: the field does not exist in the struct.
+    ///
+    fn infer_struct_field_access(
+        &mut self,
+        ty: Typ,
+        name: EcoString,
         field_location: Address,
         field_name: EcoString,
     ) -> Res {
-        match tr.functions.get(&field_name) {
-            Some(function) => Res::Value(Typ::Function(function.clone())),
+        // Finding field
+        match ty
+            .fields(&mut self.solver.hydrator)
+            .iter()
+            .find(|f| f.name == field_name)
+        {
+            Some(f) => Res::Value(f.typ.clone()),
             None => bail!(TypeckError::FieldIsNotDefined {
                 src: self.module.source.clone(),
                 span: field_location.span.into(),
-                t: tr.name.clone(),
+                t: name,
                 field: field_name
             }),
         }
     }
 
-    /// Infers access
+    /// Infers any kind of field access expression.
+    ///
+    /// Depending on what the container resolves to, this function does this:
+    ///
+    /// - calls                        `infer_module_field_access`  for module fields
+    /// - instantiates enum and calls  `infer_enum_field_access`    for enum variants
+    /// - calls                        `infer_struct_field_access`  for struct value fields
+    ///
+    /// # Parameters
+    /// - `field_location`: Location of the field access.
+    /// - `container`: Expression on the left-hand side of `.`.
+    /// - `field_name`: Requested field.
+    ///
+    /// # Returns
+    /// - `Res` representing the resolved field.
+    ///
+    /// # Errors
+    /// - [`CouldNotResolveFieldsIn`]: container is not a module/struct/enum.
+    ///
     fn infer_field_access(
         &mut self,
         field_location: Address,
@@ -354,38 +547,30 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 self.infer_module_field_access(name.clone(), field_location, field_name)
             }
             // Enum field access
-            Res::Custom(CustomType::Enum(en)) => {
-                self.infer_enum_field_access(&en, field_location, field_name)
+            Res::Custom(TypeDef::Enum(en)) => {
+                let instantiated = Typ::Enum(
+                    en.clone(),
+                    self.solver
+                        .hydrator
+                        .hyd()
+                        .mk_generics(&en.borrow().generics, HashMap::new()),
+                );
+                self.infer_enum_field_access(
+                    instantiated,
+                    en.borrow().name.clone(),
+                    field_location,
+                    field_name,
+                )
             }
             // Type field access
-            Res::Value(typ) => match typ {
-                // Custom Type
-                Typ::Struct(ty) => {
-                    let res = self.infer_type_field_access(&ty, field_location, field_name);
-                    res
-                }
-                // Trait
-                Typ::Trait(tr) => self.infer_trait_field_access(&tr, field_location, field_name),
-                // Dyn
-                Typ::Dyn => {
-                    // Returning `dyn` like field type,
-                    // but emitting warning
-                    warn!(
-                        self.package,
-                        TypeckWarning::AccessOfDynField {
-                            src: self.module.source.clone(),
-                            span: field_location.span.into()
-                        }
-                    );
-                    Res::Value(Typ::Dyn)
-                }
-                // Else
-                _ => bail!(TypeckError::CouldNotResolveFieldsIn {
-                    src: self.module.source.clone(),
-                    span: field_location.span.into(),
-                    res: container_inferred
-                }),
-            },
+            Res::Value(it @ Typ::Struct(ty, _)) => {
+                self.infer_struct_field_access(
+                    it.clone(),
+                    ty.borrow().name.clone(),
+                    field_location,
+                    field_name,
+                )
+            }
             // Else
             _ => bail!(TypeckError::CouldNotResolveFieldsIn {
                 src: self.module.source.clone(),
@@ -395,65 +580,108 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
     }
 
-    /// Infers call
+    /// Ensures arity of parameters and arguments.
+    ///
+    /// # Parameters
+    /// - `location`: Location of the field access.
+    /// - `expected`: Expected amount of parameters.
+    /// - `got`: Amount of passed parameters.
+    fn ensure_arity(&self, location: Address, expected: usize, got: usize) {
+        if expected != got {
+            bail!(TypeckError::ArityMissmatch {
+                related: vec![TypeckRelated::Here {
+                    src: location.source.clone(),
+                    span: location.span.into()
+                }],
+                expected,
+                got
+            })
+        }
+    }
+
+    /// Infers the type of a function or constructor call.
+    ///
+    /// This routine performs three major tasks:
+    /// 1. Resolves the callee (`what`) via [`infer_resolution`] to determine whether it is:
+    ///    - a function,
+    ///    - a struct constructor,
+    ///    - an enum variant,
+    ///    - or an invalid expression,
+    /// 2. Infers the types of all argument expressions,
+    /// 3. Produces unification constraints between the expected and provided argument types.
+    ///
+    /// ### Struct constructor call
+    /// If the callee resolves to a custom struct type (`Res::Custom(TypeDef::Struct)`),
+    /// the hydrator instantiates its generic parameters with fresh variables.
+    /// Then each struct field type is unified with the corresponding argument.
+    ///
+    /// ### Function call
+    /// If the callee resolves to a function (`Typ::Function`), the function signature
+    /// is instantiated via [`Hydrator::mk_function`] and each parameter is unified with
+    /// the corresponding argument expression.
+    ///
+    /// ### Enum variant construction
+    /// If the callee is an enum variant (`Res::Variant`), each variant field is unified
+    /// with its corresponding argument expression. We don't instantiate the enum,
+    /// because it was already instantiated during enum variant / enum field lookup.
+    ///
+    /// ### Errors
+    /// - [`TypeckError::CouldNotCall`]: the callee is not callable (e.g. an integer).
+    /// - ['TypeckError::ArityMismatch`]: or type mismatches are detected via solver unification.
+    ///
+    /// Returns a resolved `Res::Value` with the instantiated type of the expression.
+    ///
     pub(crate) fn infer_call(
         &mut self,
         location: Address,
         what: Expression,
         args: Vec<Expression>,
-    ) -> CallResult {
+    ) -> Res {
         let function = self.infer_resolution(what);
         let args = args
             .iter()
             .map(|a| (a.location(), self.infer_expr(a.clone())))
             .collect::<Vec<(Address, Typ)>>();
-        match &function {
+
+        match function.clone() {
             // Custom type
-            Res::Custom(CustomType::Struct(ty)) => {
-                let borrowed = ty.borrow();
-                borrowed.params.iter().zip(args).for_each(|(a, b)| {
+            Res::Custom(TypeDef::Struct(ty)) => {
+                self.ensure_arity(location, ty.borrow().fields.len(), args.len());
+
+                let instantiated = Typ::Struct(
+                    ty.clone(),
                     self.solver
-                        .solve(Equation::Unify((a.location.clone(), a.typ.clone()), b));
-                });
-                CallResult::FromType(Typ::Struct(ty.clone()))
+                        .hydrator
+                        .hyd()
+                        .mk_generics(&ty.borrow().generics, HashMap::new()),
+                );
+
+                instantiated
+                    .fields(&mut self.solver.hydrator)
+                    .into_iter()
+                    .zip(args)
+                    .for_each(|(p, a)| {
+                        self.solver.solve(Equation::Unify((p.location, p.typ), a));
+                    });
+
+                Res::Value(instantiated)
             }
             // Value
-            Res::Value(t) => match t {
-                // Function
-                Typ::Function(f) => {
-                    f.params.iter().zip(args).for_each(|(a, b)| {
-                        self.solver
-                            .solve(Equation::Unify((a.location.clone(), a.typ.clone()), b));
-                    });
-                    CallResult::FromFunction(f.ret.clone(), f.clone())
-                }
-                // Dyn
-                Typ::Dyn => {
-                    // Returning `dyn` call result,
-                    // but emitting warning
-                    warn!(
-                        self.package,
-                        TypeckWarning::CallOfDyn {
-                            src: self.module.source.clone(),
-                            span: location.span.into()
-                        }
-                    );
-                    CallResult::FromDyn
-                }
-                // Else
-                _ => bail!(TypeckError::CouldNotCall {
-                    src: self.module.source.clone(),
-                    span: location.span.into(),
-                    res: function
-                }),
+            Res::Value(Typ::Function(f)) => {
+                self.ensure_arity(location, f.params.len(), args.len());
+                let f = self.solver.hydrator.hyd().mk_function(f);
+                f.params.iter().cloned().zip(args).for_each(|(p, a)| {
+                    self.solver.unify(p.location, p.typ, a.0, a.1);
+                });
+                Res::Value(f.ret.clone())
             },
             // Variant
             Res::Variant(en, variant) => {
-                variant.params.iter().zip(args).for_each(|(a, b)| {
-                    self.solver
-                        .solve(Equation::Unify((variant.location.clone(), a.1.clone()), b));
+                variant.fields.iter().cloned().zip(args).for_each(|(p, a)| {
+                    self.solver.solve(Equation::Unify((p.location, p.typ), a));
                 });
-                CallResult::FromEnum(Typ::Enum(en.clone()))
+
+                Res::Value(en)
             }
             _ => bail!(TypeckError::CouldNotCall {
                 src: self.module.source.clone(),
@@ -463,82 +691,22 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
     }
 
-    /// Infers type annotation
-    pub(crate) fn infer_type_annotation(&mut self, path: TypePath) -> Typ {
-        match path {
-            TypePath::Local { location, name } => match name.as_str() {
-                "int" => Typ::Prelude(PreludeType::Int),
-                "float" => Typ::Prelude(PreludeType::Float),
-                "bool" => Typ::Prelude(PreludeType::Bool),
-                "string" => Typ::Prelude(PreludeType::String),
-                "dyn" => Typ::Dyn,
-                "unit" => Typ::Unit,
-                _ => match self.resolver.resolve_type(&name, &location) {
-                    CustomType::Enum(en) => Typ::Enum(en.clone()),
-                    CustomType::Struct(ty) => Typ::Struct(ty.clone()),
-                    CustomType::Trait(tr) => Typ::Trait(tr.clone()),
-                },
-            },
-            TypePath::Module {
-                location,
-                module,
-                name,
-            } => {
-                let m = self.resolver.resolve_module(&module);
-
-                match m.fields.get(&name) {
-                    Some(field) => match field {
-                        ModDef::CustomType(t) => {
-                            if t.publicity != Publicity::Private {
-                                match &t.value {
-                                    CustomType::Enum(en) => Typ::Enum(en.clone()),
-                                    CustomType::Struct(ty) => Typ::Struct(ty.clone()),
-                                    CustomType::Trait(tr) => Typ::Trait(tr.clone()),
-                                }
-                            } else {
-                                bail!(TypeckError::TypeIsPrivate {
-                                    src: self.module.source.clone(),
-                                    span: location.span.into(),
-                                    t: t.value.clone()
-                                })
-                            }
-                        }
-                        ModDef::Variable(_) => bail!(TypeckError::CouldNotUseValueAsType {
-                            src: self.module.source.clone(),
-                            span: location.clone().span.into(),
-                            v: name
-                        }),
-                    },
-                    None => bail!(TypeckError::TypeIsNotDefined {
-                        src: self.module.source.clone(),
-                        span: location.span.into(),
-                        t: format!("{module}.{name}").into()
-                    }),
-                }
-            }
-            TypePath::Function {
-                location,
-                params,
-                ret,
-            } => Typ::Function(Rc::new(Function {
-                source: self.module.source.clone(),
-                location,
-                uid: self.fresh_id(),
-                name: EcoString::from("$annotated"),
-                params: params
-                    .into_iter()
-                    .map(|p| Parameter {
-                        location: p.location(),
-                        typ: self.infer_type_annotation(p),
-                    })
-                    .collect(),
-                ret: ret.map_or(Typ::Unit, |t| self.infer_type_annotation(*t)),
-            })),
-            TypePath::Unit { .. } => Typ::Unit,
-        }
-    }
-
-    /// Infers resolution
+    /// Performs name/field resolution on an expression that appears in a "call position".
+    ///
+    /// This function is responsible only for *resolving what the expression refers to*.
+    /// It does **not** infer full expression types (that's [`infer_expr`]).
+    ///
+    /// Supported resolution forms:
+    /// - `PrefixVar`: simple variable access,
+    /// - `SuffixVar`: field access (`a.b`),
+    /// - nested calls (`f(x)(y)`), which recursively call [`infer_call`].
+    ///
+    /// Any other expression that cannot denote a callable value or a namespace entry
+    /// triggers [`TypeckError::UnexpectedExprInResolution`].
+    ///
+    /// This function is typically used at the entry point of call inference
+    /// and pattern matching, where the compiler needs to know *what* is being referenced.
+    ///
     pub(crate) fn infer_resolution(&mut self, expr: Expression) -> Res {
         match expr {
             Expression::PrefixVar { location, name } => self.infer_get(location, name),
@@ -551,19 +719,35 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 location,
                 what,
                 args,
-            } => match self.infer_call(location.clone(), *what, args) {
-                CallResult::FromFunction(typ, _) => Res::Value(typ),
-                CallResult::FromType(t) => Res::Value(t),
-                CallResult::FromEnum(e) => Res::Value(e),
-                CallResult::FromDyn => Res::Value(Typ::Dyn),
-            },
+            } => self.infer_call(location.clone(), *what, args),
             expr => bail!(TypeckError::UnexpectedExprInResolution {
                 expr: format!("{expr:?}").into()
             }),
         }
     }
 
-    /// Infers anonumous fn
+    /// Infers the type of an anonymous function literal.
+    ///
+    /// This creates a temporary local scope, binds parameters with their declared
+    /// annotated types, and infers the type of the function body.
+    ///
+    /// ### Return type
+    /// - If an explicit return type is provided, it is used.
+    /// - Otherwise the return type defaults to `Unit`, but is unified with the inferred body.
+    ///
+    /// ### Parameters
+    /// Parameter types must always be annotated; the inference engine does not attempt
+    /// to infer parameter types from usage (similar to Rust).
+    ///
+    /// ### Scoping
+    /// A new rib (scope) is pushed for the function parameters. After the body is
+    /// inferred and unified, the rib is popped.
+    ///
+    /// Returns a fully constructed `Typ::Function` containing:
+    /// - inferred parameter list,
+    /// - inferred return type,
+    /// - captured generics (**Always** empty for anonymous functions).
+    ///
     fn infer_anonymous_fn(
         &mut self,
         location: Address,
@@ -590,22 +774,20 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
         // creating function
         let function = Function {
-            source: self.module.source.clone(),
             location: location.clone(),
-            uid: self.fresh_id(),
             name: EcoString::from("$anonymous"),
+            generics: Vec::new(),
             params: params.clone().into_values().collect(),
             ret: ret.clone(),
         };
 
         // pushing new scope
-        self.resolver.push_rib(RibKind::Function);
+        self.resolver.push_rib();
 
         // defining params in new scope
-        params.into_iter().for_each(|p| {
-            self.resolver
-                .define(&location, &p.0, Def::Local(p.1.typ), false)
-        });
+        params
+            .into_iter()
+            .for_each(|p| self.resolver.define_local(&location, &p.0, p.1.typ, false));
 
         // inferring body
         let (block_location, inferred_block) = match body {
@@ -622,7 +804,26 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         Typ::Function(Rc::new(function))
     }
 
-    /// Analyzes single pattern
+    /// Performs semantic/type analysis of a single match arm pattern.
+    ///
+    /// Validates the correctness of a pattern
+    /// against the expected type of the matched value (`inferred_what`).
+    ///
+    /// ### Responsibilities:
+    /// - Verifies enum variant constructors used in patterns,
+    /// - Verifies the correctness of fields in an `Unwrap` pattern,
+    /// - Ensures literals (`Int`, `Float`, etc.) match the expected type,
+    /// - Handles wildcards (`_`) and variable binding patterns,
+    /// - Recursively validates `pat1 | pat2`
+    ///
+    /// ### Errors:
+    /// - [`TypeckError::TypesMissmatch`] — literal or variant does not match the scrutinee type.
+    /// - [`TypeckError::WrongUnwrapPattern`] — using `.field` pattern on non-variant.
+    /// - [`TypeckError::EnumVariantFieldIsNotDefined`] — non-existent field in variant.
+    /// - [`TypeckError::WrongVariantPattern`] — non-variant used where variant pattern expected.
+    ///
+    /// This function may introduce new local bindings (for `BindTo`) into the current rib.
+    ///
     fn analyze_pattern(&mut self, inferred_what: Typ, case: &Case, pat: &Pattern) {
         // matching pattern
         match pat.clone() {
@@ -633,34 +834,35 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 match &res {
                     Res::Variant(en, variant) => {
                         // If types aren't equal
-                        let en_typ = Typ::Enum(en.clone());
-                        if inferred_what != en_typ {
+                        if inferred_what != *en {
                             bail!(TypeckError::TypesMissmatch {
                                 src: self.module.source.clone(),
                                 span: case.address.span.clone().into(),
-                                expected: en_typ,
+                                expected: en.clone(),
                                 got: inferred_what.clone()
                             });
                         }
                         // If types equal, checking fields existence
                         else {
                             fields.into_iter().for_each(|field| {
-                                match variant.params.get(&field.1) {
-                                    // Defining field with it's type, if it exists
-                                    Some(typ) => {
-                                        self.resolver.define(
-                                            &field.0,
-                                            &field.1,
-                                            Def::Local(typ.clone()),
-                                            true,
-                                        );
-                                    }
+                                // Defining fields and checking existence
+                                match variant.fields.iter().find(|f| f.name == field.1) {
+                                    // Note: Don't worry about field type instantiation,
+                                    // it was already instantiated by instantiating the enum
+                                    // itself and getting fresh enum variant
+                                    // during variant resolution.
+                                    Some(it) => self.resolver.define_local(
+                                        &case.address,
+                                        &it.name,
+                                        it.typ.clone(),
+                                        false
+                                    ),
                                     None => bail!(TypeckError::EnumVariantFieldIsNotDefined {
                                         src: self.module.source.clone(),
-                                        span: case.address.span.clone().into(),
+                                        span: field.0.span.into(),
                                         res: res.clone(),
                                         field: field.1
-                                    }),
+                                    })
                                 }
                             });
                         }
@@ -724,12 +926,11 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 match &res {
                     Res::Variant(en, _) => {
                         // If types aren't equal
-                        let en_typ = Typ::Enum(en.clone());
-                        if inferred_what != en_typ {
+                        if inferred_what != *en {
                             bail!(TypeckError::TypesMissmatch {
                                 src: self.module.source.clone(),
                                 span: case.address.span.clone().into(),
-                                expected: en_typ,
+                                expected: en.clone(),
                                 got: inferred_what.clone()
                             });
                         }
@@ -742,12 +943,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 }
             }
             Pattern::BindTo(name) => {
-                self.resolver.define(
-                    &case.address,
-                    &name,
-                    Def::Local(inferred_what.clone()),
-                    false,
-                );
+                self.resolver
+                    .define_local(&case.address, &name, inferred_what.clone(), false);
             }
             Pattern::Or(pat1, pat2) => {
                 self.analyze_pattern(inferred_what.clone(), case, &pat1);
@@ -756,7 +953,26 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
     }
 
-    /// Infers pattern matching
+    /// Infers the result type of a `match` expression.
+    ///
+    /// Steps performed:
+    /// 1. Infer the matchable type (`inferred_what`).
+    /// 2. For each case:
+    ///    - push a new rib,
+    ///    - analyze its pattern via [`analyze_pattern`],
+    ///    - infer the type of its body,
+    ///    - collect all case body types for unification,
+    ///    - pop the rib.
+    /// 3. Unify all case body types yielding the final type of the `match`.
+    /// 4. Perform exhaustiveness checking using [`ExMatchCx::check`].
+    ///
+    /// ### Exhaustiveness
+    /// If the match is not exhaustive:
+    /// - Emit a warning (`TypeckWarning::NonExhaustive`),
+    /// - The whole match expression is typed as `Unit`.
+    ///
+    /// Otherwise return the unified type of all branches.
+    ///
     pub(crate) fn infer_pattern_matching(
         &mut self,
         location: Address,
@@ -770,7 +986,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // type checking cases
         for case in cases.clone() {
             // pattern scope start
-            self.resolver.push_rib(RibKind::Pattern);
+            self.resolver.push_rib();
             // analyzing pattern
             self.analyze_pattern(inferred_what.clone(), &case, &case.pattern);
             // analyzing body
@@ -800,7 +1016,23 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
     }
 
-    /// Infers if
+    /// Infers the type of an `if`/`elif`/`else` chain.
+    ///
+    /// ### Logical expression
+    /// Ensures that each `if` and `elif` condition has type `Bool`.
+    /// Otherwise emits [`TypeckError::ExpectedLogicalInIf`].
+    ///
+    /// ### Branch types
+    /// All reachable branches are collected into a list and unified together.
+    /// If the final `else` branch is missing, the whole `if` expression evaluates to `Unit`.
+    ///
+    /// ### Scoping
+    /// Each `if` branch introduces a new rib; scoping is handled consistently like in blocks.
+    ///
+    /// Returns:
+    /// - The unified type of all branches if an `else` exists,
+    /// - Otherwise `Unit`.
+    ///
     fn infer_if(
         &mut self,
         location: Address,
@@ -809,7 +1041,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         else_branches: Vec<ElseBranch>,
     ) -> Typ {
         // pushing rib
-        self.resolver.push_rib(RibKind::Conditional);
+        self.resolver.push_rib();
         // inferring logical
         let inferred_logical = self.infer_expr(logical);
         match inferred_logical {
@@ -873,9 +1105,24 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
     }
 
-    /// Infers expression
+    /// The central entry point for expression type inference.
+    ///
+    /// Dispatches to specialized inference routines depending on expression kind:
+    /// - literals → primitive `PreludeType`,
+    /// - variable and field access,
+    /// - calls (`infer_call`),
+    /// - anonymous functions (`infer_anonymous_fn`),
+    /// - binary and unary ops,
+    /// - match/if constructs.
+    ///
+    /// After the initial inference, the result is passed through the hydrator
+    /// (`Hydrator::apply`) to resolve any pending substitutions of unbounds.
+    ///
+    /// This guarantees that the final type is always normalized.
+    ///
     pub(crate) fn infer_expr(&mut self, expr: Expression) -> Typ {
-        match expr {
+        // Inferencing expression
+        let result = match expr {
             Expression::Float { .. } => Typ::Prelude(PreludeType::Float),
             Expression::Int { .. } => Typ::Prelude(PreludeType::Int),
             Expression::String { .. } => Typ::Prelude(PreludeType::String),
@@ -915,12 +1162,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 location,
                 what,
                 args,
-            } => match self.infer_call(location.clone(), *what, args) {
-                CallResult::FromFunction(typ, _) => typ,
-                CallResult::FromType(t) => t,
-                CallResult::FromEnum(e) => e,
-                CallResult::FromDyn => Typ::Dyn,
-            },
+            } => self
+                .infer_call(location.clone(), *what, args)
+                .unwrap_typ(&location),
             Expression::Function {
                 location,
                 params,
@@ -939,6 +1183,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 body,
                 else_branches,
             } => self.infer_if(location, *logical, body, else_branches),
-        }
+        };
+        // Applying substs
+        self.solver.hydrator.apply(result)
     }
 }

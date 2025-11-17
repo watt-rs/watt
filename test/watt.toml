@@ -3,7 +3,6 @@ pkg = "app"
 name = "test"
 main = "test/main"
 dependencies = [
-    "https://github.com/watt-rs/std"
 ]
 
 [lints]

@@ -1,7 +1,8 @@
 /// Imports
-use crate::{
-    resolve::{res::Res, resolve::ModDef},
-    typ::{CustomType, Typ},
+use crate::typ::{
+    def::{ModuleDef, TypeDef},
+    res::Res,
+    typ::Typ,
 };
 use ecow::EcoString;
 use miette::{Diagnostic, NamedSource, SourceSpan};
@@ -10,12 +11,15 @@ use thiserror::Error;
 use watt_ast::ast::{BinaryOp, UnaryOp};
 
 /// For errors
+/// todo: reimplement using derive.
 unsafe impl Send for Typ {}
 unsafe impl Sync for Typ {}
 unsafe impl Send for Res {}
 unsafe impl Sync for Res {}
-unsafe impl Send for CustomType {}
-unsafe impl Sync for CustomType {}
+unsafe impl Send for ModuleDef {}
+unsafe impl Sync for ModuleDef {}
+unsafe impl Send for TypeDef {}
+unsafe impl Sync for TypeDef {}
 
 /// Typechecking related
 #[derive(Debug, Error, Diagnostic)]
@@ -23,6 +27,14 @@ pub enum TypeckRelated {
     #[error("this...")]
     #[diagnostic(severity(hint))]
     This {
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label()]
+        span: SourceSpan,
+    },
+    #[error("here...")]
+    #[diagnostic(severity(hint))]
+    Here {
         #[source_code]
         src: Arc<NamedSource<String>>,
         #[label()]
@@ -77,6 +89,14 @@ pub enum TypeckError {
         #[label("this is not defined.")]
         span: SourceSpan,
         name: EcoString,
+    },
+    #[error("could not assign value to a constant.")]
+    #[diagnostic(code(typeck::could_not_assign_constant))]
+    CouldNotAssignConstant {
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label("this is unavailable.")]
+        span: SourceSpan,
     },
     #[error("could not unify {t1:?} and {t2:?}.")]
     #[diagnostic(code(typeck::could_not_unify))]
@@ -182,24 +202,14 @@ implements all trait functions with `pub` modifier."
         m: EcoString,
         field: EcoString,
     },
-    #[error("field \"{field}\" is private in type \"{t}\".")]
-    #[diagnostic(code(typeck::field_is_private))]
-    FieldIsPrivate {
-        #[source_code]
-        src: Arc<NamedSource<String>>,
-        #[label("this access is invalid.")]
-        span: SourceSpan,
-        t: EcoString,
-        field: EcoString,
-    },
-    #[error("type \"{t:?}\" is private.")]
+    #[error("type \"{def:?}\" is private.")]
     #[diagnostic(code(typeck::type_is_private))]
     TypeIsPrivate {
         #[source_code]
         src: Arc<NamedSource<String>>,
         #[label("this access is invalid.")]
         span: SourceSpan,
-        t: CustomType,
+        def: TypeDef,
     },
     #[error("module field \"{name}\" is private.")]
     #[diagnostic(code(typeck::module_field_is_private))]
@@ -296,7 +306,7 @@ implements all trait functions with `pub` modifier."
         #[label("this name is already imported.")]
         span: SourceSpan,
         name: EcoString,
-        def: ModDef,
+        def: ModuleDef,
     },
     #[error("expected a logical epxression in if.")]
     #[diagnostic(code(typeck::expected_logical_in_if))]
@@ -374,6 +384,22 @@ implements all trait functions with `pub` modifier."
         url("https://github.com/wattlanguage/watt")
     )]
     UnexpectedExprInResolution { expr: EcoString },
+    #[error("arity missmatch. expected {expected}, got {got}")]
+    #[diagnostic(code(typeck::arity_missmatch))]
+    ArityMissmatch {
+        #[related]
+        related: Vec<TypeckRelated>,
+        expected: usize,
+        got: usize,
+    },
+    #[error("found types recursion.")]
+    #[diagnostic(code(typeck::types_recursion))]
+    TypesRecursion {
+        #[related]
+        related: Vec<TypeckRelated>,
+        t1: Typ,
+        t2: Typ,
+    },
 }
 
 /// Exhaustiveness error
@@ -394,5 +420,21 @@ pub enum ExError {
         src: Arc<NamedSource<String>>,
         #[label("fields of patterns are missmatched.")]
         span: SourceSpan,
+    },
+    #[error("generics arity missmatch. expected {expected}, got {got}")]
+    #[diagnostic(code(typeck::generics_arity_missmatch))]
+    GenericsArityMissmatch {
+        #[related]
+        related: Vec<TypeckRelated>,
+        expected: usize,
+        got: usize,
+    },
+    #[error("found types recursion.")]
+    #[diagnostic(code(typeck::types_recursion))]
+    TypesRecursion {
+        #[related]
+        related: Vec<TypeckRelated>,
+        t1: Typ,
+        t2: Typ,
     },
 }

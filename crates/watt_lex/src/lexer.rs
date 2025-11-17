@@ -49,8 +49,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
             ("extern", TokenKind::Extern),
             ("for", TokenKind::For),
             ("todo", TokenKind::Todo),
-            ("trait", TokenKind::Trait),
-            ("impl", TokenKind::Impl),
+            ("const", TokenKind::Const),
         ]);
         // Lexer
         Lexer {

@@ -25,19 +25,24 @@ pub enum TypePath {
     /// let a: int = 5;
     /// ```
     ///
-    Local { location: Address, name: EcoString },
+    Local {
+        location: Address,
+        name: EcoString,
+        generics: Vec<TypePath>,
+    },
     /// Represents path to user-defined
     /// type used from module.
     ///
     /// # Example
     /// ```rust
-    /// let a: module.Ty = 5;
+    /// let a: module.Typ = 5;
     /// ```
     ///
     Module {
         location: Address,
         module: EcoString,
         name: EcoString,
+        generics: Vec<TypePath>,
     },
     /// Represents function signature,
     /// used to determine function params and
@@ -364,12 +369,12 @@ pub enum UseKind {
     ///
     /// # Example 1
     /// ```
-    /// use some/module for Ty
+    /// use some/module for Typ
     /// ```
     ///
     /// # Example 2
     /// ```
-    /// use some/module for Ty, Ty2
+    /// use some/module for Typ, Ty2
     /// ```
     ForNames(Vec<EcoString>),
 }
@@ -592,7 +597,7 @@ pub enum Statement {
     For {
         location: Address,
         name: EcoString,
-        range: Range,
+        range: Box<Range>,
         body: Either<Block, Expression>,
     },
     /// Represents semi colon expression
@@ -634,30 +639,8 @@ pub struct Dependency {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Field {
     pub location: Address,
-    pub publicity: Publicity,
     pub name: EcoString,
-    pub value: Expression,
     pub typ: TypePath,
-}
-
-/// Method
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Method {
-    pub location: Address,
-    pub publicity: Publicity,
-    pub name: EcoString,
-    pub params: Vec<Parameter>,
-    pub body: Either<Block, Expression>,
-    pub typ: Option<TypePath>,
-}
-
-/// Trait Function
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TraitFunction {
-    pub location: Address,
-    pub name: EcoString,
-    pub params: Vec<Parameter>,
-    pub typ: Option<TypePath>,
 }
 
 /// Declaration
@@ -676,9 +659,8 @@ pub enum Declaration {
         location: Address,
         name: EcoString,
         publicity: Publicity,
-        constructor: Vec<Parameter>,
+        generics: Vec<EcoString>,
         fields: Vec<Field>,
-        methods: Vec<Method>,
     },
     /// Represents enum declaration
     ///
@@ -692,20 +674,8 @@ pub enum Declaration {
         location: Address,
         name: EcoString,
         publicity: Publicity,
+        generics: Vec<EcoString>,
         variants: Vec<EnumConstructor>,
-    },
-    /// Represents trait declaration
-    ///
-    /// `publicity` trait ... {
-    ///     definition,
-    ///     definition,
-    ///     definition
-    /// }
-    TraitDeclaration {
-        location: Address,
-        name: EcoString,
-        publicity: Publicity,
-        functions: Vec<TraitFunction>,
     },
     /// Represents extern function declaration
     ///
@@ -715,26 +685,28 @@ pub enum Declaration {
         location: Address,
         name: EcoString,
         publicity: Publicity,
+        generics: Vec<EcoString>,
         params: Vec<Parameter>,
         typ: Option<TypePath>,
         body: EcoString,
     },
-    /// Definition statement
+    /// Constant statement
     ///
-    /// let `name` = `value`
+    /// const `name` = `value`
     ///
-    VarDef {
+    Const {
         location: Address,
         publicity: Publicity,
         name: EcoString,
         value: Expression,
-        typ: Option<TypePath>,
+        typ: TypePath,
     },
     /// Function definition
     Function {
         location: Address,
         publicity: Publicity,
         name: EcoString,
+        generics: Vec<EcoString>,
         params: Vec<Parameter>,
         body: Either<Block, Expression>,
         typ: Option<TypePath>,

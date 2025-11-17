@@ -132,11 +132,19 @@ impl<'file> Parser<'file> {
         // function name
         let name = self.consume(TokenKind::Id).value.clone();
 
+        // generic
+        let generics = if self.check(TokenKind::Lbracket) {
+            self.generics()
+        } else {
+            Vec::new()
+        };
+
         // params
-        let mut params: Vec<Parameter> = Vec::new();
-        if self.check(TokenKind::Lparen) {
-            params = self.parameters();
-        }
+        let params = if self.check(TokenKind::Lparen) {
+            self.parameters()
+        } else {
+            Vec::new()
+        };
 
         // return type
         // if type specified
@@ -160,35 +168,72 @@ impl<'file> Parser<'file> {
             location: start_location + end_location,
             publicity,
             name,
+            generics,
             params,
             body,
             typ,
         }
     }
 
-    /// Let declaration parsing
-    fn let_declaration(&mut self, publicity: Publicity) -> Declaration {
-        // `let $id`
-        self.consume(TokenKind::Let);
+    /// Checking expression is const
+    fn check_value_const(&mut self, expr: &Expression) {
+        #[allow(unused_variables)]
+        match expr {
+            // Expressions that depedends on variables
+            // or logical clauses are non-const by default.
+            Expression::PrefixVar { location, .. }
+            | Expression::SuffixVar { location, .. }
+            | Expression::Call { location, .. }
+            | Expression::Function { location, .. }
+            | Expression::Match { location, .. }
+            | Expression::Todo { location }
+            | Expression::If { location, .. } => bail!(ParseError::NonConstExpr {
+                src: self.source.clone(),
+                span: location.span.clone().into(),
+            }),
+            // Literals are const by default.
+            Expression::Int { location, .. }
+            | Expression::Float { location, .. }
+            | Expression::String { location, .. }
+            | Expression::Bool { location, .. } => {}
+            // Binary and unary operations need to be checked.
+            Expression::Bin {
+                location,
+                left,
+                right,
+                op,
+            } => {
+                self.check_value_const(left);
+                self.check_value_const(right);
+            }
+            Expression::Unary {
+                location,
+                value,
+                op,
+            } => {
+                self.check_value_const(value);
+            }
+        }
+    }
+
+    /// Constant declaration parsing
+    fn const_declaration(&mut self, publicity: Publicity) -> Declaration {
+        // `const $id`
+        self.consume(TokenKind::Const);
         let name = self.consume(TokenKind::Id).clone();
 
-        // if type specified
-        let typ = if self.check(TokenKind::Colon) {
-            // `: $type`
-            self.consume(TokenKind::Colon);
-            Option::Some(self.type_annotation())
-        }
-        // else
-        else {
-            // setting type to None
-            Option::None
-        };
+        // `: $type`
+        self.consume(TokenKind::Colon);
+        let typ = self.type_annotation();
 
         // `= $value`
         self.consume(TokenKind::Assign);
         let value = self.expr();
 
-        Declaration::VarDef {
+        // Checking expression is const
+        self.check_value_const(&value);
+
+        Declaration::Const {
             location: name.address,
             publicity,
             name: name.value,
@@ -208,11 +253,19 @@ impl<'file> Parser<'file> {
         // function name
         let name = self.consume(TokenKind::Id).value.clone();
 
+        // generic
+        let generics = if self.check(TokenKind::Lbracket) {
+            self.generics()
+        } else {
+            Vec::new()
+        };
+
         // params
-        let mut params: Vec<Parameter> = Vec::new();
-        if self.check(TokenKind::Lparen) {
-            params = self.parameters();
-        }
+        let params = if self.check(TokenKind::Lparen) {
+            self.parameters()
+        } else {
+            Vec::new()
+        };
 
         // return type
         // if type specified
@@ -237,6 +290,7 @@ impl<'file> Parser<'file> {
             location: start_location + end_location,
             name,
             publicity,
+            generics,
             params,
             typ,
             body,
@@ -244,7 +298,7 @@ impl<'file> Parser<'file> {
     }
 
     /// Type field
-    fn field(&mut self, publicity: Publicity) -> Field {
+    fn field(&mut self) -> Field {
         // start address
         let start_address = self.peek().address.clone();
 
@@ -255,61 +309,12 @@ impl<'file> Parser<'file> {
         self.consume(TokenKind::Colon);
         let typ = self.type_annotation();
 
-        // value
-        self.consume(TokenKind::Assign);
-        let value = self.expr();
-
         // end address
         let end_address = self.previous().address.clone();
 
         Field {
             location: start_address + end_address,
-            publicity,
             name,
-            value,
-            typ,
-        }
-    }
-
-    /// Type method
-    fn method(&mut self, publicity: Publicity) -> Method {
-        // start address
-        let start_address = self.peek().address.clone();
-        self.consume(TokenKind::Fn);
-
-        // method name
-        let name = self.consume(TokenKind::Id).value.clone();
-
-        // params
-        let mut params: Vec<Parameter> = Vec::new();
-        if self.check(TokenKind::Lparen) {
-            params = self.parameters();
-        }
-
-        // return type
-        // if type specified
-        let typ = if self.check(TokenKind::Colon) {
-            // `: $type`
-            self.consume(TokenKind::Colon);
-            Some(self.type_annotation())
-        }
-        // else
-        else {
-            None
-        };
-
-        // body
-        let body = self.block_or_expr();
-
-        // end address
-        let end_address = self.previous().address.clone();
-
-        Method {
-            location: start_address + end_address,
-            publicity,
-            name,
-            params,
-            body,
             typ,
         }
     }
@@ -320,56 +325,26 @@ impl<'file> Parser<'file> {
         let start_address = self.peek().address.clone();
 
         // variable is used to create type span in bails.
-        let type_tk = self.consume(TokenKind::Type).clone();
+        self.consume(TokenKind::Type);
 
         // type name
         let name = self.consume(TokenKind::Id).clone();
 
-        // params
-        let mut constructor: Vec<Parameter> = Vec::new();
-        if self.check(TokenKind::Lparen) {
-            constructor = self.parameters();
-        }
+        // generic
+        let generics = if self.check(TokenKind::Lbracket) {
+            self.generics()
+        } else {
+            Vec::new()
+        };
 
         // type contents
         let mut fields = Vec::new();
-        let mut methods = Vec::new();
 
         // body parsing
         if self.check(TokenKind::Lbrace) {
             self.consume(TokenKind::Lbrace);
             while !self.check(TokenKind::Rbrace) {
-                let location = self.peek().clone();
-                match self.peek().tk_type {
-                    // private field or method declaration
-                    TokenKind::Fn => methods.push(self.method(Publicity::Private)),
-                    TokenKind::Id => fields.push(self.field(Publicity::Private)),
-                    // public field or method declaration
-                    TokenKind::Pub => {
-                        self.consume(TokenKind::Pub);
-                        match self.peek().tk_type {
-                            TokenKind::Fn => methods.push(self.method(Publicity::Public)),
-                            TokenKind::Id => fields.push(self.field(Publicity::Public)),
-                            _ => {
-                                let end = self.previous().clone();
-                                bail!(ParseError::UnexpectedNodeInTypeBody {
-                                    src: start_address.source,
-                                    type_span: (type_tk.address + name.address).span.into(),
-                                    span: (location.address.span.start..end.address.span.end)
-                                        .into(),
-                                })
-                            }
-                        }
-                    }
-                    _ => {
-                        let end = self.previous().clone();
-                        bail!(ParseError::UnexpectedNodeInTypeBody {
-                            src: start_address.source,
-                            type_span: (type_tk.address.span.start..name.address.span.end).into(),
-                            span: (location.address.span.start..end.address.span.end).into(),
-                        })
-                    }
-                }
+                fields.push(self.field())
             }
             self.consume(TokenKind::Rbrace);
         }
@@ -381,74 +356,8 @@ impl<'file> Parser<'file> {
             location: start_address + end_address,
             publicity,
             name: name.value,
-            constructor,
             fields,
-            methods,
-        }
-    }
-
-    /// Trait declaration parsing
-    fn trait_declaration(&mut self, publicity: Publicity) -> Declaration {
-        // start location
-        let start_location = self.peek().address.clone();
-
-        // variable is used to create type span in bails.
-        self.consume(TokenKind::Trait);
-
-        // type name
-        let name = self.consume(TokenKind::Id).clone();
-
-        // body parsing
-        let mut functions = Vec::new();
-        self.consume(TokenKind::Lbrace);
-        while !self.check(TokenKind::Rbrace) {
-            if self.check(TokenKind::Fn) {
-                // start location
-                let start_location = self.peek().address.clone();
-                self.consume(TokenKind::Fn);
-
-                // function name
-                let name = self.consume(TokenKind::Id).value.clone();
-
-                // params
-                let mut params: Vec<Parameter> = Vec::new();
-                if self.check(TokenKind::Lparen) {
-                    params = self.parameters();
-                }
-
-                // return type
-                // if type specified
-                let typ = if self.check(TokenKind::Colon) {
-                    // `: $type`
-                    self.consume(TokenKind::Colon);
-                    Some(self.type_annotation())
-                }
-                // else
-                else {
-                    None
-                };
-
-                // end location
-                let end_location = self.previous().address.clone();
-
-                functions.push(TraitFunction {
-                    location: start_location + end_location,
-                    name,
-                    params,
-                    typ,
-                })
-            }
-        }
-        self.consume(TokenKind::Rbrace);
-
-        // end location
-        let end_location = self.previous().address.clone();
-
-        Declaration::TraitDeclaration {
-            location: start_location + end_location,
-            name: name.value,
-            publicity,
-            functions,
+            generics,
         }
     }
 
@@ -462,6 +371,13 @@ impl<'file> Parser<'file> {
 
         // type name
         let name = self.consume(TokenKind::Id).clone();
+
+        // generic
+        let generics = if self.check(TokenKind::Lbracket) {
+            self.generics()
+        } else {
+            Vec::new()
+        };
 
         // creating type address
         let end_location = self.previous().address.clone();
@@ -501,6 +417,7 @@ impl<'file> Parser<'file> {
             location: start_location + end_location,
             publicity,
             name: name.value,
+            generics,
             variants,
         }
     }
@@ -549,10 +466,9 @@ impl<'file> Parser<'file> {
     fn declaration(&mut self, publicity: Publicity) -> Declaration {
         match self.peek().tk_type {
             TokenKind::Type => self.type_declaration(publicity),
-            TokenKind::Trait => self.trait_declaration(publicity),
             TokenKind::Fn => self.fn_declaration(publicity),
             TokenKind::Enum => self.enum_declaration(publicity),
-            TokenKind::Let => self.let_declaration(publicity),
+            TokenKind::Const => self.const_declaration(publicity),
             TokenKind::Extern => self.extern_fn_declaration(publicity),
             _ => {
                 let token = self.peek().clone();

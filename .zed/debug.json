@@ -1,0 +1,17 @@
+// Project-local debug tasks
+//
+// For more documentation on how to configure debug tasks,
+// see: https://zed.dev/docs/debugger
+[
+  {
+    "label": "Run",
+    "adapter": "GDB",
+    "program": "./target/debug/watt",
+    "args": ["run"],
+    "request": "launch",
+    "cwd": "./test",
+    "build": {
+      "command": "cd ./test && cargo build"
+    }
+  }
+]

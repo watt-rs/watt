@@ -2,230 +2,161 @@
 use crate::{
     cx::module::ModuleCx,
     errors::TypeckError,
-    resolve::{
+    inference::equation::Equation,
+    typ::{
+        def::{ModuleDef, TypeDef},
         res::Res,
-        resolve::{Def, ModDef},
-        rib::RibKind,
+        typ::{Enum, EnumVariant, Field, Function, Parameter, Struct, Typ, WithPublicity},
     },
-    typ::{CustomType, Function, Parameter, Struct, Typ, WithPublicity},
-    unify::Equation,
 };
 use ecow::EcoString;
 use indexmap::IndexMap;
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::rc::Rc;
 use watt_ast::ast::{
-    self, Block, Declaration, Dependency, Either, Expression, Field, Method, Publicity, TypePath,
+    self, Block, Declaration, Dependency, Either, EnumConstructor, Expression, Publicity, TypePath,
     UseKind,
 };
 use watt_common::{address::Address, bail};
 
-/// Declaraton analyze
+/// Late declaration analysis pass for the module.
+///
+/// This pass completes the semantic analysis of declarations (structs, enums,
+/// functions, extern functions, constants) after their names and initial shells
+/// have been registered during the early phase.
+///
+/// In this stage:
+/// - Generic parameters are reinstated into the inference context.
+/// - All type annotations are resolved into `Typ`.
+/// - Function bodies are type-checked.
+/// - Struct and enum fields are fully typed.
+/// - Constants are inferred and unified against their annotations.
+/// - All definitions are finalized and registered into the resolver.
+///
 impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
-    /// Analyzes method
-    #[allow(clippy::too_many_arguments)]
-    fn analyze_method(
-        &mut self,
-        location: Address,
-        name: EcoString,
-        strct: Rc<RefCell<Struct>>,
-        publicity: Publicity,
-        params: Vec<ast::Parameter>,
-        body: Either<Block, Expression>,
-        ret_type: Option<TypePath>,
-    ) {
-        // inferring return type
-        let ret = ret_type.map_or(Typ::Unit, |t| self.infer_type_annotation(t));
-        self.resolver.push_rib(RibKind::Function);
-
-        // inferred params
-        let params = params
-            .into_iter()
-            .map(|p| {
-                (
-                    p.name,
-                    Parameter {
-                        location: p.location,
-                        typ: self.infer_type_annotation(p.typ),
-                    },
-                )
-            })
-            .collect::<IndexMap<EcoString, Parameter>>();
-
-        // Defining params
-        params.iter().for_each(|p| {
-            self.resolver
-                .define(&location, &p.0, Def::Local(p.1.typ.clone()), false)
-        });
-
-        // creating and defining function
-        let function = Function {
-            source: self.module.source.clone(),
-            location: location.clone(),
-            uid: self.fresh_id(),
-            name: name.clone(),
-            params: params.into_values().collect(),
-            ret: ret.clone(),
-        };
-
-        // defining function, if not already defined
-        if strct.borrow().env.contains_key(&name) {
-            bail!(TypeckError::MethodIsAlreadyDefined {
-                src: self.module.source.clone(),
-                span: location.span.into(),
-                m: name
-            })
-        } else {
-            strct.borrow_mut().env.insert(
-                name,
-                WithPublicity {
-                    publicity,
-                    value: Typ::Function(Rc::new(function)),
-                },
-            );
-        }
-
-        self.resolver.define(
-            &location,
-            &"self".into(),
-            Def::Local(Typ::Struct(strct.clone())),
-            false,
-        );
-
-        // inferring body
-        let (block_location, inferred_block) = match body {
-            Either::Left(block) => (block.location.clone(), self.infer_block(block)),
-            Either::Right(expr) => (expr.location(), self.infer_expr(expr)),
-        };
-        self.solver.solve(Equation::Unify(
-            (location, ret),
-            (block_location, inferred_block),
-        ));
-        self.resolver.pop_rib();
-    }
-
-    /// Reanalyzes struct and analyzes it's methods and fields
-    fn late_analyze_struct(
-        &mut self,
-        location: Address,
-        name: EcoString,
-        publicity: Publicity,
-        params: Vec<ast::Parameter>,
-        fields: Vec<Field>,
-        methods: Vec<Method>,
-    ) {
+    /// Performs late analysis of a struct declaration.
+    ///
+    /// ## Responsibilities:
+    /// - Re-push the struct's generic parameters into the type hydrator.
+    /// - Infer the types of all fields using `infer_type_annotation`.
+    /// - Rebuild the `Struct` def with resolved field types.
+    /// - Overwrite the existing struct definition with the completed one.
+    ///
+    /// This operation mutates the struct in place, finalizing its type
+    /// structure for the rest of type checking.
+    ///
+    fn late_analyze_struct(&mut self, location: Address, name: EcoString, fields: Vec<ast::Field>) {
         // Requesting struct
-        let typ = match self.resolver.resolve(&location, &name) {
-            Res::Custom(ty) => match ty {
-                CustomType::Struct(ty) => ty,
-                _ => unreachable!(),
-            },
+        let ty = match self.resolver.resolve_type(&location, &name) {
+            TypeDef::Struct(ty) => ty,
             _ => unreachable!(),
         };
+        let borrowed = ty.borrow();
 
-        // inferred params
-        let params = params
-            .into_iter()
-            .map(|p| {
-                (
-                    p.name,
-                    Parameter {
-                        location: p.location,
-                        typ: self.infer_type_annotation(p.typ),
-                    },
-                )
-            })
-            .collect::<IndexMap<EcoString, Parameter>>();
+        // Repushing generics
+        self.solver
+            .hydrator
+            .generics
+            .re_push_scope(borrowed.generics.clone());
 
-        // construction type
-        let type_ = Rc::new(RefCell::new(Struct {
-            source: location.source.clone(),
-            location: location.clone(),
-            uid: typ.borrow().uid,
-            name: name.clone(),
-            params: params.clone().into_values().collect(),
-            env: HashMap::new(),
-        }));
-
-        // defining type, if not already defined
-        self.resolver.define(
-            &location,
-            &name,
-            Def::Module(ModDef::CustomType(WithPublicity {
-                publicity,
-                value: CustomType::Struct(type_.clone()),
-            })),
-            true,
-        );
-
-        // params env start
-        self.resolver.push_rib(RibKind::ConstructorParams);
-
-        // params
-        params.into_iter().for_each(|p| {
-            self.resolver
-                .define(&p.1.location, &p.0, Def::Local(p.1.typ), false);
-        });
-
-        // fields env start
-        self.resolver.push_rib(RibKind::Fields);
-
-        // analyzing fields
-        fields.iter().cloned().for_each(|f| {
-            let inferred_location = f.value.location();
-            let inferred = self.infer_expr(f.value);
-            let type_annotation_location = f.typ.location();
-            let type_annotation = self.infer_type_annotation(f.typ);
-            self.solver.solve(Equation::Unify(
-                (inferred_location, inferred),
-                (type_annotation_location, type_annotation.clone()),
-            ));
-            self.resolver
-                .define(&location, &f.name, Def::Local(type_annotation), false)
-        });
-
-        // fields env end
-        let analyzed_fields = match self.resolver.pop_rib() {
-            Some(fields) => fields.1,
-            None => bail!(TypeckError::EnvironmentsStackIsEmpty),
+        // Inferencing fields
+        let new_struct = Struct {
+            location: borrowed.location.clone(),
+            uid: borrowed.uid,
+            name: borrowed.name.clone(),
+            generics: borrowed.generics.clone(),
+            fields: fields
+                .into_iter()
+                .map(|f| Field {
+                    name: f.name,
+                    location: f.location,
+                    typ: self.infer_type_annotation(f.typ),
+                })
+                .collect(),
         };
-
-        // params env end
-        self.resolver.pop_rib();
-
-        // adding fields to type env
-        let mut borrowed = type_.borrow_mut();
-        fields.iter().cloned().for_each(|f| {
-            borrowed.env.insert(
-                f.name.clone(),
-                WithPublicity {
-                    publicity: f.publicity,
-                    value: analyzed_fields.get(&f.name).unwrap().clone(),
-                },
-            );
-        });
         drop(borrowed);
+        *ty.borrow_mut() = new_struct;
 
-        // type env start
-        self.resolver.push_rib(RibKind::Struct(type_.clone()));
-
-        // adding methods to type env
-        methods.into_iter().for_each(|m| {
-            self.analyze_method(
-                m.location,
-                m.name,
-                type_.clone(),
-                m.publicity,
-                m.params,
-                m.body,
-                m.typ,
-            );
-        });
-
-        // type env end
-        self.resolver.pop_rib();
+        // Popping generics
+        self.solver.hydrator.generics.pop_scope();
     }
 
-    /// Reanalyzes funciton and analyzes it's body.
+    /// Performs late analysis of an enum declaration.
+    ///
+    /// ## Responsibilities:
+    /// - Re-push the enum’s generic parameters in the hydrator.
+    /// - Infer the types of all variant fields.
+    /// - Rebuild the `Enum` def with resolved variant field types.
+    /// - Overwrite the existing enum definition with the completed one.
+    ///
+    /// Enum variant fields are treated similarly to struct fields: each
+    /// parameter is analyzed using `infer_type_annotation`.
+    ///
+    fn late_analyze_enum(
+        &mut self,
+        location: Address,
+        name: EcoString,
+        variants: Vec<EnumConstructor>,
+    ) {
+        // Requesting enum
+        let en = match self.resolver.resolve_type(&location, &name) {
+            TypeDef::Enum(en) => en,
+            _ => unreachable!(),
+        };
+        let borrowed = en.borrow();
+
+        // Repushing generics
+        self.solver
+            .hydrator
+            .generics
+            .re_push_scope(borrowed.generics.clone());
+
+        // Inferencing fields
+        let new_enum = Enum {
+            location: borrowed.location.clone(),
+            uid: borrowed.uid,
+            name: borrowed.name.clone(),
+            generics: borrowed.generics.clone(),
+            variants: variants
+                .into_iter()
+                .map(|v| EnumVariant {
+                    location: v.location,
+                    name: v.name,
+                    fields: v
+                        .params
+                        .into_iter()
+                        .map(|p: ast::Parameter| Field {
+                            location: p.location,
+                            name: p.name,
+                            typ: self.infer_type_annotation(p.typ),
+                        })
+                        .collect(),
+                })
+                .collect(),
+        };
+        drop(borrowed);
+        *en.borrow_mut() = new_enum;
+
+        // Popping generics
+        self.solver.hydrator.generics.pop_scope();
+    }
+
+    /// Performs late analysis of a user-defined function.
+    ///
+    /// ## Steps:
+    /// - Look up the function shell previously registered by the early pass.
+    /// - Re-push generic parameters into the hydrator.
+    /// - Resolve the return type if annotated; otherwise assume `Unit`.
+    /// - Resolve the types of all parameters, constructing a typed signature.
+    /// - Publish the function signature into the module (so it is visible to
+    ///    recursive calls within its own body).
+    /// - Create a new scope (rib) for local variables.
+    /// - Insert parameters as locals into that scope.
+    /// - Infer the function body (block or expression).
+    /// - Emit a unification equation requiring: `inferred_body_type == return_type`.
+    /// - Pop the local scope.
+    /// - Pop the generic parameter scope.
+    ///
+    /// At the end of this method the function is fully type-checked.
     fn late_analyze_function_decl(
         &mut self,
         location: Address,
@@ -235,6 +166,18 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         body: Either<Block, Expression>,
         ret_type: Option<TypePath>,
     ) {
+        // Requesting function
+        let f = match self.resolver.resolve(&location, &name) {
+            Res::Value(Typ::Function(f)) => f,
+            _ => unreachable!(),
+        };
+
+        // Pushing generics
+        self.solver
+            .hydrator
+            .generics
+            .re_push_scope(f.generics.clone());
+
         // inferring return type
         let ret = ret_type.map_or(Typ::Unit, |t| self.infer_type_annotation(t));
 
@@ -254,30 +197,29 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
         // creating and defining function
         let function = Function {
-            source: self.module.source.clone(),
             location: location.clone(),
-            uid: self.fresh_id(),
             name: name.clone(),
+            generics: f.generics.clone(),
             params: params.clone().into_values().collect(),
             ret: ret.clone(),
         };
-        self.resolver.define(
+        self.resolver.define_module(
             &location,
             &name,
-            Def::Module(ModDef::Variable(WithPublicity {
+            ModuleDef::Function(WithPublicity {
                 publicity,
-                value: Typ::Function(Rc::new(function)),
-            })),
+                value: Rc::new(function),
+            }),
             true,
         );
 
         // pushing new scope
-        self.resolver.push_rib(RibKind::Function);
+        self.resolver.push_rib();
 
         // defining params in new scope
         params.iter().for_each(|p| {
             self.resolver
-                .define(&location, p.0, Def::Local(p.1.typ.clone()), false)
+                .define_local(&location, p.0, p.1.typ.clone(), false)
         });
 
         // inferring body
@@ -290,66 +232,157 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             (block_location, inferred_block),
         ));
         self.resolver.pop_rib();
+
+        // Popping generics
+        self.solver.hydrator.generics.pop_scope();
     }
 
-    /// Analyzes define
-    pub(crate) fn late_analyze_define(
+    /// Performs late analysis of an extern function.
+    ///
+    /// ## Unlike normal functions, extern functions:
+    /// - Have no body to analyze.
+    /// - Only require inference of parameter and return type annotations.
+    ///
+    /// ## Steps:
+    /// - Retrieve the function declaration shell.
+    /// - Push generics into the hydrator.
+    /// - Resolve return and parameter types.
+    /// - Publish the completed function signature.
+    /// - Pop the generic scope.
+    ///
+    fn late_analyze_extern_decl(
+        &mut self,
+        location: Address,
+        publicity: Publicity,
+        name: EcoString,
+        params: Vec<ast::Parameter>,
+        ret_type: Option<TypePath>,
+    ) {
+        // Requesting function
+        let f = match self.resolver.resolve(&location, &name) {
+            Res::Value(Typ::Function(f)) => f,
+            _ => unreachable!(),
+        };
+
+        // Pushing generics
+        self.solver
+            .hydrator
+            .generics
+            .re_push_scope(f.generics.clone());
+
+        // inferring return type
+        let ret = ret_type.map_or(Typ::Unit, |t| self.infer_type_annotation(t));
+
+        // inferred params
+        let params = params
+            .into_iter()
+            .map(|p| {
+                (
+                    p.name,
+                    Parameter {
+                        location: p.location,
+                        typ: self.infer_type_annotation(p.typ),
+                    },
+                )
+            })
+            .collect::<IndexMap<EcoString, Parameter>>();
+
+        // creating and defining function
+        let function = Function {
+            location: location.clone(),
+            name: name.clone(),
+            generics: f.generics.clone(),
+            params: params.clone().into_values().collect(),
+            ret: ret.clone(),
+        };
+        self.resolver.define_module(
+            &location,
+            &name,
+            ModuleDef::Function(WithPublicity {
+                publicity,
+                value: Rc::new(function),
+            }),
+            true,
+        );
+
+        // Popping generics
+        self.solver.hydrator.generics.pop_scope();
+    }
+
+    /// Performs late analysis of a constant definition.
+    ///
+    /// A constant has:
+    /// - A required type annotation.
+    /// - A value expression which is inferred independently.
+    ///
+    /// ## Procedure:
+    /// 1. Resolve the type annotation.
+    /// 2. Infer the type of the value expression.
+    /// 3. Emit a unification constraint requiring the expression type to match
+    ///    the annotated type.
+    /// 4. Register the constant in the module namespace.
+    ///
+    /// ## Constants do not:
+    /// - Introduce generics.
+    /// - Create scopes.
+    /// - Participate in inference outside their own value.
+    ///
+    fn late_define_const(
         &mut self,
         location: Address,
         publicity: Publicity,
         name: EcoString,
         value: Expression,
-        typ: Option<TypePath>,
+        typ: TypePath,
     ) {
-        let inferred_value = self.infer_expr(value);
-        match typ {
-            Some(annotated_path) => {
-                let annotated_location = annotated_path.location();
-                let annotated = self.infer_type_annotation(annotated_path);
-                self.solver.solve(Equation::Unify(
-                    (annotated_location, annotated.clone()),
-                    (location.clone(), inferred_value.clone()),
-                ));
-                self.resolver.define(
-                    &location,
-                    &name,
-                    Def::Module(ModDef::Variable(WithPublicity {
-                        publicity,
-                        value: annotated,
-                    })),
-                    false,
-                )
-            }
-            None => self.resolver.define(
-                &location,
-                &name,
-                Def::Module(ModDef::Variable(WithPublicity {
-                    publicity,
-                    value: inferred_value,
-                })),
-                false,
-            ),
-        }
+        // Const inference
+        let annotated_location = typ.location();
+        let annotated = self.infer_type_annotation(typ);
+        let inferred_location = value.location();
+        let inferred = self.infer_expr(value);
+        self.solver.solve(Equation::Unify(
+            (annotated_location, annotated.clone()),
+            (inferred_location, inferred),
+        ));
+
+        // Defining constant
+        self.resolver.define_module(
+            &location,
+            &name,
+            ModuleDef::Const(WithPublicity {
+                publicity,
+                value: annotated,
+            }),
+            false,
+        );
     }
 
-    /// Late declaration analysis
+    /// Dispatches a declaration to the corresponding late analysis routine.
+    ///
+    /// Each declaration variant is fully processed here:
+    /// - Struct → `late_analyze_struct`
+    /// - Enum → `late_analyze_enum`
+    /// - Function → `late_analyze_function_decl`
+    /// - Extern → `late_analyze_extern_decl`
+    /// - Const → `late_define_const`
+    ///
+    /// After this call, each declaration is fully type-analyzed and integrated
+    /// into the module’s type environment.
+    ///
     pub fn late_analyze_declaration(&mut self, declaration: Declaration) {
         match declaration {
             Declaration::TypeDeclaration {
                 location,
                 name,
-                publicity,
-                constructor,
                 fields,
-                methods,
-            } => self.late_analyze_struct(location, name, publicity, constructor, fields, methods),
-            Declaration::VarDef {
+                ..
+            } => self.late_analyze_struct(location, name, fields),
+            Declaration::EnumDeclaration {
                 location,
-                publicity,
                 name,
-                value,
-                typ,
-            } => self.late_analyze_define(location, publicity, name, value, typ),
+                variants,
+                ..
+            } => self.late_analyze_enum(location, name, variants),
             Declaration::Function {
                 location,
                 publicity,
@@ -357,13 +390,38 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 params,
                 body,
                 typ,
+                ..
             } => self.late_analyze_function_decl(location, publicity, name, params, body, typ),
-            // Extern functions, enums and traits does not need any late analysys
-            _ => {}
+            Declaration::ExternFunction {
+                location,
+                publicity,
+                name,
+                params,
+                typ,
+                ..
+            } => self.late_analyze_extern_decl(location, publicity, name, params, typ),
+            Declaration::Const {
+                location,
+                publicity,
+                name,
+                value,
+                typ
+            } => self.late_define_const(location, publicity, name, value, typ),
         }
     }
 
-    /// Performs import
+    /// Performs an import of another module into the current resolver scope.
+    ///
+    /// ## Supports:
+    /// - `use foo as name`  → import with renamed binding.
+    /// - `use foo for a,b`  → import selected names.
+    ///
+    /// On success, the referenced module is integrated into the current scope
+    /// according to the chosen `UseKind`.
+    ///
+    /// ## Errors
+    /// - [`TypeckError::ImportOfUnknownModule`]: if module doesn't exist.
+    ///
     pub fn perform_import(&mut self, import: Dependency) {
         match self.package.root.modules.get(&import.path.module) {
             Some(module) => match import.kind {

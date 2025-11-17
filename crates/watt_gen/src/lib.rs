@@ -314,7 +314,7 @@ pub fn gen_statement(stmt: Statement) -> js::Tokens {
         Statement::For {
             name, range, body, ..
         } => quote! {
-            for (const $(name.as_str()) of $(gen_range(range))) {
+            for (const $(name.as_str()) of $(gen_range(*range))) {
                 $(match body {
                     Either::Left(block) => $(gen_block(block)),
                     Either::Right(expr) => $(gen_expression(expr));
@@ -352,38 +352,18 @@ pub fn gen_declaration(decl: Declaration) -> js::Tokens {
                 }
             }
         }
-        Declaration::VarDef { name, value, .. } => quote! {
-            export let $(try_escape_js(&name)) = $(gen_expression(value));
+        Declaration::Const { name, value, .. } => quote! {
+            export const $(try_escape_js(&name)) = $(gen_expression(value));
         },
-        Declaration::TypeDeclaration {
-            name,
-            methods,
-            fields,
-            constructor,
-            ..
-        } => {
-            // Methods
-            let generated_methods = quote! {
-                $(for decl in methods {
-                    $(try_escape_js(decl.name.as_str()))($(for param in decl.params join (, ) => $(try_escape_js(&param.name)))) {
-                        let self = this;
-                        $(match decl.body {
-                            Either::Left(block) => $(gen_block_expr(block.clone())),
-                            Either::Right(expr) => return $(gen_expression(expr.clone()))
-                        })
-                    }
-                    $['\r']
-                })
-            };
-
+        Declaration::TypeDeclaration { name, fields, .. } => {
             // constructor($field, $field, n...)
             // with meta type field as `type_name`
             let generated_constructor = quote! {
-                constructor($(for field in constructor.clone() join (, ) => $(try_escape_js(&field.name)))) {
+                constructor($(for field in &fields join (, ) => $(try_escape_js(&field.name)))) {
                     this.$("$meta") = "Type";
                     this.$("$type") = $(quoted(name.to_string()));
-                    $(for decl in fields {
-                        this.$(try_escape_js(&decl.name)) = $(gen_expression(decl.value))
+                    $(for decl in &fields {
+                        this.$(try_escape_js(&decl.name)) = $(try_escape_js(&decl.name))
                         $['\r']
                     })
                 }
@@ -394,10 +374,9 @@ pub fn gen_declaration(decl: Declaration) -> js::Tokens {
             quote! {
                 export class $("$")$(try_escape_js(&name)) {
                     $generated_constructor
-                    $generated_methods
                 }
-                export function $(try_escape_js(&name))($(for field in constructor.clone() join (, ) => $(try_escape_js(&field.name)))) {
-                    return new $("$")$(try_escape_js(&name))($(for field in constructor join (, ) => $(try_escape_js(&field.name))));
+                export function $(try_escape_js(&name))($(for field in &fields join (, ) => $(try_escape_js(&field.name)))) {
+                    return new $("$")$(try_escape_js(&name))($(for field in &fields join (, ) => $(try_escape_js(&field.name))));
                 }
             }
         }
@@ -432,19 +411,6 @@ pub fn gen_declaration(decl: Declaration) -> js::Tokens {
                 export function $(try_escape_js(&name))($(for param in params join (, ) => $(try_escape_js(&param.name)))) {
                     $(body.to_string())
                 }
-            }
-        }
-        Declaration::TraitDeclaration {
-            name,
-            functions: definitions,
-            ..
-        } => {
-            // Trait is compile time object only,
-            // so we defining only meta structure
-            quote! {
-                export let $(name.to_string()) = [
-                    $(for def in definitions join (, ) => $(quoted(def.name.to_string())))
-                ]
             }
         }
     }

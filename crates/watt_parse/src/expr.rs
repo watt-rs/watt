@@ -253,7 +253,7 @@ impl<'file> Parser<'file> {
                     _ => unreachable!(),
                 },
             };
-            start_location = self.peek().address.clone();
+            start_location = self.previous().address.clone();
         }
 
         left
@@ -283,7 +283,7 @@ impl<'file> Parser<'file> {
                     _ => unreachable!(),
                 },
             };
-            start_location = self.peek().address.clone();
+            start_location = self.previous().address.clone();
         }
 
         left

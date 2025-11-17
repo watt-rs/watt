@@ -1,0 +1,8 @@
+[pkg]
+pkg = "lib"
+name = "mammoth"
+main = "mammoth/main"
+dependencies = []
+
+[lints]
+disabled = []
