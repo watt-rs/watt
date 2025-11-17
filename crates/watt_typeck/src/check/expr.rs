@@ -22,7 +22,7 @@ use watt_common::{address::Address, bail, warn};
 
 /// Expressions inferring
 impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
-    /// Infers the type of a concat expression.
+    /// Infers the type of concat expression.
     ///
     /// This function:
     /// - Checks that both the left and right operands are strings.
@@ -60,7 +60,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
     }
 
-    /// Infers the type of an arithmetical expression.
+    /// Infers the type of arithmetical expression.
     ///
     /// This function:
     /// - Checks that both the left and right operands are numeric.
