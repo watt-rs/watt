@@ -1,6 +1,6 @@
 ⚡ **Watt is friednly, lightweight, programming language written in Rust for the JavaScript platform.**
 
-⚠️ **Watt is unstable right now.**
+⚠️ **Watt is WIP.**
 
 🔦🍄 Simple example:
 ```
