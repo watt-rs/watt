@@ -204,7 +204,7 @@ pub struct Hydrator {
     last_unbound_id: usize,
 
     /// The currently active generic scopes.
-    pub(crate) generic: Generics,
+    pub(crate) generics: Generics,
 }
 
 /// Implementation
