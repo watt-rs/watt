@@ -32,8 +32,8 @@ pub fn pick(g: Gatherer, mush: Mushroom) {
     g.basket = Basket(mush);
 
     let msg = match g.basket.item {
-        Mushroom.FlyAgaric(s) -> "found a poisonous fly agaric of size " <> s
-        Mushroom.Porcini(w)   -> "found a porcini mushroom weighing " <> w
+        Mushroom.FlyAgaric(size) -> "found a poisonous fly agaric of size " <> size
+        Mushroom.Porcini(weight)   -> "found a porcini mushroom weighing " <> weight
         Mushroom.Chanterelle  -> "found a chanterelle"
     };
 
