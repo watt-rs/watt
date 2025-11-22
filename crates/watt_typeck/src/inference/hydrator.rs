@@ -148,7 +148,7 @@ impl<'hd> HydrationCx<'hd> {
 /// ensuring that all types in the type system are fully resolved (i.e., “hydrated”).
 ///
 /// In other words, it "hydrates" abstract type representations by replacing
-/// `Unbound` type variables with actual, concrete `Typ` instances.
+/// 'Generic' type variables with `Unbound` instances.
 ///
 /// # Fields
 ///
@@ -182,10 +182,6 @@ impl<'hd> HydrationCx<'hd> {
 ///    Generates fresh type variables during inference when type information
 ///    is not yet available.
 ///
-/// 4. **Ensure type consistency**
-///    Guarantees that all types in the final AST are concrete and that no unbound
-///    or partially inferred types remain.
-///
 /// # Example
 ///
 /// ```rust
@@ -208,7 +204,7 @@ pub struct Hydrator {
     last_unbound_id: usize,
 
     /// The currently active generic scopes.
-    pub(crate) generics: Generics,
+    pub(crate) generic: Generics,
 }
 
 /// Implementation
