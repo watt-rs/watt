@@ -1,13 +1,9 @@
+/// Imports
 use crate::cx::module::ModuleCx;
 use crate::typ::typ::Module;
-/// Imports
 use log::info;
 use watt_ast::ast::Declaration;
-
-/// Skip macro
-macro_rules! skip {
-    () => {{}};
-}
+use watt_common::skip;
 
 /// Implementation
 impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
@@ -30,25 +26,19 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // 2. Early definitions of types
         info!("Performing early type definitions.");
         for definition in &self.module.declarations {
-            match definition {
-                Declaration::Type(t) => self.early_define_type(t),
-                _ => skip!(),
-            }
+            if let Declaration::Type(t) = definition { self.early_analyze_type_decl(t) }
         }
 
         // 3. Early functions analysis
         info!("Performing early functions analyse.");
         for definition in &self.module.declarations {
-            match definition {
-                Declaration::Fn(f) => self.early_define_fn(f),
-                _ => skip!(),
-            }
+            if let Declaration::Fn(f) = definition { self.early_analyze_fn_decl(f) }
         }
 
         // 4. Late analysis
         info!("Performing late analysis...");
         for definition in self.module.declarations.clone() {
-            self.late_analyze_declaration(definition);
+            self.late_analyze_decl(definition);
         }
 
         // Pipeline result

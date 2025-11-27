@@ -111,6 +111,6 @@ impl Generics {
     pub fn is_rigid(&self, id: usize) -> bool {
         self.stack
             .last()
-            .map_or(false, |s| s.values().any(|g| g == &id))
+            .is_some_and(|s| s.values().any(|g| g == &id))
     }
 }

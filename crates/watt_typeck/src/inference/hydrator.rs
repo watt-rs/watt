@@ -64,14 +64,12 @@ impl<'hd> HydrationCx<'hd> {
                 // If typ is already specified
                 if let Some(typ) = self.mapping.get(&id) {
                     typ.clone()
+                } else if self.hydrator.is_rigid(id) {
+                    Typ::Generic(id)
                 } else {
-                    if self.hydrator.is_rigid(id) {
-                        Typ::Generic(id)
-                    } else {
-                        let fresh = Typ::Unbound(self.hydrator.fresh());
-                        self.mapping.insert(id, fresh.clone());
-                        fresh
-                    }
+                    let fresh = Typ::Unbound(self.hydrator.fresh());
+                    self.mapping.insert(id, fresh.clone());
+                    fresh
                 }
             }
             Typ::Function(rc) => Typ::Function(self.mk_function(rc)),

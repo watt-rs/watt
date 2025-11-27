@@ -4,8 +4,7 @@ use crate::{
     typ::typ::Module,
 };
 use ecow::EcoString;
-use log::info;
-use watt_ast::ast::{self, Declaration};
+use watt_ast::ast::{self};
 
 /// Module ctx
 pub struct ModuleCx<'pkg, 'cx> {

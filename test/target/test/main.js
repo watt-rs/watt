@@ -11,11 +11,12 @@ import {
 } from "../prelude.js"
 
 export function a(a) {
-    return b(a)
+    return a
 }
 
-export function b(b) {
-    return a(b)
+export function b(v) {
+    let annotated = a
+    return annotated(v)
 }
 
 export function main() {}
