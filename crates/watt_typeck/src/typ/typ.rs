@@ -381,7 +381,7 @@ pub enum Typ {
     /// Unbound type with unique id used during type inference.
     /// (id is used to link unbound `Typ` with substitution)
     Unbound(usize),
-    /// Generic type variable
+    /// Generic type variable with unique id used during type inference.
     /// (will be replaced with unbounds, during type instantiation)
     Generic(usize),
     /// Unit type, representing `()`
@@ -405,9 +405,9 @@ impl Typ {
                 .map(|field| Field {
                     location: field.location.clone(),
                     name: field.name.clone(),
-                    typ: hydrator.hyd_m(generics.subtitutions.clone()).mk_ty(
-                        field.typ.clone(),
-                    ),
+                    typ: hydrator
+                        .hyd_m(generics.subtitutions.clone())
+                        .mk_ty(field.typ.clone()),
                 })
                 .collect(),
 
@@ -437,14 +437,14 @@ impl Typ {
                         .map(|field| Field {
                             location: field.location.clone(),
                             name: field.name.clone(),
-                            typ: hydrator.hyd_m(generics.subtitutions.clone()).mk_ty(
-                                field.typ.clone(),
-                            ),
+                            typ: hydrator
+                                .hyd_m(generics.subtitutions.clone())
+                                .mk_ty(field.typ.clone()),
                         })
                         .collect(),
                 })
                 .collect(),
-            _ => todo!(),
+            _ => vec![],
         }
     }
 }

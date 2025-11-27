@@ -19,6 +19,7 @@ use watt_ast::ast::{
     UnaryOp,
 };
 use watt_common::{address::Address, bail, warn};
+use crate::inference::equation::EqUnit;
 
 /// Expressions inferring
 impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
@@ -563,14 +564,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 )
             }
             // Type field access
-            Res::Value(it @ Typ::Struct(ty, _)) => {
-                self.infer_struct_field_access(
-                    it.clone(),
-                    ty.borrow().name.clone(),
-                    field_location,
-                    field_name,
-                )
-            }
+            Res::Value(it @ Typ::Struct(ty, _)) => self.infer_struct_field_access(
+                it.clone(),
+                ty.borrow().name.clone(),
+                field_location,
+                field_name,
+            ),
             // Else
             _ => bail!(TypeckError::CouldNotResolveFieldsIn {
                 src: self.module.source.clone(),
@@ -661,7 +660,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     .into_iter()
                     .zip(args)
                     .for_each(|(p, a)| {
-                        self.solver.solve(Equation::Unify((p.location, p.typ), a));
+                        self.solver.solve(Equation::Unify(
+                            EqUnit(p.location, p.typ),
+                            EqUnit(a.0, a.1)
+                        ));
                     });
 
                 Res::Value(instantiated)
@@ -671,14 +673,20 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 self.ensure_arity(location, f.params.len(), args.len());
                 let f = self.solver.hydrator.hyd().mk_function(f);
                 f.params.iter().cloned().zip(args).for_each(|(p, a)| {
-                    self.solver.unify(p.location, p.typ, a.0, a.1);
+                    self.solver.solve(Equation::Unify(
+                        EqUnit(p.location, p.typ),
+                        EqUnit(a.0, a.1)
+                    ));
                 });
                 Res::Value(f.ret.clone())
-            },
+            }
             // Variant
             Res::Variant(en, variant) => {
                 variant.fields.iter().cloned().zip(args).for_each(|(p, a)| {
-                    self.solver.solve(Equation::Unify((p.location, p.typ), a));
+                    self.solver.solve(Equation::Unify(
+                        EqUnit(p.location, p.typ),
+                        EqUnit(a.0, a.1)
+                    ));
                 });
 
                 Res::Value(en)
@@ -795,8 +803,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Either::Right(expr) => (expr.location(), self.infer_expr(*expr)),
         };
         self.solver.solve(Equation::Unify(
-            (location, ret),
-            (block_location, inferred_block),
+            EqUnit(location, ret),
+            EqUnit(block_location, inferred_block),
         ));
         self.resolver.pop_rib();
 
@@ -855,14 +863,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                                         &case.address,
                                         &it.name,
                                         it.typ.clone(),
-                                        false
+                                        false,
                                     ),
                                     None => bail!(TypeckError::EnumVariantFieldIsNotDefined {
                                         src: self.module.source.clone(),
                                         span: field.0.span.into(),
                                         res: res.clone(),
                                         field: field.1
-                                    })
+                                    }),
                                 }
                             });
                         }
@@ -994,7 +1002,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 Either::Left(block) => (block.location.clone(), self.infer_block(block)),
                 Either::Right(expr) => (expr.location(), self.infer_expr(expr)),
             };
-            to_unify.push((case_location, inferred_case));
+            to_unify.push(EqUnit(case_location, inferred_case));
             // pattern scope end
             self.resolver.pop_rib();
         }
@@ -1058,7 +1066,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Either::Left(block) => (block.location.clone(), self.infer_block(block)),
             Either::Right(expr) => (expr.location(), self.infer_expr(*expr)),
         };
-        let mut to_unify = vec![(if_location, inferred_if)];
+        let mut to_unify = vec![EqUnit(if_location, inferred_if)];
         // popping rib
         self.resolver.pop_rib();
         // else reached
@@ -1084,7 +1092,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                         Either::Left(block) => (block.location.clone(), self.infer_block(block)),
                         Either::Right(expr) => (expr.location(), self.infer_expr(expr)),
                     };
-                    to_unify.push((branch_location, inferred_branch));
+                    to_unify.push(EqUnit(branch_location, inferred_branch));
                 }
                 ElseBranch::Else { body, .. } => {
                     // inferring block
@@ -1092,7 +1100,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                         Either::Left(block) => (block.location.clone(), self.infer_block(block)),
                         Either::Right(expr) => (expr.location(), self.infer_expr(expr)),
                     };
-                    to_unify.push((branch_location, inferred_branch));
+                    to_unify.push(EqUnit(branch_location, inferred_branch));
                     else_reached = true;
                 }
             }

@@ -1,10 +1,10 @@
 /// Imports
 use crate::errors::PackageError;
 use camino::Utf8PathBuf;
-use watt_common::bail;
-use watt_compile::io;
 use serde::{Deserialize, Serialize};
 use std::fs;
+use watt_common::bail;
+use watt_compile::io;
 
 /// Package type
 #[derive(Deserialize, Serialize)]

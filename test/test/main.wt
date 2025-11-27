@@ -1,60 +1,6 @@
-/*
-type Mammoth[T] {
-    value: Iceberg[Iceberg[T]]
-}
+fn a[T](a: T): T = a
 
-type Iceberg[T] {
-    value: T
-}
-
-fn main() {
-    let a = Mammoth(Iceberg(Iceberg(4)))
-}
-*/
-/// Externs
-extern fn to_string[T](value: T): string = "return value.toString();"
-extern fn println[T](value: T): string = "console.log(value);"
-
-/// Generic "Basket" that can hold anything —
-/// mushrooms, berries, or found artifacts.
-type Basket[T] {
-    item: T
-}
-
-/// Enumeration of mushroom types
-enum Mushroom {
-    FlyAgaric(size: int),   /// Poisonous fly agaric
-    Porcini(weight: int),   /// Porcini mushroom
-    Chanterelle             /// Chanterelle
-}
-
-/// Type representing a mushroom gatherer
-type Gatherer {
-    name: string
-    basket: Basket[Mushroom]
-}
-
-/// Function that replaces the contents of the gatherer's basket
-pub fn pick(g: Gatherer, mush: Mushroom) {
-    g.basket = Basket(mush);
-
-    let msg = match g.basket.item {
-        Mushroom.FlyAgaric(size) -> "found a poisonous fly agaric of size " <> to_string(size)
-        Mushroom.Porcini(weight) -> "found a porcini mushroom weighing " <> to_string(weight)
-        Mushroom.Chanterelle     -> "found a chanterelle"
-    };
-
-    println(g.name <> ": " <> msg);
-}
-
-/// Example usage
-fn main() {
-    let g: Gatherer = Gatherer(
-        "LittleForester",
-        Basket(Mushroom.Chanterelle())
-    );
-
-    pick(g, Mushroom.Porcini(120));
-    pick(g, Mushroom.FlyAgaric(42));
-    pick(g, Mushroom.Chanterelle());
+fn b[T, V](v: V): V {
+    let annotated: fn(T): V = a;
+    annotated(v)
 }

@@ -43,6 +43,6 @@ impl Add for Address {
         if self.source != rhs.source {
             panic!("address sources missmatched.")
         }
-        return Address::span(self.source, self.span.start..rhs.span.end);
+        Address::span(self.source, self.span.start..rhs.span.end)
     }
 }

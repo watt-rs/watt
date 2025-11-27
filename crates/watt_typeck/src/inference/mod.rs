@@ -7,13 +7,14 @@ pub mod hydrator;
 use crate::{
     errors::{TypeckError, TypeckRelated},
     inference::{
-        equation::{Equation, Unit},
+        equation::{Equation, EqUnit},
         hydrator::Hydrator,
     },
     typ::typ::{PreludeType, Typ},
 };
 use log::trace;
 use watt_common::{address::Address, bail};
+use crate::inference::equation::Origin;
 
 /// Equations solver
 #[derive(Default)]
@@ -29,20 +30,23 @@ impl EquationsSolver {
         trace!("solving equation: {equation:?}");
         // Solving
         match equation.clone() {
-            Equation::Unify(v1, v2) => self.unify(v1.0, v1.1, v2.0, v2.1),
-            Equation::UnifyMany(items) => {
+            Equation::Unify(v1, v2) => {
+                let o1 = Origin(v1.0, v1.1.clone());
+                let o2 = Origin(v2.0, v2.1.clone());
+                self.unify(o1, v1.1, o2, v2.1)
+            },
+            Equation::UnifyMany(mut items) => {
                 if !items.is_empty() {
-                    let mut v1: Option<Unit> = None;
-                    for v2 in items {
-                        v1 = Some(match v1 {
-                            Some(v1) => (
-                                v1.0.clone() + v2.0.clone(),
-                                self.unify(v1.0, v1.1, v2.0, v2.1),
-                            ),
-                            None => (v2.0, v2.1),
-                        });
+                    // Retrieving first information
+                    let EqUnit(l1, mut t1) = items.remove(0);
+                    // Unifying with others
+                    for EqUnit(l2, t2) in items {
+                        t1 = self.unify(
+                            Origin(l1.clone(), t1.clone()), t1.clone(),
+                            Origin(l2, t2.clone()), t2
+                        );
                     }
-                    v1.unwrap().1
+                    t1
                 } else {
                     Typ::Unit
                 }
@@ -51,7 +55,7 @@ impl EquationsSolver {
     }
 
     /// Unifies two types
-    pub fn unify(&mut self, l1: Address, t1: Typ, l2: Address, t2: Typ) -> Typ {
+    pub fn unify(&mut self, o1: Origin, t1: Typ, o2: Origin, t2: Typ) -> Typ {
         // Applying substs
         let t1 = self.apply(t1);
         let t2 = self.apply(t2);
@@ -65,14 +69,8 @@ impl EquationsSolver {
                         t1: t1.clone(),
                         t2: t2.clone(),
                         related: vec![
-                            TypeckRelated::This {
-                                src: l1.source,
-                                span: l1.span.into()
-                            },
-                            TypeckRelated::WithThis {
-                                src: l2.source,
-                                span: l2.span.into()
-                            }
+                            o1.into_this(),
+                            o2.into_with_this(),
                         ]
                     }),
                 },
@@ -83,19 +81,11 @@ impl EquationsSolver {
                         if self.occurs(*a, &t2) {
                             bail!(TypeckError::TypesRecursion {
                                 related: vec![
-                                    TypeckRelated::ThisType {
-                                        src: l1.source,
-                                        span: l1.span.into(),
-                                        t: t1.clone(),
-                                    },
-                                    TypeckRelated::ThisType {
-                                        src: l2.source,
-                                        span: l2.span.into(),
-                                        t: t2.clone()
-                                    }
+                                    o1.into_this_type(),
+                                    o2.into_with_this(),
                                 ],
-                                t1: t1.clone(),
-                                t2: t2.clone()
+                                t1: o1.typ(),
+                                t2: o2.typ()
                             })
                         }
                         self.hydrator.substitute(*a, t2.clone());
@@ -106,19 +96,11 @@ impl EquationsSolver {
                     if self.occurs(*a, b) {
                         bail!(TypeckError::TypesRecursion {
                             related: vec![
-                                TypeckRelated::ThisType {
-                                    src: l1.source,
-                                    span: l1.span.into(),
-                                    t: t1.clone(),
-                                },
-                                TypeckRelated::ThisType {
-                                    src: l2.source,
-                                    span: l2.span.into(),
-                                    t: t2.clone()
-                                }
+                                o1.into_this_type(),
+                                o2.into_this_type(),
                             ],
-                            t1: t1.clone(),
-                            t2: t2.clone()
+                            t1: o1.typ(),
+                            t2: o2.typ()
                         })
                     }
                     self.hydrator.substitute(*a, b.clone());
@@ -130,7 +112,7 @@ impl EquationsSolver {
                             .into_iter()
                             .zip(t2.fields(&mut self.hydrator))
                             .for_each(|(a, b)| {
-                                self.unify(l1.clone(), a.typ, l2.clone(), b.typ);
+                                self.unify(o1.clone(), a.typ, o2.clone(), b.typ);
                             });
                     }
                     t1
@@ -143,9 +125,9 @@ impl EquationsSolver {
                             .for_each(|(v1, v2)| {
                                 v1.fields.iter().zip(v2.fields).for_each(|(a, b)| {
                                     self.unify(
-                                        l1.clone(),
+                                        o1.clone(),
                                         a.typ.clone(),
-                                        l2.clone(),
+                                        o2.clone(),
                                         b.typ.clone(),
                                     );
                                 });
@@ -155,25 +137,17 @@ impl EquationsSolver {
                 }
                 (Typ::Function(f1), Typ::Function(f2)) => {
                     f1.params.iter().zip(&f2.params).for_each(|(p1, p2)| {
-                        self.unify(l1.clone(), p1.typ.clone(), l2.clone(), p2.typ.clone());
+                        self.unify(o1.clone(), p1.typ.clone(), o2.clone(), p2.typ.clone());
                     });
-                    self.unify(l1.clone(), f1.ret.clone(), l2.clone(), f2.ret.clone());
+                    self.unify(o1.clone(), f1.ret.clone(), o2.clone(), f2.ret.clone());
                     t1
                 }
                 _ => bail!(TypeckError::CouldNotUnify {
-                    t1: t1.clone(),
-                    t2: t2.clone(),
+                    t1: o1.typ(),
+                    t2: o2.typ(),
                     related: vec![
-                        TypeckRelated::ThisType {
-                            src: l1.source,
-                            span: l1.span.into(),
-                            t: t1,
-                        },
-                        TypeckRelated::ThisType {
-                            src: l2.source,
-                            span: l2.span.into(),
-                            t: t2
-                        }
+                        o1.into_this_type(),
+                        o2.into_this_type(),
                     ]
                 }),
             }

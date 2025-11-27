@@ -1,12 +1,12 @@
 /// Imports
 use crate::errors::CliError;
 use camino::Utf8PathBuf;
+use std::env;
 use watt_common::bail;
 use watt_pm::{
     compile,
     runtime::{self, JsRuntime},
 };
-use std::env;
 
 /// Runs code
 fn run(path: Utf8PathBuf, runtime: JsRuntime) {

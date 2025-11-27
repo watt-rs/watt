@@ -2,8 +2,8 @@
 use ecow::EcoString;
 use genco::{lang::js, quote, tokens::quoted};
 use watt_ast::ast::{
-    BinaryOp, Block, Declaration, Either, ElseBranch, Expression, Module, Pattern, Range,
-    Statement, UnaryOp, UseKind,
+    BinaryOp, Block, ConstDeclaration, Declaration, Either, ElseBranch, Expression, FnDeclaration,
+    Module, Pattern, Range, Statement, TypeDeclaration, UnaryOp, UseKind,
 };
 
 /// Replaces js identifiers equal
@@ -336,10 +336,10 @@ pub fn gen_statement(stmt: Statement) -> js::Tokens {
     }
 }
 
-/// Generates declaration code
-pub fn gen_declaration(decl: Declaration) -> js::Tokens {
+/// Generates function declaration code
+pub fn gen_fn_declaration(decl: FnDeclaration) -> js::Tokens {
     match decl {
-        Declaration::Function {
+        FnDeclaration::Function {
             name, params, body, ..
         } => {
             // function $name($param, $param, n...)
@@ -352,10 +352,22 @@ pub fn gen_declaration(decl: Declaration) -> js::Tokens {
                 }
             }
         }
-        Declaration::Const { name, value, .. } => quote! {
-            export const $(try_escape_js(&name)) = $(gen_expression(value));
-        },
-        Declaration::TypeDeclaration { name, fields, .. } => {
+        FnDeclaration::ExternFunction {
+            name, params, body, ..
+        } => {
+            quote! {
+                export function $(try_escape_js(&name))($(for param in params join (, ) => $(try_escape_js(&param.name)))) {
+                    $(body.to_string())
+                }
+            }
+        }
+    }
+}
+
+/// Generates type declaration code
+pub fn gen_type_declaration(decl: TypeDeclaration) -> js::Tokens {
+    match decl {
+        TypeDeclaration::Struct { name, fields, .. } => {
             // constructor($field, $field, n...)
             // with meta type field as `type_name`
             let generated_constructor = quote! {
@@ -380,7 +392,7 @@ pub fn gen_declaration(decl: Declaration) -> js::Tokens {
                 }
             }
         }
-        Declaration::EnumDeclaration { name, variants, .. } => {
+        TypeDeclaration::Enum { name, variants, .. } => {
             // ($variant_name): ($param, $param, n...): ({
             //    $meta: "Enum"
             //    $enum: $name
@@ -404,15 +416,22 @@ pub fn gen_declaration(decl: Declaration) -> js::Tokens {
                 };
             }
         }
-        Declaration::ExternFunction {
-            name, params, body, ..
-        } => {
-            quote! {
-                export function $(try_escape_js(&name))($(for param in params join (, ) => $(try_escape_js(&param.name)))) {
-                    $(body.to_string())
-                }
-            }
-        }
+    }
+}
+
+/// Generates const declaration code
+pub fn gen_const_declaration(decl: ConstDeclaration) -> js::Tokens {
+    quote! {
+        export const $(try_escape_js(&decl.name)) = $(gen_expression(decl.value));
+    }
+}
+
+/// Generates declaration code
+pub fn gen_declaration(decl: Declaration) -> js::Tokens {
+    match decl {
+        Declaration::Fn(decl) => gen_fn_declaration(decl),
+        Declaration::Const(decl) => gen_const_declaration(decl),
+        Declaration::Type(decl) => gen_type_declaration(decl),
     }
 }
 

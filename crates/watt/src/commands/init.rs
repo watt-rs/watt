@@ -1,9 +1,9 @@
 /// Imports
 use crate::errors::CliError;
 use camino::Utf8PathBuf;
+use std::env;
 use watt_common::bail;
 use watt_pm::{config::PackageType, generate};
-use std::env;
 
 /// Executes command
 pub fn execute(ty: Option<String>) {

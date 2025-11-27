@@ -35,7 +35,7 @@ pub struct RibsStack {
 impl RibsStack {
     /// Pushes a new, empty rib onto the stack.
     ///
-    /// Use this when entering a new lexical scope, such 
+    /// Use this when entering a new lexical scope, such
     /// as a function body, new block, etc.
     ///
     /// # Important
@@ -49,9 +49,9 @@ impl RibsStack {
     ///
     /// Returns the popped `Rib` if the stack was not empty.
     /// Popping a rib removes this rib from the stack.
-    /// 
+    ///
     /// Used to exit the scope.
-    /// 
+    ///
     pub fn pop(&mut self) -> Option<Rib> {
         self.stack.pop()
     }
@@ -68,7 +68,7 @@ impl RibsStack {
     /// - If `redefine` is false and the variable already exists in the current scope,
     ///   raises `TypeckError::VariableIsAlreadyDefined`.
     /// - Otherwise, inserts or overwrites the variable in the current scope.
-    /// 
+    ///
     pub fn define(&mut self, address: &Address, name: &EcoString, typ: Typ, redefine: bool) {
         match self.stack.last_mut() {
             Some(env) => {
@@ -96,7 +96,7 @@ impl RibsStack {
     /// - If the variable exists, checks that the new type equals the existing type.
     ///   If not, raises `TypeckError::TypesMissmatch`.
     /// - If the variable does not exist, inserts it into the current scope.
-    /// 
+    ///
     pub fn redefine(&mut self, address: &Address, name: &EcoString, variable: Typ) {
         match self.stack.last_mut() {
             Some(env) => match env.get(name) {
@@ -130,7 +130,7 @@ impl RibsStack {
     /// # Behavior
     /// - Iterates the `stack` in reverse order to respect lexical scoping,
     ///   ensuring that inner scopes shadow outer ones.
-    /// 
+    ///
     pub fn lookup(&self, name: &EcoString) -> Option<Typ> {
         for env in self.stack.iter().rev() {
             if env.contains_key(name) {

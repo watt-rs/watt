@@ -202,7 +202,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     ///
     /// Each branch validates generic parameters count and ensures
     /// access visibility for types imported from other modules.
-    /// 
+    ///
     pub(crate) fn infer_type_annotation(&mut self, path: TypePath) -> Typ {
         match path.clone() {
             TypePath::Local {

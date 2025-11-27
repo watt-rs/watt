@@ -4,7 +4,10 @@ use crate::{
     consts,
     warnings::LintWarning,
 };
-use watt_ast::ast::{Block, Declaration, Either, ElseBranch, Expression, Module, Range, Statement};
+use watt_ast::ast::{
+    Block, ConstDeclaration, Declaration, Either, ElseBranch, Expression, FnDeclaration, Module,
+    Range, Statement, TypeDeclaration,
+};
 use watt_common::{package::DraftPackage, warn};
 
 /// Linting context
@@ -29,10 +32,10 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
         }
     }
 
-    /// Lints declaration
-    fn lint_decl(&self, decl: &Declaration) {
+    /// Lints type declaration
+    fn lint_type_decl(&self, decl: &TypeDeclaration) {
         match decl {
-            Declaration::TypeDeclaration {
+            TypeDeclaration::Struct {
                 location,
                 name,
                 fields,
@@ -63,7 +66,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     }
                 }
             }
-            Declaration::EnumDeclaration {
+            TypeDeclaration::Enum {
                 location,
                 name,
                 variants,
@@ -118,52 +121,13 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     }
                 }
             }
-            Declaration::ExternFunction {
-                location,
-                name,
-                params,
-                ..
-            } => {
-                // Checking function name is in `snake_case`
-                if !case::is_snake_case(name) {
-                    warn!(
-                        self,
-                        LintWarning::WrongVariantName {
-                            src: location.source.clone(),
-                            span: location.span.clone().into()
-                        }
-                    )
-                }
-                // Checking that function has < consts::MAX_PARAMS params.
-                if params.len() > consts::MAX_PARAMS {
-                    warn!(
-                        self,
-                        LintWarning::TooManyParamsInAnFn {
-                            src: location.source.clone(),
-                            span: location.span.clone().into()
-                        }
-                    )
-                }
-            }
-            Declaration::Const {
-                location,
-                name,
-                value,
-                ..
-            } => {
-                // Checking variable name is in `snake_case`
-                if !case::is_snake_case(name) {
-                    warn!(
-                        self,
-                        LintWarning::WrongVariantName {
-                            src: location.source.clone(),
-                            span: location.span.clone().into()
-                        }
-                    )
-                }
-                self.lint_expr(value);
-            }
-            Declaration::Function {
+        }
+    }
+
+    /// Lints function declaration
+    fn lint_fn_decl(&self, decl: &FnDeclaration) {
+        match decl {
+            FnDeclaration::Function {
                 location,
                 name,
                 params,
@@ -195,6 +159,57 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     )
                 }
             }
+            FnDeclaration::ExternFunction {
+                location,
+                name,
+                params,
+                ..
+            } => {
+                // Checking function name is in `snake_case`
+                if !case::is_snake_case(name) {
+                    warn!(
+                        self,
+                        LintWarning::WrongVariantName {
+                            src: location.source.clone(),
+                            span: location.span.clone().into()
+                        }
+                    )
+                }
+                // Checking that function has < consts::MAX_PARAMS params.
+                if params.len() > consts::MAX_PARAMS {
+                    warn!(
+                        self,
+                        LintWarning::TooManyParamsInAnFn {
+                            src: location.source.clone(),
+                            span: location.span.clone().into()
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    /// Lints constant declaration
+    fn lint_const_decl(&self, decl: &ConstDeclaration) {
+        // Checking variable name is in `snake_case`
+        if !case::is_snake_case(&decl.name) {
+            warn!(
+                self,
+                LintWarning::WrongVariantName {
+                    src: decl.location.source.clone(),
+                    span: decl.location.span.clone().into()
+                }
+            )
+        }
+        self.lint_expr(&decl.value);
+    }
+
+    /// Lints declaration
+    fn lint_decl(&self, decl: &Declaration) {
+        match decl {
+            Declaration::Type(decl) => self.lint_type_decl(decl),
+            Declaration::Fn(decl) => self.lint_fn_decl(decl),
+            Declaration::Const(decl) => self.lint_const_decl(decl),
         }
     }
 

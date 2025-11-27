@@ -14,8 +14,8 @@ use std::{cell::RefCell, fmt::Debug, rc::Rc};
 ///   Contains information about generics, fields, etc.
 ///
 /// - `Const(WithPublicity<Typ>)`
-///   Represents a constant variable with a fully inferenced type.
-///   The type of a constant **cannot** be `Typ::Generic` or `Typ::Unbound`; it must
+///   Represents a constant variable with a fully infered type.
+///   The type of constant **cannot** be `Typ::Generic` or `Typ::Unbound`; it must
 ///   be fully concrete (`Prelude`, `Struct`, `Enum`, `Function`, or `Unit`).
 ///
 /// - `Function(WithPublicity<Rc<Function>>)`

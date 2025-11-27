@@ -643,10 +643,10 @@ pub struct Field {
     pub typ: TypePath,
 }
 
-/// Declaration
+/// Type declaration
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Declaration {
-    /// Represents type declaration
+pub enum TypeDeclaration {
+    /// Represents struct declaration
     ///
     /// `publicity` type ... {
     ///     `publicity` let ... = ...
@@ -655,7 +655,7 @@ pub enum Declaration {
     ///     }
     /// }
     ///
-    TypeDeclaration {
+    Struct {
         location: Address,
         name: EcoString,
         publicity: Publicity,
@@ -670,12 +670,27 @@ pub enum Declaration {
     ///     n
     /// }
     ///
-    EnumDeclaration {
+    Enum {
         location: Address,
         name: EcoString,
         publicity: Publicity,
         generics: Vec<EcoString>,
         variants: Vec<EnumConstructor>,
+    },
+}
+
+/// Function declaration
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum FnDeclaration {
+    /// Function definition
+    Function {
+        location: Address,
+        publicity: Publicity,
+        name: EcoString,
+        generics: Vec<EcoString>,
+        params: Vec<Parameter>,
+        body: Either<Block, Expression>,
+        typ: Option<TypePath>,
     },
     /// Represents extern function declaration
     ///
@@ -690,27 +705,27 @@ pub enum Declaration {
         typ: Option<TypePath>,
         body: EcoString,
     },
-    /// Constant statement
-    ///
-    /// const `name` = `value`
-    ///
-    Const {
-        location: Address,
-        publicity: Publicity,
-        name: EcoString,
-        value: Expression,
-        typ: TypePath,
-    },
-    /// Function definition
-    Function {
-        location: Address,
-        publicity: Publicity,
-        name: EcoString,
-        generics: Vec<EcoString>,
-        params: Vec<Parameter>,
-        body: Either<Block, Expression>,
-        typ: Option<TypePath>,
-    },
+}
+
+/// Constant declaration
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ConstDeclaration {
+    pub location: Address,
+    pub publicity: Publicity,
+    pub name: EcoString,
+    pub value: Expression,
+    pub typ: TypePath,
+}
+
+/// Declaration
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Declaration {
+    /// Type declaration
+    Type(TypeDeclaration),
+    /// Function declaration
+    Fn(FnDeclaration),
+    /// Constant declaration
+    Const(ConstDeclaration),
 }
 
 /// Ast tree

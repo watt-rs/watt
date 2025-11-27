@@ -4,7 +4,6 @@ use crate::{
     typ::typ::Module,
 };
 use ecow::EcoString;
-use log::info;
 use watt_ast::ast::{self};
 
 /// Module ctx
@@ -42,29 +41,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
     /// Performs analyze of module
     pub fn analyze(&mut self) -> Module {
-        // 1. Performing imports
-        info!("Performing imports...");
-        for import in self.module.dependencies.clone() {
-            self.perform_import(import)
-        }
-
-        // 2. Early definitions
-        info!("Performing early analysis... Stage: early definitions.");
-        for definition in &self.module.declarations {
-            self.early_define(definition);
-        }
-
-        // 3. Late analysis
-        info!("Performing late analysis...");
-        for definition in self.module.declarations.clone() {
-            self.late_analyze_declaration(definition);
-        }
-
-        Module {
-            source: self.module.source.clone(),
-            name: self.module_name.clone(),
-            fields: self.resolver.collect(),
-        }
+        self.pipeline()
     }
 
     /// Generates fresh uid
