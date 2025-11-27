@@ -1,0 +1,8 @@
+[pkg]
+pkg = "lib"
+name = "generics"
+main = "generics/main"
+dependencies = []
+
+[lints]
+disabled = []

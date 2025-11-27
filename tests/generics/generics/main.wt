@@ -1,0 +1,42 @@
+/*
+ No runtime tests, only compile time.
+*/
+
+/// Type generics
+type Mammoth[T] {
+    value: Iceberg[T]
+}
+type Iceberg[T] {
+    value: T
+}
+fn test1() {
+    let a: Mammoth[int] = Mammoth(Iceberg(3))
+}
+
+/// Type generics with functions
+type Apply[T] {
+    function: fn(T): T
+}
+fn test2() {
+    let a: Apply[int] = Apply(fn(a: int): int {
+        a
+    });
+}
+
+/// Function generics
+fn a[T](a: T): T = a
+fn test3[V](v: V): V {
+    let annotated: fn(V): V = a;
+    annotated(v)
+}
+
+/// Enum generics
+enum Result[V, E] {
+    Ok(value: V),
+    Error(error: E)
+}
+fn test4() {
+    let a = Result.Ok(3);
+    a = Result.Error(false);
+    let b: Result[int, bool] = a;
+}
