@@ -13,8 +13,8 @@ use ecow::EcoString;
 use indexmap::IndexMap;
 use std::rc::Rc;
 use watt_ast::ast::{
-    self, Block, Declaration, Dependency, Either, EnumConstructor, Expression, Publicity, TypePath,
-    UseKind,
+    self, Block, Declaration, Dependency, Either, EnumConstructor, Expression, FnDeclaration,
+    Publicity, TypeDeclaration, TypePath, UseKind,
 };
 use watt_common::{address::Address, bail};
 
@@ -163,8 +163,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         publicity: Publicity,
         name: EcoString,
         params: Vec<ast::Parameter>,
-        body: Either<Block, Expression>,
         ret_type: Option<TypePath>,
+        body: Either<Block, Expression>,
     ) {
         // Requesting function
         let f = match self.resolver.resolve(&location, &name) {
@@ -332,8 +332,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         location: Address,
         publicity: Publicity,
         name: EcoString,
-        value: Expression,
         typ: TypePath,
+        value: Expression,
     ) {
         // Const inference
         let annotated_location = typ.location();
@@ -357,42 +357,54 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         );
     }
 
-    /// Dispatches a declaration to the corresponding late analysis routine.
+    /// Dispatches a type declaration to the corresponding late analysis routine.
     ///
-    /// Each declaration variant is fully processed here:
+    /// Each type declaration variant is fully processed here:
     /// - Struct → `late_analyze_struct`
     /// - Enum → `late_analyze_enum`
-    /// - Function → `late_analyze_function_decl`
-    /// - Extern → `late_analyze_extern_decl`
-    /// - Const → `late_define_const`
     ///
-    /// After this call, each declaration is fully type-analyzed and integrated
+    /// After this call, each type declaration is fully type-analyzed and integrated
     /// into the module’s type environment.
     ///
-    pub fn late_analyze_declaration(&mut self, declaration: Declaration) {
-        match declaration {
-            Declaration::TypeDeclaration {
+    pub fn late_analyze_type_declaration(&mut self, decl: TypeDeclaration) {
+        match decl {
+            TypeDeclaration::Struct {
                 location,
                 name,
                 fields,
                 ..
             } => self.late_analyze_struct(location, name, fields),
-            Declaration::EnumDeclaration {
+            TypeDeclaration::Enum {
                 location,
                 name,
                 variants,
                 ..
             } => self.late_analyze_enum(location, name, variants),
-            Declaration::Function {
+        }
+    }
+
+    /// Dispatches a function declaration to the corresponding late analysis routine.
+    ///
+    /// Each type declaration variant is fully processed here:
+    /// - Function → `late_analyze_function_decl`
+    /// - Extern → `late_analyze_extern_decl`
+    ///
+    /// After this call, each function declaration is fully type-analyzed and integrated
+    /// into the module’s type environment.
+    ///
+    /// Dispatches a declaration to the corresponding late analysis routine.
+    pub fn late_analyze_fn_declaration(&mut self, decl: FnDeclaration) {
+        match decl {
+            FnDeclaration::Function {
                 location,
                 publicity,
                 name,
                 params,
-                body,
                 typ,
+                body,
                 ..
-            } => self.late_analyze_function_decl(location, publicity, name, params, body, typ),
-            Declaration::ExternFunction {
+            } => self.late_analyze_function_decl(location, publicity, name, params, typ, body),
+            FnDeclaration::ExternFunction {
                 location,
                 publicity,
                 name,
@@ -400,13 +412,26 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 typ,
                 ..
             } => self.late_analyze_extern_decl(location, publicity, name, params, typ),
-            Declaration::Const {
-                location,
-                publicity,
-                name,
-                value,
-                typ
-            } => self.late_define_const(location, publicity, name, value, typ),
+        }
+    }
+
+    /// Each declaration variant is fully processed here:
+    /// - Const → `late_define_const`
+    ///
+    /// After this call, each declaration is fully type-analyzed and integrated
+    /// into the module’s type environment.
+    ///
+    pub fn late_analyze_declaration(&mut self, declaration: Declaration) {
+        match declaration {
+            Declaration::Type(decl) => self.late_analyze_type_declaration(decl),
+            Declaration::Fn(decl) => self.late_analyze_fn_declaration(decl),
+            Declaration::Const(decl) => self.late_define_const(
+                decl.location,
+                decl.publicity,
+                decl.name,
+                decl.typ,
+                decl.value,
+            ),
         }
     }
 

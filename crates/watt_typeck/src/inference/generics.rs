@@ -93,8 +93,7 @@ impl Generics {
     ///   Name of the generic
     ///
     pub fn get(&self, name: &str) -> Option<usize> {
-        self.stack
-            .last().and_then(|s| s.get(name).copied())
+        self.stack.last().and_then(|s| s.get(name).copied())
     }
 
     /// Generates fresh unique id
@@ -104,5 +103,14 @@ impl Generics {
     pub fn fresh(&mut self) -> usize {
         self.last_generic_id += 1;
         self.last_generic_id
+    }
+
+    /// Checks that generic is rigid
+    #[must_use]
+    #[inline]
+    pub fn is_rigid(&self, id: usize) -> bool {
+        self.stack
+            .last()
+            .map_or(false, |s| s.values().any(|g| g == &id))
     }
 }

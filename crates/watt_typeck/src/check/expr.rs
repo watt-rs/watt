@@ -563,14 +563,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 )
             }
             // Type field access
-            Res::Value(it @ Typ::Struct(ty, _)) => {
-                self.infer_struct_field_access(
-                    it.clone(),
-                    ty.borrow().name.clone(),
-                    field_location,
-                    field_name,
-                )
-            }
+            Res::Value(it @ Typ::Struct(ty, _)) => self.infer_struct_field_access(
+                it.clone(),
+                ty.borrow().name.clone(),
+                field_location,
+                field_name,
+            ),
             // Else
             _ => bail!(TypeckError::CouldNotResolveFieldsIn {
                 src: self.module.source.clone(),
@@ -674,7 +672,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     self.solver.unify(p.location, p.typ, a.0, a.1);
                 });
                 Res::Value(f.ret.clone())
-            },
+            }
             // Variant
             Res::Variant(en, variant) => {
                 variant.fields.iter().cloned().zip(args).for_each(|(p, a)| {
@@ -855,14 +853,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                                         &case.address,
                                         &it.name,
                                         it.typ.clone(),
-                                        false
+                                        false,
                                     ),
                                     None => bail!(TypeckError::EnumVariantFieldIsNotDefined {
                                         src: self.module.source.clone(),
                                         span: field.0.span.into(),
                                         res: res.clone(),
                                         field: field.1
-                                    })
+                                    }),
                                 }
                             });
                         }

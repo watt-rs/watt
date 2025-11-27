@@ -41,7 +41,7 @@ pub struct HydrationCx<'hd> {
     ///
     /// This ensures that generic parameters remain consistent:
     /// `{g(n) -> u(m)}`, reused everywhere within a single instantiation.
-    mapping: HashMap<usize, Typ>
+    mapping: HashMap<usize, Typ>,
 }
 
 /// Implementation
@@ -50,7 +50,7 @@ impl<'hd> HydrationCx<'hd> {
     pub fn new(hydrator: &'hd mut Hydrator) -> Self {
         Self {
             hydrator,
-            mapping: HashMap::new()
+            mapping: HashMap::new(),
         }
     }
 
@@ -65,14 +65,18 @@ impl<'hd> HydrationCx<'hd> {
                 if let Some(typ) = self.mapping.get(&id) {
                     typ.clone()
                 } else {
-                    let fresh = Typ::Unbound(self.hydrator.fresh());
-                    self.mapping.insert(id, fresh.clone());
-                    fresh
+                    if self.hydrator.is_rigid(id) {
+                        Typ::Generic(id)
+                    } else {
+                        let fresh = Typ::Unbound(self.hydrator.fresh());
+                        self.mapping.insert(id, fresh.clone());
+                        fresh
+                    }
                 }
             }
             Typ::Function(rc) => Typ::Function(self.mk_function(rc)),
             Typ::Struct(rc, args) => {
-                let mut args = args
+                let args = args
                     .subtitutions
                     .iter()
                     .map(|(k, v)| (*k, self.mk_ty(v.clone())))
@@ -94,7 +98,6 @@ impl<'hd> HydrationCx<'hd> {
         }
     }
 
-
     /// Instantiates generics with args
     /// Generic(id) -> Unbound($id)
     pub fn mk_generics(
@@ -107,7 +110,12 @@ impl<'hd> HydrationCx<'hd> {
                 .iter()
                 .map(|p| {
                     let generic_id = p.id;
-                    (generic_id, self.hydrator.hyd_m(args.clone()).mk_ty(Typ::Generic(generic_id)))
+                    (
+                        generic_id,
+                        self.hydrator
+                            .hyd_m(args.clone())
+                            .mk_ty(Typ::Generic(generic_id)),
+                    )
                 })
                 .collect(),
         }
@@ -115,10 +123,7 @@ impl<'hd> HydrationCx<'hd> {
 
     /// Instantiates function by replacing
     /// Generic(id) -> Unbound($id)
-    pub fn mk_function(
-        &mut self,
-        rc: Rc<Function>,
-    ) -> Rc<Function> {
+    pub fn mk_function(&mut self, rc: Rc<Function>) -> Rc<Function> {
         let params = rc
             .params
             .iter()
@@ -266,10 +271,15 @@ impl Hydrator {
                 location: f.location.clone(),
                 name: f.name.clone(),
                 generics: f.generics.clone(),
-                params: f.params.iter().cloned().map(|p| Parameter {
-                    location: p.location,
-                    typ: self.apply(p.typ),
-                }).collect(),
+                params: f
+                    .params
+                    .iter()
+                    .cloned()
+                    .map(|p| Parameter {
+                        location: p.location,
+                        typ: self.apply(p.typ),
+                    })
+                    .collect(),
                 ret: self.apply(f.ret.clone()),
             })),
             other => other,
@@ -307,5 +317,10 @@ impl Hydrator {
             hydrator: self,
             mapping,
         }
+    }
+
+    /// Checks that generic is rigid by its ID
+    pub fn is_rigid(&self, id: usize) -> bool {
+        self.generics.is_rigid(id)
     }
 }

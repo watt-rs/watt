@@ -7,10 +7,10 @@ use camino::Utf8PathBuf;
 use console::style;
 use git2::Repository;
 use log::info;
-use watt_common::bail;
 use petgraph::{Direction, prelude::DiGraphMap};
 use std::collections::{HashMap, HashSet};
 use url::Url;
+use watt_common::bail;
 
 /// Finds cycle in a graph
 fn find_cycle<'dep>(

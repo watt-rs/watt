@@ -124,7 +124,7 @@ impl<'file> Parser<'file> {
     }
 
     /// Fn declaration parsing
-    fn fn_declaration(&mut self, publicity: Publicity) -> Declaration {
+    fn fn_declaration(&mut self, publicity: Publicity) -> FnDeclaration {
         // start location
         let start_location = self.peek().address.clone();
         self.consume(TokenKind::Fn);
@@ -164,7 +164,7 @@ impl<'file> Parser<'file> {
         // end location
         let end_location = self.previous().address.clone();
 
-        Declaration::Function {
+        FnDeclaration::Function {
             location: start_location + end_location,
             publicity,
             name,
@@ -217,7 +217,7 @@ impl<'file> Parser<'file> {
     }
 
     /// Constant declaration parsing
-    fn const_declaration(&mut self, publicity: Publicity) -> Declaration {
+    fn const_declaration(&mut self, publicity: Publicity) -> ConstDeclaration {
         // `const $id`
         self.consume(TokenKind::Const);
         let name = self.consume(TokenKind::Id).clone();
@@ -233,7 +233,7 @@ impl<'file> Parser<'file> {
         // Checking expression is const
         self.check_value_const(&value);
 
-        Declaration::Const {
+        ConstDeclaration {
             location: name.address,
             publicity,
             name: name.value,
@@ -243,7 +243,7 @@ impl<'file> Parser<'file> {
     }
 
     /// Extern fn declaration parsing
-    fn extern_fn_declaration(&mut self, publicity: Publicity) -> Declaration {
+    fn extern_fn_declaration(&mut self, publicity: Publicity) -> FnDeclaration {
         // start location
         let start_location = self.peek().address.clone();
 
@@ -286,7 +286,7 @@ impl<'file> Parser<'file> {
         // end location
         let end_location = self.previous().address.clone();
 
-        Declaration::ExternFunction {
+        FnDeclaration::ExternFunction {
             location: start_location + end_location,
             name,
             publicity,
@@ -320,7 +320,7 @@ impl<'file> Parser<'file> {
     }
 
     /// Type declaration parsing
-    fn type_declaration(&mut self, publicity: Publicity) -> Declaration {
+    fn type_declaration(&mut self, publicity: Publicity) -> TypeDeclaration {
         // start address
         let start_address = self.peek().address.clone();
 
@@ -352,7 +352,7 @@ impl<'file> Parser<'file> {
         // end address
         let end_address = self.previous().address.clone();
 
-        Declaration::TypeDeclaration {
+        TypeDeclaration::Struct {
             location: start_address + end_address,
             publicity,
             name: name.value,
@@ -362,7 +362,7 @@ impl<'file> Parser<'file> {
     }
 
     /// Enum declaration parsing
-    fn enum_declaration(&mut self, publicity: Publicity) -> Declaration {
+    fn enum_declaration(&mut self, publicity: Publicity) -> TypeDeclaration {
         // start address
         let start_location = self.peek().address.clone();
 
@@ -413,7 +413,7 @@ impl<'file> Parser<'file> {
             self.consume(TokenKind::Rbrace);
         }
 
-        Declaration::EnumDeclaration {
+        TypeDeclaration::Enum {
             location: start_location + end_location,
             publicity,
             name: name.value,
@@ -465,11 +465,11 @@ impl<'file> Parser<'file> {
     /// Declaration parsing
     fn declaration(&mut self, publicity: Publicity) -> Declaration {
         match self.peek().tk_type {
-            TokenKind::Type => self.type_declaration(publicity),
-            TokenKind::Fn => self.fn_declaration(publicity),
-            TokenKind::Enum => self.enum_declaration(publicity),
-            TokenKind::Const => self.const_declaration(publicity),
-            TokenKind::Extern => self.extern_fn_declaration(publicity),
+            TokenKind::Type => Declaration::Type(self.type_declaration(publicity)),
+            TokenKind::Fn => Declaration::Fn(self.fn_declaration(publicity)),
+            TokenKind::Enum => Declaration::Type(self.enum_declaration(publicity)),
+            TokenKind::Const => Declaration::Const(self.const_declaration(publicity)),
+            TokenKind::Extern => Declaration::Fn(self.extern_fn_declaration(publicity)),
             _ => {
                 let token = self.peek().clone();
                 bail!(ParseError::UnexpectedDeclarationToken {

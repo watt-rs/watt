@@ -1,3 +1,4 @@
+use crate::typ::typ::Parameter;
 /// Imports
 use crate::{
     cx::module::ModuleCx,
@@ -8,12 +9,13 @@ use crate::{
 };
 use ecow::EcoString;
 use std::{cell::RefCell, rc::Rc};
-use watt_ast::ast::{Declaration, Publicity};
+use watt_ast::ast;
+use watt_ast::ast::{FnDeclaration, Publicity, TypeDeclaration, TypePath};
 use watt_common::address::Address;
 
 /// Performs the “early” pass of module analysis.
 ///
-/// The early phase registers symbols (types, enums, functions, externs, consts)
+/// The early phase registers symbols (types, enums, functions, externs)
 /// in the module scope *by name and generics only*, without inspecting their internals.
 ///
 /// This ensures that forward references are allowed:
@@ -66,8 +68,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
     /// Registers a function symbol in the module before its body is analyzed.
     ///
-    /// Only the function’s name, location, generics and publicity are stored.
-    /// Parameters and return type remain empty until
+    /// Everything except function body will be analyzed.
     /// [`late_analyze_function_decl`] performs full semantic analysis.
     ///
     fn early_define_function_decl(
@@ -75,6 +76,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         location: Address,
         publicity: Publicity,
         generics: Vec<EcoString>,
+        params: Vec<ast::Parameter>,
+        typ: Option<TypePath>,
         name: EcoString,
     ) {
         // Pushing generics
@@ -84,8 +87,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             location: location.clone(),
             name: name.clone(),
             generics,
-            params: Vec::new(),
-            ret: Typ::Unit,
+            params: params
+                .into_iter()
+                .map(|p| Parameter {
+                    location: p.location.clone(),
+                    typ: self.infer_type_annotation(p.typ),
+                })
+                .collect(),
+            ret: typ.map_or(Typ::Unit, |it| self.infer_type_annotation(it)),
         });
         // Popping generics
         self.solver.hydrator.generics.pop_scope();
@@ -145,7 +154,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// Registers an `extern` function.
     ///
     /// Since extern functions have no bodies, their analysis is trivial:
-    /// this creates a bare [`Function`] with no parameters and `Unit` return type.
+    /// Function generics, params, return type be analyzed.
+    /// [`late_analyze_function_decl`] performs full semantic analysis.
     /// Further semantic passes do not analyze extern functions.
     ///
     fn early_define_extern(
@@ -153,6 +163,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         location: Address,
         publicity: Publicity,
         generics: Vec<EcoString>,
+        params: Vec<ast::Parameter>,
+        typ: Option<TypePath>,
         name: EcoString,
     ) {
         // Pushing generics
@@ -162,8 +174,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             location: location.clone(),
             name: name.clone(),
             generics,
-            params: Vec::new(),
-            ret: Typ::Unit,
+            params: params
+                .into_iter()
+                .map(|p| Parameter {
+                    location: p.location.clone(),
+                    typ: self.infer_type_annotation(p.typ),
+                })
+                .collect(),
+            ret: typ.map_or(Typ::Unit, |it| self.infer_type_annotation(it)),
         });
         // Popping generics
         self.solver.hydrator.generics.pop_scope();
@@ -179,45 +197,59 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         );
     }
 
-    /// Dispatches early-phase definition for any kind of declaration.
+    /// Dispatches early-phase definition for any kind of type declaration.
     ///
     /// Each declaration type is handled by the corresponding `early_define_*`
     /// method. This ensures all top-level symbols are registered before any
     /// “late” semantic analysis runs.
     ///
-    pub(crate) fn early_define(&mut self, declaration: &Declaration) {
+    pub(crate) fn early_define_type(&mut self, declaration: &TypeDeclaration) {
         // Matching declaration
         match declaration.clone() {
-            Declaration::TypeDeclaration {
+            TypeDeclaration::Struct {
                 location,
                 name,
                 publicity,
                 generics,
                 ..
             } => self.early_define_struct(location, publicity, generics, name),
-            Declaration::EnumDeclaration {
+            TypeDeclaration::Enum {
                 location,
                 name,
                 publicity,
                 generics,
                 ..
             } => self.early_define_enum(location, publicity, generics, name),
-            Declaration::ExternFunction {
+        }
+    }
+
+    /// Dispatches early-phase definition for any kind of function declaration.
+    ///
+    /// Each declaration type is handled by the corresponding `early_define_*`
+    /// method. This ensures all top-level functions are registered and
+    /// its params and return type are inferred before any
+    /// “late” semantic analysis runs.
+    ///
+    pub(crate) fn early_define_fn(&mut self, declaration: &FnDeclaration) {
+        match declaration.clone() {
+            FnDeclaration::ExternFunction {
                 location,
                 name,
                 publicity,
                 generics,
+                params,
+                typ,
                 ..
-            } => self.early_define_extern(location, publicity, generics, name),
-            Declaration::Function {
+            } => self.early_define_extern(location, publicity, generics, params, typ, name),
+            FnDeclaration::Function {
                 location,
                 publicity,
                 name,
                 generics,
+                params,
+                typ,
                 ..
-            } => self.early_define_function_decl(location, publicity, generics, name),
-            // We don't need to analyze constants at this time
-            _ => {}
+            } => self.early_define_function_decl(location, publicity, generics, params, typ, name),
         }
     }
 }
