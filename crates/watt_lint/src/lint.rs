@@ -8,7 +8,7 @@ use watt_ast::ast::{
     Block, ConstDeclaration, Declaration, Either, ElseBranch, Expression, FnDeclaration, Module,
     Range, Statement, TypeDeclaration,
 };
-use watt_common::{package::DraftPackage, warn};
+use watt_common::{package::DraftPackage, skip, warn};
 
 /// Linting context
 pub struct LintCx<'cx, 'module> {
@@ -360,7 +360,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     }
                 }
             }
-            _ => {}
+            _ => skip!()
         }
     }
 

@@ -7,7 +7,7 @@ use miette::NamedSource;
 use std::collections::HashMap;
 use std::sync::Arc;
 use watt_common::address::Address;
-use watt_common::bail;
+use watt_common::{bail, skip};
 
 /// Lexer structure
 pub struct Lexer<'source, 'cursor> {
@@ -194,11 +194,11 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
                         self.add_tk(TokenKind::Assign, "=");
                     }
                 }
-                '\r' => {}
-                '\t' => {}
-                '\0' => {}
-                ' ' => {}
-                '\n' => {}
+                '\r' => skip!(),
+                '\t' => skip!(),
+                '\0' => skip!(),
+                ' ' => skip!(),
+                '\n' => skip!(),
                 '\"' => {
                     let tk = self.scan_string();
                     self.tokens.push(tk)

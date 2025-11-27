@@ -12,7 +12,7 @@ use std::{
     io::Write,
 };
 use walkdir::WalkDir;
-use watt_common::bail;
+use watt_common::{bail, skip};
 
 /// Watt file
 #[derive(Debug)]
@@ -43,9 +43,9 @@ impl WattFile {
     }
 }
 
-/// Recursivly collects all .watt files in directory
+/// Recursively collects all .watt files in directory
 pub fn collect_sources(path: &Utf8PathBuf) -> Vec<WattFile> {
-    // Finding entries with .watt extension recursivly
+    // Finding entries with .watt extension recursively
     let entries = WalkDir::new(path.clone()).into_iter().filter_entry(|e| {
         let entry_path = e.path();
         if entry_path.is_file() {
@@ -62,7 +62,7 @@ pub fn collect_sources(path: &Utf8PathBuf) -> Vec<WattFile> {
         }
     });
 
-    // Validating entrires
+    // Validating entries
     let mut result: Vec<WattFile> = Vec::new();
     for entry in entries {
         match entry {
@@ -134,7 +134,7 @@ pub fn write(path: Utf8PathBuf, text: String) {
 pub fn mkdir(path: &Utf8PathBuf) {
     // Creating directory, if not exists
     match fs::create_dir(path) {
-        Ok(_) => {}
+        Ok(_) => skip!(),
         Err(_) => {
             bail!(IoError::FailedToMkdir { path: path.clone() })
         }
@@ -145,7 +145,7 @@ pub fn mkdir(path: &Utf8PathBuf) {
 pub fn mkdir_all(path: &Utf8PathBuf) {
     // Creating directory, if not exists
     match fs::create_dir_all(path) {
-        Ok(_) => {}
+        Ok(_) => skip!(),
         Err(_) => {
             bail!(IoError::FailedToMkdirAll { path: path.clone() })
         }

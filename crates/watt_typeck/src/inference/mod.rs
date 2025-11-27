@@ -5,7 +5,7 @@ pub mod hydrator;
 
 /// Imports
 use crate::{
-    errors::{TypeckError, TypeckRelated},
+    errors::TypeckError,
     inference::{
         equation::{Equation, EqUnit},
         hydrator::Hydrator,
@@ -13,7 +13,7 @@ use crate::{
     typ::typ::{PreludeType, Typ},
 };
 use log::trace;
-use watt_common::{address::Address, bail};
+use watt_common::bail;
 use crate::inference::equation::Origin;
 
 /// Equations solver

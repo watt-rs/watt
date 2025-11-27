@@ -3,7 +3,7 @@ use crate::errors::ParseError;
 use miette::NamedSource;
 use std::sync::Arc;
 use watt_ast::ast::*;
-use watt_common::bail;
+use watt_common::{bail, skip};
 use watt_lex::tokens::{Token, TokenKind};
 
 /// Parser structure
@@ -195,7 +195,7 @@ impl<'file> Parser<'file> {
             Expression::Int { location, .. }
             | Expression::Float { location, .. }
             | Expression::String { location, .. }
-            | Expression::Bool { location, .. } => {}
+            | Expression::Bool { location, .. } => skip!(),
             // Binary and unary operations need to be checked.
             Expression::Bin {
                 location,

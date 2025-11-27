@@ -15,7 +15,7 @@ use watt_ast::ast::{
     self, Block, Either, Expression, FnDeclaration,
     Publicity, TypePath,
 };
-use watt_common::{address::Address, skip};
+use watt_common::address::Address;
 use crate::inference::equation::EqUnit;
 
 /// Late declaration analysis pass for the module.

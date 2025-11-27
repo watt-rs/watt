@@ -18,7 +18,7 @@ use watt_ast::ast::{
     self, BinaryOp, Block, Case, Either, ElseBranch, Expression, Pattern, Publicity, TypePath,
     UnaryOp,
 };
-use watt_common::{address::Address, bail, warn};
+use watt_common::{address::Address, bail, skip, warn};
 use crate::inference::equation::EqUnit;
 
 /// Expressions inferring
@@ -120,7 +120,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
     }
 
-    /// Infers the type of an logical expression.
+    /// Infers the type of logical expression.
     ///
     /// This function:
     /// - Checks that both the left and right operands are `Typ::Bool`.
@@ -158,7 +158,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
     }
 
-    /// Infers the type of an compare expression.
+    /// Infers the type of compare expression.
     ///
     /// This function:
     /// - Checks that both the left and right operands are numerics.
@@ -198,7 +198,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
     }
 
-    /// Infers the type of a binary expression.
+    /// Infers the type of binary expression.
     ///
     /// This function:
     /// - Infers types of both the left and right operands.
@@ -264,7 +264,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
     }
 
-    /// Infers the type of a unary expression.
+    /// Infers the type of unary expression.
     ///
     /// This function:
     /// - Infers the type of the operand.
@@ -379,7 +379,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             // Getting module
             Some(module) => match module.fields.get(&field_name) {
                 // If field exists
-                // checking it's publicity
+                // checking its publicity
                 Some(def) => match def {
                     ModuleDef::Type(ty) => {
                         match ty.publicity {
@@ -395,7 +395,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     }
                     ModuleDef::Const(var) => {
                         match var.publicity {
-                            // If coonstant is public, we resolved field
+                            // If constant is public, we resolved field
                             Publicity::Public => Res::Value(var.value.clone()),
                             // Else, raising `module field is private`
                             _ => bail!(TypeckError::ModuleFieldIsPrivate {
@@ -407,7 +407,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     }
                     ModuleDef::Function(f) => {
                         match f.publicity {
-                            // If coonstant is public, we resolved field
+                            // If constant is public, we resolved field
                             Publicity::Public => Res::Value(Typ::Function(f.value.clone())),
                             // Else, raising `module field is private`
                             _ => bail!(TypeckError::ModuleFieldIsPrivate {
@@ -598,7 +598,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
     }
 
-    /// Infers the type of a function or constructor call.
+    /// Infers the type of function or constructor call.
     ///
     /// This routine performs three major tasks:
     /// 1. Resolves the callee (`what`) via [`infer_resolution`] to determine whether it is:
@@ -734,7 +734,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
     }
 
-    /// Infers the type of an anonymous function literal.
+    /// Infers the type of anonymous function literal.
     ///
     /// This creates a temporary local scope, binds parameters with their declared
     /// annotated types, and infers the type of the function body.
@@ -837,7 +837,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         match pat.clone() {
             Pattern::Unwrap { en, fields } => {
                 // inferring resolution, and checking
-                // that is a enum variant
+                // that is an enum variant
                 let res = self.infer_resolution(en);
                 match &res {
                     Res::Variant(en, variant) => {
@@ -926,10 +926,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     })
                 }
             }
-            Pattern::Wildcard => {}
+            Pattern::Wildcard => skip!(),
             Pattern::Variant(var) => {
                 // inferring resolution, and checking
-                // that is a enum variant
+                // that is an enum variant
                 let res = self.infer_resolution(var);
                 match &res {
                     Res::Variant(en, _) => {
@@ -961,7 +961,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
     }
 
-    /// Infers the result type of a `match` expression.
+    /// Infers the result type of `match` expression.
     ///
     /// Steps performed:
     /// 1. Infer the matchable type (`inferred_what`).
@@ -979,7 +979,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// - Emit a warning (`TypeckWarning::NonExhaustive`),
     /// - The whole match expression is typed as `Unit`.
     ///
-    /// Otherwise return the unified type of all branches.
+    /// Otherwise, return the unified type of all branches.
     ///
     pub(crate) fn infer_pattern_matching(
         &mut self,
@@ -1024,11 +1024,11 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
     }
 
-    /// Infers the type of an `if`/`elif`/`else` chain.
+    /// Infers the type of `if`/`elif`/`else` chain.
     ///
     /// ### Logical expression
     /// Ensures that each `if` and `elif` condition has type `Bool`.
-    /// Otherwise emits [`TypeckError::ExpectedLogicalInIf`].
+    /// Otherwise, emits [`TypeckError::ExpectedLogicalInIf`].
     ///
     /// ### Branch types
     /// All reachable branches are collected into a list and unified together.

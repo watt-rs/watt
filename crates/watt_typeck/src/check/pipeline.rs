@@ -3,7 +3,6 @@ use crate::cx::module::ModuleCx;
 use crate::typ::typ::Module;
 use log::info;
 use watt_ast::ast::Declaration;
-use watt_common::skip;
 
 /// Implementation
 impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {

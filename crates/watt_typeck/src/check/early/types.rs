@@ -1,8 +1,8 @@
+/// Imports
 use crate::cx::module::ModuleCx;
 use crate::typ::def::{ModuleDef, TypeDef};
 use crate::typ::typ::{Enum, Struct, WithPublicity};
 use ecow::EcoString;
-/// Imports
 use std::cell::RefCell;
 use std::rc::Rc;
 use watt_ast::ast::{Publicity, TypeDeclaration};

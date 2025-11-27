@@ -9,10 +9,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use console::style;
 use log::info;
 use std::process::Command;
-use watt_common::{
-    bail,
-    package::{DraftPackage, DraftPackageLints},
-};
+use watt_common::{bail, package::{DraftPackage, DraftPackageLints}, skip};
 use watt_compile::{io, package::CompletedPackage, project::ProjectCompiler};
 
 /// Runs using runtime
@@ -49,7 +46,7 @@ fn run_by_rt(index: Utf8PathBuf, rt: JsRuntime) {
                 })
             }
         }
-        JsRuntime::Common => {}
+        JsRuntime::Common => skip!()
     }
 }
 

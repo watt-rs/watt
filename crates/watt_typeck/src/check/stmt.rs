@@ -11,7 +11,7 @@ use crate::{
 use ecow::EcoString;
 use watt_ast::ast::*;
 use watt_ast::ast::{Block, Expression, TypePath};
-use watt_common::{address::Address, bail};
+use watt_common::{address::Address, bail, skip};
 use crate::inference::equation::EqUnit;
 
 /// Statements inferencing
@@ -38,7 +38,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // inferring logical
         let inferred_logical = self.infer_expr(logical);
         match inferred_logical {
-            Typ::Prelude(PreludeType::Bool) => {}
+            Typ::Prelude(PreludeType::Bool) => skip!(),
             other => bail!(TypeckError::TypesMissmatch {
                 src: self.module.source.clone(),
                 span: location.span.into(),

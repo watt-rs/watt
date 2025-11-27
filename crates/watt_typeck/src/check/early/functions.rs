@@ -1,8 +1,8 @@
+/// Imports
 use crate::cx::module::ModuleCx;
 use crate::typ::def::ModuleDef;
 use crate::typ::typ::{Function, Parameter, Typ, WithPublicity};
 use ecow::EcoString;
-/// Imports
 use std::rc::Rc;
 use watt_ast::ast;
 use watt_ast::ast::{FnDeclaration, Publicity, TypePath};

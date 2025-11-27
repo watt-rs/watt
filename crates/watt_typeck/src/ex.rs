@@ -10,7 +10,7 @@ use crate::{
 use ecow::EcoString;
 use std::{cell::RefCell, rc::Rc};
 use watt_ast::ast::{Case, Pattern};
-use watt_common::{address::Address, bail};
+use watt_common::{address::Address, bail, skip};
 
 /// Exhaustiveness check of pattern matching
 pub struct ExMatchCx<'module_cx, 'pkg, 'cx> {
@@ -133,7 +133,7 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
                 (false, true) => {
                     false_matched = true;
                 }
-                _ => {}
+                _ => skip!(),
             };
         }
         // If not not matched
