@@ -12,6 +12,7 @@ use ecow::EcoString;
 use watt_ast::ast::*;
 use watt_ast::ast::{Block, Expression, TypePath};
 use watt_common::{address::Address, bail};
+use crate::inference::equation::EqUnit;
 
 /// Statements inferencing
 impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
@@ -177,8 +178,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 let annotated = self.infer_type_annotation(annotated_path);
                 let inferred_value = self.solver.hydrator.hyd().mk_ty(inferred_value);
                 self.solver.solve(Equation::Unify(
-                    (annotated_location, annotated.clone()),
-                    (value_location.clone(), inferred_value.clone()),
+                    EqUnit(annotated_location, annotated.clone()),
+                    EqUnit(value_location.clone(), inferred_value.clone()),
                 ));
                 self.resolver
                     .define_local(&location, &name, annotated, false)
@@ -210,8 +211,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         let value_location = value.location();
         let inferred_value = self.infer_expr(value);
         self.solver.solve(Equation::Unify(
-            (location.clone(), inferred_what.unwrap_typ(&location)),
-            (value_location, inferred_value),
+            EqUnit(location.clone(), inferred_what.unwrap_typ(&location)),
+            EqUnit(value_location, inferred_value),
         ));
     }
 

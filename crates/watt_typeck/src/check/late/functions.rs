@@ -16,6 +16,7 @@ use watt_ast::ast::{
     Publicity, TypePath,
 };
 use watt_common::{address::Address, skip};
+use crate::inference::equation::EqUnit;
 
 /// Late declaration analysis pass for the module.
 ///
@@ -120,61 +121,13 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Either::Right(expr) => (expr.location(), self.infer_expr(expr)),
         };
         self.solver.solve(Equation::Unify(
-            (location, ret),
-            (block_location, inferred_block),
+            EqUnit(location, ret),
+            EqUnit(block_location, inferred_block),
         ));
         self.resolver.pop_rib();
 
         // Popping generics
         self.solver.hydrator.generics.pop_scope();
-    }
-
-    /// Performs late analysis of a constant definition.
-    ///
-    /// A constant has:
-    /// - A required type annotation.
-    /// - A value expression which is inferred independently.
-    ///
-    /// ## Procedure:
-    /// 1. Resolve the type annotation.
-    /// 2. Infer the type of the value expression.
-    /// 3. Emit a unification constraint requiring the expression type to match
-    ///    the annotated type.
-    /// 4. Register the constant in the module namespace.
-    ///
-    /// ## Constants do not:
-    /// - Introduce generics.
-    /// - Create scopes.
-    /// - Participate in inference outside their own value.
-    ///
-    fn late_analyze_const(
-        &mut self,
-        location: Address,
-        publicity: Publicity,
-        name: EcoString,
-        typ: TypePath,
-        value: Expression,
-    ) {
-        // Const inference
-        let annotated_location = typ.location();
-        let annotated = self.infer_type_annotation(typ);
-        let inferred_location = value.location();
-        let inferred = self.infer_expr(value);
-        self.solver.solve(Equation::Unify(
-            (annotated_location, annotated.clone()),
-            (inferred_location, inferred),
-        ));
-
-        // Defining constant
-        self.resolver.define_module(
-            &location,
-            &name,
-            ModuleDef::Const(WithPublicity {
-                publicity,
-                value: annotated,
-            }),
-            false,
-        );
     }
 
     /// Dispatches a function declaration to the corresponding late analysis routine.
@@ -193,13 +146,13 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     ///
     pub fn late_analyze_fn_decl(&mut self, decl: FnDeclaration) {
         if let FnDeclaration::Function {
-                location,
-                publicity,
-                name,
-                params,
-                typ,
-                body,
-                ..
-            } = decl { self.late_analyze_fn(location, publicity, name, params, typ, body) }
+            location,
+            publicity,
+            name,
+            params,
+            typ,
+            body,
+            ..
+        } = decl { self.late_analyze_fn(location, publicity, name, params, typ, body) }
     }
 }

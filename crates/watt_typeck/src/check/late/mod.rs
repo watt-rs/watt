@@ -18,6 +18,7 @@ use watt_ast::ast::{
     Publicity, TypePath, UseKind,
 };
 use watt_common::{address::Address, bail};
+use crate::inference::equation::EqUnit;
 
 /// Late declaration analysis pass for the module.
 ///
@@ -66,8 +67,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         let inferred_location = value.location();
         let inferred = self.infer_expr(value);
         self.solver.solve(Equation::Unify(
-            (annotated_location, annotated.clone()),
-            (inferred_location, inferred),
+            EqUnit(annotated_location, annotated.clone()),
+            EqUnit(inferred_location, inferred),
         ));
 
         // Defining constant

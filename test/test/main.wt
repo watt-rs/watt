@@ -1,0 +1,6 @@
+fn a[T](a: T): T = a
+
+fn b[T, V](v: V): V {
+    let annotated: fn(T): V = a;
+    annotated(v)
+}
