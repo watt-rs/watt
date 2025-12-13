@@ -196,7 +196,7 @@ impl<'file> Parser<'file> {
             | Expression::Float { location, .. }
             | Expression::String { location, .. }
             | Expression::Bool { location, .. } => skip!(),
-            // Binary and unary operations need to be checked.
+            // Binary, as  and unary operations need to be checked.
             Expression::Bin {
                 location,
                 left,
@@ -206,6 +206,11 @@ impl<'file> Parser<'file> {
                 self.check_value_const(left);
                 self.check_value_const(right);
             }
+            Expression::As {
+                location,
+                value,
+                typ,
+            } => self.check_value_const(value),
             Expression::Unary {
                 location,
                 value,

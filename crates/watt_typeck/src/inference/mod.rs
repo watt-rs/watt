@@ -4,17 +4,17 @@ pub mod generics;
 pub mod hydrator;
 
 /// Imports
+use crate::inference::equation::Origin;
 use crate::{
     errors::TypeckError,
     inference::{
-        equation::{Equation, EqUnit},
+        equation::{EqUnit, Equation},
         hydrator::Hydrator,
     },
-    typ::typ::{PreludeType, Typ},
+    typ::typ::Typ,
 };
 use log::trace;
 use watt_common::bail;
-use crate::inference::equation::Origin;
 
 /// Equations solver
 #[derive(Default)]
@@ -34,7 +34,7 @@ impl EquationsSolver {
                 let o1 = Origin(v1.0, v1.1.clone());
                 let o2 = Origin(v2.0, v2.1.clone());
                 self.unify(o1, v1.1, o2, v2.1)
-            },
+            }
             Equation::UnifyMany(mut items) => {
                 if !items.is_empty() {
                     // Retrieving first information
@@ -42,8 +42,10 @@ impl EquationsSolver {
                     // Unifying with others
                     for EqUnit(l2, t2) in items {
                         t1 = self.unify(
-                            Origin(l1.clone(), t1.clone()), t1.clone(),
-                            Origin(l2, t2.clone()), t2
+                            Origin(l1.clone(), t1.clone()),
+                            t1.clone(),
+                            Origin(l2, t2.clone()),
+                            t2,
                         );
                     }
                     t1
@@ -62,32 +64,10 @@ impl EquationsSolver {
         // Unifying
         if t1 != t2 {
             match (&t1, &t2) {
-                (Typ::Prelude(a), Typ::Prelude(b)) => match (a, b) {
-                    (PreludeType::Int, PreludeType::Float) => Typ::Prelude(PreludeType::Float),
-                    (PreludeType::Float, PreludeType::Int) => Typ::Prelude(PreludeType::Float),
-                    _ => bail!(TypeckError::CouldNotUnify {
-                        t1: t1.clone(),
-                        t2: t2.clone(),
-                        related: vec![
-                            o1.into_this(),
-                            o2.into_with_this(),
-                        ]
-                    }),
-                },
                 (Typ::Unbound(a), Typ::Unbound(b)) => {
                     if a == b {
                         t1
                     } else {
-                        if self.occurs(*a, &t2) {
-                            bail!(TypeckError::TypesRecursion {
-                                related: vec![
-                                    o1.into_this_type(),
-                                    o2.into_with_this(),
-                                ],
-                                t1: o1.typ(),
-                                t2: o2.typ()
-                            })
-                        }
                         self.hydrator.substitute(*a, t2.clone());
                         t2
                     }
@@ -95,10 +75,7 @@ impl EquationsSolver {
                 (Typ::Unbound(a), b) | (b, Typ::Unbound(a)) => {
                     if self.occurs(*a, b) {
                         bail!(TypeckError::TypesRecursion {
-                            related: vec![
-                                o1.into_this_type(),
-                                o2.into_this_type(),
-                            ],
+                            related: vec![o1.into_this_type(), o2.into_this_type(),],
                             t1: o1.typ(),
                             t2: o2.typ()
                         })
@@ -145,10 +122,7 @@ impl EquationsSolver {
                 _ => bail!(TypeckError::CouldNotUnify {
                     t1: o1.typ(),
                     t2: o2.typ(),
-                    related: vec![
-                        o1.into_this_type(),
-                        o2.into_this_type(),
-                    ]
+                    related: vec![o1.into_this_type(), o2.into_this_type(),]
                 }),
             }
         } else {

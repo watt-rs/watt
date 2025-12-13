@@ -368,6 +368,30 @@ impl<'file> Parser<'file> {
         left
     }
 
+    /// Cast operation `as` parsing
+    fn as_expr(&mut self) -> Expression {
+        let start_location = self.peek().address.clone();
+        let mut left = self.logical_expr();
+
+        if self.check(TokenKind::As) {
+            self.consume(TokenKind::As);
+            let right = self.type_annotation();
+            let end_location = self.previous().address.clone();
+            left = Expression::As {
+                location: start_location + end_location,
+                value: Box::new(left),
+                typ: right,
+            };
+        }
+
+        left
+    }
+
+    /// Expr parsing
+    pub(crate) fn expr(&mut self) -> Expression {
+        self.as_expr()
+    }
+
     /// Variant pattern prefix.
     /// Example: `Option.Some`
     fn variant_pattern_prefix(&mut self) -> Expression {
@@ -515,10 +539,5 @@ impl<'file> Parser<'file> {
             value: Box::new(value),
             cases,
         }
-    }
-
-    /// Expr parsing
-    pub(crate) fn expr(&mut self) -> Expression {
-        self.logical_expr()
     }
 }

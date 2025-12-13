@@ -448,10 +448,19 @@ pub enum Expression {
         right: Box<Expression>,
         op: BinaryOp,
     },
+    /// Represents cast expression
+    ///
+    /// `a as t`
+    ///
+    As {
+        location: Address,
+        value: Box<Expression>,
+        typ: TypePath,
+    },
     /// Represents unary expression
     ///
-    /// -expr
-    /// !expr
+    /// `-expr`
+    /// `!expr`
     ///
     Unary {
         location: Address,
@@ -533,6 +542,7 @@ impl Expression {
             Expression::Bool { location, .. } => location.clone(),
             Expression::Todo { location, .. } => location.clone(),
             Expression::Bin { location, .. } => location.clone(),
+            Expression::As { location, .. } => location.clone(),
             Expression::Unary { location, .. } => location.clone(),
             Expression::If { location, .. } => location.clone(),
             Expression::PrefixVar { location, .. } => location.clone(),

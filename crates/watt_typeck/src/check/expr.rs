@@ -1,3 +1,4 @@
+use crate::inference::equation::EqUnit;
 /// Imports
 use crate::{
     cx::module::ModuleCx,
@@ -19,7 +20,6 @@ use watt_ast::ast::{
     UnaryOp,
 };
 use watt_common::{address::Address, bail, skip, warn};
-use crate::inference::equation::EqUnit;
 
 /// Expressions inferring
 impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
@@ -261,6 +261,67 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             }
             // Equality
             BinaryOp::Eq | BinaryOp::NotEq => Typ::Prelude(PreludeType::Bool),
+        }
+    }
+
+    /// Infers the type of binary expression.
+    ///
+    /// This function:
+    /// - Infers types of both the left and right operands.
+    /// - Checks whether the operator is applicable to the operand types.
+    /// - Performs type-level computation (e.g., numeric promotion, boolean logic).
+    /// - Produces the resulting type, or emits a `TypeckError::InvalidBinaryOp`
+    ///   if operands are incompatible with the operator.
+    ///
+    /// # Parameters
+    /// - `location`: Source code address of the binary operator.
+    /// - `op`: Binary operator being applied.
+    /// - `left`: Left-hand side expression.
+    /// - `right`: Right-hand side expression.
+    ///
+    /// # Returns
+    /// - The resulting `Typ` after applying the operator.
+    ///
+    /// # Errors
+    /// - [`InvalidBinaryOp`]: when operand types do not match operator requirements.
+    ///
+    /// # Notes
+    /// This function handles:
+    /// - String concatenation (`<>`)
+    /// - Arithmetic operators (`+`, `-`, `*`, `/`, `%`, `&`, `|`)
+    /// - Logical operators (`&&`, `||`, `^`)
+    /// - Comparison operators (`<`, `<=`, `>`, `>=`)
+    /// - Equality (`==`, `!=`)
+    ///   Numeric operators automatically promote `Int × Float` or `Float × Int` to `Float`.
+    ///
+    ///  TODO: revamp with new coercion rule.
+    ///
+    fn infer_as(&mut self, location: Address, value: Expression, typ: TypePath) -> Typ {
+        // Inferencing left and right types
+        let value = self.infer_expr(value);
+        let typ = self.infer_type_annotation(typ);
+
+        // Checking both are primitives
+        match (value, typ) {
+            (Typ::Prelude(value), Typ::Prelude(typ)) => match (value, typ) {
+                (PreludeType::Int, PreludeType::Int) => Typ::Prelude(PreludeType::Int),
+                (PreludeType::Int, PreludeType::Float) => Typ::Prelude(PreludeType::Float),
+                (PreludeType::Float, PreludeType::Float) => Typ::Prelude(PreludeType::Float),
+                (PreludeType::Bool, PreludeType::Bool) => Typ::Prelude(PreludeType::Bool),
+                (PreludeType::String, PreludeType::String) => Typ::Prelude(PreludeType::String),
+                (a, b) => bail!(TypeckError::CouldNotCast {
+                    src: self.module.source.clone(),
+                    span: location.span.into(),
+                    a: Typ::Prelude(a),
+                    b: Typ::Prelude(b)
+                }),
+            },
+            (a, b) => bail!(TypeckError::InvalidAsOp {
+                src: self.module.source.clone(),
+                span: location.span.into(),
+                a,
+                b
+            }),
         }
     }
 
@@ -660,10 +721,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     .into_iter()
                     .zip(args)
                     .for_each(|(p, a)| {
-                        self.solver.solve(Equation::Unify(
-                            EqUnit(p.location, p.typ),
-                            EqUnit(a.0, a.1)
-                        ));
+                        self.solver
+                            .solve(Equation::Unify(EqUnit(p.location, p.typ), EqUnit(a.0, a.1)));
                     });
 
                 Res::Value(instantiated)
@@ -673,20 +732,16 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 self.ensure_arity(location, f.params.len(), args.len());
                 let f = self.solver.hydrator.hyd().mk_function(f);
                 f.params.iter().cloned().zip(args).for_each(|(p, a)| {
-                    self.solver.solve(Equation::Unify(
-                        EqUnit(p.location, p.typ),
-                        EqUnit(a.0, a.1)
-                    ));
+                    self.solver
+                        .solve(Equation::Unify(EqUnit(p.location, p.typ), EqUnit(a.0, a.1)));
                 });
                 Res::Value(f.ret.clone())
             }
             // Variant
             Res::Variant(en, variant) => {
                 variant.fields.iter().cloned().zip(args).for_each(|(p, a)| {
-                    self.solver.solve(Equation::Unify(
-                        EqUnit(p.location, p.typ),
-                        EqUnit(a.0, a.1)
-                    ));
+                    self.solver
+                        .solve(Equation::Unify(EqUnit(p.location, p.typ), EqUnit(a.0, a.1)));
                 });
 
                 Res::Value(en)
@@ -1151,6 +1206,11 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 right,
                 op,
             } => self.infer_binary(location, op, *left, *right),
+            Expression::As {
+                location,
+                value,
+                typ,
+            } => self.infer_as(location, *value, typ),
             Expression::Unary {
                 location,
                 value,

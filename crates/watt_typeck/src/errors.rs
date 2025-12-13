@@ -57,22 +57,6 @@ pub enum TypeckRelated {
         #[label()]
         span: SourceSpan,
     },
-    #[error("defined here...")]
-    #[diagnostic(severity(hint))]
-    DefinedHere {
-        #[source_code]
-        src: Arc<NamedSource<String>>,
-        #[label()]
-        span: SourceSpan,
-    },
-    #[error("used here...")]
-    #[diagnostic(severity(hint))]
-    UsedHere {
-        #[source_code]
-        src: Arc<NamedSource<String>>,
-        #[label()]
-        span: SourceSpan,
-    },
 }
 
 /// Typechecking error
@@ -106,21 +90,6 @@ pub enum TypeckError {
         t1: Typ,
         t2: Typ,
     },
-    #[error("could not unify trait {tr:?} and {ty:?}.")]
-    #[diagnostic(
-        code(typeck::could_not_unify_trait_and_typ),
-        help(
-            "all trait functions are `public` by default,
-check that {ty:?} you trying to cast to the trait {tr:?}
-implements all trait functions with `pub` modifier."
-        )
-    )]
-    CouldNotUnifyTraitAndTyp {
-        #[related]
-        related: Vec<TypeckRelated>,
-        tr: Typ,
-        ty: Typ,
-    },
     #[error("could not use value {v} as type.")]
     #[diagnostic(code(typeck::could_not_use_value_as_type))]
     CouldNotUseValueAsType {
@@ -152,6 +121,29 @@ implements all trait functions with `pub` modifier."
         b: Typ,
         op: BinaryOp,
     },
+    #[error("could not use `as` with types {a:?} & {b:?}.")]
+    #[diagnostic(
+        code(typeck::as_with_non_primitive),
+        help("only primitive types can be used with as operator.")
+    )]
+    InvalidAsOp {
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label("this is incorrect.")]
+        span: SourceSpan,
+        a: Typ,
+        b: Typ,
+    },
+    #[error("could not cast {a:?} to {b:?}.")]
+    #[diagnostic(code(typeck::could_not_cast))]
+    CouldNotCast {
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label("this is incorrect.")]
+        span: SourceSpan,
+        a: Typ,
+        b: Typ,
+    },
     #[error("invalid unary operation {op:?} with type {t:?}.")]
     #[diagnostic(code(typeck::invalid_unary_op))]
     InvalidUnaryOp {
@@ -171,16 +163,6 @@ implements all trait functions with `pub` modifier."
         span: SourceSpan,
         t: EcoString,
         field: EcoString,
-    },
-    #[error("variant \"{variant}\" is not defined in enum \"{e}\".")]
-    #[diagnostic(code(typeck::enum_variant_is_not_defined))]
-    EnumVariantIsNotDefined {
-        #[source_code]
-        src: Arc<NamedSource<String>>,
-        #[label("this access is invalid.")]
-        span: SourceSpan,
-        e: EcoString,
-        variant: EcoString,
     },
     #[error("field \"{field}\" is not defined in {res:?}")]
     #[diagnostic(code(typeck::enum_variant_field_is_not_defined))]
@@ -220,13 +202,6 @@ implements all trait functions with `pub` modifier."
         span: SourceSpan,
         name: EcoString,
     },
-    #[error("environments stack is empty. it`s a bug!")]
-    #[diagnostic(
-        code(typeck::environments_stack_is_empty),
-        help("please, file an issue on github."),
-        url("https://github.com/wattlanguage/watt")
-    )]
-    EnvironmentsStackIsEmpty,
     #[error("could not call {res:?}.")]
     #[diagnostic(code(typeck::could_not_call))]
     CouldNotCall {
@@ -279,15 +254,6 @@ implements all trait functions with `pub` modifier."
         span: SourceSpan,
         t: EcoString,
     },
-    #[error("method named \"{m}\" is already defined.")]
-    #[diagnostic(code(typeck::method_is_already_defined))]
-    MethodIsAlreadyDefined {
-        #[source_code]
-        src: Arc<NamedSource<String>>,
-        #[label("this method is already defined.")]
-        span: SourceSpan,
-        m: EcoString,
-    },
     #[error("module \"{m}\" is already imported as \"{name}\".")]
     #[diagnostic(code(typeck::module_is_already_imported))]
     ModuleIsAlreadyImportedAs {
@@ -314,14 +280,6 @@ implements all trait functions with `pub` modifier."
         #[source_code]
         src: Arc<NamedSource<String>>,
         #[label("expected logical expression in if.")]
-        span: SourceSpan,
-    },
-    #[error("expected a logical epxression in while.")]
-    #[diagnostic(code(typeck::expected_logical_in_while))]
-    ExpectedLogicalInWhile {
-        #[source_code]
-        src: Arc<NamedSource<String>>,
-        #[label("expected logical expression in while.")]
         span: SourceSpan,
     },
     #[error("types missmatch. expected {expected:?}, got {got:?}.")]
@@ -360,22 +318,6 @@ implements all trait functions with `pub` modifier."
         #[label("this is unexpected.")]
         span: SourceSpan,
         res: Res,
-    },
-    #[error("could not use break outside loop.")]
-    #[diagnostic(code(typeck::break_outside_loop))]
-    BreakOutsideLoop {
-        #[source_code]
-        src: Arc<NamedSource<String>>,
-        #[label("break is outside loop.")]
-        span: SourceSpan,
-    },
-    #[error("could not use continue outside loop.")]
-    #[diagnostic(code(typeck::continue_outside_loop))]
-    ContinueOutsideLoop {
-        #[source_code]
-        src: Arc<NamedSource<String>>,
-        #[label("continue is outside loop.")]
-        span: SourceSpan,
     },
     #[error("unexpected expr in resolution {expr:?}.")]
     #[diagnostic(

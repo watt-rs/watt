@@ -212,6 +212,7 @@ pub fn gen_expression(expr: Expression) -> js::Tokens {
                 quote!( !$("$$equals")($(gen_expression(*left)), $(gen_expression(*right))) )
             }
         },
+        Expression::As { value, .. } => gen_expression(*value),
         Expression::Unary { value, op, .. } => match op {
             UnaryOp::Neg => quote!( -$(gen_expression(*value)) ),
             UnaryOp::Bang => quote!( !$(gen_expression(*value)) ),

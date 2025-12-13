@@ -1,7 +1,7 @@
+use crate::errors::TypeckRelated;
 /// Imports
 use crate::typ::typ::Typ;
 use watt_common::address::Address;
-use crate::errors::TypeckRelated;
 
 /// Represents a single inference unit.
 ///
@@ -14,10 +14,7 @@ use crate::errors::TypeckRelated;
 /// - `Typ` — the inferred or expected type associated with that location.
 ///
 #[derive(Debug, Clone)]
-pub struct EqUnit(
-    pub Address,
-    pub Typ
-);
+pub struct EqUnit(pub Address, pub Typ);
 
 impl EqUnit {
     /// Creates a new [`Unit`] from a source location and a type.
@@ -32,10 +29,7 @@ impl EqUnit {
 /// `Origin` bundles the source code location together with the (possibly
 /// partially inferred) type to produce meaningful diagnostics.
 #[derive(Clone, Debug)]
-pub struct Origin(
-    pub Address,
-    pub Typ
-);
+pub struct Origin(pub Address, pub Typ);
 
 #[allow(clippy::wrong_self_convention)]
 impl Origin {
