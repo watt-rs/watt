@@ -203,7 +203,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// This function:
     /// - Infers types of both the left and right operands.
     /// - Checks whether the operator is applicable to the operand types.
-    /// - Performs type-level computation (e.g., numeric promotion, boolean logic).
+    /// - Performs type-level computation (e.g., boolean logic).
     /// - Produces the resulting type, or emits a `TypeckError::InvalidBinaryOp`
     ///   if operands are incompatible with the operator.
     ///
@@ -226,7 +226,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// - Logical operators (`&&`, `||`, `^`)
     /// - Comparison operators (`<`, `<=`, `>`, `>=`)
     /// - Equality (`==`, `!=`)
-    ///   Numeric operators automatically promote `Int × Float` or `Float × Int` to `Float`.
     ///
     fn infer_binary(
         &mut self,
@@ -264,14 +263,13 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
     }
 
-    /// Infers the type of binary expression.
+    /// Infers the type of as expression.
     ///
     /// This function:
-    /// - Infers types of both the left and right operands.
-    /// - Checks whether the operator is applicable to the operand types.
-    /// - Performs type-level computation (e.g., numeric promotion, boolean logic).
-    /// - Produces the resulting type, or emits a `TypeckError::InvalidBinaryOp`
-    ///   if operands are incompatible with the operator.
+    /// - Infers value type, infers type annotation.
+    /// - Checks both types are primitives.
+    /// - Checks cast possibility.
+    /// - Produces the resulting type
     ///
     /// # Parameters
     /// - `location`: Source code address of the binary operator.
@@ -283,16 +281,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// - The resulting `Typ` after applying the operator.
     ///
     /// # Errors
-    /// - [`InvalidBinaryOp`]: when operand types do not match operator requirements.
-    ///
-    /// # Notes
-    /// This function handles:
-    /// - String concatenation (`<>`)
-    /// - Arithmetic operators (`+`, `-`, `*`, `/`, `%`, `&`, `|`)
-    /// - Logical operators (`&&`, `||`, `^`)
-    /// - Comparison operators (`<`, `<=`, `>`, `>=`)
-    /// - Equality (`==`, `!=`)
-    ///   Numeric operators automatically promote `Int × Float` or `Float × Int` to `Float`.
+    /// - [`CouldNotCast`]: if both types are incompatible
+    /// - [`InvalidAsOp`]: if one or both operands are not primitives
     ///
     ///  TODO: revamp with new coercion rule.
     ///
