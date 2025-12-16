@@ -65,6 +65,7 @@ pub enum TokenKind {
     Arrow,     // arrow
     Extern,    // extern
     For,       // for
+    Panic,     // panic
     Todo,      // todo
     Const,     // const
 }

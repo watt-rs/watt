@@ -140,6 +140,7 @@ impl<'file> Parser<'file> {
     }
 
     /// Grouping expr `( expr )`
+    #[inline]
     fn grouping_expr(&mut self) -> Expression {
         // `($expr)`
         self.consume(TokenKind::Lparen);
@@ -152,8 +153,41 @@ impl<'file> Parser<'file> {
     /// Todo expr `todo`
     #[inline]
     fn todo_expr(&mut self) -> Expression {
-        Expression::Todo {
-            location: self.advance().address.clone(),
+        let start_location = self.peek().address.clone();
+        self.consume(TokenKind::Todo);
+        if self.check(TokenKind::As) {
+            self.advance();
+            let end_location = self.peek().address.clone();
+            Expression::Todo {
+                location: start_location + end_location,
+                text: Some(self.consume(TokenKind::Text).value.clone()),
+            }
+        } else {
+            self.advance();
+            Expression::Todo {
+                location: start_location,
+                text: None,
+            }
+        }
+    }
+
+    /// Panic expr `panic`
+    #[inline]
+    fn panic_expr(&mut self) -> Expression {
+        let start_location = self.peek().address.clone();
+        self.consume(TokenKind::Panic);
+        if self.check(TokenKind::As) {
+            self.advance();
+            let end_location = self.peek().address.clone();
+            Expression::Panic {
+                location: start_location + end_location,
+                text: Some(self.consume(TokenKind::Text).value.clone()),
+            }
+        } else {
+            Expression::Panic {
+                location: start_location,
+                text: None,
+            }
         }
     }
 
@@ -190,6 +224,7 @@ impl<'file> Parser<'file> {
                 }
             }
             TokenKind::Todo => self.todo_expr(),
+            TokenKind::Panic => self.panic_expr(),
             TokenKind::Lparen => self.grouping_expr(),
             TokenKind::Fn => self.anonymous_fn_expr(),
             TokenKind::Match => self.pattern_matching(),

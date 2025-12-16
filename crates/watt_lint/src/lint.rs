@@ -360,7 +360,7 @@ impl<'cx, 'module> LintCx<'cx, 'module> {
                     }
                 }
             }
-            _ => skip!()
+            _ => skip!(),
         }
     }
 

@@ -435,7 +435,25 @@ pub enum Expression {
     /// value
     Bool { location: Address, value: EcoString },
     /// Represents todo
-    Todo { location: Address },
+    ///
+    /// `todo`
+    /// `todo as "some description"`
+    ///
+    /// ...
+    Todo {
+        location: Address,
+        text: Option<EcoString>,
+    },
+    /// Represents panic
+    ///
+    /// `panic`
+    /// `panic as "some description"`
+    ///
+    /// ...
+    Panic {
+        location: Address,
+        text: Option<EcoString>,
+    },
     /// Represents binary expression
     ///
     /// `a || b`
@@ -540,6 +558,7 @@ impl Expression {
             Expression::Float { location, .. } => location.clone(),
             Expression::String { location, .. } => location.clone(),
             Expression::Bool { location, .. } => location.clone(),
+            Expression::Panic { location, .. } => location.clone(),
             Expression::Todo { location, .. } => location.clone(),
             Expression::Bin { location, .. } => location.clone(),
             Expression::As { location, .. } => location.clone(),

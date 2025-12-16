@@ -159,8 +159,20 @@ export function $$match(value, patterns) {
     return null;
 }
 
-export function $$todo() {
-    throw "reached todo code.";
+export function $$todo(text) {
+    if (text !== undefined) {
+        throw "reached todo: " + text;
+    } else {
+        throw "reached todo.";
+    }
+}
+
+export function $$panic(text) {
+    if (text !== undefined) {
+        throw "panic: " + text;
+    } else {
+        throw "panic.";
+    }
 }
 
 export function $$range(from, to, offset) {

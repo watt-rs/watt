@@ -1,3 +1,22 @@
+enum Or {
+    A,
+    B
+}
+
+fn a(t: Or): int {
+    match t {
+        Or.A -> 1
+        Or.B -> todo as "todo"
+    }
+}
+
+fn b(t: Or): int {
+    match t {
+        Or.A -> 1
+        Or.B -> panic as "todo"
+    }
+}
+
 fn main() {
-    let a: float = 100 as float;
+    b(Or.B());
 }

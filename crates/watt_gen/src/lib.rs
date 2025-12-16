@@ -295,7 +295,14 @@ pub fn gen_expression(expr: Expression) -> js::Tokens {
                 })()
             }
         }
-        Expression::Todo { .. } => quote!($("$$todo()")),
+        Expression::Panic { text, .. } => match text {
+            Some(text) => quote!($("$$")panic($(text.as_str()))),
+            None => quote!($("$$")panic()),
+        },
+        Expression::Todo { text, .. } => match text {
+            Some(text) => quote!($("$$")todo($(text.as_str()))),
+            None => quote!($("$$")todo()),
+        },
     }
 }
 
@@ -672,8 +679,21 @@ pub fn gen_prelude() -> js::Tokens {
         }
 
         // Todo$Fn
-        export function $("$$todo")() {
-            throw "reached todo code.";
+        export function $("$$todo")(text) {
+            if (text !== undefined) {
+                throw "reached todo: " + text;
+            } else {
+                throw "reached todo.";
+            }
+        }
+
+        // Panic$Fn
+        export function $("$$panic")(text) {
+            if (text !== undefined) {
+                throw "panic: " + text;
+            } else {
+                throw "panic.";
+            }
         }
 
         // Range$Fn

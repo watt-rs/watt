@@ -1180,7 +1180,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Expression::Int { .. } => Typ::Prelude(PreludeType::Int),
             Expression::String { .. } => Typ::Prelude(PreludeType::String),
             Expression::Bool { .. } => Typ::Prelude(PreludeType::Bool),
-            Expression::Todo { location } => {
+            Expression::Todo { location, .. } => {
                 warn!(
                     self.package,
                     TypeckWarning::FoundTodo {
@@ -1188,8 +1188,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                         span: location.span.into()
                     }
                 );
-                Typ::Unit
+                Typ::Unbound(self.solver.hydrator.fresh())
             }
+            Expression::Panic { .. } => Typ::Unbound(self.solver.hydrator.fresh()),
             Expression::Bin {
                 location,
                 left,

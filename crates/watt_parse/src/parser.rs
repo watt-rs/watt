@@ -186,7 +186,8 @@ impl<'file> Parser<'file> {
             | Expression::Call { location, .. }
             | Expression::Function { location, .. }
             | Expression::Match { location, .. }
-            | Expression::Todo { location }
+            | Expression::Todo { location, .. }
+            | Expression::Panic { location, .. }
             | Expression::If { location, .. } => bail!(ParseError::NonConstExpr {
                 src: self.source.clone(),
                 span: location.span.clone().into(),
