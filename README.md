@@ -6,7 +6,7 @@
 3. A practical type system.
 4. Simple and easy-to-use pattern matching.
 
-⚠️ Watt ks highly WIP!
+⚠️ Watt is highly WIP!
 
 🦣 Logical expressions and types:
 ```
@@ -104,7 +104,7 @@ fn race(u: Unicorn) {
 
 🦕 Constants:
 ```
-const MAX_SPEED = 50
+const MAX_SPEED: float = 50
 
 type Dinosaur {
     name: string,
