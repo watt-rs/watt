@@ -1,8 +1,6 @@
-⚡ **Watt is friednly, lightweight, programming language written in Rust for the JavaScript platform.**
+💡 Watt is a friendly, robust typed, functional programming language written in Rust, designed to bring the convenience of functional programming to the web.
 
-⚠️ **Watt is WIP.**
-
-🔦🍄 Simple example:
+🔦 Simple example:
 ```
 /// Imports
 use std/convert for to_string
