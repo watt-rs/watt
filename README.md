@@ -1,52 +1,145 @@
 💡 Watt is a friendly, robust typed, functional programming language written in Rust, designed to bring the convenience of functional programming to the web.
 
-🔦 Simple example:
+⚡ Features:
+— No null values, no exceptions.
+— Clear error messages. 
+— A practical type system.
+— Simple and easy-to-yse pattern matching.
+
+🦣 Logical expressions and types:
 ```
-/// Imports
-use std/convert for to_string
+type Mammoth {
+    age: int
+}
+
+fn is_ancient(m: Mammoth): bool {
+    if m.age > 10000 {
+        true
+    } else {
+        false
+    }
+}
+```
+
+🦜 Loops:
+```
 use std/io as io
 
-/// Generic "Basket" that can hold anything —
-/// mushrooms, berries, or found artifacts.
-type Basket[T] {
-    item: T
+type Parrot {
+    name: string
 }
 
-/// Enumeration of mushroom types
-enum Mushroom {
-    FlyAgaric(size: int),   /// Poisonous fly agaric
-    Porcini(weight: int),   /// Porcini mushroom
-    Chanterelle,            /// Chanterelle
+fn repeat(p: Parrot) {
+    for i in 0..3 {
+        io.println(p.name <> " says: hello!");
+    }
+}
+```
+
+🐍 Enums and pattern matching:
+```
+enum Snake {
+    Python(length: int),
+    Boa(length: int),
 }
 
-/// Type representing a mushroom gatherer
-type Gatherer {
+fn description(s: Snake): string =
+    match s {
+        Snake.Python(l) -> "Python, length " <> l
+        Snake.Boa(l)    -> "Boa, length " <> l
+    }
+```
+
+🔦 More loops example:
+```
+use std/io as io
+
+type Flashlight {
+    power: int
+}
+
+fn shine(f: Flashlight) {
+    loop {
+        if f.power == 0 {
+            io.println("The light went out");
+            return;
+        }
+
+        io.println("Light power: " <> f.power);
+        f.power = f.power - 1;
+    }
+}
+```
+
+📐 External js-functions:
+```
+extern fn clamp(x: int): int = `
+    if (x < 0) return 0;
+    if (x > 100) return 100;
+    return x;
+`
+
+fn lantern_power(raw: int): int {
+    clamp(raw)
+}
+```
+
+🦄 Concatenation:
+```
+type Unicorn {
     name: string,
-    basket: Basket[Mushroom]
+    speed: int
 }
 
-/// Function that replaces the contents of the gatherer's basket
-pub fn pick(g: Gatherer, mush: Mushroom) {
-    g.basket = Basket(mush);
+fn race(u: Unicorn) {
+    for i in 0..10 {
+        if i * u.speed > 25 {
+            io.println(u.name <> " is winning!");
+        }
+    }
+}
+```
 
-    let msg = match g.basket.item {
-        Mushroom.FlyAgaric(size) -> "found a poisonous fly agaric of size " <> size
-        Mushroom.Porcini(weight)   -> "found a porcini mushroom weighing " <> weight
-        Mushroom.Chanterelle  -> "found a chanterelle"
-    };
+🦕 Constants:
+```
+const MAX_SPEED = 50
 
-    io.println(g.name <> ": " <> msg);
+type Dinosaur {
+    name: string,
+    speed: int
 }
 
-/// Example usage
+fn check_speed(d: Dinosaur) {
+    if d.speed > MAX_SPEED {
+        io.println(d.name <> " is a speedster!")
+    } else {
+        io.println(d.name <> " is cruising at " <> d.speed)
+    }
+}
+
 fn main() {
-    let g: Gatherer = Gatherer(
-        "LittleForester",
-        Basket(Mushroom.Chanterelle())
-    );
+    let t = Dinosaur("T-Rex", 60)
+    let tr = Dinosaur("Triceratops", 30)
 
-    pick(g, Mushroom.Porcini(120));
-    pick(g, Mushroom.FlyAgaric(42));
-    pick(g, Mushroom.Chanterelle());
+    check_speed(t)
+    check_speed(tr)
+}
+```
+
+🧭 Panic & todo.
+```
+type Explorer { name: string, fossils: int }
+
+fn explore(e: Explorer) {
+    if e.fossils == 0 { panic "No fossils!" }
+    elif e.fossils < 0 { panic }
+    elif e.fossils < 5 { todo as "Find more fossils" }
+    else { io.println(e.name <> " found many fossils!") }
+}
+
+fn main() {
+    explore(Explorer("Bob", 0))
+    explore(Explorer("Alice", 3))
+    explore(Explorer("Carol", 7))
 }
 ```
