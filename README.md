@@ -1,10 +1,10 @@
 💡 Watt is a friendly, robust typed, functional programming language written in Rust, designed to bring the convenience of functional programming to the web.
 
 ⚡ Features:
-— No null values, no exceptions.
-— Clear error messages. 
-— A practical type system.
-— Simple and easy-to-yse pattern matching.
+1. No null values, no exceptions.
+2. Clear error messages. 
+3. A practical type system.
+4. Simple and easy-to-yse pattern matching.
 
 🦣 Logical expressions and types:
 ```
