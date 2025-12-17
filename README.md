@@ -4,7 +4,7 @@
 1. No null values, no exceptions.
 2. Clear error messages. 
 3. A practical type system.
-4. Simple and easy-to-yse pattern matching.
+4. Simple and easy-to-use pattern matching.
 
 🦣 Logical expressions and types:
 ```
