@@ -6,6 +6,8 @@
 3. A practical type system.
 4. Simple and easy-to-use pattern matching.
 
+⚠️ Watt ks highly WIP!
+
 🦣 Logical expressions and types:
 ```
 type Mammoth {
