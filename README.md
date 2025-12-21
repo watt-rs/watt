@@ -47,8 +47,8 @@ enum Snake {
 
 fn description(s: Snake): string =
     match s {
-        Snake.Python(l) -> "Python, length " <> l
-        Snake.Boa(l)    -> "Boa, length " <> l
+        Snake.Python(length) -> "Python, length " <> length
+        Snake.Boa(length)    -> "Boa, length " <> length
     }
 ```
 
