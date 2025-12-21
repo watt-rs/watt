@@ -11,23 +11,43 @@ use watt_lex::tokens::TokenKind;
 /// structures parsing.
 ///
 impl<'file> Parser<'file> {
-    /// Arguments parsing `($expr, $expr, n...)`
-    pub(crate) fn args(&mut self) -> Vec<Expression> {
-        // result list
-        let mut nodes: Vec<Expression> = Vec::new();
+    /// List 'o items parsing `$open $item $sep $item $sep ...n $close`
+    pub(crate) fn sep_by<T>(
+        &mut self,
+        open: TokenKind,
+        close: TokenKind,
+        sep: TokenKind,
+        mut parse_item: impl FnMut(&mut Self) -> T,
+    ) -> Vec<T> {
+        let mut items = Vec::new();
+        self.consume(open);
 
-        // `(Expression, Expression, n...)`
-        self.consume(TokenKind::Lparen);
-        if !self.check(TokenKind::Rparen) {
-            nodes.push(self.expr());
-            while self.check(TokenKind::Comma) {
-                self.consume(TokenKind::Comma);
-                nodes.push(self.expr());
+        if !self.check(close) {
+            loop{
+                items.push(parse_item(self));
+                if self.check(sep) {
+                    self.consume(sep);
+                    if self.check(close) {
+                        break
+                    }
+                } else {
+                    break;
+                }
             }
         }
-        self.consume(TokenKind::Rparen);
 
-        nodes
+        self.consume(close);
+        items
+    }
+
+    /// Arguments parsing `($expr, $expr, n...)`
+    pub(crate) fn args(&mut self) -> Vec<Expression> {
+        self.sep_by(
+            TokenKind::Lparen,
+            TokenKind::Rparen,
+            TokenKind::Comma,
+            |s| s.expr(),
+        )
     }
 
     /// Depednecy path parsing
@@ -167,63 +187,34 @@ impl<'file> Parser<'file> {
 
     /// Parameters parsing `($name: $type, $name: $type, ..n)`
     pub(crate) fn parameters(&mut self) -> Vec<Parameter> {
-        // result list
-        let mut params: Vec<Parameter> = Vec::new();
-
-        // `($name: $type, $name: $type, ..n)`
-        self.consume(TokenKind::Lparen);
-        if !self.check(TokenKind::Rparen) {
-            params.push(self.parameter());
-
-            while self.check(TokenKind::Comma) {
-                self.consume(TokenKind::Comma);
-                params.push(self.parameter());
-            }
-        }
-        self.consume(TokenKind::Rparen);
-
-        params
+        self.sep_by(
+            TokenKind::Lparen,
+            TokenKind::Rparen,
+            TokenKind::Comma,
+            |s| s.parameter(),
+        )
     }
 
     /// Generic parameters parsing `[$name, $name ..n]`
     pub(crate) fn generics(&mut self) -> Vec<EcoString> {
-        // result list
-        let mut params: Vec<EcoString> = Vec::new();
-
-        // `[$name: $type, $name: $type, ..n]`
-        self.consume(TokenKind::Lbracket);
-        if !self.check(TokenKind::Rbracket) {
-            params.push(self.consume(TokenKind::Id).value.clone());
-
-            while self.check(TokenKind::Comma) {
-                self.consume(TokenKind::Comma);
-                params.push(self.consume(TokenKind::Id).value.clone());
-            }
-        }
-        self.consume(TokenKind::Rbracket);
-
-        params
+        self.sep_by(
+            TokenKind::Lbracket,
+            TokenKind::Rbracket,
+            TokenKind::Comma,
+            |s| s.consume(TokenKind::Id).value.clone(),
+        )
     }
 
     /// Generic arguments parsing `[$type, $type ..n]`
     pub(crate) fn generic_args(&mut self) -> Vec<TypePath> {
-        // result list
-        let mut params: Vec<TypePath> = Vec::new();
-
-        // `[$type, $type ..n]`
-        self.consume(TokenKind::Lbracket);
-        if !self.check(TokenKind::Rbracket) {
-            params.push(self.type_annotation());
-
-            while self.check(TokenKind::Comma) {
-                self.consume(TokenKind::Comma);
-                params.push(self.type_annotation());
-            }
-        }
-        self.consume(TokenKind::Rbracket);
-
-        params
+        self.sep_by(
+            TokenKind::Lbracket,
+            TokenKind::Rbracket,
+            TokenKind::Comma,
+            |s| s.type_annotation(),
+        )
     }
+
     /// Parses range
     ///
     /// # Example

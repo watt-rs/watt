@@ -16,7 +16,7 @@ enum Iceberg {
 }
 
 type Mammoth {
-    age: int
+    age: int,
     name: String
 }
 ```
@@ -55,7 +55,7 @@ fn repeat(p: Parrot) {
 ```
 enum Snake {
     Python(length: int),
-    Boa(length: int),
+    Boa(length: int)
 }
 
 fn description(s: Snake): string =

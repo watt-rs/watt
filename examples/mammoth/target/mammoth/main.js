@@ -11,14 +11,14 @@ import {
 } from "../prelude.js"
 
 export class $Mammoth {
-    constructor(iceberg) {
+    constructor(value) {
         this.$meta = "Type";
         this.$type = "Mammoth";
-        this.iceberg = iceberg
+        this.value = value
     }
 }
-export function Mammoth(iceberg) {
-    return new $Mammoth(iceberg);
+export function Mammoth(value) {
+    return new $Mammoth(value);
 }
 
 export class $Iceberg {
@@ -33,5 +33,5 @@ export function Iceberg(value) {
 }
 
 export function main() {
-    let iceberge = Iceberg(3)
+    let a = Mammoth(Iceberg(3))
 }
