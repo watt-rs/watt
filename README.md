@@ -8,13 +8,26 @@
 
 ⚠️ Watt is highly WIP!
 
-🦣 Logical expressions and types:
+🦣 ADT:
 ```
+enum Iceberg {
+    Large(size: float, mammoth: Mammoth),
+    Small(size: float)
+}
+
 type Mammoth {
+    age: int
+    name: String
+}
+```
+
+🦖 Logical expressions:
+```
+type Rex {
     age: int
 }
 
-fn is_ancient(m: Mammoth): bool {
+fn is_ancient(m: Rex): bool {
     if m.age > 10000 {
         true
     } else {
