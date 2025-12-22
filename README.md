@@ -158,3 +158,15 @@ fn main() {
     explore(Explorer("Carol", 7))
 }
 ```
+
+📦 Generics:
+```
+enum Option[T] {
+    Some(value: T),
+    None
+}
+
+type Box[T] {
+    value: T
+}
+```
