@@ -13,7 +13,7 @@ use crate::{
 };
 use ecow::EcoString;
 use indexmap::IndexMap;
-use std::{collections::HashMap, rc::Rc};
+use std::rc::Rc;
 use watt_ast::ast::{
     self, BinaryOp, Block, Case, Either, ElseBranch, Expression, Pattern, Publicity, TypePath,
     UnaryOp,
@@ -604,7 +604,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     self.solver
                         .hydrator
                         .hyd()
-                        .mk_generics(&en.borrow().generics, HashMap::new()),
+                        .mk_generics(&en.borrow().generics, IndexMap::new()),
                 );
                 self.infer_enum_field_access(
                     instantiated,
@@ -702,7 +702,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     self.solver
                         .hydrator
                         .hyd()
-                        .mk_generics(&ty.borrow().generics, HashMap::new()),
+                        .mk_generics(&ty.borrow().generics, IndexMap::new()),
                 );
 
                 instantiated

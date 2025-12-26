@@ -1,6 +1,7 @@
 /// Imports
 use crate::{inference::hydrator::Hydrator, typ::def::ModuleDef};
 use ecow::EcoString;
+use indexmap::IndexMap;
 use miette::NamedSource;
 use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc, sync::Arc};
 use watt_ast::ast::Publicity;
@@ -348,7 +349,7 @@ impl Debug for Module {
 pub struct GenericArgs {
     /// Substitutions of generics,
     /// `Generic(id)` -> `Typ`
-    pub subtitutions: HashMap<usize, Typ>,
+    pub subtitutions: IndexMap<usize, Typ>,
 }
 
 /// Debug implementation

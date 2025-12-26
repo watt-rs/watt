@@ -1,3 +1,5 @@
+use indexmap::IndexMap;
+
 /// Imports
 use crate::{
     inference::generics::Generics,
@@ -41,7 +43,7 @@ pub struct HydrationCx<'hd> {
     ///
     /// This ensures that generic parameters remain consistent:
     /// `{g(n) -> u(m)}`, reused everywhere within a single instantiation.
-    mapping: HashMap<usize, Typ>,
+    mapping: IndexMap<usize, Typ>,
 }
 
 /// Implementation
@@ -50,7 +52,7 @@ impl<'hd> HydrationCx<'hd> {
     pub fn new(hydrator: &'hd mut Hydrator) -> Self {
         Self {
             hydrator,
-            mapping: HashMap::new(),
+            mapping: IndexMap::new(),
         }
     }
 
@@ -101,7 +103,7 @@ impl<'hd> HydrationCx<'hd> {
     pub fn mk_generics(
         &mut self,
         params: &[GenericParameter],
-        args: HashMap<usize, Typ>,
+        args: IndexMap<usize, Typ>,
     ) -> GenericArgs {
         GenericArgs {
             subtitutions: params
@@ -306,7 +308,7 @@ impl Hydrator {
     }
 
     /// Creates hydration context with given mapping
-    pub fn hyd_m(&mut self, mapping: HashMap<usize, Typ>) -> HydrationCx<'_> {
+    pub fn hyd_m(&mut self, mapping: IndexMap<usize, Typ>) -> HydrationCx<'_> {
         HydrationCx {
             hydrator: self,
             mapping,
