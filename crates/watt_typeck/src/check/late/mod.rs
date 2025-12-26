@@ -6,19 +6,12 @@ mod types;
 use crate::{
     cx::module::ModuleCx,
     errors::TypeckError,
-    inference::equation::Equation,
-    typ::{
-        def::ModuleDef,
-        typ::WithPublicity,
-    },
+    inference::coercion::Coercion,
+    typ::{def::ModuleDef, typ::WithPublicity},
 };
 use ecow::EcoString;
-use watt_ast::ast::{
-    Declaration, Dependency, Expression,
-    Publicity, TypePath, UseKind,
-};
+use watt_ast::ast::{Declaration, Dependency, Expression, Publicity, TypePath, UseKind};
 use watt_common::{address::Address, bail};
-use crate::inference::equation::EqUnit;
 
 /// Late declaration analysis pass for the module.
 ///
@@ -66,9 +59,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         let annotated = self.infer_type_annotation(typ);
         let inferred_location = value.location();
         let inferred = self.infer_expr(value);
-        self.solver.solve(Equation::Unify(
-            EqUnit(annotated_location, annotated.clone()),
-            EqUnit(inferred_location, inferred),
+        self.solver.coerce(Coercion::Eq(
+            (annotated_location, annotated.clone()),
+            (inferred_location, inferred),
         ));
 
         // Defining constant

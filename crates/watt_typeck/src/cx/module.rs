@@ -1,6 +1,6 @@
 /// Imports
 use crate::{
-    cx::package::PackageCx, inference::EquationsSolver, resolve::resolve::ModuleResolver,
+    cx::package::PackageCx, inference::CoercionsSolver, resolve::resolve::ModuleResolver,
     typ::typ::Module,
 };
 use ecow::EcoString;
@@ -15,8 +15,8 @@ pub struct ModuleCx<'pkg, 'cx> {
     pub(crate) resolver: ModuleResolver,
     /// Root package context
     pub(crate) package: &'cx PackageCx<'cx>,
-    /// Equations solver
-    pub(crate) solver: EquationsSolver,
+    /// Coercions solver
+    pub(crate) solver: CoercionsSolver,
     /// Last uid
     last_uid: usize,
 }
@@ -34,7 +34,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             module_name,
             resolver: ModuleResolver::default(),
             package,
-            solver: EquationsSolver::default(),
+            solver: CoercionsSolver::default(),
             last_uid: 0,
         }
     }

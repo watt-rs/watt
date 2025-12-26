@@ -6,9 +6,9 @@ use crate::{
 use camino::Utf8PathBuf;
 use console::style;
 use git2::Repository;
-use log::info;
 use petgraph::{Direction, prelude::DiGraphMap};
 use std::collections::{HashMap, HashSet};
+use tracing::info;
 use url::Url;
 use watt_common::bail;
 

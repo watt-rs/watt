@@ -5,7 +5,7 @@ use crate::{
 };
 use camino::{Utf8Path, Utf8PathBuf};
 use ecow::EcoString;
-use log::{error, info};
+use tracing::{error, info};
 use miette::NamedSource;
 use petgraph::{Direction, prelude::DiGraphMap};
 use std::{

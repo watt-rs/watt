@@ -5,8 +5,8 @@ use crate::{
 };
 use camino::Utf8PathBuf;
 use ecow::EcoString;
-use log::info;
 use std::collections::HashMap;
+use tracing::info;
 use watt_common::{package::DraftPackage, rc_ptr::RcPtr};
 use watt_typeck::{cx::root::RootCx, typ::typ::Module};
 

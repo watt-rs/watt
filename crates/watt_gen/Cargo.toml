@@ -7,3 +7,4 @@ edition = "2024"
 genco = { version = "0.18.1" }
 watt_ast = { path = "../watt_ast" }
 ecow = "0.2.6"
+tracing = "0.1.44"

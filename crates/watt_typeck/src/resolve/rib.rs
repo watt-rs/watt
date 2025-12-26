@@ -26,7 +26,7 @@ pub type Rib = HashMap<EcoString, Typ>;
 /// # Important
 /// - New rib isn't created during `Enum` or `Struct` analysys.
 ///
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct RibsStack {
     stack: Vec<Rib>,
 }

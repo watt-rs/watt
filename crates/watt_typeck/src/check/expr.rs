@@ -1,10 +1,9 @@
-use crate::inference::equation::EqUnit;
 /// Imports
 use crate::{
     cx::module::ModuleCx,
     errors::{TypeckError, TypeckRelated},
     ex::ExMatchCx,
-    inference::equation::Equation,
+    inference::coercion::Coercion,
     typ::{
         def::{ModuleDef, TypeDef},
         res::Res,
@@ -712,7 +711,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     .zip(args)
                     .for_each(|(p, a)| {
                         self.solver
-                            .solve(Equation::Unify(EqUnit(p.location, p.typ), EqUnit(a.0, a.1)));
+                            .coerce(Coercion::Eq((p.location, p.typ), (a.0, a.1)));
                     });
 
                 Res::Value(instantiated)
@@ -723,7 +722,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 let f = self.solver.hydrator.hyd().mk_function(f);
                 f.params.iter().cloned().zip(args).for_each(|(p, a)| {
                     self.solver
-                        .solve(Equation::Unify(EqUnit(p.location, p.typ), EqUnit(a.0, a.1)));
+                        .coerce(Coercion::Eq((p.location, p.typ), (a.0, a.1)));
                 });
                 Res::Value(f.ret.clone())
             }
@@ -731,7 +730,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Res::Variant(en, variant) => {
                 variant.fields.iter().cloned().zip(args).for_each(|(p, a)| {
                     self.solver
-                        .solve(Equation::Unify(EqUnit(p.location, p.typ), EqUnit(a.0, a.1)));
+                        .coerce(Coercion::Eq((p.location, p.typ), (a.0, a.1)));
                 });
 
                 Res::Value(en)
@@ -847,9 +846,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Either::Left(block) => (block.location.clone(), self.infer_block(block)),
             Either::Right(expr) => (expr.location(), self.infer_expr(*expr)),
         };
-        self.solver.solve(Equation::Unify(
-            EqUnit(location, ret),
-            EqUnit(block_location, inferred_block),
+        self.solver.coerce(Coercion::Eq(
+            (location, ret),
+            (block_location, inferred_block),
         ));
         self.resolver.pop_rib();
 
@@ -1047,16 +1046,17 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 Either::Left(block) => (block.location.clone(), self.infer_block(block)),
                 Either::Right(expr) => (expr.location(), self.infer_expr(expr)),
             };
-            to_unify.push(EqUnit(case_location, inferred_case));
+            to_unify.push((case_location, inferred_case));
             // pattern scope end
             self.resolver.pop_rib();
         }
-        // solved type
-        let typ = self.solver.solve(Equation::UnifyMany(to_unify));
+        // solving type
+        let ty = to_unify.first().map_or(Typ::Unit, |it| it.1.clone());
+        self.solver.coerce(Coercion::Same(to_unify));
         let checked = ExMatchCx::check(self, inferred_what, cases);
         // checking all cases covered
         if checked {
-            typ
+            ty
         } else {
             warn!(
                 self.package,
@@ -1111,7 +1111,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Either::Left(block) => (block.location.clone(), self.infer_block(block)),
             Either::Right(expr) => (expr.location(), self.infer_expr(*expr)),
         };
-        let mut to_unify = vec![EqUnit(if_location, inferred_if)];
+        let mut to_unify = vec![(if_location, inferred_if)];
         // popping rib
         self.resolver.pop_rib();
         // else reached
@@ -1137,7 +1137,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                         Either::Left(block) => (block.location.clone(), self.infer_block(block)),
                         Either::Right(expr) => (expr.location(), self.infer_expr(expr)),
                     };
-                    to_unify.push(EqUnit(branch_location, inferred_branch));
+                    to_unify.push((branch_location, inferred_branch));
                 }
                 ElseBranch::Else { body, .. } => {
                     // inferring block
@@ -1145,14 +1145,16 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                         Either::Left(block) => (block.location.clone(), self.infer_block(block)),
                         Either::Right(expr) => (expr.location(), self.infer_expr(expr)),
                     };
-                    to_unify.push(EqUnit(branch_location, inferred_branch));
+                    to_unify.push((branch_location, inferred_branch));
                     else_reached = true;
                 }
             }
         }
+        let ty = to_unify.first().map_or(Typ::Unit, |it| it.1.clone());
         // checking else reached
         if else_reached {
-            self.solver.solve(Equation::UnifyMany(to_unify))
+            self.solver.coerce(Coercion::Same(to_unify));
+            ty
         } else {
             Typ::Unit
         }

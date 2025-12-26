@@ -5,12 +5,12 @@ pub mod errors;
 use crate::io::errors::IoError;
 use camino::{Utf8Path, Utf8PathBuf};
 use ecow::EcoString;
-use log::info;
 use std::{
     ffi::OsStr,
     fs::{self, File},
     io::Write,
 };
+use tracing::info;
 use walkdir::WalkDir;
 use watt_common::{bail, skip};
 

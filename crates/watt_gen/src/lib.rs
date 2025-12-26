@@ -1,6 +1,7 @@
 /// Imports
 use ecow::EcoString;
 use genco::{lang::js, quote, tokens::quoted};
+use tracing::instrument;
 use watt_ast::ast::{
     BinaryOp, Block, ConstDeclaration, Declaration, Either, ElseBranch, Expression, FnDeclaration,
     Module, Pattern, Range, Statement, TypeDeclaration, UnaryOp, UseKind,
@@ -466,6 +467,7 @@ pub fn gen_block_expr(mut block: Block) -> js::Tokens {
 }
 
 /// Generates module code
+#[instrument(skip(module))]
 pub fn gen_module(name: &EcoString, module: &Module) -> js::Tokens {
     // Segments amount for dependencies
     let name_segments_amount = name.split("/").count();

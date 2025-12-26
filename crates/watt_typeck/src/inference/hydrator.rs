@@ -198,7 +198,7 @@ impl<'hd> HydrationCx<'hd> {
 /// assert_eq!(hydrated, Typ::Int);
 /// ```
 ///
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Hydrator {
     /// Mapping of unbound type variable IDs to resolved types.
     substitutions: HashMap<usize, Typ>,

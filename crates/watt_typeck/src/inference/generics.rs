@@ -38,7 +38,7 @@ use indexmap::IndexMap;
 /// - contains method checks generic name
 ///   only in the last scope.
 ///
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Generics {
     stack: Vec<IndexMap<EcoString, usize>>,
     last_generic_id: usize,

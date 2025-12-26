@@ -1,7 +1,7 @@
 /// Imports
 use crate::{
     cx::module::ModuleCx,
-    inference::equation::Equation,
+    inference::coercion::Coercion,
     typ::{
         def::ModuleDef,
         res::Res,
@@ -11,12 +11,8 @@ use crate::{
 use ecow::EcoString;
 use indexmap::IndexMap;
 use std::rc::Rc;
-use watt_ast::ast::{
-    self, Block, Either, Expression, FnDeclaration,
-    Publicity, TypePath,
-};
+use watt_ast::ast::{self, Block, Either, Expression, FnDeclaration, Publicity, TypePath};
 use watt_common::address::Address;
-use crate::inference::equation::EqUnit;
 
 /// Late declaration analysis pass for the module.
 ///
@@ -120,9 +116,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Either::Left(block) => (block.location.clone(), self.infer_block(block)),
             Either::Right(expr) => (expr.location(), self.infer_expr(expr)),
         };
-        self.solver.solve(Equation::Unify(
-            EqUnit(location, ret),
-            EqUnit(block_location, inferred_block),
+        self.solver.coerce(Coercion::Eq(
+            (location, ret),
+            (block_location, inferred_block),
         ));
         self.resolver.pop_rib();
 
@@ -153,6 +149,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             typ,
             body,
             ..
-        } = decl { self.late_analyze_fn(location, publicity, name, params, typ, body) }
+        } = decl
+        {
+            self.late_analyze_fn(location, publicity, name, params, typ, body)
+        }
     }
 }

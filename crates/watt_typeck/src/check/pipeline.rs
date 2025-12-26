@@ -1,7 +1,7 @@
 /// Imports
 use crate::cx::module::ModuleCx;
 use crate::typ::typ::Module;
-use log::info;
+use tracing::info;
 use watt_ast::ast::Declaration;
 
 /// Implementation
@@ -15,6 +15,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// 4. Late analyze declarations.
     ///
     /// After this call, the module is fully type-checked.
+    ///
     pub(crate) fn pipeline(&mut self) -> Module {
         // 1. Performing imports
         info!("Performing imports...");
@@ -25,13 +26,17 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // 2. Early definitions of types
         info!("Performing early type definitions.");
         for definition in &self.module.declarations {
-            if let Declaration::Type(t) = definition { self.early_analyze_type_decl(t) }
+            if let Declaration::Type(t) = definition {
+                self.early_analyze_type_decl(t)
+            }
         }
 
         // 3. Early functions analysis
         info!("Performing early functions analyse.");
         for definition in &self.module.declarations {
-            if let Declaration::Fn(f) = definition { self.early_analyze_fn_decl(f) }
+            if let Declaration::Fn(f) = definition {
+                self.early_analyze_fn_decl(f)
+            }
         }
 
         // 4. Late analysis

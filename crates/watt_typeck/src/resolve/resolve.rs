@@ -10,6 +10,7 @@ use crate::{
 };
 use ecow::EcoString;
 use std::collections::HashMap;
+use tracing::instrument;
 use watt_common::{address::Address, bail, rc_ptr::RcPtr};
 
 /// Resolves names and types within a module.
@@ -37,7 +38,7 @@ use watt_common::{address::Address, bail, rc_ptr::RcPtr};
 ///   Definitions imported from other modules, keyed by their local names.
 ///   Enables access to external types and constants without fully qualifying them.
 ///
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ModuleResolver {
     /// Ribs stack of module
     ribs_stack: RibsStack,
@@ -321,6 +322,7 @@ impl ModuleResolver {
     ///
     /// # Errors
     /// - Raises `TypeckError::ModuleIsNotDefined` if the module is not imported.
+    ///
     pub fn resolve_module(&self, name: &EcoString) -> &Module {
         match self.imported_modules.get(name) {
             Some(m) => m,
@@ -332,6 +334,7 @@ impl ModuleResolver {
     ///
     /// Ribs represent lexical scopes (e.g., for function bodies or blocks).
     /// Pushing a rib creates a new nested scope for variable bindings.
+    ///
     pub fn push_rib(&mut self) {
         self.ribs_stack.push();
     }
@@ -340,6 +343,7 @@ impl ModuleResolver {
     ///
     /// Returns the popped `Rib` if it exists. Popping a rib exits
     /// the current scope and removes all bindings defined in that scope.
+    ///
     pub fn pop_rib(&mut self) -> Option<Rib> {
         self.ribs_stack.pop()
     }
@@ -352,6 +356,7 @@ impl ModuleResolver {
     ///
     /// # Returns
     /// A `HashMap<EcoString, ModuleDef>` containing all collected definitions.
+    ///
     pub fn collect(&mut self) -> HashMap<EcoString, ModuleDef> {
         self.module_defs.drain().collect()
     }
@@ -365,6 +370,8 @@ impl ModuleResolver {
     ///
     /// # Errors
     /// - Raises `TypeckError::ModuleIsAlreadyImportedAs` if the alias is already used.
+    ///
+    #[instrument(skip(address), level = "trace")]
     pub fn import_as(&mut self, address: &Address, name: EcoString, module: RcPtr<Module>) {
         match self.imported_modules.get(&name) {
             Some(module) => bail!(TypeckError::ModuleIsAlreadyImportedAs {
@@ -393,6 +400,8 @@ impl ModuleResolver {
     /// # Errors
     /// - `TypeckError::ModuleFieldIsNotDefined` if the name does not exist in the module.
     /// - `TypeckError::DefIsAlreadyImported` if the name has already been imported.
+    ///
+    #[instrument(skip(address), level = "trace")]
     pub fn import_for(&mut self, address: &Address, names: Vec<EcoString>, module: RcPtr<Module>) {
         for name in names {
             match module.fields.get(&name) {

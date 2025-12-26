@@ -1,6 +1,7 @@
 /// Modules
 pub(crate) mod commands;
 pub(crate) mod errors;
+pub(crate) mod log;
 
 /// Imports
 use crate::commands::{init, run};
@@ -64,7 +65,7 @@ pub fn cli() {
 /// Main function
 fn main() {
     // Initializing logging
-    pretty_env_logger::init();
+    log::init();
     // Cli
     cli();
 }
