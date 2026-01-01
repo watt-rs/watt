@@ -4,7 +4,7 @@ pub(crate) mod errors;
 pub(crate) mod log;
 
 /// Imports
-use crate::commands::{init, run};
+use crate::commands::{init, run, new};
 use clap::{Parser, Subcommand};
 
 /*
@@ -37,7 +37,12 @@ enum SubCommand {
     /// Compiles project
     Compile,
     /// Creates new project
-    New { name: String },
+    New {
+    	name: String,
+    	
+    	#[arg(value_parser = ["app", "lib"])]
+        ty: Option<String>,
+    },
     /// Clears cache of packages
     Clean,
     /// Initializes new project in current folder
@@ -56,7 +61,7 @@ pub fn cli() {
         SubCommand::Run { rt } => run::execute(rt),
         SubCommand::Analyze => todo!(),
         SubCommand::Compile => todo!(),
-        SubCommand::New { name: _ } => todo!(),
+        SubCommand::New { name, ty } => new::execute(&name, ty),
         SubCommand::Clean => todo!(),
         SubCommand::Init { ty } => init::execute(ty),
     }
