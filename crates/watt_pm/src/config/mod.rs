@@ -1,18 +1,19 @@
 /// Imports
 use crate::errors::PackageError;
 use camino::Utf8PathBuf;
+use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use watt_common::bail;
 use watt_compile::io;
 
 /// Package type
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, ValueEnum)]
 pub enum PackageType {
-    #[serde(rename = "lib")]
-    Lib,
     #[serde(rename = "app")]
     App,
+    #[serde(rename = "lib")]
+    Lib,
 }
 
 /// Package config

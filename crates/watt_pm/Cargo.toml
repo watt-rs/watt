@@ -19,3 +19,4 @@ serde = { version = "1.0.226", features = ["derive"] }
 toml = "0.9.7"
 watt_gen = { path = "../watt_gen" }
 tracing = "0.1.44"
+clap = { version = "4.5.1", features = ["derive"] }

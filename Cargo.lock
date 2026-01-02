@@ -1303,6 +1303,7 @@ name = "watt_pm"
 version = "0.1.0"
 dependencies = [
  "camino",
+ "clap",
  "console",
  "ecow",
  "git2",
