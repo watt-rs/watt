@@ -6,7 +6,7 @@ use watt_common::bail;
 use watt_pm::{config::PackageType, generate};
 
 /// Executes command
-pub fn execute(ty: Option<String>) {
+pub fn execute(pkg_ty: Option<PackageType>) {
     // Retrieving current directory
     let cwd = match env::current_dir() {
         Ok(path) => match Utf8PathBuf::try_from(path.clone()) {
@@ -15,15 +15,10 @@ pub fn execute(ty: Option<String>) {
         },
         Err(_) => bail!(CliError::FailedToRetrieveCwd),
     };
+
     // Getting package type from string
-    let pkg_ty = match ty {
-        Some(ty) => match ty.as_str() {
-            "app" => PackageType::App,
-            "lib" => PackageType::Lib,
-            _ => bail!(CliError::InvalidPackageType { ty }),
-        },
-        None => PackageType::App,
-    };
+    let pkg_ty = pkg_ty.unwrap_or(PackageType::App);
+    
     // Generating project
     generate::gen_project(cwd, pkg_ty);
 }

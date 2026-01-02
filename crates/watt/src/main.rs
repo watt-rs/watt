@@ -4,8 +4,9 @@ pub(crate) mod errors;
 pub(crate) mod log;
 
 /// Imports
-use crate::commands::{init, run};
+use crate::commands::{init, run, new};
 use clap::{Parser, Subcommand};
+use watt_pm::config::PackageType;
 
 /*
  * Cli
@@ -30,20 +31,25 @@ enum SubCommand {
     /// Runs project
     Run {
         #[arg(value_parser = ["deno", "bun", "node"])]
-        rt: Option<String>,
+        runtime: Option<String>,
     },
     /// Analyzes project for compile-time errors.
     Analyze,
     /// Compiles project
     Compile,
     /// Creates new project
-    New { name: String },
+    New {
+    	name: String,
+    	
+    	#[arg(value_enum)]
+        package_type: Option<PackageType>,
+    },
     /// Clears cache of packages
     Clean,
     /// Initializes new project in current folder
     Init {
-        #[arg(value_parser = ["app", "lib"])]
-        ty: Option<String>,
+    	#[arg(value_enum)]
+        package_type: Option<PackageType>,
     },
 }
 
@@ -53,12 +59,12 @@ pub fn cli() {
     match Cli::parse().command {
         SubCommand::Add { url: _ } => todo!(),
         SubCommand::Remove { url: _ } => todo!(),
-        SubCommand::Run { rt } => run::execute(rt),
+        SubCommand::Run { runtime } => run::execute(runtime),
         SubCommand::Analyze => todo!(),
         SubCommand::Compile => todo!(),
-        SubCommand::New { name: _ } => todo!(),
+        SubCommand::New { name, package_type } => new::execute(&name, package_type),
         SubCommand::Clean => todo!(),
-        SubCommand::Init { ty } => init::execute(ty),
+        SubCommand::Init { package_type } => init::execute(package_type),
     }
 }
 
