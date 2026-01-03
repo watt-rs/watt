@@ -37,14 +37,14 @@ pub enum LexError {
     #[diagnostic(
         code(lex::tokens_list_is_not_empty),
         help("please, file an issue on github."),
-        url("https://github.com/wattlanguage/watt")
+        url("https://github.com/watt-rs/watt")
     )]
     TokensListsNotEmpty,
     #[error("not a file provided.")]
     #[diagnostic(
         code(lex::not_a_file_provided),
         help("please, file an issue on github."),
-        url("https://github.com/wattlanguage/watt")
+        url("https://github.com/watt-rs/watt")
     )]
     NotAFileProvided,
 }

@@ -20,7 +20,7 @@ pub enum PackageError {
     #[diagnostic(
         code(pkg::failed_to_serialize_config),
         help("please, file an issue on github."),
-        url("https://github.com/wattlanguage/watt")
+        url("https://github.com/watt-rs/watt")
     )]
     FailedToSerializeConfig { path: Utf8PathBuf },
     #[error("found an dependencies cycle \"{a}\" <> \"{b}\".")]
@@ -30,7 +30,7 @@ pub enum PackageError {
     #[diagnostic(
         code(pkg::cycle_path_has_wrong_length),
         help("please, file an issue on github."),
-        url("https://github.com/wattlanguage/watt")
+        url("https://github.com/watt-rs/watt")
     )]
     CyclePathHasWrongLength { len: usize },
     #[error("url \"{url}\" is invalid.")]
@@ -43,14 +43,14 @@ pub enum PackageError {
     #[diagnostic(
         code(pkg::failed_to_find_import_cycle),
         help("please, file an issue on github."),
-        url("https://github.com/wattlanguage/watt")
+        url("https://github.com/watt-rs/watt")
     )]
     FailedToFindDependenciesCycle,
     #[error("dependency key \"{key}\" is not found in solved map.")]
     #[diagnostic(
         code(pkg::no_solved_key_found),
         help("please, file an issue on github."),
-        url("https://github.com/wattlanguage/watt")
+        url("https://github.com/watt-rs/watt")
     )]
     NoSolvedKeyFound { key: String },
     #[error("failed to run project using {rt:?}. error: {error}")]
@@ -60,7 +60,7 @@ pub enum PackageError {
     #[diagnostic(
         code(compile::no_main_package_found),
         help("please, file an issue on github."),
-        url("https://github.com/wattlanguage/watt")
+        url("https://github.com/watt-rs/watt")
     )]
     NoMainPackageFound { path: Utf8PathBuf },
     #[error("no main module with name \"{module}\" found.")]
