@@ -8,7 +8,7 @@ use crate::{
     },
 };
 use ecow::EcoString;
-use std::{cell::RefCell, rc::Rc};
+use id_arena::Id;
 use watt_ast::ast::{Publicity, TypePath};
 use watt_common::{address::Address, bail};
 
@@ -126,34 +126,36 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         params: Vec<TypePath>,
         ret: Option<Box<TypePath>>,
     ) -> Typ {
-        Typ::Function(Rc::new(Function {
+        let function = Function {
             location,
             name: EcoString::from("$annotated"),
             generics: Vec::new(),
             params: params
                 .into_iter()
-                .map(|p| Parameter {
+                .enumerate()
+                .map(|(idx, p)| Parameter {
                     location: p.location(),
+                    name: format!("$annotated_{idx}").into(),
                     typ: self.infer_type_annotation(p),
                 })
                 .collect(),
             ret: ret.map_or(Typ::Unit, |t| self.infer_type_annotation(*t)),
-        }))
+        };
+        Typ::Function(self.tcx.insert_function(function), GenericArgs::default())
     }
 
     /// Instantiates an enum type with its generic parameters.
     fn instantiate_enum_type(
         &mut self,
         location: &Address,
-        en: Rc<RefCell<Enum>>,
+        id: Id<Enum>,
         generics: Vec<TypePath>,
     ) -> Typ {
-        self.check_generic_params_arity(location, en.borrow().generics.len(), generics.len());
+        let generic_params = self.tcx.enum_(id).generics.clone();
+        self.check_generic_params_arity(location, generic_params.len(), generics.len());
 
         let substitutions = GenericArgs {
-            subtitutions: en
-                .borrow()
-                .generics
+            subtitutions: generic_params
                 .iter()
                 .zip(generics)
                 .map(|(param, arg)| {
@@ -163,22 +165,21 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 .collect(),
         };
 
-        Typ::Enum(en, substitutions)
+        Typ::Enum(id, substitutions)
     }
 
     /// Instantiates a struct type with its generic parameters.
     fn instantiate_struct_type(
         &mut self,
         location: &Address,
-        st: Rc<RefCell<Struct>>,
+        id: Id<Struct>,
         generics: Vec<TypePath>,
     ) -> Typ {
-        self.check_generic_params_arity(location, st.borrow().generics.len(), generics.len());
+        let generic_params = self.tcx.struct_(id).generics.clone();
+        self.check_generic_params_arity(location, generic_params.len(), generics.len());
 
         let substitutions = GenericArgs {
-            subtitutions: st
-                .borrow()
-                .generics
+            subtitutions: generic_params
                 .iter()
                 .zip(generics)
                 .map(|(param, arg)| {
@@ -188,7 +189,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 .collect(),
         };
 
-        Typ::Struct(st, substitutions)
+        Typ::Struct(id, substitutions)
     }
 
     /// Infers a type annotation from a [`TypePath`].

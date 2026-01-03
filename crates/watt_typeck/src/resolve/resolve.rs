@@ -5,7 +5,7 @@ use crate::{
     typ::{
         def::{ModuleDef, TypeDef},
         res::Res,
-        typ::{Module, Typ},
+        typ::{GenericArgs, Module, Typ},
     },
 };
 use ecow::EcoString;
@@ -224,14 +224,18 @@ impl ModuleResolver {
                 Some(typ) => match typ {
                     ModuleDef::Type(ty) => Res::Custom(ty.value.clone()),
                     ModuleDef::Const(ty) => Res::Const(ty.value.clone()),
-                    ModuleDef::Function(ty) => Res::Value(Typ::Function(ty.value.clone())),
+                    ModuleDef::Function(ty) => {
+                        Res::Value(Typ::Function(ty.value.clone(), GenericArgs::default()))
+                    }
                 },
                 None => match self.imported_defs.get(name) {
                     // Checking existence in imported defs
                     Some(typ) => match typ {
                         ModuleDef::Type(ty) => Res::Custom(ty.value.clone()),
                         ModuleDef::Const(ty) => Res::Const(ty.value.clone()),
-                        ModuleDef::Function(ty) => Res::Value(Typ::Function(ty.value.clone())),
+                        ModuleDef::Function(ty) => {
+                            Res::Value(Typ::Function(ty.value.clone(), GenericArgs::default()))
+                        }
                     },
                     None => match self.imported_modules.get(name) {
                         // Checking existence in modules

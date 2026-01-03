@@ -7,13 +7,12 @@ use crate::{
     typ::{
         def::{ModuleDef, TypeDef},
         res::Res,
-        typ::{Function, Parameter, PreludeType, Typ},
+        typ::{Function, GenericArgs, Parameter, PreludeType, Typ},
     },
     warnings::TypeckWarning,
 };
 use ecow::EcoString;
 use indexmap::IndexMap;
-use std::rc::Rc;
 use watt_ast::ast::{
     self, BinaryOp, Block, Case, Either, ElseBranch, Expression, Pattern, Publicity, TypePath,
     UnaryOp,
@@ -458,7 +457,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     ModuleDef::Function(f) => {
                         match f.publicity {
                             // If constant is public, we resolved field
-                            Publicity::Public => Res::Value(Typ::Function(f.value.clone())),
+                            Publicity::Public => {
+                                Res::Value(Typ::Function(f.value.clone(), GenericArgs::default()))
+                            }
                             // Else, raising `module field is private`
                             _ => bail!(TypeckError::ModuleFieldIsPrivate {
                                 src: self.module.source.clone(),
@@ -509,7 +510,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     ) -> Res {
         // Finding field
         match ty
-            .variants(&mut self.solver.hydrator)
+            .variants(self.tcx, &mut self.solver.hydrator)
             .iter()
             .find(|f| f.name == field_name)
         {
@@ -551,7 +552,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     ) -> Res {
         // Finding field
         match ty
-            .fields(&mut self.solver.hydrator)
+            .fields(self.tcx, &mut self.solver.hydrator)
             .iter()
             .find(|f| f.name == field_name)
         {
@@ -598,25 +599,26 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 self.infer_module_field_access(name.clone(), field_location, field_name)
             }
             // Enum field access
-            Res::Custom(TypeDef::Enum(en)) => {
+            Res::Custom(TypeDef::Enum(id)) => {
+                let enum_ = self.tcx.enum_(*id);
                 let instantiated = Typ::Enum(
-                    en.clone(),
+                    id.clone(),
                     self.solver
                         .hydrator
-                        .hyd()
-                        .mk_generics(&en.borrow().generics, IndexMap::new()),
+                        .hyd(self.tcx)
+                        .mk_generics(&enum_.generics, IndexMap::new()),
                 );
                 self.infer_enum_field_access(
                     instantiated,
-                    en.borrow().name.clone(),
+                    enum_.name.clone(),
                     field_location,
                     field_name,
                 )
             }
             // Type field access
-            Res::Value(it @ Typ::Struct(ty, _)) => self.infer_struct_field_access(
+            Res::Value(it @ Typ::Struct(id, _)) => self.infer_struct_field_access(
                 it.clone(),
-                ty.borrow().name.clone(),
+                self.tcx.struct_(*id).name.clone(),
                 field_location,
                 field_name,
             ),
@@ -694,43 +696,58 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
         match function.clone() {
             // Custom type
-            Res::Custom(TypeDef::Struct(ty)) => {
-                self.ensure_arity(location, ty.borrow().fields.len(), args.len());
+            Res::Custom(TypeDef::Struct(id)) => {
+                let struct_ = self.tcx.struct_(id);
+                self.ensure_arity(location, struct_.fields.len(), args.len());
 
                 let instantiated = Typ::Struct(
-                    ty.clone(),
+                    id,
                     self.solver
                         .hydrator
-                        .hyd()
-                        .mk_generics(&ty.borrow().generics, IndexMap::new()),
+                        .hyd(self.tcx)
+                        .mk_generics(&struct_.generics, IndexMap::new()),
                 );
 
                 instantiated
-                    .fields(&mut self.solver.hydrator)
+                    .fields(self.tcx, &mut self.solver.hydrator)
                     .into_iter()
                     .zip(args)
                     .for_each(|(p, a)| {
                         self.solver
-                            .coerce(Coercion::Eq((p.location, p.typ), (a.0, a.1)));
+                            .coerce(self.tcx, Coercion::Eq((p.location, p.typ), (a.0, a.1)));
                     });
 
                 Res::Value(instantiated)
             }
             // Value
-            Res::Value(Typ::Function(f)) => {
-                self.ensure_arity(location, f.params.len(), args.len());
-                let f = self.solver.hydrator.hyd().mk_function(f);
-                f.params.iter().cloned().zip(args).for_each(|(p, a)| {
+            Res::Value(Typ::Function(id, generic_args)) => {
+                let function = self.tcx.function(id);
+                self.ensure_arity(location, function.params.len(), args.len());
+
+                let instantiated = Typ::Function(
+                    id,
                     self.solver
-                        .coerce(Coercion::Eq((p.location, p.typ), (a.0, a.1)));
-                });
-                Res::Value(f.ret.clone())
+                        .hydrator
+                        .hyd(self.tcx)
+                        .mk_generics(&function.generics, generic_args.subtitutions),
+                );
+
+                instantiated
+                    .fields(self.tcx, &mut self.solver.hydrator)
+                    .into_iter()
+                    .zip(args)
+                    .for_each(|(p, a)| {
+                        self.solver
+                            .coerce(self.tcx, Coercion::Eq((p.location, p.typ), (a.0, a.1)));
+                    });
+
+                Res::Value(instantiated)
             }
             // Variant
             Res::Variant(en, variant) => {
                 variant.fields.iter().cloned().zip(args).for_each(|(p, a)| {
                     self.solver
-                        .coerce(Coercion::Eq((p.location, p.typ), (a.0, a.1)));
+                        .coerce(self.tcx, Coercion::Eq((p.location, p.typ), (a.0, a.1)));
                 });
 
                 Res::Value(en)
@@ -815,9 +832,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             .into_iter()
             .map(|p| {
                 (
-                    p.name,
+                    p.name.clone(),
                     Parameter {
                         location: p.location,
+                        name: p.name,
                         typ: self.infer_type_annotation(p.typ),
                     },
                 )
@@ -832,6 +850,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             params: params.clone().into_values().collect(),
             ret: ret.clone(),
         };
+        let id = self.tcx.insert_function(function);
 
         // pushing new scope
         self.resolver.push_rib();
@@ -846,14 +865,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Either::Left(block) => (block.location.clone(), self.infer_block(block)),
             Either::Right(expr) => (expr.location(), self.infer_expr(*expr)),
         };
-        self.solver.coerce(Coercion::Eq(
-            (location, ret),
-            (block_location, inferred_block),
-        ));
+        self.solver.coerce(
+            self.tcx,
+            Coercion::Eq((location, ret), (block_location, inferred_block)),
+        );
         self.resolver.pop_rib();
 
         // result
-        Typ::Function(Rc::new(function))
+        Typ::Function(id, GenericArgs::default())
     }
 
     /// Performs semantic/type analysis of a single match arm pattern.
@@ -1052,7 +1071,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
         // solving type
         let ty = to_unify.first().map_or(Typ::Unit, |it| it.1.clone());
-        self.solver.coerce(Coercion::Same(to_unify));
+        self.solver.coerce(self.tcx, Coercion::Same(to_unify));
         let checked = ExMatchCx::check(self, inferred_what, cases);
         // checking all cases covered
         if checked {
@@ -1153,7 +1172,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         let ty = to_unify.first().map_or(Typ::Unit, |it| it.1.clone());
         // checking else reached
         if else_reached {
-            self.solver.coerce(Coercion::Same(to_unify));
+            self.solver.coerce(self.tcx, Coercion::Same(to_unify));
             ty
         } else {
             Typ::Unit

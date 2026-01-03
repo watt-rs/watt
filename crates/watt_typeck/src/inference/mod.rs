@@ -12,7 +12,7 @@ use crate::{
         hydrator::Hydrator,
         origin::Origin,
     },
-    typ::typ::Typ,
+    typ::{cx::TyCx, typ::Typ},
 };
 use tracing::instrument;
 use watt_common::bail;
@@ -44,37 +44,37 @@ impl CoercionsSolver {
     /// # Arguments
     /// * `coercion` - the type constraint to solve
     ///
-    pub fn coerce(&mut self, coercion: Coercion) {
+    pub fn coerce(&mut self, tcx: &mut TyCx, coercion: Coercion) {
         // Solving
         match coercion.clone() {
-            Coercion::Eq(u1, u2) => self.eq(u1, u2),
-            Coercion::Same(items) => self.same(items),
+            Coercion::Eq(u1, u2) => self.eq(tcx, u1, u2),
+            Coercion::Same(items) => self.same(tcx, items),
         }
     }
 
     /// Solves an `Eq(u1, u2)` coercion.
-    #[instrument(skip(self), level = "debug", fields(u1 = ?u1.1, u2 = ?u2.1))]
-    fn eq(&mut self, u1: U, u2: U) {
+    #[instrument(skip(self, tcx), level = "debug", fields(u1 = ?u1.1, u2 = ?u2.1))]
+    fn eq(&mut self, tcx: &mut TyCx, u1: U, u2: U) {
         // Generation origins
         let o1 = Origin(u1.0, u1.1.clone());
         let o2 = Origin(u2.0, u2.1.clone());
         // Processing unification
-        self.unify(o1, u1.1, o2, u2.1);
+        self.unify(tcx, o1, u1.1, o2, u2.1);
     }
 
     /// Solves a `Same(items)` coercion,
     /// unifying all elements with the first one.
     #[instrument(
-        skip(self),
+        skip(self, tcx),
         level = "debug",
         fields(items = ?items.iter().map(|i| &i.1).collect::<Vec<&Typ>>()))
     ]
-    fn same(&mut self, mut items: Vec<U>) {
+    fn same(&mut self, tcx: &mut TyCx, mut items: Vec<U>) {
         // Retrieving first information
         let u1 = items.remove(0);
         // Coerce `eq` with others
         for u2 in items {
-            self.eq(u1.clone(), u2);
+            self.eq(tcx, u1.clone(), u2);
         }
     }
 
@@ -83,7 +83,7 @@ impl CoercionsSolver {
     /// Performs occurs check in case with `Unbound(a)` and other `b`.
     /// Calls `Hydrator` for substitutions.
     ///
-    fn unify(&mut self, o1: Origin, t1: Typ, o2: Origin, t2: Typ) {
+    fn unify(&mut self, tcx: &mut TyCx, o1: Origin, t1: Typ, o2: Origin, t2: Typ) {
         // Applying substs
         let t1 = self.apply(t1);
         let t2 = self.apply(t2);
@@ -96,7 +96,7 @@ impl CoercionsSolver {
                     }
                 }
                 (Typ::Unbound(a), b) | (b, Typ::Unbound(a)) => {
-                    if self.occurs(*a, b) {
+                    if self.occurs(tcx, *a, b) {
                         bail!(TypeckError::TypesRecursion {
                             related: vec![o1.into_this_type(), o2.into_this_type(),],
                             t1: o1.typ(),
@@ -105,24 +105,25 @@ impl CoercionsSolver {
                     }
                     self.hydrator.substitute(*a, b.clone());
                 }
-                (Typ::Struct(def1, _), Typ::Struct(def2, _)) => {
-                    if def1 == def2 {
-                        t1.fields(&mut self.hydrator)
+                (Typ::Struct(id1, _), Typ::Struct(id2, _)) => {
+                    if id1 == id2 {
+                        t1.fields(tcx, &mut self.hydrator)
                             .into_iter()
-                            .zip(t2.fields(&mut self.hydrator))
+                            .zip(t2.fields(tcx, &mut self.hydrator))
                             .for_each(|(a, b)| {
-                                self.unify(o1.clone(), a.typ, o2.clone(), b.typ);
+                                self.unify(tcx, o1.clone(), a.typ, o2.clone(), b.typ);
                             });
                     }
                 }
                 (Typ::Enum(def1, _), Typ::Enum(def2, _)) => {
                     if def1 == def2 {
-                        t1.variants(&mut self.hydrator)
+                        t1.variants(tcx, &mut self.hydrator)
                             .iter()
-                            .zip(t2.variants(&mut self.hydrator))
+                            .zip(t2.variants(tcx, &mut self.hydrator))
                             .for_each(|(v1, v2)| {
                                 v1.fields.iter().zip(v2.fields).for_each(|(a, b)| {
                                     self.unify(
+                                        tcx,
                                         o1.clone(),
                                         a.typ.clone(),
                                         o2.clone(),
@@ -132,11 +133,16 @@ impl CoercionsSolver {
                             });
                     }
                 }
-                (Typ::Function(f1), Typ::Function(f2)) => {
-                    f1.params.iter().zip(&f2.params).for_each(|(p1, p2)| {
-                        self.unify(o1.clone(), p1.typ.clone(), o2.clone(), p2.typ.clone());
-                    });
-                    self.unify(o1.clone(), f1.ret.clone(), o2.clone(), f2.ret.clone());
+                (Typ::Function(_, _), Typ::Function(_, _)) => {
+                    t1.params(tcx, &mut self.hydrator)
+                        .iter()
+                        .zip(&t2.params(tcx, &mut self.hydrator))
+                        .for_each(|(p1, p2)| {
+                            self.unify(tcx, o1.clone(), p1.typ.clone(), o2.clone(), p2.typ.clone());
+                        });
+                    let r1 = t1.ret(tcx, &mut self.hydrator);
+                    let r2 = t2.ret(tcx, &mut self.hydrator);
+                    self.unify(tcx, o1.clone(), r1, o2.clone(), r2);
                 }
                 _ => bail!(TypeckError::CouldNotUnify {
                     t1: o1.typ(),
@@ -156,7 +162,7 @@ impl CoercionsSolver {
     /// # Returns
     /// `true` if the type variable occurs in itself (infinite type), otherwise `false`
     ///
-    fn occurs(&mut self, own: usize, t: &Typ) -> bool {
+    fn occurs(&mut self, tcx: &mut TyCx, own: usize, t: &Typ) -> bool {
         let t = self.apply(t.clone());
 
         match t {
@@ -164,17 +170,23 @@ impl CoercionsSolver {
                 // variable occurs in itself → infinite type
                 id == own
             }
-            Typ::Function(ref fun) => {
-                fun.params.iter().any(|p| self.occurs(own, &p.typ)) || self.occurs(own, &fun.ret)
+            it @ Typ::Function(_, _) => {
+                it.params(tcx, &mut self.hydrator)
+                    .into_iter()
+                    .any(|p| self.occurs(tcx, own, &p.typ))
+                    || {
+                        let r = it.ret(tcx, &mut self.hydrator);
+                        self.occurs(tcx, own, &r)
+                    }
             }
             it @ Typ::Struct(_, _) => it
-                .fields(&mut self.hydrator)
+                .fields(tcx, &mut self.hydrator)
                 .into_iter()
-                .any(|f| self.occurs(own, &f.typ)),
+                .any(|f| self.occurs(tcx, own, &f.typ)),
             it @ Typ::Enum(_, _) => it
-                .variants(&mut self.hydrator)
+                .variants(tcx, &mut self.hydrator)
                 .iter()
-                .any(|v| v.fields.iter().any(|f| self.occurs(own, &f.typ))),
+                .any(|v| v.fields.iter().any(|f| self.occurs(tcx, own, &f.typ))),
             Typ::Generic(_) | Typ::Prelude(_) | Typ::Unit => false,
         }
     }

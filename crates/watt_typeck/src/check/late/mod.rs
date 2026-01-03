@@ -59,10 +59,13 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         let annotated = self.infer_type_annotation(typ);
         let inferred_location = value.location();
         let inferred = self.infer_expr(value);
-        self.solver.coerce(Coercion::Eq(
-            (annotated_location, annotated.clone()),
-            (inferred_location, inferred),
-        ));
+        self.solver.coerce(
+            self.tcx,
+            Coercion::Eq(
+                (annotated_location, annotated.clone()),
+                (inferred_location, inferred),
+            ),
+        );
 
         // Defining constant
         self.resolver.define_module(

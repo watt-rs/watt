@@ -3,8 +3,6 @@ use crate::cx::module::ModuleCx;
 use crate::typ::def::{ModuleDef, TypeDef};
 use crate::typ::typ::{Enum, Struct, WithPublicity};
 use ecow::EcoString;
-use std::cell::RefCell;
-use std::rc::Rc;
 use watt_ast::ast::{Publicity, TypeDeclaration};
 use watt_common::address::Address;
 
@@ -36,13 +34,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // Pushing generics
         let generics = self.solver.hydrator.generics.push_scope(generics);
         // Generating struct
-        let strct = TypeDef::Struct(Rc::new(RefCell::new(Struct {
+        let struct_ = Struct {
             location: location.clone(),
             uid: self.fresh_id(),
             name: name.clone(),
             generics,
             fields: Vec::new(),
-        })));
+        };
+        let id = self.tcx.insert_struct(struct_);
         // Popping generics
         self.solver.hydrator.generics.pop_scope();
         // Defining struct
@@ -51,7 +50,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             &name,
             ModuleDef::Type(WithPublicity {
                 publicity,
-                value: strct,
+                value: TypeDef::Struct(id),
             }),
             false,
         );
@@ -77,13 +76,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // Pushing generics
         let generics = self.solver.hydrator.generics.push_scope(generics);
         // Generating enum
-        let en = TypeDef::Enum(Rc::new(RefCell::new(Enum {
+        let enum_ = Enum {
             location: location.clone(),
             uid: self.fresh_id(),
             name: name.clone(),
             generics,
             variants: Vec::new(),
-        })));
+        };
+        let id = self.tcx.insert_enum(enum_);
         // Popping generics
         self.solver.hydrator.generics.pop_scope();
         // Defining enum
@@ -92,7 +92,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             &name,
             ModuleDef::Type(WithPublicity {
                 publicity,
-                value: en,
+                value: TypeDef::Enum(id),
             }),
             false,
         );

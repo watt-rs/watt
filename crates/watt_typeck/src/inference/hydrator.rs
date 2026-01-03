@@ -1,11 +1,13 @@
-use indexmap::IndexMap;
-
 /// Imports
 use crate::{
     inference::generics::Generics,
-    typ::typ::{Function, GenericArgs, GenericParameter, Parameter, Typ},
+    typ::{
+        cx::TyCx,
+        typ::{GenericArgs, GenericParameter, Typ},
+    },
 };
-use std::{collections::HashMap, rc::Rc};
+use indexmap::IndexMap;
+use std::collections::HashMap;
 
 /// A temporary instantiation context used to **hydrate** generic types into
 /// fresh inference variables.
@@ -31,12 +33,17 @@ use std::{collections::HashMap, rc::Rc};
 ///
 /// `HydrationCx` is short-lived: it exists only for the duration of a single
 /// instantiation (e.g. one function call).
-pub struct HydrationCx<'hd> {
+pub struct HydrationCx<'hd, 'tcx> {
     /// Reference to the global hydrator.
     ///
     /// Used to allocate fresh unbound inference variables and to reuse its
     /// substitution machinery.
     hydrator: &'hd mut Hydrator,
+
+    /// Reference to the types contexts.
+    ///
+    /// Used to retrieve information of `Structs` and `Enums`
+    tcx: &'tcx TyCx,
 
     /// A mapping of **generic parameter IDs** (`Generic(id)`) to the fresh
     /// inference variables created during this instantiation.
@@ -47,12 +54,26 @@ pub struct HydrationCx<'hd> {
 }
 
 /// Implementation
-impl<'hd> HydrationCx<'hd> {
+impl<'hd, 'tcx> HydrationCx<'hd, 'tcx> {
     /// Creates new hydration context
-    pub fn new(hydrator: &'hd mut Hydrator) -> Self {
+    pub fn new(hydrator: &'hd mut Hydrator, tcx: &'tcx TyCx) -> Self {
         Self {
             hydrator,
+            tcx,
             mapping: IndexMap::new(),
+        }
+    }
+
+    /// Creates new hydration context with given mapping
+    pub fn with_mapping(
+        hydrator: &'hd mut Hydrator,
+        tcx: &'tcx TyCx,
+        mapping: IndexMap<usize, Typ>,
+    ) -> Self {
+        Self {
+            hydrator,
+            tcx,
+            mapping,
         }
     }
 
@@ -74,32 +95,41 @@ impl<'hd> HydrationCx<'hd> {
                     fresh
                 }
             }
-            Typ::Function(rc) => Typ::Function(self.mk_function(rc)),
-            Typ::Struct(rc, args) => {
+            Typ::Function(id, args) => {
                 let args = args
                     .subtitutions
                     .iter()
                     .map(|(k, v)| (*k, self.mk_ty(v.clone())))
                     .collect();
-                let generics = self.mk_generics(&rc.borrow().generics, args);
+                let generics = self.mk_generics(&self.tcx.function(id).generics.clone(), args);
 
-                Typ::Struct(rc, generics)
+                Typ::Function(id, generics)
             }
-            Typ::Enum(rc, args) => {
+            Typ::Struct(id, args) => {
                 let args = args
                     .subtitutions
                     .iter()
                     .map(|(k, v)| (*k, self.mk_ty(v.clone())))
                     .collect();
-                let generics = self.mk_generics(&rc.borrow().generics, args);
+                let generics = self.mk_generics(&self.tcx.struct_(id).generics.clone(), args);
 
-                Typ::Enum(rc, generics)
+                Typ::Struct(id, generics)
+            }
+            Typ::Enum(id, args) => {
+                let args = args
+                    .subtitutions
+                    .iter()
+                    .map(|(k, v)| (*k, self.mk_ty(v.clone())))
+                    .collect();
+                let generics = self.mk_generics(&self.tcx.enum_(id).generics.clone(), args);
+
+                Typ::Enum(id, generics)
             }
         }
     }
 
     /// Instantiates generics with args
-    /// Generic(id) -> Unbound($id)
+    /// Generic(id) -> Unbound($id) | Given substitution
     pub fn mk_generics(
         &mut self,
         params: &[GenericParameter],
@@ -113,35 +143,12 @@ impl<'hd> HydrationCx<'hd> {
                     (
                         generic_id,
                         self.hydrator
-                            .hyd_m(args.clone())
+                            .hyd_m(self.tcx, args.clone())
                             .mk_ty(Typ::Generic(generic_id)),
                     )
                 })
                 .collect(),
         }
-    }
-
-    /// Instantiates function by replacing
-    /// Generic(id) -> Unbound($id)
-    pub fn mk_function(&mut self, rc: Rc<Function>) -> Rc<Function> {
-        let params = rc
-            .params
-            .iter()
-            .cloned()
-            .map(|p| Parameter {
-                location: p.location,
-                typ: self.mk_ty(p.typ),
-            })
-            .collect();
-
-        let ret = self.mk_ty(rc.ret.clone());
-        Rc::new(Function {
-            location: rc.location.clone(),
-            name: rc.name.clone(),
-            generics: rc.generics.clone(),
-            params,
-            ret,
-        })
     }
 }
 
@@ -243,8 +250,8 @@ impl Hydrator {
                 .substitutions
                 .get(&usize)
                 .map_or(it, |s| self.apply(s.clone())),
-            Typ::Enum(en, args) => Typ::Enum(
-                en,
+            Typ::Enum(id, args) => Typ::Enum(
+                id,
                 GenericArgs {
                     subtitutions: args
                         .subtitutions
@@ -253,8 +260,8 @@ impl Hydrator {
                         .collect(),
                 },
             ),
-            Typ::Struct(ty, args) => Typ::Struct(
-                ty,
+            Typ::Struct(id, args) => Typ::Struct(
+                id,
                 GenericArgs {
                     subtitutions: args
                         .subtitutions
@@ -263,21 +270,16 @@ impl Hydrator {
                         .collect(),
                 },
             ),
-            Typ::Function(f) => Typ::Function(Rc::new(Function {
-                location: f.location.clone(),
-                name: f.name.clone(),
-                generics: f.generics.clone(),
-                params: f
-                    .params
-                    .iter()
-                    .cloned()
-                    .map(|p| Parameter {
-                        location: p.location,
-                        typ: self.apply(p.typ),
-                    })
-                    .collect(),
-                ret: self.apply(f.ret.clone()),
-            })),
+            Typ::Function(id, args) => Typ::Function(
+                id,
+                GenericArgs {
+                    subtitutions: args
+                        .subtitutions
+                        .iter()
+                        .map(|it| (*it.0, self.apply(it.1.clone())))
+                        .collect(),
+                },
+            ),
             other => other,
         }
     }
@@ -303,16 +305,17 @@ impl Hydrator {
     }
 
     /// Creates hydration context
-    pub fn hyd(&mut self) -> HydrationCx<'_> {
-        HydrationCx::new(self)
+    pub fn hyd<'a, 'b>(&'a mut self, tcx: &'b TyCx) -> HydrationCx<'a, 'b> {
+        HydrationCx::new(self, tcx)
     }
 
     /// Creates hydration context with given mapping
-    pub fn hyd_m(&mut self, mapping: IndexMap<usize, Typ>) -> HydrationCx<'_> {
-        HydrationCx {
-            hydrator: self,
-            mapping,
-        }
+    pub fn hyd_m<'a, 'b>(
+        &'a mut self,
+        tcx: &'b TyCx,
+        mapping: IndexMap<usize, Typ>,
+    ) -> HydrationCx<'a, 'b> {
+        HydrationCx::with_mapping(self, tcx, mapping)
     }
 
     /// Checks that generic is rigid by its ID

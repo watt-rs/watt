@@ -3,7 +3,6 @@ use crate::cx::module::ModuleCx;
 use crate::typ::def::ModuleDef;
 use crate::typ::typ::{Function, Parameter, Typ, WithPublicity};
 use ecow::EcoString;
-use std::rc::Rc;
 use watt_ast::ast;
 use watt_ast::ast::{FnDeclaration, Publicity, TypePath};
 use watt_common::address::Address;
@@ -39,7 +38,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // Pushing generics
         let generics = self.solver.hydrator.generics.push_scope(generics);
         // Generating function
-        let function = Rc::new(Function {
+        let function = Function {
             location: location.clone(),
             name: name.clone(),
             generics,
@@ -47,11 +46,13 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 .into_iter()
                 .map(|p| Parameter {
                     location: p.location.clone(),
+                    name: p.name.clone(),
                     typ: self.infer_type_annotation(p.typ),
                 })
                 .collect(),
             ret: typ.map_or(Typ::Unit, |it| self.infer_type_annotation(it)),
-        });
+        };
+        let id = self.tcx.insert_function(function);
         // Popping generics
         self.solver.hydrator.generics.pop_scope();
         // Defining function
@@ -60,7 +61,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             &name,
             ModuleDef::Function(WithPublicity {
                 publicity,
-                value: function,
+                value: id,
             }),
             false,
         );

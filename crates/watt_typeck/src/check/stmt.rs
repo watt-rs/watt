@@ -175,11 +175,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Some(annotated_path) => {
                 let annotated_location = annotated_path.location();
                 let annotated = self.infer_type_annotation(annotated_path);
-                let inferred_value = self.solver.hydrator.hyd().mk_ty(inferred_value);
-                self.solver.coerce(Coercion::Eq(
-                    (annotated_location, annotated.clone()),
-                    (value_location.clone(), inferred_value.clone()),
-                ));
+                let inferred_value = self.solver.hydrator.hyd(self.tcx).mk_ty(inferred_value);
+                self.solver.coerce(
+                    self.tcx,
+                    Coercion::Eq(
+                        (annotated_location, annotated.clone()),
+                        (value_location.clone(), inferred_value.clone()),
+                    ),
+                );
                 self.resolver
                     .define_local(&location, &name, annotated, false)
             }
@@ -209,10 +212,13 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
         let value_location = value.location();
         let inferred_value = self.infer_expr(value);
-        self.solver.coerce(Coercion::Eq(
-            (location.clone(), inferred_what.unwrap_typ(&location)),
-            (value_location, inferred_value),
-        ));
+        self.solver.coerce(
+            self.tcx,
+            Coercion::Eq(
+                (location.clone(), inferred_what.unwrap_typ(&location)),
+                (value_location, inferred_value),
+            ),
+        );
     }
 
     /// Infers the type of statement.

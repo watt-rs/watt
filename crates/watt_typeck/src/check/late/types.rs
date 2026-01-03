@@ -7,9 +7,7 @@ use crate::{
     },
 };
 use ecow::EcoString;
-use watt_ast::ast::{
-    self, EnumConstructor, TypeDeclaration,
-};
+use watt_ast::ast::{self, EnumConstructor, TypeDeclaration};
 use watt_common::address::Address;
 
 /// Late declaration analysis pass for the module.
@@ -40,24 +38,30 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     ///
     fn late_analyze_struct(&mut self, location: Address, name: EcoString, fields: Vec<ast::Field>) {
         // Requesting struct
-        let ty = match self.resolver.resolve_type(&location, &name) {
+        let id = match self.resolver.resolve_type(&location, &name) {
             TypeDef::Struct(ty) => ty,
             _ => unreachable!(),
         };
-        let borrowed = ty.borrow();
+        let struct_ = self.tcx.struct_(id);
+        let (location, uid, name, generics) = (
+            struct_.location.clone(),
+            struct_.uid,
+            struct_.name.clone(),
+            struct_.generics.clone(),
+        );
 
         // Re pushing generics
         self.solver
             .hydrator
             .generics
-            .re_push_scope(borrowed.generics.clone());
+            .re_push_scope(struct_.generics.clone());
 
         // Inferencing fields
         let new_struct = Struct {
-            location: borrowed.location.clone(),
-            uid: borrowed.uid,
-            name: borrowed.name.clone(),
-            generics: borrowed.generics.clone(),
+            location: location.clone(),
+            uid: uid,
+            name: name.clone(),
+            generics: generics.clone(),
             fields: fields
                 .into_iter()
                 .map(|f| Field {
@@ -67,8 +71,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 })
                 .collect(),
         };
-        drop(borrowed);
-        *ty.borrow_mut() = new_struct;
+        let struct_mut = self.tcx.struct_mut(id);
+        *struct_mut = new_struct;
 
         // Popping generics
         self.solver.hydrator.generics.pop_scope();
@@ -92,24 +96,30 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         variants: Vec<EnumConstructor>,
     ) {
         // Requesting enum
-        let en = match self.resolver.resolve_type(&location, &name) {
+        let id = match self.resolver.resolve_type(&location, &name) {
             TypeDef::Enum(en) => en,
             _ => unreachable!(),
         };
-        let borrowed = en.borrow();
-
+        let enum_ = self.tcx.enum_(id);
+        let (location, uid, name, generics) = (
+            enum_.location.clone(),
+            enum_.uid,
+            enum_.name.clone(),
+            enum_.generics.clone(),
+        );
+        
         // Repushing generics
         self.solver
             .hydrator
             .generics
-            .re_push_scope(borrowed.generics.clone());
+            .re_push_scope(generics.clone());
 
         // Inferencing fields
         let new_enum = Enum {
-            location: borrowed.location.clone(),
-            uid: borrowed.uid,
-            name: borrowed.name.clone(),
-            generics: borrowed.generics.clone(),
+            location: location.clone(),
+            uid: uid,
+            name: name.clone(),
+            generics: generics.clone(),
             variants: variants
                 .into_iter()
                 .map(|v| EnumVariant {
@@ -127,8 +137,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 })
                 .collect(),
         };
-        drop(borrowed);
-        *en.borrow_mut() = new_enum;
+        let enum_mut = self.tcx.enum_mut(id);
+        *enum_mut = new_enum;
 
         // Popping generics
         self.solver.hydrator.generics.pop_scope();
