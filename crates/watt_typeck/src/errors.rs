@@ -222,7 +222,7 @@ pub enum TypeckError {
     #[diagnostic(
         code(typeck::module_is_not_defined),
         help("please, file an issue on github."),
-        url("https://github.com/wattlanguage/watt")
+        url("https://github.com/watt-rs/watt")
     )]
     ModuleIsNotDefined { m: EcoString },
     #[error("module \"{m}\" is unknown and can't be imported.")]
@@ -318,7 +318,7 @@ pub enum TypeckError {
     #[diagnostic(
         code(typeck::unexpected_expr_in_resolution),
         help("please, file an issue on github."),
-        url("https://github.com/wattlanguage/watt")
+        url("https://github.com/watt-rs/watt")
     )]
     UnexpectedExprInResolution { expr: EcoString },
     #[error("arity missmatch. expected {expected}, got {got}")]

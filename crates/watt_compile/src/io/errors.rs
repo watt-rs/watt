@@ -12,7 +12,7 @@ pub enum IoError {
     #[diagnostic(
         code(io::failed_to_read),
         help("please, file an issue on github."),
-        url("https://github.com/wattlanguage/watt")
+        url("https://github.com/watt-rs/watt")
     )]
     FailedToRead { path: Utf8PathBuf },
     #[error("failed to write in file: {path}.")]
@@ -28,7 +28,7 @@ pub enum IoError {
     #[diagnostic(
         code(io::failed_to_read),
         help("please, file an issue on github."),
-        url("https://github.com/wattlanguage/watt")
+        url("https://github.com/watt-rs/watt")
     )]
     EntryError { path: Utf8PathBuf },
     #[error("failed to convert PathBuf of: {path} to Utf8PathBuf.")]
@@ -41,7 +41,7 @@ pub enum IoError {
     #[diagnostic(
         code(io::failed_to_convert_path_buf_to_utf8_path_buf),
         help("please, file an issue on github."),
-        url("https://github.com/wattlanguage/watt")
+        url("https://github.com/watt-rs/watt")
     )]
     FailedToStripPrefix {
         path: Utf8PathBuf,

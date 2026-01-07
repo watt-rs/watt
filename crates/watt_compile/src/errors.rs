@@ -13,14 +13,14 @@ pub enum CompileError {
     #[diagnostic(
         code(compile::cycle_path_has_wrong_length),
         help("please, file an issue on github."),
-        url("https://github.com/wattlanguage/watt")
+        url("https://github.com/watt-rs/watt")
     )]
     CyclePathHasWrongLength { len: usize },
     #[error("import cycle is exists, but cannot be found.")]
     #[diagnostic(
         code(compile::failed_to_find_import_cycle),
         help("please, file an issue on github."),
-        url("https://github.com/wattlanguage/watt")
+        url("https://github.com/watt-rs/watt")
     )]
     FailedToFindImportCycle,
 }
