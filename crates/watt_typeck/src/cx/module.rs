@@ -1,7 +1,11 @@
 /// Imports
 use crate::{
-    cx::package::PackageCx, inference::CoercionsSolver, resolve::resolve::ModuleResolver,
-    typ::typ::Module,
+    cx::package::PackageCx,
+    resolve::resolve::ModuleResolver,
+    typ::{
+        cx::{InferCx, TyCx},
+        typ::Module,
+    },
 };
 use ecow::EcoString;
 use watt_ast::ast::{self};
@@ -13,10 +17,10 @@ pub struct ModuleCx<'pkg, 'cx> {
     pub(crate) module_name: &'pkg EcoString,
     /// Resolver
     pub(crate) resolver: ModuleResolver,
+    /// Inference context
+    pub(crate) icx: InferCx<'cx>,
     /// Root package context
     pub(crate) package: &'cx PackageCx<'cx>,
-    /// Coercions solver
-    pub(crate) solver: CoercionsSolver,
     /// Last uid
     last_uid: usize,
 }
@@ -27,14 +31,15 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     pub fn new(
         module: &'pkg ast::Module,
         module_name: &'pkg EcoString,
+        tcx: &'cx mut TyCx,
         package: &'cx PackageCx<'pkg>,
     ) -> Self {
         Self {
             module,
             module_name,
             resolver: ModuleResolver::default(),
+            icx: InferCx::new(tcx),
             package,
-            solver: CoercionsSolver::default(),
             last_uid: 0,
         }
     }

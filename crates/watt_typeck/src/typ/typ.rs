@@ -1,9 +1,10 @@
 /// Imports
-use crate::{inference::hydrator::Hydrator, typ::def::ModuleDef};
+use crate::typ::{cx::InferCx, def::ModuleDef};
 use ecow::EcoString;
+use id_arena::Id;
 use indexmap::IndexMap;
 use miette::NamedSource;
-use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc, sync::Arc};
+use std::{collections::HashMap, fmt::Debug, sync::Arc};
 use watt_ast::ast::Publicity;
 use watt_common::address::Address;
 
@@ -55,6 +56,9 @@ pub enum PreludeType {
 /// - `location: Address`
 ///   The source code location binding
 ///
+/// - `name: EcoString`
+///   The identifier of the parameter
+///
 /// - `typ: Typ`
 ///   The type of the parameter. Determines what kind of values
 ///   can be passed to the function for this parameter. This is
@@ -63,6 +67,7 @@ pub enum PreludeType {
 #[derive(Clone, PartialEq)]
 pub struct Parameter {
     pub location: Address,
+    pub name: EcoString,
     pub typ: Typ,
 }
 
@@ -345,7 +350,7 @@ impl Debug for Module {
 
 /// Represents a generic arguments
 /// substitutions
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Default)]
 pub struct GenericArgs {
     /// Substitutions of generics,
     /// `Generic(id)` -> `Typ`
@@ -359,6 +364,22 @@ impl Debug for GenericArgs {
     }
 }
 
+/// Represents an inference type variable used during type checking
+/// and type inference.
+///
+/// An `TyVar` can either be unbound (not yet determined) or bound
+/// (linked to a concrete type `Typ`).
+///
+pub enum TyVar {
+    /// A type variable that has not yet been resolved.
+    /// During inference, this may later be linked to a concrete type.
+    Unbound,
+
+    /// A type variable that has already been resolved (substituted)
+    /// with a concrete type `Typ`.
+    Bound(Typ),
+}
+
 /// Represents a type in the language.
 ///
 /// `Typ` covers all possible types, including:
@@ -369,19 +390,19 @@ impl Debug for GenericArgs {
 /// - unbound types for type inference
 /// - generic type variables
 ///
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum Typ {
     /// Prelude primitive types
     Prelude(PreludeType),
     /// User-defined struct type with substitutions
-    Struct(Rc<RefCell<Struct>>, GenericArgs),
+    Struct(Id<Struct>, GenericArgs),
     /// User-defined enum type with substitutions
-    Enum(Rc<RefCell<Enum>>, GenericArgs),
+    Enum(Id<Enum>, GenericArgs),
     /// Function type
-    Function(Rc<Function>),
-    /// Unbound type with unique id used during type inference.
+    Function(Id<Function>, GenericArgs),
+    /// Inference type with unique id used during type inference.
     /// (id is used to link unbound `Typ` with substitution)
-    Unbound(usize),
+    Var(Id<TyVar>),
     /// Generic type variable with unique id used during type inference.
     /// (will be replaced with unbounds, during type instantiation)
     Generic(usize),
@@ -392,23 +413,23 @@ pub enum Typ {
 /// `Typ` methods implementation
 impl Typ {
     /// Retrieves fields and applies
-    /// substitution by hydrator.
+    /// substitution by `InferCx`.
     ///
     /// # Notes
     /// If `Typ` isn't `Typ::Struct(_, _)`, will
     /// return empty vector.
-    pub fn fields(&self, hydrator: &mut Hydrator) -> Vec<Field> {
+    pub fn fields(&self, icx: &mut InferCx) -> Vec<Field> {
         match self {
-            Typ::Struct(strct, generics) => strct
-                .borrow()
+            Typ::Struct(id, generics) => icx
+                .tcx
+                .struct_(*id)
                 .fields
-                .iter()
+                .clone()
+                .into_iter()
                 .map(|field| Field {
-                    location: field.location.clone(),
-                    name: field.name.clone(),
-                    typ: hydrator
-                        .hyd_m(generics.subtitutions.clone())
-                        .mk_ty(field.typ.clone()),
+                    location: field.location,
+                    name: field.name,
+                    typ: icx.mk_fresh_m(field.typ, generics.subtitutions.clone()),
                 })
                 .collect(),
 
@@ -417,30 +438,30 @@ impl Typ {
     }
 
     /// Retrieves variants and applies
-    /// substitution by hydrator.
+    /// substitution by `InferCx`.
     ///
     /// # Notes
-    /// If `Typ` isn't `Typ::Struct(_, _)`, will
+    /// If `Typ` isn't `Typ::Enum(_, _)`, will
     /// return empty vector.
-    pub fn variants(&self, hydrator: &mut Hydrator) -> Vec<EnumVariant> {
+    pub fn variants(&self, icx: &mut InferCx) -> Vec<EnumVariant> {
         // Matching self
         match self {
-            Typ::Enum(en, generics) => en
-                .borrow()
+            Typ::Enum(id, generics) => icx
+                .tcx
+                .enum_(*id)
                 .variants
-                .iter()
-                .map(|var| EnumVariant {
-                    location: var.location.clone(),
-                    name: var.name.clone(),
-                    fields: var
+                .clone()
+                .into_iter()
+                .map(|variant| EnumVariant {
+                    location: variant.location,
+                    name: variant.name,
+                    fields: variant
                         .fields
-                        .iter()
+                        .into_iter()
                         .map(|field| Field {
-                            location: field.location.clone(),
-                            name: field.name.clone(),
-                            typ: hydrator
-                                .hyd_m(generics.subtitutions.clone())
-                                .mk_ty(field.typ.clone()),
+                            location: field.location,
+                            name: field.name,
+                            typ: icx.mk_fresh_m(field.typ, generics.subtitutions.clone()),
                         })
                         .collect(),
                 })
@@ -448,46 +469,103 @@ impl Typ {
             _ => vec![],
         }
     }
-}
 
-/// Debug implementation for `Typ`
-///
-/// Provides a human-readable representation of the type for debugging.
-impl Debug for Typ {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    /// Retrieves params and applies
+    /// substitution by `InferCx`.
+    ///
+    /// # Notes
+    /// If `Typ` isn't `Typ::Function(_, _)`, will
+    /// return empty vector.
+    ///
+    pub fn params(&self, icx: &mut InferCx) -> Vec<Parameter> {
+        // Matching self
         match self {
-            Self::Prelude(prelude) => write!(f, "{prelude:?}"),
-            Self::Struct(custom, args) => {
-                write!(
-                    f,
-                    "{}{:?}",
-                    custom.borrow().name,
-                    args.subtitutions.values()
+            Typ::Function(id, generics) => icx
+                .tcx
+                .function(*id)
+                .params
+                .clone()
+                .into_iter()
+                .map(|param| Parameter {
+                    location: param.location.clone(),
+                    name: param.name.clone(),
+                    typ: icx.mk_fresh_m(param.typ, generics.subtitutions.clone()),
+                })
+                .collect(),
+
+            _ => vec![],
+        }
+    }
+
+    /// Retrieves return type and applies
+    /// substitution by `InferCx`.
+    ///
+    /// # Notes
+    /// If `Typ` isn't `Typ::Function(_, _)`, will
+    /// return Typ::Unit
+    ///
+    pub fn ret(&self, icx: &mut InferCx) -> Typ {
+        // Matching self
+        match self {
+            Typ::Function(id, generics) => icx.mk_fresh_m(
+                icx.tcx.function(*id).ret.clone(),
+                generics.subtitutions.clone(),
+            ),
+            _ => Typ::Unit,
+        }
+    }
+
+    /// Pretty prints type
+    ///
+    /// # Parameters
+    /// - `icx: &mut InferCx`
+    ///   Inference context used
+    ///   to get struct, enum or function info.
+    ///
+    pub fn pretty(&self, icx: &mut InferCx) -> String {
+        // Matching self
+        match icx.apply(self.clone()) {
+            Typ::Prelude(ty) => format!("{ty:?}"),
+            Typ::Struct(id, generic_args) => {
+                format!(
+                    "{}[{}]",
+                    icx.tcx.struct_(id).name.clone(),
+                    generic_args
+                        .subtitutions
+                        .values()
+                        .cloned()
+                        .map(|t| t.pretty(icx))
+                        .collect::<Vec<String>>()
+                        .join(", ")
                 )
             }
-            Self::Enum(custom_enum, args) => {
-                write!(
-                    f,
-                    "{}{:?}",
-                    custom_enum.borrow().name,
-                    args.subtitutions.values()
+            Typ::Enum(id, generic_args) => {
+                format!(
+                    "{}[{}]",
+                    icx.tcx.enum_(id).name.clone(),
+                    generic_args
+                        .subtitutions
+                        .values()
+                        .cloned()
+                        .map(|t| t.pretty(icx))
+                        .collect::<Vec<String>>()
+                        .join(", ")
                 )
             }
-            Self::Function(function) => {
-                write!(
-                    f,
-                    "{:?} -> {:?}",
-                    function
-                        .params
+            it @ Typ::Function(_, _) => {
+                format!(
+                    "({}) -> {}",
+                    it.params(icx)
                         .iter()
-                        .map(|p| p.typ.clone())
-                        .collect::<Vec<Typ>>(),
-                    function.ret
+                        .map(|p| p.typ.pretty(icx))
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                    it.ret(icx).pretty(icx)
                 )
             }
-            Self::Unbound(id) => write!(f, "u{}", id),
-            Self::Generic(id) => write!(f, "g{}", id),
-            Self::Unit => write!(f, "Unit"),
+            Typ::Var(id) => format!("?{}", id.index()),
+            Typ::Generic(id) => format!("^{id}"),
+            Typ::Unit => format!("Unit"),
         }
     }
 }

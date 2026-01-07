@@ -3,17 +3,16 @@ use crate::{
     cx::module::ModuleCx,
     errors::{TypeckError, TypeckRelated},
     ex::ExMatchCx,
-    inference::coercion::Coercion,
+    inference::coercion::{self, Coercion},
     typ::{
         def::{ModuleDef, TypeDef},
         res::Res,
-        typ::{Function, Parameter, PreludeType, Typ},
+        typ::{Function, GenericArgs, Parameter, PreludeType, Typ},
     },
     warnings::TypeckWarning,
 };
 use ecow::EcoString;
 use indexmap::IndexMap;
-use std::rc::Rc;
 use watt_ast::ast::{
     self, BinaryOp, Block, Case, Either, ElseBranch, Expression, Pattern, Publicity, TypePath,
     UnaryOp,
@@ -37,7 +36,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// # Returns
     /// -`Typ::String`
     ///
-    fn infer_binary_concat(&self, location: Address, left: Typ, right: Typ) -> Typ {
+    fn infer_binary_concat(&mut self, location: Address, left: Typ, right: Typ) -> Typ {
         // Checking prelude types
         match left {
             Typ::Prelude(PreludeType::String) => match right {
@@ -45,16 +44,16 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 _ => bail!(TypeckError::InvalidBinaryOp {
                     src: self.module.source.clone(),
                     span: location.span.into(),
-                    a: left,
-                    b: right,
+                    a: left.pretty(&mut self.icx),
+                    b: right.pretty(&mut self.icx),
                     op: BinaryOp::Concat
                 }),
             },
             _ => bail!(TypeckError::InvalidBinaryOp {
                 src: self.module.source.clone(),
                 span: location.span.into(),
-                a: left,
-                b: right,
+                a: left.pretty(&mut self.icx),
+                b: right.pretty(&mut self.icx),
                 op: BinaryOp::Concat
             }),
         }
@@ -79,7 +78,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// Numeric operators automatically promote `Int × Float` or `Float × Int` to `Float`.
     ///
     fn infer_binary_arithmetical(
-        &self,
+        &mut self,
         location: Address,
         left: Typ,
         op: BinaryOp,
@@ -93,8 +92,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 _ => bail!(TypeckError::InvalidBinaryOp {
                     src: self.module.source.clone(),
                     span: location.span.into(),
-                    a: left,
-                    b: right,
+                    a: left.pretty(&mut self.icx),
+                    b: right.pretty(&mut self.icx),
                     op
                 }),
             },
@@ -104,16 +103,16 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 _ => bail!(TypeckError::InvalidBinaryOp {
                     src: self.module.source.clone(),
                     span: location.span.into(),
-                    a: left,
-                    b: right,
+                    a: left.pretty(&mut self.icx),
+                    b: right.pretty(&mut self.icx),
                     op
                 }),
             },
             _ => bail!(TypeckError::InvalidBinaryOp {
                 src: self.module.source.clone(),
                 span: location.span.into(),
-                a: left,
-                b: right,
+                a: left.pretty(&mut self.icx),
+                b: right.pretty(&mut self.icx),
                 op
             }),
         }
@@ -134,7 +133,13 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// # Returns
     /// - `Typ::Bool`
     ///
-    fn infer_binary_logical(&self, location: Address, left: Typ, op: BinaryOp, right: Typ) -> Typ {
+    fn infer_binary_logical(
+        &mut self,
+        location: Address,
+        left: Typ,
+        op: BinaryOp,
+        right: Typ,
+    ) -> Typ {
         // Checking prelude types
         match left {
             Typ::Prelude(PreludeType::Bool) => match right {
@@ -142,16 +147,16 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 _ => bail!(TypeckError::InvalidBinaryOp {
                     src: self.module.source.clone(),
                     span: location.span.into(),
-                    a: left,
-                    b: right,
+                    a: left.pretty(&mut self.icx),
+                    b: right.pretty(&mut self.icx),
                     op
                 }),
             },
             _ => bail!(TypeckError::InvalidBinaryOp {
                 src: self.module.source.clone(),
                 span: location.span.into(),
-                a: left,
-                b: right,
+                a: left.pretty(&mut self.icx),
+                b: right.pretty(&mut self.icx),
                 op
             }),
         }
@@ -172,7 +177,13 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// # Returns
     /// - `Typ::Bool`
     ///
-    fn infer_binary_compare(&self, location: Address, left: Typ, op: BinaryOp, right: Typ) -> Typ {
+    fn infer_binary_compare(
+        &mut self,
+        location: Address,
+        left: Typ,
+        op: BinaryOp,
+        right: Typ,
+    ) -> Typ {
         // Checking prelude types
         match left {
             Typ::Prelude(PreludeType::Int) | Typ::Prelude(PreludeType::Float) => match right {
@@ -182,16 +193,16 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 _ => bail!(TypeckError::InvalidBinaryOp {
                     src: self.module.source.clone(),
                     span: location.span.into(),
-                    a: left,
-                    b: right,
+                    a: left.pretty(&mut self.icx),
+                    b: right.pretty(&mut self.icx),
                     op
                 }),
             },
             _ => bail!(TypeckError::InvalidBinaryOp {
                 src: self.module.source.clone(),
                 span: location.span.into(),
-                a: left,
-                b: right,
+                a: left.pretty(&mut self.icx),
+                b: right.pretty(&mut self.icx),
                 op
             }),
         }
@@ -301,15 +312,15 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 (a, b) => bail!(TypeckError::CouldNotCast {
                     src: self.module.source.clone(),
                     span: location.span.into(),
-                    a: Typ::Prelude(a),
-                    b: Typ::Prelude(b)
+                    a: Typ::Prelude(a).pretty(&mut self.icx),
+                    b: Typ::Prelude(b).pretty(&mut self.icx)
                 }),
             },
             (a, b) => bail!(TypeckError::InvalidAsOp {
                 src: self.module.source.clone(),
                 span: location.span.into(),
-                a,
-                b
+                a: a.pretty(&mut self.icx),
+                b: b.pretty(&mut self.icx)
             }),
         }
     }
@@ -347,7 +358,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             _ => bail!(TypeckError::InvalidUnaryOp {
                 src: self.module.source.clone(),
                 span: location.span.into(),
-                t: inferred_value,
+                t: inferred_value.pretty(&mut self.icx),
                 op
             }),
         };
@@ -361,7 +372,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 _ => bail!(TypeckError::InvalidUnaryOp {
                     src: self.module.source.clone(),
                     span: location.span.into(),
-                    t: inferred_value,
+                    t: inferred_value.pretty(&mut self.icx),
                     op
                 }),
             },
@@ -371,7 +382,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 _ => bail!(TypeckError::InvalidUnaryOp {
                     src: self.module.source.clone(),
                     span: location.span.into(),
-                    t: inferred_value,
+                    t: inferred_value.pretty(&mut self.icx),
                     op
                 }),
             },
@@ -458,7 +469,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     ModuleDef::Function(f) => {
                         match f.publicity {
                             // If constant is public, we resolved field
-                            Publicity::Public => Res::Value(Typ::Function(f.value.clone())),
+                            Publicity::Public => {
+                                Res::Value(Typ::Function(f.value.clone(), GenericArgs::default()))
+                            }
                             // Else, raising `module field is private`
                             _ => bail!(TypeckError::ModuleFieldIsPrivate {
                                 src: self.module.source.clone(),
@@ -509,7 +522,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     ) -> Res {
         // Finding field
         match ty
-            .variants(&mut self.solver.hydrator)
+            .variants(&mut self.icx)
             .iter()
             .find(|f| f.name == field_name)
         {
@@ -551,7 +564,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     ) -> Res {
         // Finding field
         match ty
-            .fields(&mut self.solver.hydrator)
+            .fields(&mut self.icx)
             .iter()
             .find(|f| f.name == field_name)
         {
@@ -598,25 +611,17 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 self.infer_module_field_access(name.clone(), field_location, field_name)
             }
             // Enum field access
-            Res::Custom(TypeDef::Enum(en)) => {
-                let instantiated = Typ::Enum(
-                    en.clone(),
-                    self.solver
-                        .hydrator
-                        .hyd()
-                        .mk_generics(&en.borrow().generics, IndexMap::new()),
-                );
-                self.infer_enum_field_access(
-                    instantiated,
-                    en.borrow().name.clone(),
-                    field_location,
-                    field_name,
-                )
+            Res::Custom(TypeDef::Enum(id)) => {
+                let enum_ = self.icx.tcx.enum_(*id);
+                let generics = enum_.generics.clone();
+                let name = enum_.name.clone();
+                let instantiated = Typ::Enum(id.clone(), self.icx.mk_fresh_generics(&generics));
+                self.infer_enum_field_access(instantiated, name, field_location, field_name)
             }
             // Type field access
-            Res::Value(it @ Typ::Struct(ty, _)) => self.infer_struct_field_access(
+            Res::Value(it @ Typ::Struct(id, _)) => self.infer_struct_field_access(
                 it.clone(),
-                ty.borrow().name.clone(),
+                self.icx.tcx.struct_(*id).name.clone(),
                 field_location,
                 field_name,
             ),
@@ -694,43 +699,55 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
 
         match function.clone() {
             // Custom type
-            Res::Custom(TypeDef::Struct(ty)) => {
-                self.ensure_arity(location, ty.borrow().fields.len(), args.len());
+            Res::Custom(TypeDef::Struct(id)) => {
+                let struct_ = self.icx.tcx.struct_(id);
+                let generics = struct_.generics.clone();
+                self.ensure_arity(location, struct_.fields.len(), args.len());
 
-                let instantiated = Typ::Struct(
-                    ty.clone(),
-                    self.solver
-                        .hydrator
-                        .hyd()
-                        .mk_generics(&ty.borrow().generics, IndexMap::new()),
-                );
+                let instantiated = Typ::Struct(id, self.icx.mk_fresh_generics(&generics));
 
                 instantiated
-                    .fields(&mut self.solver.hydrator)
+                    .fields(&mut self.icx)
                     .into_iter()
                     .zip(args)
                     .for_each(|(p, a)| {
-                        self.solver
-                            .coerce(Coercion::Eq((p.location, p.typ), (a.0, a.1)));
+                        coercion::coerce(
+                            &mut self.icx,
+                            Coercion::Eq((p.location, p.typ), (a.0, a.1)),
+                        );
                     });
 
                 Res::Value(instantiated)
             }
             // Value
-            Res::Value(Typ::Function(f)) => {
-                self.ensure_arity(location, f.params.len(), args.len());
-                let f = self.solver.hydrator.hyd().mk_function(f);
-                f.params.iter().cloned().zip(args).for_each(|(p, a)| {
-                    self.solver
-                        .coerce(Coercion::Eq((p.location, p.typ), (a.0, a.1)));
-                });
-                Res::Value(f.ret.clone())
+            Res::Value(Typ::Function(id, generic_args)) => {
+                let function = self.icx.tcx.function(id);
+                let generics = function.generics.clone();
+                self.ensure_arity(location, function.params.len(), args.len());
+
+                let instantiated = Typ::Function(
+                    id,
+                    self.icx
+                        .mk_fresh_generics_m(&generics, generic_args.subtitutions),
+                );
+
+                instantiated
+                    .params(&mut self.icx)
+                    .into_iter()
+                    .zip(args)
+                    .for_each(|(p, a)| {
+                        coercion::coerce(
+                            &mut self.icx,
+                            Coercion::Eq((p.location, p.typ), (a.0, a.1)),
+                        );
+                    });
+
+                Res::Value(instantiated.ret(&mut self.icx))
             }
             // Variant
             Res::Variant(en, variant) => {
                 variant.fields.iter().cloned().zip(args).for_each(|(p, a)| {
-                    self.solver
-                        .coerce(Coercion::Eq((p.location, p.typ), (a.0, a.1)));
+                    coercion::coerce(&mut self.icx, Coercion::Eq((p.location, p.typ), (a.0, a.1)));
                 });
 
                 Res::Value(en)
@@ -815,9 +832,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             .into_iter()
             .map(|p| {
                 (
-                    p.name,
+                    p.name.clone(),
                     Parameter {
                         location: p.location,
+                        name: p.name,
                         typ: self.infer_type_annotation(p.typ),
                     },
                 )
@@ -832,6 +850,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             params: params.clone().into_values().collect(),
             ret: ret.clone(),
         };
+        let id = self.icx.tcx.insert_function(function);
 
         // pushing new scope
         self.resolver.push_rib();
@@ -846,14 +865,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Either::Left(block) => (block.location.clone(), self.infer_block(block)),
             Either::Right(expr) => (expr.location(), self.infer_expr(*expr)),
         };
-        self.solver.coerce(Coercion::Eq(
-            (location, ret),
-            (block_location, inferred_block),
-        ));
+        coercion::coerce(
+            &mut self.icx,
+            Coercion::Eq((location, ret), (block_location, inferred_block)),
+        );
         self.resolver.pop_rib();
 
         // result
-        Typ::Function(Rc::new(function))
+        Typ::Function(id, GenericArgs::default())
     }
 
     /// Performs semantic/type analysis of a single match arm pattern.
@@ -888,10 +907,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                         // If types aren't equal
                         if inferred_what != *en {
                             bail!(TypeckError::TypesMissmatch {
-                                src: self.module.source.clone(),
-                                span: case.address.span.clone().into(),
-                                expected: en.clone(),
-                                got: inferred_what.clone()
+                                related: vec![TypeckRelated::Here {
+                                    src: case.address.source.clone(),
+                                    span: case.address.span.clone().into()
+                                }],
+                                expected: en.clone().pretty(&mut self.icx),
+                                got: inferred_what.clone().pretty(&mut self.icx)
                             });
                         }
                         // If types equal, checking fields existence
@@ -930,10 +951,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 let typ = Typ::Prelude(PreludeType::Int);
                 if inferred_what != typ {
                     bail!(TypeckError::TypesMissmatch {
-                        src: self.module.source.clone(),
-                        span: case.address.span.clone().into(),
-                        expected: inferred_what,
-                        got: typ
+                        related: vec![TypeckRelated::Here {
+                            src: case.address.source.clone(),
+                            span: case.address.span.clone().into()
+                        }],
+                        expected: inferred_what.pretty(&mut self.icx),
+                        got: typ.pretty(&mut self.icx)
                     })
                 }
             }
@@ -941,10 +964,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 let typ = Typ::Prelude(PreludeType::Float);
                 if inferred_what != typ {
                     bail!(TypeckError::TypesMissmatch {
-                        src: self.module.source.clone(),
-                        span: case.address.span.clone().into(),
-                        expected: inferred_what,
-                        got: typ
+                        related: vec![TypeckRelated::Here {
+                            src: case.address.source.clone(),
+                            span: case.address.span.clone().into()
+                        }],
+                        expected: inferred_what.pretty(&mut self.icx),
+                        got: typ.pretty(&mut self.icx)
                     })
                 }
             }
@@ -952,10 +977,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 let typ = Typ::Prelude(PreludeType::String);
                 if inferred_what != typ {
                     bail!(TypeckError::TypesMissmatch {
-                        src: self.module.source.clone(),
-                        span: case.address.span.clone().into(),
-                        expected: inferred_what,
-                        got: typ
+                        related: vec![TypeckRelated::Here {
+                            src: case.address.source.clone(),
+                            span: case.address.span.clone().into()
+                        }],
+                        expected: inferred_what.pretty(&mut self.icx),
+                        got: typ.pretty(&mut self.icx)
                     })
                 }
             }
@@ -963,10 +990,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 let typ = Typ::Prelude(PreludeType::Bool);
                 if inferred_what != typ {
                     bail!(TypeckError::TypesMissmatch {
-                        src: self.module.source.clone(),
-                        span: case.address.span.clone().into(),
-                        expected: inferred_what,
-                        got: typ
+                        related: vec![TypeckRelated::Here {
+                            src: case.address.source.clone(),
+                            span: case.address.span.clone().into()
+                        }],
+                        expected: inferred_what.pretty(&mut self.icx),
+                        got: typ.pretty(&mut self.icx)
                     })
                 }
             }
@@ -980,10 +1009,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                         // If types aren't equal
                         if inferred_what != *en {
                             bail!(TypeckError::TypesMissmatch {
-                                src: self.module.source.clone(),
-                                span: case.address.span.clone().into(),
-                                expected: en.clone(),
-                                got: inferred_what.clone()
+                                related: vec![TypeckRelated::Here {
+                                    src: case.address.source.clone(),
+                                    span: case.address.span.clone().into()
+                                }],
+                                expected: en.pretty(&mut self.icx),
+                                got: inferred_what.pretty(&mut self.icx)
                             });
                         }
                     }
@@ -1052,7 +1083,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
         // solving type
         let ty = to_unify.first().map_or(Typ::Unit, |it| it.1.clone());
-        self.solver.coerce(Coercion::Same(to_unify));
+        coercion::coerce(&mut self.icx, Coercion::Same(to_unify));
         let checked = ExMatchCx::check(self, inferred_what, cases);
         // checking all cases covered
         if checked {
@@ -1153,7 +1184,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         let ty = to_unify.first().map_or(Typ::Unit, |it| it.1.clone());
         // checking else reached
         if else_reached {
-            self.solver.coerce(Coercion::Same(to_unify));
+            coercion::coerce(&mut self.icx, Coercion::Same(to_unify));
             ty
         } else {
             Typ::Unit
@@ -1190,9 +1221,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                         span: location.span.into()
                     }
                 );
-                Typ::Unbound(self.solver.hydrator.fresh())
+                Typ::Var(self.icx.fresh())
             }
-            Expression::Panic { .. } => Typ::Unbound(self.solver.hydrator.fresh()),
+            Expression::Panic { .. } => Typ::Var(self.icx.fresh()),
             Expression::Bin {
                 location,
                 left,
@@ -1246,6 +1277,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             } => self.infer_if(location, *logical, body, else_branches),
         };
         // Applying substs
-        self.solver.hydrator.apply(result)
+        self.icx.apply(result)
     }
 }

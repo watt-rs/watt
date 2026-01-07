@@ -1,16 +1,24 @@
 /// Imports
-use tracing::level_filters::LevelFilter;
-use tracing_subscriber::fmt::format::FmtSpan;
+use tracing_subscriber::{
+    EnvFilter,
+    fmt::{self, format::FmtSpan},
+    layer::SubscriberExt,
+    util::SubscriberInitExt,
+};
 
 /// Initializes logging
 pub fn init() {
-    tracing_subscriber::fmt()
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("off"));
+    let fmt_layer = fmt::layer()
         .with_span_events(FmtSpan::ENTER)
         .with_target(false)
         .with_level(true)
         .with_line_number(true)
-        .with_max_level(LevelFilter::TRACE)
         .pretty()
-        .compact()
+        .compact();
+
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(fmt_layer)
         .init();
 }

@@ -8,7 +8,10 @@ use ecow::EcoString;
 use std::collections::HashMap;
 use tracing::info;
 use watt_common::{package::DraftPackage, rc_ptr::RcPtr};
-use watt_typeck::{cx::root::RootCx, typ::typ::Module};
+use watt_typeck::{
+    cx::root::RootCx,
+    typ::{cx::TyCx, typ::Module},
+};
 
 /// Project compiler
 pub struct ProjectCompiler<'out> {
@@ -48,14 +51,20 @@ impl<'out> ProjectCompiler<'out> {
         // Compiling
         info!("Compiling project...");
         // Context
-        let mut root_cx = RootCx {
-            modules: HashMap::new(),
-        };
+        let mut root_cx = RootCx::default();
+        // Types context
+        let mut tcx = TyCx::default();
         // Compiling packages
         let mut completed_packages = Vec::new();
         for package in &self.packages {
             completed_packages.push(
-                PackageCompiler::new(package.clone(), self.outcome.clone(), &mut root_cx).compile(),
+                PackageCompiler::new(
+                    package.clone(),
+                    self.outcome.clone(),
+                    &mut root_cx,
+                    &mut tcx,
+                )
+                .compile(),
             );
         }
         // Writing prelude

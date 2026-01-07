@@ -62,6 +62,24 @@ export function test3(v) {
     return annotated(v)
 }
 
+export function b(a) {
+    return a
+}
+
+export function test4() {
+    b("hello");
+    b(123);
+}
+
+export function c(a) {
+    return a
+}
+
+export function test5() {
+    let a = c
+    a(3);
+}
+
 export const Result = {
     Ok: (value) => ({
         $meta: "Enum",
@@ -77,7 +95,7 @@ export const Result = {
     })
 };
 
-export function test4() {
+export function test6() {
     let a = Result.Ok(3)
     a = Result.Error(false)
     let b = a

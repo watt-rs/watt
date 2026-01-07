@@ -5,7 +5,6 @@ use crate::{
 };
 use camino::{Utf8Path, Utf8PathBuf};
 use ecow::EcoString;
-use tracing::{error, info};
 use miette::NamedSource;
 use petgraph::{Direction, prelude::DiGraphMap};
 use std::{
@@ -13,6 +12,7 @@ use std::{
     fs,
     sync::Arc,
 };
+use tracing::{error, info};
 use watt_ast::ast::{self};
 use watt_common::{bail, package::DraftPackage, rc_ptr::RcPtr};
 use watt_gen::gen_module;
@@ -21,7 +21,7 @@ use watt_lint::lint::LintCx;
 use watt_parse::parser::Parser;
 use watt_typeck::{
     cx::{module::ModuleCx, package::PackageCx, root::RootCx},
-    typ::typ::Module,
+    typ::{cx::TyCx, typ::Module},
 };
 
 /// Completed module
@@ -48,15 +48,23 @@ pub struct PackageCompiler<'cx> {
     outcome: Utf8PathBuf,
     /// Package typeck cx
     package: PackageCx<'cx>,
+    /// Types context
+    tcx: &'cx mut TyCx,
 }
 
 /// Package compiler implementation
 impl<'cx> PackageCompiler<'cx> {
     /// Creates new package compiler
-    pub fn new(draft: DraftPackage, outcome: Utf8PathBuf, root: &'cx mut RootCx) -> Self {
+    pub fn new(
+        draft: DraftPackage,
+        outcome: Utf8PathBuf,
+        root: &'cx mut RootCx,
+        tcx: &'cx mut TyCx,
+    ) -> Self {
         Self {
             outcome,
             package: PackageCx { draft, root },
+            tcx,
         }
     }
 
@@ -202,7 +210,7 @@ impl<'cx> PackageCompiler<'cx> {
         for name in sorted {
             info!("Analyzing module {name}");
             let module = loaded_modules.get(name).unwrap();
-            let mut analyzer = ModuleCx::new(module, name, &self.package);
+            let mut analyzer = ModuleCx::new(module, name, self.tcx, &self.package);
             let analyzed_module = RcPtr::new(analyzer.analyze());
             self.package
                 .root

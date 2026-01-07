@@ -18,7 +18,4 @@ pub enum CliError {
     #[error("runtime {rt} is invalid.")]
     #[diagnostic(code(pkg::invalid_runtime))]
     InvalidRuntime { rt: String },
-    #[error("package type {ty} is invalid.")]
-    #[diagnostic(code(pkg::invalid_pkg_type))]
-    InvalidPackageType { ty: String },
 }

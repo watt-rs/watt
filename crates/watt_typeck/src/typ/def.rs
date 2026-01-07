@@ -1,6 +1,7 @@
 /// Imports
 use crate::typ::typ::{Enum, Function, Struct, Typ, WithPublicity};
-use std::{cell::RefCell, fmt::Debug, rc::Rc};
+use id_arena::Id;
+use std::fmt::Debug;
 
 /// Represents a module definition for a resolver.
 ///
@@ -26,7 +27,7 @@ pub enum ModuleDef {
     /// User-defined type
     Type(WithPublicity<TypeDef>),
     /// Function
-    Function(WithPublicity<Rc<Function>>),
+    Function(WithPublicity<Id<Function>>),
     /// Constant with fully inferred type
     Const(WithPublicity<Typ>),
 }
@@ -46,16 +47,16 @@ impl Debug for ModuleDef {
 ///
 /// # Variants
 ///
-/// - `Enum(Rc<RefCell<Enum>>)`
+/// - `Enum(Id<Enum>)`
 ///   Represents enum type definition
 ///
-/// - `Struct(Rc<RefCell<Struct>>)`
+/// - `Struct(Id<Struct>)`
 ///   Represents struct type definition
 ///
 #[derive(Clone, PartialEq)]
 pub enum TypeDef {
-    Enum(Rc<RefCell<Enum>>),
-    Struct(Rc<RefCell<Struct>>),
+    Enum(Id<Enum>),
+    Struct(Id<Struct>),
 }
 
 /// Debug implementation

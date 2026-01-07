@@ -1,17 +1,14 @@
 /// Imports
 use crate::{
     cx::module::ModuleCx,
-    inference::coercion::Coercion,
+    inference::coercion::{self, Coercion},
     typ::{
-        def::ModuleDef,
         res::Res,
-        typ::{Function, Parameter, Typ, WithPublicity},
+        typ::{Parameter, Typ},
     },
 };
 use ecow::EcoString;
-use indexmap::IndexMap;
-use std::rc::Rc;
-use watt_ast::ast::{self, Block, Either, Expression, FnDeclaration, Publicity, TypePath};
+use watt_ast::ast::{Block, Either, Expression, FnDeclaration};
 use watt_common::address::Address;
 
 /// Late declaration analysis pass for the module.
@@ -49,58 +46,21 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     fn late_analyze_fn(
         &mut self,
         location: Address,
-        publicity: Publicity,
         name: EcoString,
-        params: Vec<ast::Parameter>,
-        ret_type: Option<TypePath>,
         body: Either<Block, Expression>,
     ) {
         // Requesting function
-        let f = match self.resolver.resolve(&location, &name) {
-            Res::Value(Typ::Function(f)) => f,
+        let id = match self.resolver.resolve(&location, &name) {
+            Res::Value(Typ::Function(f, _)) => f,
             _ => unreachable!(),
         };
+        let function = self.icx.tcx.function_mut(id);
+        let params: Vec<Parameter> = function.params.clone();
+        let ret = function.ret.clone();
+        let generics = function.generics.clone();
 
         // Pushing generics
-        self.solver
-            .hydrator
-            .generics
-            .re_push_scope(f.generics.clone());
-
-        // inferring return type
-        let ret = ret_type.map_or(Typ::Unit, |t| self.infer_type_annotation(t));
-
-        // inferred params
-        let params = params
-            .into_iter()
-            .map(|p| {
-                (
-                    p.name,
-                    Parameter {
-                        location: p.location,
-                        typ: self.infer_type_annotation(p.typ),
-                    },
-                )
-            })
-            .collect::<IndexMap<EcoString, Parameter>>();
-
-        // creating and defining function
-        let function = Function {
-            location: location.clone(),
-            name: name.clone(),
-            generics: f.generics.clone(),
-            params: params.clone().into_values().collect(),
-            ret: ret.clone(),
-        };
-        self.resolver.define_module(
-            &location,
-            &name,
-            ModuleDef::Function(WithPublicity {
-                publicity,
-                value: Rc::new(function),
-            }),
-            true,
-        );
+        self.icx.generics.re_push_scope(generics.clone());
 
         // pushing new scope
         self.resolver.push_rib();
@@ -108,7 +68,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // defining params in new scope
         params.iter().for_each(|p| {
             self.resolver
-                .define_local(&location, p.0, p.1.typ.clone(), false)
+                .define_local(&location, &p.name, p.typ.clone(), false)
         });
 
         // inferring body
@@ -116,14 +76,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Either::Left(block) => (block.location.clone(), self.infer_block(block)),
             Either::Right(expr) => (expr.location(), self.infer_expr(expr)),
         };
-        self.solver.coerce(Coercion::Eq(
-            (location, ret),
-            (block_location, inferred_block),
-        ));
+        coercion::coerce(
+            &mut self.icx,
+            Coercion::Eq((location, ret), (block_location, inferred_block)),
+        );
         self.resolver.pop_rib();
 
         // Popping generics
-        self.solver.hydrator.generics.pop_scope();
+        self.icx.generics.pop_scope();
     }
 
     /// Dispatches a function declaration to the corresponding late analysis routine.
@@ -143,15 +103,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     pub fn late_analyze_fn_decl(&mut self, decl: FnDeclaration) {
         if let FnDeclaration::Function {
             location,
-            publicity,
             name,
-            params,
-            typ,
             body,
             ..
         } = decl
         {
-            self.late_analyze_fn(location, publicity, name, params, typ, body)
+            self.late_analyze_fn(location, name, body)
         }
     }
 }
