@@ -2,7 +2,6 @@
 use crate::typ::{
     def::{ModuleDef, TypeDef},
     res::Res,
-    typ::Typ,
 };
 use ecow::EcoString;
 use miette::{Diagnostic, NamedSource, SourceSpan};
@@ -12,8 +11,6 @@ use watt_ast::ast::{BinaryOp, UnaryOp};
 
 /// For errors
 /// todo: reimplement using derive.
-unsafe impl Send for Typ {}
-unsafe impl Sync for Typ {}
 unsafe impl Send for Res {}
 unsafe impl Sync for Res {}
 unsafe impl Send for ModuleDef {}
@@ -47,7 +44,7 @@ pub enum TypeckRelated {
         src: Arc<NamedSource<String>>,
         #[label()]
         span: SourceSpan,
-        t: Typ,
+        t: String,
     },
     #[error("with this.")]
     #[diagnostic(severity(hint))]
@@ -87,8 +84,8 @@ pub enum TypeckError {
     CouldNotUnify {
         #[related]
         related: Vec<TypeckRelated>,
-        t1: Typ,
-        t2: Typ,
+        t1: String,
+        t2: String,
     },
     #[error("could not use value {v} as type.")]
     #[diagnostic(code(typeck::could_not_use_value_as_type))]
@@ -117,8 +114,8 @@ pub enum TypeckError {
         src: Arc<NamedSource<String>>,
         #[label("this is incorrect.")]
         span: SourceSpan,
-        a: Typ,
-        b: Typ,
+        a: String,
+        b: String,
         op: BinaryOp,
     },
     #[error("could not use `as` with types {a:?} & {b:?}.")]
@@ -131,8 +128,8 @@ pub enum TypeckError {
         src: Arc<NamedSource<String>>,
         #[label("this is incorrect.")]
         span: SourceSpan,
-        a: Typ,
-        b: Typ,
+        a: String,
+        b: String,
     },
     #[error("could not cast {a:?} to {b:?}.")]
     #[diagnostic(code(typeck::could_not_cast))]
@@ -141,8 +138,8 @@ pub enum TypeckError {
         src: Arc<NamedSource<String>>,
         #[label("this is incorrect.")]
         span: SourceSpan,
-        a: Typ,
-        b: Typ,
+        a: String,
+        b: String,
     },
     #[error("invalid unary operation {op:?} with type {t:?}.")]
     #[diagnostic(code(typeck::invalid_unary_op))]
@@ -151,7 +148,7 @@ pub enum TypeckError {
         src: Arc<NamedSource<String>>,
         #[label("this is incorrect.")]
         span: SourceSpan,
-        t: Typ,
+        t: String,
         op: UnaryOp,
     },
     #[error("field \"{field}\" is not defined in type \"{t}\".")]
@@ -289,8 +286,8 @@ pub enum TypeckError {
         src: Arc<NamedSource<String>>,
         #[label("types missmatched here.")]
         span: SourceSpan,
-        expected: Typ,
-        got: Typ,
+        expected: String,
+        got: String,
     },
     #[error("wrong unwrap pattern. expected variant of enum, got {got:?}")]
     #[diagnostic(code(typeck::wrong_unwrap_pattern))]
@@ -339,8 +336,8 @@ pub enum TypeckError {
     TypesRecursion {
         #[related]
         related: Vec<TypeckRelated>,
-        t1: Typ,
-        t2: Typ,
+        t1: String,
+        t2: String,
     },
 }
 

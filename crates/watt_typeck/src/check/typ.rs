@@ -70,7 +70,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             "unit" => self.ensure_no_generics(&location, generics.len(), || Typ::Unit),
 
             // User-defined types
-            _ => match self.solver.hydrator.generics.get(&name) {
+            _ => match self.icx.generics.get(&name) {
                 Some(id) => Typ::Generic(id),
                 None => match self.resolver.resolve_type(&location, &name) {
                     TypeDef::Enum(en) => self.instantiate_enum_type(&location, en, generics),
@@ -141,7 +141,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 .collect(),
             ret: ret.map_or(Typ::Unit, |t| self.infer_type_annotation(*t)),
         };
-        Typ::Function(self.tcx.insert_function(function), GenericArgs::default())
+        Typ::Function(
+            self.icx.tcx.insert_function(function),
+            GenericArgs::default(),
+        )
     }
 
     /// Instantiates an enum type with its generic parameters.
@@ -151,7 +154,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         id: Id<Enum>,
         generics: Vec<TypePath>,
     ) -> Typ {
-        let generic_params = self.tcx.enum_(id).generics.clone();
+        let generic_params = self.icx.tcx.enum_(id).generics.clone();
         self.check_generic_params_arity(location, generic_params.len(), generics.len());
 
         let substitutions = GenericArgs {
@@ -175,7 +178,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         id: Id<Struct>,
         generics: Vec<TypePath>,
     ) -> Typ {
-        let generic_params = self.tcx.struct_(id).generics.clone();
+        let generic_params = self.icx.tcx.struct_(id).generics.clone();
         self.check_generic_params_arity(location, generic_params.len(), generics.len());
 
         let substitutions = GenericArgs {

@@ -32,7 +32,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         name: EcoString,
     ) {
         // Pushing generics
-        let generics = self.solver.hydrator.generics.push_scope(generics);
+        let generics = self.icx.generics.push_scope(generics);
         // Generating struct
         let struct_ = Struct {
             location: location.clone(),
@@ -41,9 +41,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             generics,
             fields: Vec::new(),
         };
-        let id = self.tcx.insert_struct(struct_);
+        let id = self.icx.tcx.insert_struct(struct_);
         // Popping generics
-        self.solver.hydrator.generics.pop_scope();
+        self.icx.generics.pop_scope();
         // Defining struct
         self.resolver.define_module(
             &location,
@@ -74,7 +74,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         name: EcoString,
     ) {
         // Pushing generics
-        let generics = self.solver.hydrator.generics.push_scope(generics);
+        let generics = self.icx.generics.push_scope(generics);
         // Generating enum
         let enum_ = Enum {
             location: location.clone(),
@@ -83,9 +83,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             generics,
             variants: Vec::new(),
         };
-        let id = self.tcx.insert_enum(enum_);
+        let id = self.icx.tcx.insert_enum(enum_);
         // Popping generics
-        self.solver.hydrator.generics.pop_scope();
+        self.icx.generics.pop_scope();
         // Defining enum
         self.resolver.define_module(
             &location,

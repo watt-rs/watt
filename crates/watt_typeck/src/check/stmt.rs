@@ -2,7 +2,7 @@
 use crate::{
     cx::module::ModuleCx,
     errors::TypeckError,
-    inference::coercion::Coercion,
+    inference::coercion::{self, Coercion},
     typ::{
         res::Res,
         typ::{PreludeType, Typ},
@@ -41,8 +41,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             other => bail!(TypeckError::TypesMissmatch {
                 src: self.module.source.clone(),
                 span: location.span.into(),
-                expected: Typ::Prelude(PreludeType::Bool),
-                got: other,
+                expected: Typ::Prelude(PreludeType::Bool).pretty(&mut self.icx),
+                got: other.pretty(&mut self.icx),
             }),
         }
         // inferring block
@@ -76,16 +76,16 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     bail!(TypeckError::TypesMissmatch {
                         src: location.source,
                         span: location.span.into(),
-                        expected: typ,
-                        got: inferred_from
+                        expected: typ.pretty(&mut self.icx),
+                        got: inferred_from.pretty(&mut self.icx)
                     })
                 }
                 if inferred_to != typ {
                     bail!(TypeckError::TypesMissmatch {
                         src: location.source,
                         span: location.span.into(),
-                        expected: typ,
-                        got: inferred_from
+                        expected: typ.pretty(&mut self.icx),
+                        got: inferred_from.pretty(&mut self.icx)
                     })
                 }
             }
@@ -99,16 +99,16 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     bail!(TypeckError::TypesMissmatch {
                         src: location.source,
                         span: location.span.into(),
-                        expected: typ,
-                        got: inferred_from
+                        expected: typ.pretty(&mut self.icx),
+                        got: inferred_from.pretty(&mut self.icx)
                     })
                 }
                 if inferred_to != typ {
                     bail!(TypeckError::TypesMissmatch {
                         src: location.source,
                         span: location.span.into(),
-                        expected: typ,
-                        got: inferred_from
+                        expected: typ.pretty(&mut self.icx),
+                        got: inferred_from.pretty(&mut self.icx)
                     })
                 }
             }
@@ -175,9 +175,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Some(annotated_path) => {
                 let annotated_location = annotated_path.location();
                 let annotated = self.infer_type_annotation(annotated_path);
-                let inferred_value = self.solver.hydrator.hyd(self.tcx).mk_ty(inferred_value);
-                self.solver.coerce(
-                    self.tcx,
+                let inferred_value = self.icx.mk_fresh(inferred_value);
+                coercion::coerce(
+                    &mut self.icx,
                     Coercion::Eq(
                         (annotated_location, annotated.clone()),
                         (value_location.clone(), inferred_value.clone()),
@@ -212,8 +212,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
         let value_location = value.location();
         let inferred_value = self.infer_expr(value);
-        self.solver.coerce(
-            self.tcx,
+        coercion::coerce(
+            &mut self.icx,
             Coercion::Eq(
                 (location.clone(), inferred_what.unwrap_typ(&location)),
                 (value_location, inferred_value),

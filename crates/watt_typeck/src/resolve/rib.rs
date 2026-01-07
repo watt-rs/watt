@@ -1,5 +1,8 @@
 /// Imports
-use crate::{errors::TypeckError, typ::typ::Typ};
+use crate::{
+    errors::TypeckError,
+    typ::{cx::InferCx, typ::Typ},
+};
 use ecow::EcoString;
 use std::collections::HashMap;
 use watt_common::{address::Address, bail};
@@ -97,7 +100,13 @@ impl RibsStack {
     ///   If not, raises `TypeckError::TypesMissmatch`.
     /// - If the variable does not exist, inserts it into the current scope.
     ///
-    pub fn redefine(&mut self, address: &Address, name: &EcoString, variable: Typ) {
+    pub fn redefine(
+        &mut self,
+        icx: &mut InferCx,
+        address: &Address,
+        name: &EcoString,
+        variable: Typ,
+    ) {
         match self.stack.last_mut() {
             Some(env) => match env.get(name) {
                 Some(def) => {
@@ -105,8 +114,8 @@ impl RibsStack {
                         bail!(TypeckError::TypesMissmatch {
                             src: address.source.clone(),
                             span: address.span.clone().into(),
-                            expected: def.clone(),
-                            got: variable
+                            expected: def.pretty(icx),
+                            got: variable.pretty(icx)
                         })
                     }
                 }

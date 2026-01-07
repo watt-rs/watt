@@ -42,7 +42,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             TypeDef::Struct(ty) => ty,
             _ => unreachable!(),
         };
-        let struct_ = self.tcx.struct_(id);
+        let struct_ = self.icx.tcx.struct_(id);
         let (location, uid, name, generics) = (
             struct_.location.clone(),
             struct_.uid,
@@ -51,10 +51,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         );
 
         // Re pushing generics
-        self.solver
-            .hydrator
-            .generics
-            .re_push_scope(struct_.generics.clone());
+        self.icx.generics.re_push_scope(struct_.generics.clone());
 
         // Inferencing fields
         let new_struct = Struct {
@@ -71,11 +68,11 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 })
                 .collect(),
         };
-        let struct_mut = self.tcx.struct_mut(id);
+        let struct_mut = self.icx.tcx.struct_mut(id);
         *struct_mut = new_struct;
 
         // Popping generics
-        self.solver.hydrator.generics.pop_scope();
+        self.icx.generics.pop_scope();
     }
 
     /// Performs late analysis of an enum declaration.
@@ -100,19 +97,16 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             TypeDef::Enum(en) => en,
             _ => unreachable!(),
         };
-        let enum_ = self.tcx.enum_(id);
+        let enum_ = self.icx.tcx.enum_(id);
         let (location, uid, name, generics) = (
             enum_.location.clone(),
             enum_.uid,
             enum_.name.clone(),
             enum_.generics.clone(),
         );
-        
+
         // Repushing generics
-        self.solver
-            .hydrator
-            .generics
-            .re_push_scope(generics.clone());
+        self.icx.generics.re_push_scope(generics.clone());
 
         // Inferencing fields
         let new_enum = Enum {
@@ -137,11 +131,11 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 })
                 .collect(),
         };
-        let enum_mut = self.tcx.enum_mut(id);
+        let enum_mut = self.icx.tcx.enum_mut(id);
         *enum_mut = new_enum;
 
         // Popping generics
-        self.solver.hydrator.generics.pop_scope();
+        self.icx.generics.pop_scope();
     }
 
     /// Dispatches a type declaration to the corresponding late analysis routine.

@@ -7,5 +7,5 @@ type Iceberg[T] {
 }
 
 fn main() {
-    let a: Mammoth[int] = Mammoth(Iceberg(3))
+    let a: Mammoth[float] = Mammoth(Iceberg(3))
 }

@@ -1,7 +1,7 @@
 /// Imports
 use crate::{
     cx::module::ModuleCx,
-    inference::coercion::Coercion,
+    inference::coercion::{self, Coercion},
     typ::{
         res::Res,
         typ::{Parameter, Typ},
@@ -54,16 +54,13 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Res::Value(Typ::Function(f, _)) => f,
             _ => unreachable!(),
         };
-        let function = self.tcx.function_mut(id);
+        let function = self.icx.tcx.function_mut(id);
         let params: Vec<Parameter> = function.params.clone();
         let ret = function.ret.clone();
         let generics = function.generics.clone();
 
         // Pushing generics
-        self.solver
-            .hydrator
-            .generics
-            .re_push_scope(generics.clone());
+        self.icx.generics.re_push_scope(generics.clone());
 
         // pushing new scope
         self.resolver.push_rib();
@@ -79,14 +76,14 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Either::Left(block) => (block.location.clone(), self.infer_block(block)),
             Either::Right(expr) => (expr.location(), self.infer_expr(expr)),
         };
-        self.solver.coerce(
-            self.tcx,
+        coercion::coerce(
+            &mut self.icx,
             Coercion::Eq((location, ret), (block_location, inferred_block)),
         );
         self.resolver.pop_rib();
 
         // Popping generics
-        self.solver.hydrator.generics.pop_scope();
+        self.icx.generics.pop_scope();
     }
 
     /// Dispatches a function declaration to the corresponding late analysis routine.

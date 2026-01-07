@@ -62,14 +62,14 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
             // So, checking for default patterns
             // `BindTo` and `Wildcard`
             Typ::Unit => ex.has_default_pattern(&ex.cases),
-            // All unbounds values
+            // All type variable values
             // could not be covered,
             // because it's a unknown type
             // with unknown constraints
             //
             // So, checking for default patterns
             // `BindTo` and `Wildcard`
-            Typ::Unbound(_) => ex.has_default_pattern(&ex.cases),
+            Typ::Var(_) => ex.has_default_pattern(&ex.cases),
             // All generic values
             // could not be covered,
             // because it's a unknown type
@@ -252,6 +252,6 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
         // Deleting duplicates
         matched_variants.dedup();
         // Checking all patterns covered
-        matched_variants.len() == self.cx.tcx.enum_(en).variants.len()
+        matched_variants.len() == self.cx.icx.tcx.enum_(en).variants.len()
     }
 }

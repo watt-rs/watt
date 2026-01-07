@@ -1,5 +1,8 @@
 /// Imports
-use crate::{errors::TypeckRelated, typ::typ::Typ};
+use crate::{
+    errors::TypeckRelated,
+    typ::{cx::InferCx, typ::Typ},
+};
 use watt_common::address::Address;
 
 /// Represents the origin of a type in the unification process.
@@ -14,11 +17,11 @@ pub struct Origin(pub Address, pub Typ);
 impl Origin {
     /// Converts this origin into a `TypeckRelated::ThisType`,
     /// preserving source information and attaching the type.
-    pub fn into_this_type(&self) -> TypeckRelated {
+    pub fn into_this_type(&self, icx: &mut InferCx) -> TypeckRelated {
         TypeckRelated::ThisType {
             src: self.0.source.clone(),
             span: self.0.span.clone().into(),
-            t: self.1.clone(),
+            t: self.1.pretty(icx),
         }
     }
 

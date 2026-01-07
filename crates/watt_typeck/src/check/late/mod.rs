@@ -6,7 +6,7 @@ mod types;
 use crate::{
     cx::module::ModuleCx,
     errors::TypeckError,
-    inference::coercion::Coercion,
+    inference::coercion::{self, Coercion},
     typ::{def::ModuleDef, typ::WithPublicity},
 };
 use ecow::EcoString;
@@ -59,8 +59,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         let annotated = self.infer_type_annotation(typ);
         let inferred_location = value.location();
         let inferred = self.infer_expr(value);
-        self.solver.coerce(
-            self.tcx,
+        coercion::coerce(
+            &mut self.icx,
             Coercion::Eq(
                 (annotated_location, annotated.clone()),
                 (inferred_location, inferred),

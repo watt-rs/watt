@@ -1,8 +1,5 @@
 /// Imports
-use crate::{
-    inference::hydrator::Hydrator,
-    typ::{cx::TyCx, def::ModuleDef},
-};
+use crate::typ::{cx::InferCx, def::ModuleDef};
 use ecow::EcoString;
 use id_arena::Id;
 use indexmap::IndexMap;
@@ -367,6 +364,22 @@ impl Debug for GenericArgs {
     }
 }
 
+/// Represents an inference type variable used during type checking
+/// and type inference.
+///
+/// An `TyVar` can either be unbound (not yet determined) or bound
+/// (linked to a concrete type `Typ`).
+///
+pub enum TyVar {
+    /// A type variable that has not yet been resolved.
+    /// During inference, this may later be linked to a concrete type.
+    Unbound,
+
+    /// A type variable that has already been resolved (substituted)
+    /// with a concrete type `Typ`.
+    Bound(Typ),
+}
+
 /// Represents a type in the language.
 ///
 /// `Typ` covers all possible types, including:
@@ -387,9 +400,9 @@ pub enum Typ {
     Enum(Id<Enum>, GenericArgs),
     /// Function type
     Function(Id<Function>, GenericArgs),
-    /// Unbound type with unique id used during type inference.
+    /// Inference type with unique id used during type inference.
     /// (id is used to link unbound `Typ` with substitution)
-    Unbound(usize),
+    Var(Id<TyVar>),
     /// Generic type variable with unique id used during type inference.
     /// (will be replaced with unbounds, during type instantiation)
     Generic(usize),
@@ -400,23 +413,23 @@ pub enum Typ {
 /// `Typ` methods implementation
 impl Typ {
     /// Retrieves fields and applies
-    /// substitution by hydrator.
+    /// substitution by `InferCx`.
     ///
     /// # Notes
     /// If `Typ` isn't `Typ::Struct(_, _)`, will
     /// return empty vector.
-    pub fn fields(&self, tcx: &TyCx, hydrator: &mut Hydrator) -> Vec<Field> {
+    pub fn fields(&self, icx: &mut InferCx) -> Vec<Field> {
         match self {
-            Typ::Struct(id, generics) => tcx
+            Typ::Struct(id, generics) => icx
+                .tcx
                 .struct_(*id)
                 .fields
-                .iter()
+                .clone()
+                .into_iter()
                 .map(|field| Field {
-                    location: field.location.clone(),
-                    name: field.name.clone(),
-                    typ: hydrator
-                        .hyd_m(tcx, generics.subtitutions.clone())
-                        .mk_ty(field.typ.clone()),
+                    location: field.location,
+                    name: field.name,
+                    typ: icx.mk_fresh_m(field.typ, generics.subtitutions.clone()),
                 })
                 .collect(),
 
@@ -425,30 +438,30 @@ impl Typ {
     }
 
     /// Retrieves variants and applies
-    /// substitution by hydrator.
+    /// substitution by `InferCx`.
     ///
     /// # Notes
     /// If `Typ` isn't `Typ::Enum(_, _)`, will
     /// return empty vector.
-    pub fn variants(&self, tcx: &TyCx, hydrator: &mut Hydrator) -> Vec<EnumVariant> {
+    pub fn variants(&self, icx: &mut InferCx) -> Vec<EnumVariant> {
         // Matching self
         match self {
-            Typ::Enum(id, generics) => tcx
+            Typ::Enum(id, generics) => icx
+                .tcx
                 .enum_(*id)
                 .variants
-                .iter()
-                .map(|var| EnumVariant {
-                    location: var.location.clone(),
-                    name: var.name.clone(),
-                    fields: var
+                .clone()
+                .into_iter()
+                .map(|variant| EnumVariant {
+                    location: variant.location,
+                    name: variant.name,
+                    fields: variant
                         .fields
-                        .iter()
+                        .into_iter()
                         .map(|field| Field {
-                            location: field.location.clone(),
-                            name: field.name.clone(),
-                            typ: hydrator
-                                .hyd_m(tcx, generics.subtitutions.clone())
-                                .mk_ty(field.typ.clone()),
+                            location: field.location,
+                            name: field.name,
+                            typ: icx.mk_fresh_m(field.typ, generics.subtitutions.clone()),
                         })
                         .collect(),
                 })
@@ -458,24 +471,25 @@ impl Typ {
     }
 
     /// Retrieves params and applies
-    /// substitution by hydrator.
+    /// substitution by `InferCx`.
     ///
     /// # Notes
     /// If `Typ` isn't `Typ::Function(_, _)`, will
     /// return empty vector.
-    pub fn params(&self, tcx: &TyCx, hydrator: &mut Hydrator) -> Vec<Parameter> {
+    ///
+    pub fn params(&self, icx: &mut InferCx) -> Vec<Parameter> {
         // Matching self
         match self {
-            Typ::Function(id, generics) => tcx
+            Typ::Function(id, generics) => icx
+                .tcx
                 .function(*id)
                 .params
-                .iter()
+                .clone()
+                .into_iter()
                 .map(|param| Parameter {
                     location: param.location.clone(),
                     name: param.name.clone(),
-                    typ: hydrator
-                        .hyd_m(tcx, generics.subtitutions.clone())
-                        .mk_ty(param.typ.clone()),
+                    typ: icx.mk_fresh_m(param.typ, generics.subtitutions.clone()),
                 })
                 .collect(),
 
@@ -484,18 +498,69 @@ impl Typ {
     }
 
     /// Retrieves return type and applies
-    /// substitution by hydrator.
+    /// substitution by `InferCx`.
     ///
     /// # Notes
     /// If `Typ` isn't `Typ::Function(_, _)`, will
     /// return Typ::Unit
-    pub fn ret(&self, tcx: &TyCx, hydrator: &mut Hydrator) -> Typ {
+    ///
+    pub fn ret(&self, icx: &mut InferCx) -> Typ {
         // Matching self
         match self {
-            Typ::Function(id, generics) => hydrator
-                .hyd_m(tcx, generics.subtitutions.clone())
-                .mk_ty(tcx.function(*id).ret.clone()),
+            Typ::Function(id, generics) => icx.mk_fresh_m(
+                icx.tcx.function(*id).ret.clone(),
+                generics.subtitutions.clone(),
+            ),
             _ => Typ::Unit,
+        }
+    }
+
+    /// Pretty prints type using types context
+    /// to get struct, enum or function info.
+    pub fn pretty(&self, icx: &mut InferCx) -> String {
+        // Matching self
+        match self.clone() {
+            Typ::Prelude(ty) => format!("{ty:?}"),
+            Typ::Struct(id, generic_args) => {
+                format!(
+                    "{}[{}]",
+                    icx.tcx.struct_(id).name.clone(),
+                    generic_args
+                        .subtitutions
+                        .values()
+                        .cloned()
+                        .map(|t| t.pretty(icx))
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                )
+            }
+            Typ::Enum(id, generic_args) => {
+                format!(
+                    "{}[{}]",
+                    icx.tcx.enum_(id).name.clone(),
+                    generic_args
+                        .subtitutions
+                        .values()
+                        .cloned()
+                        .map(|t| t.pretty(icx))
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                )
+            }
+            it @ Typ::Function(_, _) => {
+                format!(
+                    "({}) -> {}",
+                    it.params(icx)
+                        .iter()
+                        .map(|p| p.typ.pretty(icx))
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                    it.ret(icx).pretty(icx)
+                )
+            }
+            Typ::Var(id) => format!("?{id:?}"),
+            Typ::Generic(id) => format!("^{id}"),
+            Typ::Unit => format!("Unit"),
         }
     }
 }

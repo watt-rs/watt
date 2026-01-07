@@ -36,7 +36,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         name: EcoString,
     ) {
         // Pushing generics
-        let generics = self.solver.hydrator.generics.push_scope(generics);
+        let generics = self.icx.generics.push_scope(generics);
         // Generating function
         let function = Function {
             location: location.clone(),
@@ -52,9 +52,9 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 .collect(),
             ret: typ.map_or(Typ::Unit, |it| self.infer_type_annotation(it)),
         };
-        let id = self.tcx.insert_function(function);
+        let id = self.icx.tcx.insert_function(function);
         // Popping generics
-        self.solver.hydrator.generics.pop_scope();
+        self.icx.generics.pop_scope();
         // Defining function
         self.resolver.define_module(
             &location,
