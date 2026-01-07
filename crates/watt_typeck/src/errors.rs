@@ -79,14 +79,6 @@ pub enum TypeckError {
         #[label("this is unavailable.")]
         span: SourceSpan,
     },
-    #[error("could not unify {t1:?} and {t2:?}.")]
-    #[diagnostic(code(typeck::could_not_unify))]
-    CouldNotUnify {
-        #[related]
-        related: Vec<TypeckRelated>,
-        t1: String,
-        t2: String,
-    },
     #[error("could not use value {v} as type.")]
     #[diagnostic(code(typeck::could_not_use_value_as_type))]
     CouldNotUseValueAsType {
@@ -282,12 +274,18 @@ pub enum TypeckError {
     #[error("types missmatch. expected {expected:?}, got {got:?}.")]
     #[diagnostic(code(typeck::types_missmatch))]
     TypesMissmatch {
-        #[source_code]
-        src: Arc<NamedSource<String>>,
-        #[label("types missmatched here.")]
-        span: SourceSpan,
+        #[related]
+        related: Vec<TypeckRelated>,
         expected: String,
         got: String,
+    },
+    #[error("coult not unify {t1:?} and {t2:?}.")]
+    #[diagnostic(code(typeck::types_missmatch))]
+    CouldNotUnify {
+        #[related]
+        related: Vec<TypeckRelated>,
+        t1: String,
+        t2: String,
     },
     #[error("wrong unwrap pattern. expected variant of enum, got {got:?}")]
     #[diagnostic(code(typeck::wrong_unwrap_pattern))]

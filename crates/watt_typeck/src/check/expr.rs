@@ -907,8 +907,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                         // If types aren't equal
                         if inferred_what != *en {
                             bail!(TypeckError::TypesMissmatch {
-                                src: self.module.source.clone(),
-                                span: case.address.span.clone().into(),
+                                related: vec![TypeckRelated::Here {
+                                    src: case.address.source.clone(),
+                                    span: case.address.span.clone().into()
+                                }],
                                 expected: en.clone().pretty(&mut self.icx),
                                 got: inferred_what.clone().pretty(&mut self.icx)
                             });
@@ -949,8 +951,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 let typ = Typ::Prelude(PreludeType::Int);
                 if inferred_what != typ {
                     bail!(TypeckError::TypesMissmatch {
-                        src: self.module.source.clone(),
-                        span: case.address.span.clone().into(),
+                        related: vec![TypeckRelated::Here {
+                            src: case.address.source.clone(),
+                            span: case.address.span.clone().into()
+                        }],
                         expected: inferred_what.pretty(&mut self.icx),
                         got: typ.pretty(&mut self.icx)
                     })
@@ -960,8 +964,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 let typ = Typ::Prelude(PreludeType::Float);
                 if inferred_what != typ {
                     bail!(TypeckError::TypesMissmatch {
-                        src: self.module.source.clone(),
-                        span: case.address.span.clone().into(),
+                        related: vec![TypeckRelated::Here {
+                            src: case.address.source.clone(),
+                            span: case.address.span.clone().into()
+                        }],
                         expected: inferred_what.pretty(&mut self.icx),
                         got: typ.pretty(&mut self.icx)
                     })
@@ -971,8 +977,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 let typ = Typ::Prelude(PreludeType::String);
                 if inferred_what != typ {
                     bail!(TypeckError::TypesMissmatch {
-                        src: self.module.source.clone(),
-                        span: case.address.span.clone().into(),
+                        related: vec![TypeckRelated::Here {
+                            src: case.address.source.clone(),
+                            span: case.address.span.clone().into()
+                        }],
                         expected: inferred_what.pretty(&mut self.icx),
                         got: typ.pretty(&mut self.icx)
                     })
@@ -982,8 +990,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 let typ = Typ::Prelude(PreludeType::Bool);
                 if inferred_what != typ {
                     bail!(TypeckError::TypesMissmatch {
-                        src: self.module.source.clone(),
-                        span: case.address.span.clone().into(),
+                        related: vec![TypeckRelated::Here {
+                            src: case.address.source.clone(),
+                            span: case.address.span.clone().into()
+                        }],
                         expected: inferred_what.pretty(&mut self.icx),
                         got: typ.pretty(&mut self.icx)
                     })
@@ -999,8 +1009,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                         // If types aren't equal
                         if inferred_what != *en {
                             bail!(TypeckError::TypesMissmatch {
-                                src: self.module.source.clone(),
-                                span: case.address.span.clone().into(),
+                                related: vec![TypeckRelated::Here {
+                                    src: case.address.source.clone(),
+                                    span: case.address.span.clone().into()
+                                }],
                                 expected: en.pretty(&mut self.icx),
                                 got: inferred_what.pretty(&mut self.icx)
                             });

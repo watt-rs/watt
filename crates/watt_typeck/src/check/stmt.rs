@@ -1,7 +1,7 @@
 /// Imports
 use crate::{
     cx::module::ModuleCx,
-    errors::TypeckError,
+    errors::{TypeckError, TypeckRelated},
     inference::coercion::{self, Coercion},
     typ::{
         res::Res,
@@ -39,8 +39,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         match inferred_logical {
             Typ::Prelude(PreludeType::Bool) => skip!(),
             other => bail!(TypeckError::TypesMissmatch {
-                src: self.module.source.clone(),
-                span: location.span.into(),
+                related: vec![TypeckRelated::Here {
+                    src: location.source,
+                    span: location.span.into()
+                }],
                 expected: Typ::Prelude(PreludeType::Bool).pretty(&mut self.icx),
                 got: other.pretty(&mut self.icx),
             }),
@@ -74,16 +76,20 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 let typ = Typ::Prelude(PreludeType::Int);
                 if inferred_from != typ {
                     bail!(TypeckError::TypesMissmatch {
-                        src: location.source,
-                        span: location.span.into(),
+                        related: vec![TypeckRelated::Here {
+                            src: location.source,
+                            span: location.span.into()
+                        }],
                         expected: typ.pretty(&mut self.icx),
                         got: inferred_from.pretty(&mut self.icx)
                     })
                 }
                 if inferred_to != typ {
                     bail!(TypeckError::TypesMissmatch {
-                        src: location.source,
-                        span: location.span.into(),
+                        related: vec![TypeckRelated::Here {
+                            src: location.source,
+                            span: location.span.into()
+                        }],
                         expected: typ.pretty(&mut self.icx),
                         got: inferred_from.pretty(&mut self.icx)
                     })
@@ -97,18 +103,22 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 let typ = Typ::Prelude(PreludeType::Int);
                 if inferred_from != typ {
                     bail!(TypeckError::TypesMissmatch {
-                        src: location.source,
-                        span: location.span.into(),
+                        related: vec![TypeckRelated::Here {
+                            src: location.source,
+                            span: location.span.into()
+                        }],
                         expected: typ.pretty(&mut self.icx),
                         got: inferred_from.pretty(&mut self.icx)
                     })
                 }
                 if inferred_to != typ {
                     bail!(TypeckError::TypesMissmatch {
-                        src: location.source,
-                        span: location.span.into(),
+                        related: vec![TypeckRelated::Here {
+                            src: location.source,
+                            span: location.span.into()
+                        }],
                         expected: typ.pretty(&mut self.icx),
-                        got: inferred_from.pretty(&mut self.icx)
+                        got: inferred_to.pretty(&mut self.icx)
                     })
                 }
             }
@@ -153,7 +163,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// Analyzes a `let` variable definition.
     ///
     /// ## Steps:
-    /// - Infer the type of the initialization expression (`value`).
+    /// - Infer the type of the initialization expression (`value`) and instantiate it.
     /// - If the declaration includes a type annotation:
     ///     - Infer the annotation type.
     ///     - Emit a unification equation requiring the annotated and inferred
@@ -162,7 +172,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// - If no annotation was provided:
     ///     - Define the variable using the inferred type.
     ///
-    pub(crate) fn analyze_let_define(
+    pub(crate) fn analyze_let_definition(
         &mut self,
         location: Address,
         name: EcoString,
@@ -175,20 +185,20 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Some(annotated_path) => {
                 let annotated_location = annotated_path.location();
                 let annotated = self.infer_type_annotation(annotated_path);
-                let inferred_value = self.icx.mk_fresh(inferred_value);
-                coercion::coerce(
-                    &mut self.icx,
-                    Coercion::Eq(
-                        (annotated_location, annotated.clone()),
-                        (value_location.clone(), inferred_value.clone()),
-                    ),
+                let coercion = Coercion::Eq(
+                    (annotated_location, annotated.clone()),
+                    (value_location.clone(), self.icx.mk_fresh(inferred_value)),
                 );
+                coercion::coerce(&mut self.icx, coercion);
                 self.resolver
                     .define_local(&location, &name, annotated, false)
             }
-            None => self
-                .resolver
-                .define_local(&location, &name, inferred_value, false),
+            None => self.resolver.define_local(
+                &location,
+                &name,
+                self.icx.mk_fresh(inferred_value),
+                false,
+            ),
         }
     }
 
@@ -196,8 +206,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     ///
     /// ## Steps:
     /// - Resolve the left-hand side (`what`) and check that it is not a constant.
-    /// - Infer the type of the assigned value.
-    /// - Emit an equation unifying the variable's type and the value's type.
+    /// - Infer the type of the assign value and instantiate its type.
+    /// - Emit an coercion unifying the variable's type and the value's type.
     ///
     /// ## Errors:
     /// - [`TypeckError::CouldNotAssignConstant`] if the left-hand side refers to a constant.
@@ -212,13 +222,11 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
         let value_location = value.location();
         let inferred_value = self.infer_expr(value);
-        coercion::coerce(
-            &mut self.icx,
-            Coercion::Eq(
-                (location.clone(), inferred_what.unwrap_typ(&location)),
-                (value_location, inferred_value),
-            ),
+        let coercion = Coercion::Eq(
+            (location.clone(), inferred_what.unwrap_typ(&location)),
+            (value_location, self.icx.mk_fresh(inferred_value)),
         );
+        coercion::coerce(&mut self.icx, coercion);
     }
 
     /// Infers the type of statement.
@@ -240,7 +248,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 value,
                 typ,
             } => {
-                self.analyze_let_define(location, name, value, typ);
+                self.analyze_let_definition(location, name, value, typ);
                 Typ::Unit
             }
             Statement::VarAssign {

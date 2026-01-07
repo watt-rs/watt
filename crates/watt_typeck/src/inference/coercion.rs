@@ -105,14 +105,14 @@ fn unify(icx: &mut InferCx, o1: Origin, t1: Typ, o2: Origin, t2: Typ) {
                         .into_iter()
                         .zip(t2.fields(icx))
                         .for_each(|(a, b)| {
-                            unify(icx, o1.clone(), a.typ, o2.clone(), b.typ);
+                            unify(icx, o1.clone(), a.typ.clone(), o2.clone(), b.typ.clone());
                         });
                 }
             }
             (Typ::Enum(def1, _), Typ::Enum(def2, _)) => {
                 if def1 == def2 {
                     t1.variants(icx)
-                        .iter()
+                        .into_iter()
                         .zip(t2.variants(icx))
                         .for_each(|(v1, v2)| {
                             v1.fields.iter().zip(v2.fields).for_each(|(a, b)| {
@@ -123,8 +123,8 @@ fn unify(icx: &mut InferCx, o1: Origin, t1: Typ, o2: Origin, t2: Typ) {
             }
             (Typ::Function(_, _), Typ::Function(_, _)) => {
                 t1.params(icx)
-                    .iter()
-                    .zip(&t2.params(icx))
+                    .into_iter()
+                    .zip(t2.params(icx))
                     .for_each(|(p1, p2)| {
                         unify(icx, o1.clone(), p1.typ.clone(), o2.clone(), p2.typ.clone());
                     });
@@ -133,9 +133,9 @@ fn unify(icx: &mut InferCx, o1: Origin, t1: Typ, o2: Origin, t2: Typ) {
                 unify(icx, o1.clone(), r1, o2.clone(), r2);
             }
             _ => bail!(TypeckError::CouldNotUnify {
-                t1: o1.typ().pretty(icx),
-                t2: o2.typ().pretty(icx),
-                related: vec![o1.into_this_type(icx), o2.into_this_type(icx)]
+                related: vec![o1.into_this_type(icx), o2.into_this_type(icx)],
+                t1: o1.1.pretty(icx),
+                t2: o2.1.pretty(icx),
             }),
         }
     }

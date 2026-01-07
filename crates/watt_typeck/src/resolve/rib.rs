@@ -1,6 +1,6 @@
 /// Imports
 use crate::{
-    errors::TypeckError,
+    errors::{TypeckError, TypeckRelated},
     typ::{cx::InferCx, typ::Typ},
 };
 use ecow::EcoString;
@@ -112,8 +112,10 @@ impl RibsStack {
                 Some(def) => {
                     if def != &variable {
                         bail!(TypeckError::TypesMissmatch {
-                            src: address.source.clone(),
-                            span: address.span.clone().into(),
+                            related: vec![TypeckRelated::Here {
+                                src: address.source.clone(),
+                                span: address.span.clone().into()
+                            }],
                             expected: def.pretty(icx),
                             got: variable.pretty(icx)
                         })

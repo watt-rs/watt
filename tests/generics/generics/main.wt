@@ -30,12 +30,27 @@ fn test3[V](v: V): V {
     annotated(v)
 }
 
+/// Simple function generics
+fn b[T](a: T): T = a
+fn test4() {
+    b("hello");
+    b(123);
+}
+
+/// Simple function generics 2
+fn c[T](a: T): T = a
+fn test5() {
+    let a = c;
+    a(3);
+    // a("hello"); -- should produce error
+}
+
 /// Enum generics
 enum Result[V, E] {
     Ok(value: V),
     Error(error: E)
 }
-fn test4() {
+fn test6() {
     let a = Result.Ok(3);
     a = Result.Error(false);
     let b: Result[int, bool] = a;

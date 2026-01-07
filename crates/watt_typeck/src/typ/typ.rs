@@ -515,11 +515,16 @@ impl Typ {
         }
     }
 
-    /// Pretty prints type using types context
-    /// to get struct, enum or function info.
+    /// Pretty prints type
+    ///
+    /// # Parameters
+    /// - `icx: &mut InferCx`
+    ///   Inference context used
+    ///   to get struct, enum or function info.
+    ///
     pub fn pretty(&self, icx: &mut InferCx) -> String {
         // Matching self
-        match self.clone() {
+        match icx.apply(self.clone()) {
             Typ::Prelude(ty) => format!("{ty:?}"),
             Typ::Struct(id, generic_args) => {
                 format!(
@@ -558,7 +563,7 @@ impl Typ {
                     it.ret(icx).pretty(icx)
                 )
             }
-            Typ::Var(id) => format!("?{id:?}"),
+            Typ::Var(id) => format!("?{}", id.index()),
             Typ::Generic(id) => format!("^{id}"),
             Typ::Unit => format!("Unit"),
         }
