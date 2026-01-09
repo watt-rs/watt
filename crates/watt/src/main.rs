@@ -1,18 +1,16 @@
-/// Modules
+/// CLI interface
+
+// Modules
 pub(crate) mod commands;
 pub(crate) mod errors;
 pub(crate) mod log;
 
-/// Imports
+// Imports
 use crate::commands::{init, run, new};
 use clap::{Parser, Subcommand};
 use watt_pm::config::PackageType;
 
-/*
- * Cli
- */
-
-/// Cli itself
+/// CLI itself
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 #[command(propagate_version = true)]
