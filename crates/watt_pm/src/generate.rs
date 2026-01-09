@@ -27,7 +27,14 @@ pub fn gen_project(path: Utf8PathBuf, ty: PackageType) {
             io::mkdir(&src);
             // Generating main.watt
             let main = src.join("main.wt");
-            io::write(main, String::from("// It's just a main file :)"));
+            io::write(main, String::from(
+r#"// main.wt - the entry point of your application.
+
+fn main() {
+    // Your code goes here.
+}
+"#
+            ));
         }
     }
 }
