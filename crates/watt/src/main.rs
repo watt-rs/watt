@@ -6,7 +6,7 @@ pub(crate) mod errors;
 pub(crate) mod log;
 
 // Imports
-use crate::commands::{init, run, new};
+use crate::commands::{compile, init, new, run};
 use clap::{Parser, Subcommand};
 use watt_pm::config::PackageType;
 
@@ -59,7 +59,7 @@ pub fn cli() {
         SubCommand::Remove { url: _ } => todo!(),
         SubCommand::Run { runtime } => run::execute(runtime),
         SubCommand::Analyze => todo!(),
-        SubCommand::Compile => todo!(),
+        SubCommand::Compile => compile::execute(),
         SubCommand::New { name, package_type } => new::execute(&name, package_type),
         SubCommand::Clean => todo!(),
         SubCommand::Init { package_type } => init::execute(package_type),

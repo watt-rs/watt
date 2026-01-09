@@ -1,4 +1,4 @@
-/// Prints error, and than
+/// Prints error, and then
 /// exits proccess using `std::process::exit(1)`.
 #[macro_export]
 macro_rules! bail {
