@@ -14,18 +14,29 @@ pub fn gen_project(path: Utf8PathBuf, ty: PackageType) {
         PackageType::Lib => {
             // Generating config
             config::generate(path.clone(), &name, ty, None);
+
             // Generating src path
             let src = path.join(name);
             io::mkdir(&src);
+
+            // Generating lib.wt
+            let lib_wt = src.join("lib.wt");
+            io::write(lib_wt, String::from(
+r#"// lib.wt - main file of library project.
+
+"#
+            ));
         }
         PackageType::App => {
             // Generating config
             let main = format!("{}/{}", name, "main");
             config::generate(path.clone(), &name, ty, Some(main));
+
             // Generating src path
             let src = path.join(name);
             io::mkdir(&src);
-            // Generating main.watt
+
+            // Generating main.wt
             let main = src.join("main.wt");
             io::write(main, String::from(
 r#"// main.wt - the entry point of your application.
