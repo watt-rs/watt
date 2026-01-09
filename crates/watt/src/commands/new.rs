@@ -1,12 +1,9 @@
-use watt_pm::config::PackageType;
+use watt_pm::{config::PackageType, generate};
 
-use super::init;
-
-pub fn execute(path: &str, ty: Option<PackageType>) {
-	// TODO: Handle I/O errors. (`unwrap()`)
+pub fn execute(path: &str, pkg_ty: Option<PackageType>) {
 	std::fs::create_dir(path).unwrap();
 
-	std::env::set_current_dir(path).unwrap();
+    let pkg_ty = pkg_ty.unwrap_or(PackageType::App);
 
-	init::execute(ty);
+    generate::gen_project(path.into(), pkg_ty);
 }
