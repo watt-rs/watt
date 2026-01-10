@@ -47,7 +47,7 @@ pub fn coerce(icx: &mut InferCx, coercion: Coercion) {
 }
 
 /// Solves an `Eq(u1, u2)` coercion.
-#[instrument(skip(icx), level = "debug", fields(u1 = ?u1.1, u2 = ?u2.1))]
+#[instrument(skip(icx), level = "trace", fields(u1 = ?u1.1, u2 = ?u2.1))]
 fn eq(icx: &mut InferCx, u1: U, u2: U) {
     // Generation origins
     let o1 = Origin(u1.0, u1.1.clone());
@@ -60,7 +60,7 @@ fn eq(icx: &mut InferCx, u1: U, u2: U) {
 /// unifying all elements with the first one.
 #[instrument(
     skip(icx),
-    level = "debug",
+    level = "trace",
     fields(items = ?items.iter().map(|i| &i.1).collect::<Vec<&Typ>>()))
 ]
 fn same(icx: &mut InferCx, mut items: Vec<U>) {

@@ -1,0 +1,64 @@
+---
+source: crates/watt_tests/src/codegen/patterns.rs
+expression: "\nenum Option[T] {\n    Some(value: T),\n    None\n}\n\nfn unwrap[T](opt: Option[T], default: T): T {\n    match opt {\n        Option.Some(value) -> value\n        Option.None -> default\n    }\n}\n        "
+---
+Source code:
+
+enum Option[T] {
+    Some(value: T),
+    None
+}
+
+fn unwrap[T](opt: Option[T], default: T): T {
+    match opt {
+        Option.Some(value) -> value
+        Option.None -> default
+    }
+}
+        
+
+Generation result:
+import {
+    $$match,
+    $$equals,
+    $$todo,
+    $$range,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "./prelude.js"
+
+export const Option = {
+    Some: (value) => ({
+        $meta: "Enum",
+        $enum: "Option",
+        $variant: "Some",
+        value: value
+    }),
+    None: () => ({
+        $meta: "Enum",
+        $enum: "Option",
+        $variant: "None",
+    })
+};
+
+export function unwrap(opt, default$) {
+    return $$match(opt, [
+        new $$UnwrapPattern(
+            "Some",
+            ["value"],
+            function($$fields) {
+                let value = $$fields.value;
+                return value
+            }
+        ),
+        new $$VariantPattern(
+            "None",
+            function() {
+                return default$
+            }
+        )
+    ])
+}

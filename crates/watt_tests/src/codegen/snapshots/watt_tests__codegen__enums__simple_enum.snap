@@ -1,0 +1,49 @@
+---
+source: crates/watt_tests/src/codegen/enums.rs
+expression: "\nenum Season {\n    Winter,\n    Spring,\n    Summer,\n    Autumn\n}\n    "
+---
+Source code:
+
+enum Season {
+    Winter,
+    Spring,
+    Summer,
+    Autumn
+}
+    
+
+Generation result:
+import {
+    $$match,
+    $$equals,
+    $$todo,
+    $$range,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "./prelude.js"
+
+export const Season = {
+    Winter: () => ({
+        $meta: "Enum",
+        $enum: "Season",
+        $variant: "Winter",
+    }),
+    Spring: () => ({
+        $meta: "Enum",
+        $enum: "Season",
+        $variant: "Spring",
+    }),
+    Summer: () => ({
+        $meta: "Enum",
+        $enum: "Season",
+        $variant: "Summer",
+    }),
+    Autumn: () => ({
+        $meta: "Enum",
+        $enum: "Season",
+        $variant: "Autumn",
+    })
+};

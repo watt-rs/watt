@@ -1,0 +1,51 @@
+---
+source: crates/watt_tests/src/codegen/enums.rs
+expression: "\nenum Result[V, E] {\n    Ok(value: V),\n    Err(error: E)\n}\n\nfn main() {\n    let a = Result.Ok(200);\n    a = Result.Err(false);\n    let b: Result[int, bool] = a;\n}\n    "
+---
+Source code:
+
+enum Result[V, E] {
+    Ok(value: V),
+    Err(error: E)
+}
+
+fn main() {
+    let a = Result.Ok(200);
+    a = Result.Err(false);
+    let b: Result[int, bool] = a;
+}
+    
+
+Generation result:
+import {
+    $$match,
+    $$equals,
+    $$todo,
+    $$range,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "./prelude.js"
+
+export const Result = {
+    Ok: (value) => ({
+        $meta: "Enum",
+        $enum: "Result",
+        $variant: "Ok",
+        value: value
+    }),
+    Err: (error) => ({
+        $meta: "Enum",
+        $enum: "Result",
+        $variant: "Err",
+        error: error
+    })
+};
+
+export function main() {
+    let a = Result.Ok(200)
+    a = Result.Err(false)
+    let b = a
+}

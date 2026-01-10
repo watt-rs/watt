@@ -1,0 +1,31 @@
+---
+source: crates/watt_tests/src/codegen/simple.rs
+expression: "\nfn main() {\n    let a = \"Hello\";\n    let b = \"World\";\n    let c = a <> \" \" <> b;\n}\n        "
+---
+Source code:
+
+fn main() {
+    let a = "Hello";
+    let b = "World";
+    let c = a <> " " <> b;
+}
+        
+
+Generated js:
+import {
+    $$match,
+    $$equals,
+    $$todo,
+    $$range,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "./prelude.js"
+
+export function main() {
+    let a = "Hello"
+    let b = "World"
+    let c = a + " " + b
+}

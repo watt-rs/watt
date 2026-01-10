@@ -1,0 +1,27 @@
+---
+source: crates/watt_tests/src/codegen/simple.rs
+expression: "\nfn main() {\n    let a = 10 as float;\n}\n        "
+---
+Source code:
+
+fn main() {
+    let a = 10 as float;
+}
+        
+
+Generation result:
+import {
+    $$match,
+    $$equals,
+    $$todo,
+    $$range,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "./prelude.js"
+
+export function main() {
+    let a = 10
+}

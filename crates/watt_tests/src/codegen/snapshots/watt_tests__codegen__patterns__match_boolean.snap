@@ -1,0 +1,37 @@
+---
+source: crates/watt_tests/src/codegen/patterns.rs
+expression: "\nfn bool_check(b: bool): string {\n    match b {\n        true -> \"yes\"\n        false -> \"no\"\n    }\n}\n        "
+---
+Source code:
+
+fn bool_check(b: bool): string {
+    match b {
+        true -> "yes"
+        false -> "no"
+    }
+}
+        
+
+Generation result:
+import {
+    $$match,
+    $$equals,
+    $$todo,
+    $$range,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "./prelude.js"
+
+export function bool_check(b) {
+    return $$match(b, [
+        new $$EqPattern(true, function() {
+            return "yes"
+        }),
+        new $$EqPattern(false, function() {
+            return "no"
+        })
+    ])
+}

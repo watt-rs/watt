@@ -895,50 +895,53 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     ///
     /// This function may introduce new local bindings (for `BindTo`) into the current rib.
     ///
-    fn analyze_pattern(&mut self, inferred_what: Typ, case: &Case, pat: &Pattern) {
+    fn analyze_pattern(
+        &mut self,
+        what_address: Address,
+        inferred_what: Typ,
+        case: &Case,
+        pat: &Pattern,
+    ) {
         // matching pattern
         match pat.clone() {
-            Pattern::Unwrap { en, fields } => {
+            Pattern::Unwrap {
+                address,
+                en,
+                fields,
+            } => {
                 // inferring resolution, and checking
                 // that is an enum variant
                 let res = self.infer_resolution(en);
                 match &res {
                     Res::Variant(en, variant) => {
-                        // If types aren't equal
-                        if inferred_what != *en {
-                            bail!(TypeckError::TypesMissmatch {
-                                related: vec![TypeckRelated::Here {
-                                    src: case.address.source.clone(),
-                                    span: case.address.span.clone().into()
-                                }],
-                                expected: en.clone().pretty(&mut self.icx),
-                                got: inferred_what.clone().pretty(&mut self.icx)
-                            });
-                        }
+                        // Checking types equality
+                        coercion::coerce(
+                            &mut self.icx,
+                            Coercion::Eq((what_address, inferred_what), (address, en.clone())),
+                        );
+
                         // If types equal, checking fields existence
-                        else {
-                            fields.into_iter().for_each(|field| {
-                                // Defining fields and checking existence
-                                match variant.fields.iter().find(|f| f.name == field.1) {
-                                    // Note: Don't worry about field type instantiation,
-                                    // it was already instantiated by instantiating the enum
-                                    // itself and getting fresh enum variant
-                                    // during variant resolution.
-                                    Some(it) => self.resolver.define_local(
-                                        &case.address,
-                                        &it.name,
-                                        it.typ.clone(),
-                                        false,
-                                    ),
-                                    None => bail!(TypeckError::EnumVariantFieldIsNotDefined {
-                                        src: self.module.source.clone(),
-                                        span: field.0.span.into(),
-                                        res: res.clone(),
-                                        field: field.1
-                                    }),
-                                }
-                            });
-                        }
+                        fields.into_iter().for_each(|field| {
+                            // Defining fields and checking existence
+                            match variant.fields.iter().find(|f| f.name == field.1) {
+                                // Note: Don't worry about field type instantiation,
+                                // it was already instantiated by instantiating the enum
+                                // itself and getting fresh enum variant
+                                // during variant resolution.
+                                Some(it) => self.resolver.define_local(
+                                    &case.address,
+                                    &it.name,
+                                    it.typ.clone(),
+                                    false,
+                                ),
+                                None => bail!(TypeckError::EnumVariantFieldIsNotDefined {
+                                    src: self.module.source.clone(),
+                                    span: field.0.span.into(),
+                                    res: res.clone(),
+                                    field: field.1
+                                }),
+                            }
+                        });
                     }
                     _ => bail!(TypeckError::WrongUnwrapPattern {
                         src: self.module.source.clone(),
@@ -947,76 +950,50 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     }),
                 }
             }
-            Pattern::Int(_) => {
+            Pattern::Int(address, _) => {
                 let typ = Typ::Prelude(PreludeType::Int);
-                if inferred_what != typ {
-                    bail!(TypeckError::TypesMissmatch {
-                        related: vec![TypeckRelated::Here {
-                            src: case.address.source.clone(),
-                            span: case.address.span.clone().into()
-                        }],
-                        expected: inferred_what.pretty(&mut self.icx),
-                        got: typ.pretty(&mut self.icx)
-                    })
-                }
+                // Checking types equality
+                coercion::coerce(
+                    &mut self.icx,
+                    Coercion::Eq((what_address, inferred_what), (address, typ)),
+                );
             }
-            Pattern::Float(_) => {
+            Pattern::Float(address, _) => {
                 let typ = Typ::Prelude(PreludeType::Float);
-                if inferred_what != typ {
-                    bail!(TypeckError::TypesMissmatch {
-                        related: vec![TypeckRelated::Here {
-                            src: case.address.source.clone(),
-                            span: case.address.span.clone().into()
-                        }],
-                        expected: inferred_what.pretty(&mut self.icx),
-                        got: typ.pretty(&mut self.icx)
-                    })
-                }
+                // Checking types equality
+                coercion::coerce(
+                    &mut self.icx,
+                    Coercion::Eq((what_address, inferred_what), (address, typ)),
+                );
             }
-            Pattern::String(_) => {
+            Pattern::String(address, _) => {
                 let typ = Typ::Prelude(PreludeType::String);
-                if inferred_what != typ {
-                    bail!(TypeckError::TypesMissmatch {
-                        related: vec![TypeckRelated::Here {
-                            src: case.address.source.clone(),
-                            span: case.address.span.clone().into()
-                        }],
-                        expected: inferred_what.pretty(&mut self.icx),
-                        got: typ.pretty(&mut self.icx)
-                    })
-                }
+                // Checking types equality
+                coercion::coerce(
+                    &mut self.icx,
+                    Coercion::Eq((what_address, inferred_what), (address, typ)),
+                );
             }
-            Pattern::Bool(_) => {
+            Pattern::Bool(address, _) => {
                 let typ = Typ::Prelude(PreludeType::Bool);
-                if inferred_what != typ {
-                    bail!(TypeckError::TypesMissmatch {
-                        related: vec![TypeckRelated::Here {
-                            src: case.address.source.clone(),
-                            span: case.address.span.clone().into()
-                        }],
-                        expected: inferred_what.pretty(&mut self.icx),
-                        got: typ.pretty(&mut self.icx)
-                    })
-                }
+                // Checking types equality
+                coercion::coerce(
+                    &mut self.icx,
+                    Coercion::Eq((what_address, inferred_what), (address, typ)),
+                );
             }
             Pattern::Wildcard => skip!(),
-            Pattern::Variant(var) => {
+            Pattern::Variant(address, var) => {
                 // inferring resolution, and checking
                 // that is an enum variant
                 let res = self.infer_resolution(var);
                 match &res {
                     Res::Variant(en, _) => {
-                        // If types aren't equal
-                        if inferred_what != *en {
-                            bail!(TypeckError::TypesMissmatch {
-                                related: vec![TypeckRelated::Here {
-                                    src: case.address.source.clone(),
-                                    span: case.address.span.clone().into()
-                                }],
-                                expected: en.pretty(&mut self.icx),
-                                got: inferred_what.pretty(&mut self.icx)
-                            });
-                        }
+                        // Checking types equality
+                        coercion::coerce(
+                            &mut self.icx,
+                            Coercion::Eq((what_address, inferred_what), (address, en.clone())),
+                        );
                     }
                     _ => bail!(TypeckError::WrongVariantPattern {
                         src: self.module.source.clone(),
@@ -1025,13 +1002,13 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     }),
                 }
             }
-            Pattern::BindTo(name) => {
+            Pattern::BindTo(address, name) => {
                 self.resolver
-                    .define_local(&case.address, &name, inferred_what.clone(), false);
+                    .define_local(&address, &name, inferred_what.clone(), false);
             }
             Pattern::Or(pat1, pat2) => {
-                self.analyze_pattern(inferred_what.clone(), case, &pat1);
-                self.analyze_pattern(inferred_what, case, &pat2);
+                self.analyze_pattern(what_address.clone(), inferred_what.clone(), case, &pat1);
+                self.analyze_pattern(what_address, inferred_what, case, &pat2);
             }
         }
     }
@@ -1063,6 +1040,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         cases: Vec<Case>,
     ) -> Typ {
         // inferring matchable
+        let what_location = what.location();
         let inferred_what = self.infer_expr(what);
         // to unify
         let mut to_unify = Vec::new();
@@ -1071,7 +1049,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             // pattern scope start
             self.resolver.push_rib();
             // analyzing pattern
-            self.analyze_pattern(inferred_what.clone(), &case, &case.pattern);
+            self.analyze_pattern(
+                what_location.clone(),
+                inferred_what.clone(),
+                &case,
+                &case.pattern,
+            );
             // analyzing body
             let (case_location, inferred_case) = match case.body {
                 Either::Left(block) => (block.location.clone(), self.infer_block(block)),

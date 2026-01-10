@@ -1,0 +1,74 @@
+---
+source: crates/watt_tests/src/codegen/patterns.rs
+expression: "\nenum Color {\n    Red,\n    Green,\n    Blue\n}\n\nfn describe(c: Color): string {\n    match c {\n        Color.Red -> \"red\"\n        Color.Green -> \"green\"\n        Color.Blue -> \"blue\"\n    }\n}\n        "
+---
+Source code:
+
+enum Color {
+    Red,
+    Green,
+    Blue
+}
+
+fn describe(c: Color): string {
+    match c {
+        Color.Red -> "red"
+        Color.Green -> "green"
+        Color.Blue -> "blue"
+    }
+}
+        
+
+Generation result:
+import {
+    $$match,
+    $$equals,
+    $$todo,
+    $$range,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "./prelude.js"
+
+export const Color = {
+    Red: () => ({
+        $meta: "Enum",
+        $enum: "Color",
+        $variant: "Red",
+    }),
+    Green: () => ({
+        $meta: "Enum",
+        $enum: "Color",
+        $variant: "Green",
+    }),
+    Blue: () => ({
+        $meta: "Enum",
+        $enum: "Color",
+        $variant: "Blue",
+    })
+};
+
+export function describe(c) {
+    return $$match(c, [
+        new $$VariantPattern(
+            "Red",
+            function() {
+                return "red"
+            }
+        ),
+        new $$VariantPattern(
+            "Green",
+            function() {
+                return "green"
+            }
+        ),
+        new $$VariantPattern(
+            "Blue",
+            function() {
+                return "blue"
+            }
+        )
+    ])
+}

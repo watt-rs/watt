@@ -1,0 +1,31 @@
+---
+source: crates/watt_tests/src/codegen/simple.rs
+expression: "\nfn main() {\n    for i in 0..=3 {\n        let x = i;\n    }\n}\n        "
+---
+Source code:
+
+fn main() {
+    for i in 0..=3 {
+        let x = i;
+    }
+}
+        
+
+Generation result:
+import {
+    $$match,
+    $$equals,
+    $$todo,
+    $$range,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "./prelude.js"
+
+export function main() {
+    for (const i of $$range(0, 3, 1)) {
+        let x = i
+    }
+}

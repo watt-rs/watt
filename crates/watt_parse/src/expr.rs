@@ -9,7 +9,7 @@ impl<'file> Parser<'file> {
     /// Anonymous fn expr
     fn anonymous_fn_expr(&mut self) -> Expression {
         // start span `fn (): ... {}`
-        let start_span = self.peek().address.clone();
+        let span_start = self.peek().address.clone();
         self.consume(TokenKind::Fn);
 
         // params
@@ -30,13 +30,13 @@ impl<'file> Parser<'file> {
             None
         };
         // end span `fn (): ... {}`
-        let end_span = self.previous().address.clone();
+        let span_end = self.previous().address.clone();
 
         // body
         let body = self.block_or_box_expr();
 
         Expression::Function {
-            location: start_span + end_span,
+            location: span_start + span_end,
             params,
             body,
             typ,
@@ -45,25 +45,25 @@ impl<'file> Parser<'file> {
 
     /// Else parsing
     fn else_branch(&mut self) -> ElseBranch {
-        let start_span = self.consume(TokenKind::Else).address.clone();
+        let span_start = self.consume(TokenKind::Else).address.clone();
         let body = self.block_or_expr();
-        let end_span = self.previous().address.clone();
+        let span_end = self.previous().address.clone();
 
         ElseBranch::Else {
-            location: start_span + end_span,
+            location: span_start + span_end,
             body,
         }
     }
 
     /// Elif parsing
     fn elif_branch(&mut self) -> ElseBranch {
-        let start_span = self.consume(TokenKind::Elif).address.clone();
+        let span_start = self.consume(TokenKind::Elif).address.clone();
         let logical = self.expr();
         let body = self.block_or_expr();
-        let end_span = self.previous().address.clone();
+        let span_end = self.previous().address.clone();
 
         ElseBranch::Elif {
-            location: start_span + end_span,
+            location: span_start + span_end,
             logical,
             body,
         }
@@ -71,10 +71,10 @@ impl<'file> Parser<'file> {
 
     /// If expression parsing
     fn if_expr(&mut self) -> Expression {
-        let start_span = self.consume(TokenKind::If).address.clone();
+        let span_start = self.consume(TokenKind::If).address.clone();
         let logical = self.expr();
         let body = self.block_or_box_expr();
-        let end_span = self.previous().address.clone();
+        let span_end = self.previous().address.clone();
         let mut else_branches = Vec::new();
 
         // elif parsing
@@ -88,7 +88,7 @@ impl<'file> Parser<'file> {
         }
 
         Expression::If {
-            location: start_span + end_span,
+            location: span_start + span_end,
             logical: Box::new(logical),
             body,
             else_branches,
@@ -464,19 +464,21 @@ impl<'file> Parser<'file> {
         let pattern =
             // If string presented
             if self.check(TokenKind::Text) {
-                Pattern::String(self.advance().value.clone())
+                let tk = self.advance().clone();
+                Pattern::String(tk.address, tk.value)
             }
             // If bool presented
             else if self.check(TokenKind::Bool) {
-                Pattern::Bool(self.advance().value.clone())
+                let tk = self.advance().clone();
+                Pattern::Bool(tk.address, tk.value)
             }
             // If number presented
             else if self.check(TokenKind::Number) {
-                let value = self.advance().clone();
-                if value.value.contains(".") {
-                    Pattern::Float(value.value)
+                let tk = self.advance().clone();
+                if tk.value.contains(".") {
+                    Pattern::Float(tk.address, tk.value)
                 } else {
-                    Pattern::Int(value.value)
+                    Pattern::Int(tk.address, tk.value)
                 }
             }
             // If wildcard presented
@@ -486,47 +488,47 @@ impl<'file> Parser<'file> {
             }
             // If identifier presented
             else {
+                // Start span
+                let span_start = self.peek().address.clone();
                 // If dot presented -> enum patterns
                 if self.check_next(TokenKind::Dot) {
                     // Parsing variant pattern prefix
                     let value = self.variant_pattern_prefix();
                     // Checking for unwrap of enum
                     if self.check(TokenKind::Lparen) {
-                        // (.., n fields)
-                        self.consume(TokenKind::Lparen);
-                        let mut fields = Vec::new();
-                        // Checking for close of parens
-                        if self.check(TokenKind::Rparen) {
-                            self.advance();
-                            return Pattern::Unwrap { en: value, fields };
-                        }
-                        // Parsing field names
-                        let field = self.consume(TokenKind::Id).clone();
-                        fields.push((field.address, field.value));
-                        while self.check(TokenKind::Comma) {
-                            self.advance();
-                            let field = self.consume(TokenKind::Id).clone();
-                            fields.push((field.address, field.value));
-                        }
-                        self.consume(TokenKind::Rparen);
+                        // Fields
+                        let fields = self.sep_by(TokenKind::Lparen, TokenKind::Rparen, TokenKind::Comma, |s| {
+                            let tk = s.consume(TokenKind::Id);
+                            (tk.address.clone(), tk.value.clone())
+                        });
+                        // End span
+                        let span_end = self.peek().address.clone();
                         // As result, enum unwrap pattern
-                        Pattern::Unwrap { en: value, fields }
+                        Pattern::Unwrap { address: span_start + span_end, en: value, fields }
                     }
                     // If no unwrap, returning just as value
                     else {
-                        Pattern::Variant(value)
+                        // End span
+                        let span_end = self.peek().address.clone();
+                        // As result, enum variant pattern
+                        Pattern::Variant(span_start + span_end, value)
                     }
                 }
                 // If not -> bind pattern
                 else {
-                    Pattern::BindTo(self.consume(TokenKind::Id).value.clone())
+                    Pattern::BindTo(span_start, self.consume(TokenKind::Id).value.clone())
                 }
             };
         // Checking if more patterns presented
         if self.check(TokenKind::Bar) {
             // Parsing `or` pattern
             self.consume(TokenKind::Bar);
-            Pattern::Or(Box::new(pattern), Box::new(self.pattern()))
+
+            // Left and right pattern
+            let a = Box::new(pattern);
+            let b = Box::new(self.pattern());
+
+            Pattern::Or(a, b)
         } else {
             pattern
         }
@@ -546,7 +548,7 @@ impl<'file> Parser<'file> {
         let mut cases = Vec::new();
         while !self.check(TokenKind::Rbrace) {
             // Start address of case
-            let start_span = self.peek().address.clone();
+            let span_start = self.peek().address.clone();
             // Pattern of case
             let pattern = self.pattern();
             // -> { body, ... }
@@ -557,9 +559,9 @@ impl<'file> Parser<'file> {
                 Either::Right(self.expr())
             };
             // End address of case
-            let end_span = self.previous().address.clone();
+            let span_end = self.previous().address.clone();
             cases.push(Case {
-                address: start_span + end_span,
+                address: span_start + span_end,
                 pattern,
                 body,
             });

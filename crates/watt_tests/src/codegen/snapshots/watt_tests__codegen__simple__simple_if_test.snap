@@ -1,0 +1,38 @@
+---
+source: crates/watt_tests/src/codegen/simple.rs
+expression: "\nfn check(a: int, b: int): bool {\n    if a > b {\n        true\n    } else {\n        false\n    }\n}\n        "
+---
+Source code:
+
+fn check(a: int, b: int): bool {
+    if a > b {
+        true
+    } else {
+        false
+    }
+}
+        
+
+Generation result:
+import {
+    $$match,
+    $$equals,
+    $$todo,
+    $$range,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "./prelude.js"
+
+export function check(a, b) {
+    return (() => {
+        if (a > b) {
+            return true
+        }
+        else {
+            return false
+        }
+    })()
+}

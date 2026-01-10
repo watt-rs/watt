@@ -1,0 +1,38 @@
+---
+source: crates/watt_tests/src/codegen/structs.rs
+expression: "\ntype Box[T] {\n    value: T\n}\n\nfn main() {\n    let a = Box(123);\n    let b: Box[float] = a;\n}\n    "
+---
+Source code:
+
+type Box[T] {
+    value: T
+}
+
+fn main() {
+    let a = Box(123);
+    let b: Box[float] = a;
+}
+    
+
+Generation result:
+typeck::types_missmatch
+
+  × coult not unify "Box[Float]" and "Box[Int]".
+
+Hint: 
+  💡 this type is "Box[Float]"
+   ╭─[buggy:8:12]
+ 7 │     let a = Box(123);
+ 8 │     let b: Box[float] = a;
+   ·            ──────────
+ 9 │ }
+   ╰────
+
+Hint: 
+  💡 this type is "Box[Int]"
+   ╭─[buggy:8:25]
+ 7 │     let a = Box(123);
+ 8 │     let b: Box[float] = a;
+   ·                         ─
+ 9 │ }
+   ╰────

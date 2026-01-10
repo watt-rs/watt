@@ -1,0 +1,38 @@
+---
+source: crates/watt_tests/src/codegen/structs.rs
+expression: "\ntype House {\n    street: string,\n    number: int,\n    owner_id: int\n}\n    "
+---
+Source code:
+
+type House {
+    street: string,
+    number: int,
+    owner_id: int
+}
+    
+
+Generation result:
+import {
+    $$match,
+    $$equals,
+    $$todo,
+    $$range,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "./prelude.js"
+
+export class $House {
+    constructor(street, number, owner_id) {
+        this.$meta = "Type";
+        this.$type = "House";
+        this.street = street
+        this.number = number
+        this.owner_id = owner_id
+    }
+}
+export function House(street, number, owner_id) {
+    return new $House(street, number, owner_id);
+}

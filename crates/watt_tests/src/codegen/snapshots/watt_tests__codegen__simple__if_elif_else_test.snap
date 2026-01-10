@@ -1,0 +1,43 @@
+---
+source: crates/watt_tests/src/codegen/simple.rs
+expression: "\nfn categorize(n: int): string {\n    if n > 10 {\n        \"big\"\n    } elif n > 5 {\n        \"medium\"\n    } else {\n        \"small\"\n    }\n}\n        "
+---
+Source code:
+
+fn categorize(n: int): string {
+    if n > 10 {
+        "big"
+    } elif n > 5 {
+        "medium"
+    } else {
+        "small"
+    }
+}
+        
+
+Generation result:
+import {
+    $$match,
+    $$equals,
+    $$todo,
+    $$range,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "./prelude.js"
+
+export function categorize(n) {
+    return (() => {
+        if (n > 10) {
+            return "big"
+        }
+        else if (n > 5) {
+            return "medium"
+        }
+        else {
+            return "small"
+        }
+    })()
+}
