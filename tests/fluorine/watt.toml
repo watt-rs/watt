@@ -1,0 +1,8 @@
+[pkg]
+pkg = "lib"
+name = "fluorine"
+main = "fluorine/main"
+dependencies = []
+
+[lints]
+disabled = []

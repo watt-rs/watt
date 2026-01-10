@@ -18,6 +18,7 @@ pub enum PackageType {
 
 /// Package dependency
 #[derive(Deserialize, Serialize)]
+#[serde(untagged)]
 pub enum PackageDependency {
     /// Local dependency
     Local { path: String },

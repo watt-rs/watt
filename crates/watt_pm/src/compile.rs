@@ -1,15 +1,19 @@
 /// Imports
 use crate::{
     config::{self, WattConfig},
-    dependencies,
+    dependencies::{self, PmPackage},
     errors::PackageError,
     runtime::JsRuntime,
 };
 use camino::{Utf8Path, Utf8PathBuf};
 use console::style;
-use tracing::info;
 use std::process::Command;
-use watt_common::{bail, package::{DraftPackage, DraftPackageLints}, skip};
+use tracing::info;
+use watt_common::{
+    bail,
+    package::{DraftPackage, DraftPackageLints},
+    skip,
+};
 use watt_compile::{io, package::CompletedPackage, project::ProjectCompiler};
 
 /// Runs using runtime
@@ -46,7 +50,7 @@ fn run_by_rt(index: Utf8PathBuf, rt: JsRuntime) {
                 })
             }
         }
-        JsRuntime::Common => skip!()
+        JsRuntime::Common => skip!(),
     }
 }
 
@@ -131,25 +135,21 @@ pub fn compile(path: Utf8PathBuf) -> Utf8PathBuf {
     info!("Crawled project name {name} from {path}.");
     // Getting toposorted packages
     println!("{} Resolving packages...", style("[🔍]").bold().cyan());
-    let resolved = dependencies::solve(cache_path.clone(), name.clone(), &config.pkg);
+    let resolved = dependencies::solve(
+        cache_path.clone(),
+        PmPackage::Local(name, path.clone()),
+        &config.pkg,
+    );
     println!("{} Packages resolved.", style("[✓]").bold().cyan());
     info!("Resolved packages: {resolved:?}");
     // Packages paths
     let packages = {
         resolved.iter().map(|pkg| {
-            // Path to package
-            let path = if &name == pkg {
-                path.clone()
-            } else {
-                let mut pkg_path = cache_path.clone();
-                pkg_path.push(pkg);
-                pkg_path
-            };
             // Package config
-            let config = config::retrieve_config(&path);
+            let config = config::retrieve_config(&pkg.path());
             // Generating draft package
             DraftPackage {
-                path,
+                path: pkg.path().clone(),
                 lints: DraftPackageLints {
                     disabled: config.lints.disabled,
                 },

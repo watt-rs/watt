@@ -1,0 +1,10 @@
+[pkg]
+pkg = "app"
+name = "bromine"
+main = "bromine/main"
+dependencies = [
+    { path = "C:/Users/irena/Watt/tests/fluorine" }
+]
+
+[lints]
+disabled = []
