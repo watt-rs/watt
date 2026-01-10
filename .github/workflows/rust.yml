@@ -28,7 +28,7 @@ jobs:
           deno-version: v1.x
 
       - name: Set up Insta
-        run: cargo install insta-cli
+        run: cargo install cargo-insta
 
       - name: Run each example
         run: |
