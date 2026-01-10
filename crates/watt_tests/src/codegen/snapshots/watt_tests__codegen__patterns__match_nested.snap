@@ -1,0 +1,68 @@
+---
+source: crates/watt_tests/src/codegen/patterns.rs
+expression: "\nenum Shape {\n    Circle(r: float),\n    Rectangle(w: float, h: float)\n}\n\nfn area(s: Shape): float {\n    match s {\n        Shape.Circle(r) -> 3.14 * r * r\n        Shape.Rectangle(w, h) -> w * h\n    }\n}\n        "
+---
+Source code:
+
+enum Shape {
+    Circle(r: float),
+    Rectangle(w: float, h: float)
+}
+
+fn area(s: Shape): float {
+    match s {
+        Shape.Circle(r) -> 3.14 * r * r
+        Shape.Rectangle(w, h) -> w * h
+    }
+}
+        
+
+Generation result:
+import {
+    $$match,
+    $$equals,
+    $$todo,
+    $$range,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "./prelude.js"
+
+export const Shape = {
+    Circle: (r) => ({
+        $meta: "Enum",
+        $enum: "Shape",
+        $variant: "Circle",
+        r: r
+    }),
+    Rectangle: (w, h) => ({
+        $meta: "Enum",
+        $enum: "Shape",
+        $variant: "Rectangle",
+        w: w, h: h
+    })
+};
+
+export function area(s) {
+    return $$match(s, [
+        new $$UnwrapPattern(
+            "Circle",
+            ["r"],
+            function($$fields) {
+                let r = $$fields.r;
+                return 3.14 * r * r
+            }
+        ),
+        new $$UnwrapPattern(
+            "Rectangle",
+            ["w", "h"],
+            function($$fields) {
+                let w = $$fields.w;
+                let h = $$fields.h;
+                return w * h
+            }
+        )
+    ])
+}

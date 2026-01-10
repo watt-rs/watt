@@ -8,6 +8,8 @@ members = [
     "crates/watt_compile",
     "crates/watt_pm",
     "crates/watt_gen",
-    "crates/watt_lint"
+    "crates/watt_lint",
+    "crates/watt_tests"
 ]
 resolver = "3"
+doctest = false

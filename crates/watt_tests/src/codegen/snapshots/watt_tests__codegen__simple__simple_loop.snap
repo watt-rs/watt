@@ -1,0 +1,45 @@
+---
+source: crates/watt_tests/src/codegen/simple.rs
+expression: "\nfn main() {\n    let n = 0;\n    let flag = true;\n    loop flag {\n        let x = n;\n        let n = n + 1;\n        if n == 3 {\n            flag = false;\n        }\n    }\n}\n        "
+---
+Source code:
+
+fn main() {
+    let n = 0;
+    let flag = true;
+    loop flag {
+        let x = n;
+        let n = n + 1;
+        if n == 3 {
+            flag = false;
+        }
+    }
+}
+        
+
+Generation result:
+import {
+    $$match,
+    $$equals,
+    $$todo,
+    $$range,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "./prelude.js"
+
+export function main() {
+    let n = 0
+    let flag = true
+    while (flag) {
+        let x = n
+        let n = n + 1
+        (() => {
+            if ($$equals(n, 3)) {
+                flag = false
+            }
+        })()
+    }
+}

@@ -1,0 +1,45 @@
+---
+source: crates/watt_tests/src/codegen/patterns.rs
+expression: "\nfn check_number(n: int): string {\n    match n {\n        0 -> \"zero\"\n        1 -> \"one\"\n        2 -> \"two\"\n        _ -> \"many\"\n    }\n}\n        "
+---
+Source code:
+
+fn check_number(n: int): string {
+    match n {
+        0 -> "zero"
+        1 -> "one"
+        2 -> "two"
+        _ -> "many"
+    }
+}
+        
+
+Generation result:
+import {
+    $$match,
+    $$equals,
+    $$todo,
+    $$range,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "./prelude.js"
+
+export function check_number(n) {
+    return $$match(n, [
+        new $$EqPattern(0, function() {
+            return "zero"
+        }),
+        new $$EqPattern(1, function() {
+            return "one"
+        }),
+        new $$EqPattern(2, function() {
+            return "two"
+        }),
+        new $$WildcardPattern(function() {
+            return "many"
+        })
+    ])
+}

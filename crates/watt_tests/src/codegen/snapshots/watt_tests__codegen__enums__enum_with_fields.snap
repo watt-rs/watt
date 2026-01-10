@@ -1,0 +1,46 @@
+---
+source: crates/watt_tests/src/codegen/enums.rs
+expression: "\nenum Color {\n    Rgb(r: int, g: int, b: int),\n    Hex(hex: string),\n    Cmyk(c: int, m: int, y: int, k: int)\n}\n    "
+---
+Source code:
+
+enum Color {
+    Rgb(r: int, g: int, b: int),
+    Hex(hex: string),
+    Cmyk(c: int, m: int, y: int, k: int)
+}
+    
+
+Generation result:
+import {
+    $$match,
+    $$equals,
+    $$todo,
+    $$range,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "./prelude.js"
+
+export const Color = {
+    Rgb: (r, g, b) => ({
+        $meta: "Enum",
+        $enum: "Color",
+        $variant: "Rgb",
+        r: r, g: g, b: b
+    }),
+    Hex: (hex) => ({
+        $meta: "Enum",
+        $enum: "Color",
+        $variant: "Hex",
+        hex: hex
+    }),
+    Cmyk: (c, m, y, k) => ({
+        $meta: "Enum",
+        $enum: "Color",
+        $variant: "Cmyk",
+        c: c, m: m, y: y, k: k
+    })
+};

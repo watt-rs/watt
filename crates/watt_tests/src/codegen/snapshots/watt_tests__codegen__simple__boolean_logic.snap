@@ -1,0 +1,35 @@
+---
+source: crates/watt_tests/src/codegen/simple.rs
+expression: "\nfn main() {\n    let a = true;\n    let b = false;\n    let c = a && b;\n    let d = a || b;\n    let e = !a;\n}\n        "
+---
+Source code:
+
+fn main() {
+    let a = true;
+    let b = false;
+    let c = a && b;
+    let d = a || b;
+    let e = !a;
+}
+        
+
+Generation result:
+import {
+    $$match,
+    $$equals,
+    $$todo,
+    $$range,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "./prelude.js"
+
+export function main() {
+    let a = true
+    let b = false
+    let c = a && b
+    let d = a || b
+    let e = !a
+}

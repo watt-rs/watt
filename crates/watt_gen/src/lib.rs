@@ -85,7 +85,7 @@ fn gen_pattern(pattern: Pattern, body: Either<Block, Expression>) -> js::Tokens 
     quote! {
         $(match pattern {
             // Int, float, bool patterns
-            Pattern::Int(val) | Pattern::Float(val) | Pattern::Bool(val)  => {
+            Pattern::Int(_, val) | Pattern::Float(_, val) | Pattern::Bool(_, val)  => {
                 new $("$$")EqPattern($(val.as_str()), function() {
                     $(match body {
                         Either::Left(block) => $(gen_block_expr(block)),
@@ -94,7 +94,7 @@ fn gen_pattern(pattern: Pattern, body: Either<Block, Expression>) -> js::Tokens 
                 })
             },
             // String pattern
-            Pattern::String(val) => {
+            Pattern::String(_, val) => {
                 new $("$$")EqPattern($(quoted(val.as_str())), function() {
                     $(match body {
                         Either::Left(block) => $(gen_block_expr(block)),
@@ -103,7 +103,7 @@ fn gen_pattern(pattern: Pattern, body: Either<Block, Expression>) -> js::Tokens 
                 })
             }
             // Unwrap pattern of fields {field, field, n..}
-            Pattern::Unwrap { en, fields } => {
+            Pattern::Unwrap { en, fields, .. } => {
                 new $("$$")UnwrapPattern(
                     $(match en {
                         Expression::SuffixVar { name, .. } => $(quoted(try_escape_js(&name))),
@@ -129,7 +129,7 @@ fn gen_pattern(pattern: Pattern, body: Either<Block, Expression>) -> js::Tokens 
                 })
             }
             // BindTo(var) pattern
-            Pattern::BindTo(var) => {
+            Pattern::BindTo(_, var) => {
                 new $("$$")BindPattern(function($("$$it")) {
                     $(try_escape_js(var.as_str())) = $("$$it")
                     $(match body {
@@ -139,7 +139,7 @@ fn gen_pattern(pattern: Pattern, body: Either<Block, Expression>) -> js::Tokens 
                 })
             }
             // Variant(var) pattern
-            Pattern::Variant(var) => {
+            Pattern::Variant(_, var) => {
                 new $("$$")VariantPattern(
                     $(match var {
                         Expression::SuffixVar { name, .. } => $(quoted(try_escape_js(name.as_str()))),

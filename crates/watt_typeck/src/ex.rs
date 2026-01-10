@@ -86,7 +86,7 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
         // Checking for patterns
         for case in cases {
             match case.pattern {
-                Pattern::BindTo(_) => return true,
+                Pattern::BindTo(_, _) => return true,
                 Pattern::Wildcard => return true,
                 _ => continue,
             }
@@ -101,7 +101,7 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
         // Matching pattern
         match &pattern {
             // Bool pattern
-            Pattern::Bool(val) => match val.as_str() {
+            Pattern::Bool(_, val) => match val.as_str() {
                 "true" => (true, false),
                 "false" => (false, true),
                 _ => unreachable!(),
@@ -170,7 +170,7 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
         // Collecting variant patterns
         let variant_patterns: Vec<Pattern> = collected_patterns
             .into_iter()
-            .filter(|pattern| matches!(pattern, Pattern::Unwrap { .. } | Pattern::Variant(_)))
+            .filter(|pattern| matches!(pattern, Pattern::Unwrap { .. } | Pattern::Variant(_, _)))
             .collect();
 
         // Collecting unwrap patterns
@@ -222,7 +222,7 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
                 }
                 _ => unreachable!(),
             },
-            Pattern::Variant(var) => match self.cx.infer_resolution(var.clone()) {
+            Pattern::Variant(_, var) => match self.cx.infer_resolution(var.clone()) {
                 Res::Variant(_, pattern_variant) => {
                     variants.push(pattern_variant);
                 }

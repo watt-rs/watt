@@ -23,7 +23,7 @@ use indexmap::IndexMap;
 ///
 /// # Example
 ///
-/// ```rust
+/// ```watt
 /// let mut generics = Generics::new();
 /// generics.push_scope(vec!["T".into(), "U".into()]);
 /// generics.push_scope(vec!["V".into()]);

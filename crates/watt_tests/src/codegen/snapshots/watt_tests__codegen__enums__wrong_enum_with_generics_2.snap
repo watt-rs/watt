@@ -1,0 +1,39 @@
+---
+source: crates/watt_tests/src/codegen/enums.rs
+expression: "\nenum Result[V, E] {\n    Ok(value: V),\n    Err(error: E)\n}\n\nfn main() {\n    let a = Result.Ok(200);\n    let b: Result[float, bool] = a;\n}\n    "
+---
+Source code:
+
+enum Result[V, E] {
+    Ok(value: V),
+    Err(error: E)
+}
+
+fn main() {
+    let a = Result.Ok(200);
+    let b: Result[float, bool] = a;
+}
+    
+
+Generation result:
+typeck::types_missmatch
+
+  × coult not unify "Result[Float, Bool]" and "Result[Int, ?1]".
+
+Hint: 
+  💡 this type is "Result[Float, Bool]"
+    ╭─[buggy:9:12]
+  8 │     let a = Result.Ok(200);
+  9 │     let b: Result[float, bool] = a;
+    ·            ───────────────────
+ 10 │ }
+    ╰────
+
+Hint: 
+  💡 this type is "Result[Int, ?1]"
+    ╭─[buggy:9:34]
+  8 │     let a = Result.Ok(200);
+  9 │     let b: Result[float, bool] = a;
+    ·                                  ─
+ 10 │ }
+    ╰────

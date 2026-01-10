@@ -1,22 +1,5 @@
-enum Or {
-    A,
-    B
-}
-
-fn a(t: Or): int {
-    match t {
-        Or.A -> 1
-        Or.B -> todo as "todo"
-    }
-}
-
-fn b(t: Or): int {
-    match t {
-        Or.A -> 1
-        Or.B -> panic as "todo"
-    }
-}
+extern fn println(text: string) = "console.log(text);"
 
 fn main() {
-    b(Or.B());
+    println("Hello, world!");
 }

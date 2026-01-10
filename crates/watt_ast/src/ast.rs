@@ -21,7 +21,7 @@ pub enum TypePath {
     /// or prelude type.
     ///
     /// # Example
-    /// ```rust
+    /// ```watt
     /// let a: int = 5;
     /// ```
     ///
@@ -34,7 +34,7 @@ pub enum TypePath {
     /// type used from module.
     ///
     /// # Example
-    /// ```rust
+    /// ```watt
     /// let a: module.Typ = 5;
     /// ```
     ///
@@ -49,7 +49,7 @@ pub enum TypePath {
     /// result type.
     ///
     /// # Example
-    /// ```rust
+    /// ```watt
     /// let sum: fn(int, int): int = fn(a: int, b: int) {
     ///     a + n
     /// };
@@ -218,6 +218,7 @@ pub enum Pattern {
     /// ```
     ///
     Unwrap {
+        address: Address,
         en: Expression,
         fields: Vec<(Address, EcoString)>,
     },
@@ -240,15 +241,15 @@ pub enum Pattern {
     /// pattern with enum variant that contain fields
     /// is available. There won't be an error like in Rust.
     ///
-    Variant(Expression),
+    Variant(Address, Expression),
     /// Represents integer pattern, example: `123`
-    Int(EcoString),
+    Int(Address, EcoString),
     /// Represents float pattern, example: `1.34`
-    Float(EcoString),
+    Float(Address, EcoString),
     /// Represents bool pattern: `true` / `false
-    Bool(EcoString),
+    Bool(Address, EcoString),
     /// Represents string pattern: "Hello, world!"
-    String(EcoString),
+    String(Address, EcoString),
     /// Represents bind pattern
     ///
     /// # Example
@@ -263,7 +264,7 @@ pub enum Pattern {
     ///  named
     /// }
     /// ```
-    BindTo(EcoString),
+    BindTo(Address, EcoString),
     /// Represents wilcard pattern
     ///
     /// # Example
