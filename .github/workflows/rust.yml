@@ -37,3 +37,6 @@ jobs:
             (cd "$dir" && cargo run run)
             echo "------------------------"
           done
+
+      - name: Run tests
+        run: cargo insta test
