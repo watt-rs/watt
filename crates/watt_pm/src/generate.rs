@@ -19,10 +19,10 @@ pub fn gen_project(path: Utf8PathBuf, ty: PackageType) {
             let src = path.join(name);
             io::mkdir(&src);
 
-            // Generating lib.wt
-            let lib_wt = src.join("lib.wt");
+            // Generating main.wt
+            let lib_wt = src.join("main.wt");
             io::write(lib_wt, String::from(
-r#"// lib.wt - main file of library project.
+r#"// `main.wt` is the main file of library project.
 
 "#
             ));
@@ -39,7 +39,7 @@ r#"// lib.wt - main file of library project.
             // Generating main.wt
             let main = src.join("main.wt");
             io::write(main, String::from(
-r#"// main.wt - the entry point of your application.
+r#"// `main.wt` is the starting point for your application.
 
 fn main() {
     // Your code goes here.
