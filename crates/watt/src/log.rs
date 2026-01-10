@@ -1,3 +1,4 @@
+use tracing::level_filters::LevelFilter;
 /// Imports
 use tracing_subscriber::{
     EnvFilter,
@@ -8,7 +9,11 @@ use tracing_subscriber::{
 
 /// Initializes logging
 pub fn init() {
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("off"));
+    let filter: EnvFilter = EnvFilter::builder()
+        .with_env_var("WATT_LOG")
+        .with_default_directive(LevelFilter::OFF.into())
+        .from_env_lossy();
+
     let fmt_layer = fmt::layer()
         .with_span_events(FmtSpan::ENTER)
         .with_target(false)
