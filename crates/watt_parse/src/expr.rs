@@ -147,7 +147,7 @@ impl<'file> Parser<'file> {
         let expr = self.expr();
         self.consume(TokenKind::Rparen);
 
-        expr
+        Expression::Paren(Box::new(expr))
     }
 
     /// Todo expr `todo`

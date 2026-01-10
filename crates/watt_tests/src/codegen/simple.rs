@@ -23,6 +23,21 @@ fn main() {
 }
 
 /*
+ * Grouping tests
+ */
+#[test]
+fn parens_expr() {
+    assert_js!(
+        r#"
+fn main() {
+    let a = (2 + 2) * 2;
+    let b = 3 * (4 + ((2 - 1)))
+}
+        "#
+    )
+}
+
+/*
  * Casting tests
  */
 #[test]

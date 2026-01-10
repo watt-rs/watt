@@ -28,7 +28,9 @@ jobs:
           deno-version: v1.x
 
       - name: Set up Insta
-        run: cargo install cargo-insta
+        run: |
+          cd crates/watt_tests
+          cargo install cargo-insta
 
       - name: Run each example
         run: |

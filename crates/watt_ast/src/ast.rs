@@ -554,6 +554,12 @@ pub enum Expression {
         value: Box<Expression>,
         cases: Vec<Case>,
     },
+    /// Paren expression
+    ///
+    /// ```watt
+    /// (...)
+    /// ```
+    Paren(Box<Expression>),
 }
 
 /// Implementation
@@ -575,6 +581,7 @@ impl Expression {
             Expression::Call { location, .. } => location.clone(),
             Expression::Function { location, .. } => location.clone(),
             Expression::Match { location, .. } => location.clone(),
+            Expression::Paren(expr) => expr.location(),
         }
     }
 }
