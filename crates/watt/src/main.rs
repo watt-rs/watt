@@ -6,7 +6,7 @@ pub(crate) mod errors;
 pub(crate) mod log;
 
 // Imports
-use crate::commands::{compile, init, new, run};
+use crate::commands::{build, init, new, run};
 use clap::{Parser, Subcommand};
 use watt_pm::config::PackageType;
 
@@ -33,8 +33,8 @@ enum SubCommand {
     },
     /// Analyzes project for compile-time errors.
     Analyze,
-    /// Compiles project
-    Compile,
+    /// Builds project
+    Build,
     /// Creates new project
     New {
     	name: String,
@@ -59,7 +59,7 @@ pub fn cli() {
         SubCommand::Remove { url: _ } => todo!(),
         SubCommand::Run { runtime } => run::execute(runtime),
         SubCommand::Analyze => todo!(),
-        SubCommand::Compile => compile::execute(),
+        SubCommand::Build => build::execute(),
         SubCommand::New { name, package_type } => new::execute(&name, package_type),
         SubCommand::Clean => todo!(),
         SubCommand::Init { package_type } => init::execute(package_type),
