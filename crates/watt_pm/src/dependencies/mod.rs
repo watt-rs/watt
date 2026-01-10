@@ -1,6 +1,7 @@
 /// Imports
 use crate::{
-    config::{self, PackageConfig, PackageType},
+    compile::path_to_pkg_name,
+    config::{self, PackageConfig, PackageDependency, PackageType},
     errors::PackageError,
 };
 use camino::Utf8PathBuf;
@@ -177,27 +178,56 @@ fn resolve_packages<'solved>(
         solved.insert(name.clone(), Vec::new());
         // Dependencies
         for dependency in &config.dependencies {
-            // Downloading dependency if not already downloaded
-            let pkg = download(dependency, cache.clone());
-            let pkg_path = pkg.0;
-            let pkg_name = pkg.1;
-            let pkg_config = config::retrieve_config(&pkg_path);
-            info!("+ Found dependency {} of {name}", &pkg_name);
-            // Checking it's an `lib` pkg
-            match pkg_config.pkg.pkg {
-                PackageType::Lib => {
-                    // Adding dependency
-                    match solved.get_mut(&name) {
-                        Some(vector) => vector.push(pkg_name.clone()),
-                        None => bail!(PackageError::NoSolvedKeyFound { key: name }),
+            // Matching dependency
+            match dependency {
+                // Local dependency
+                PackageDependency::Local { path } => {
+                    // Retrieving dependency config
+                    let pkg_path = Utf8PathBuf::from(path);
+                    let pkg_name = path_to_pkg_name(&pkg_path);
+                    let pkg_config = config::retrieve_config(&pkg_path);
+                    info!("+ Found local dependency {} of {name}", &path);
+                    // Checking it's an `lib` pkg
+                    match pkg_config.pkg.pkg {
+                        PackageType::Lib => {
+                            // Adding dependency
+                            match solved.get_mut(&name) {
+                                Some(vector) => vector.push(pkg_name.clone()),
+                                None => bail!(PackageError::NoSolvedKeyFound { key: name }),
+                            }
+                            // Resolving dependency packages
+                            resolve_packages(cache.clone(), solved, pkg_name, &pkg_config.pkg);
+                        }
+                        PackageType::App => bail!(PackageError::UseOfAppPackageAsDependency {
+                            name,
+                            path: pkg_path
+                        }),
                     }
-                    // Resolving dependency packages
-                    resolve_packages(cache.clone(), solved, pkg_name, &pkg_config.pkg);
                 }
-                PackageType::App => bail!(PackageError::UseOfAppPackageAsDependency {
-                    name,
-                    path: pkg_path
-                }),
+                PackageDependency::Git(dependency) => {
+                    // Downloading dependency if not already downloaded
+                    let pkg = download(dependency, cache.clone());
+                    let pkg_path = pkg.0;
+                    let pkg_name = pkg.1;
+                    let pkg_config = config::retrieve_config(&pkg_path);
+                    info!("+ Found git dependency {} of {name}", &pkg_name);
+                    // Checking it's an `lib` pkg
+                    match pkg_config.pkg.pkg {
+                        PackageType::Lib => {
+                            // Adding dependency
+                            match solved.get_mut(&name) {
+                                Some(vector) => vector.push(pkg_name.clone()),
+                                None => bail!(PackageError::NoSolvedKeyFound { key: name }),
+                            }
+                            // Resolving dependency packages
+                            resolve_packages(cache.clone(), solved, pkg_name, &pkg_config.pkg);
+                        }
+                        PackageType::App => bail!(PackageError::UseOfAppPackageAsDependency {
+                            name,
+                            path: pkg_path
+                        }),
+                    }
+                }
             }
         }
         solved

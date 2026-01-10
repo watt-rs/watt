@@ -16,6 +16,15 @@ pub enum PackageType {
     Lib,
 }
 
+/// Package dependency
+#[derive(Deserialize, Serialize)]
+pub enum PackageDependency {
+    /// Local dependency
+    Local { path: String },
+    /// Git dependency
+    Git(String),
+}
+
 /// Package config
 #[derive(Deserialize, Serialize)]
 #[allow(dead_code)]
@@ -23,7 +32,7 @@ pub struct PackageConfig {
     pub pkg: PackageType,
     pub name: String,
     pub main: Option<String>,
-    pub dependencies: Vec<String>,
+    pub dependencies: Vec<PackageDependency>,
 }
 
 /// Lints config
