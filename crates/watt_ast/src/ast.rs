@@ -86,7 +86,7 @@ impl TypePath {
 pub struct Parameter {
     /// Parameter name location
     ///
-    /// ```
+    /// ```watt
     /// fn some(a: int) {
     ///         ^ refs to this only
     /// }
@@ -96,7 +96,7 @@ pub struct Parameter {
     pub name: EcoString,
     /// Represents parameter type annotation
     ///
-    /// ```
+    /// ```watt
     /// fn some(a: int) {
     ///            ^^^ like this
     /// }
@@ -110,7 +110,7 @@ pub struct EnumConstructor {
     /// Represents enum constructor location
     ///
     /// # Example
-    /// ```
+    /// ```watt
     /// enum Pot {
     ///     Full(flower: Flower),
     ///     ^^^^^^^^^^^^^^^^^^^^
@@ -123,7 +123,7 @@ pub struct EnumConstructor {
     /// Represents variant parameters / fields
     ///
     /// # Example
-    /// ```
+    /// ```watt
     /// enum Color {
     ///     Rgb(r: int, g: int, b: int),
     ///         ^^^^^^^^^^^^^^^^^^^^^^
@@ -188,7 +188,7 @@ pub enum Publicity {
     /// Represents `pub` publicity
     ///
     /// # Example
-    /// ```
+    /// ```watt
     /// pub fn sum(a: int, b: int): int {
     /// ^^^
     /// this
@@ -207,7 +207,7 @@ pub enum Pattern {
     /// Represents enum fields unwrap pattern
     ///
     /// # Example
-    /// ```
+    /// ```watt
     /// let a = Option.Some(3);
     /// let result = match a {
     ///  Option.None -> -1,
@@ -225,7 +225,7 @@ pub enum Pattern {
     /// Represents just enum variant pattern
     ///
     /// # Example
-    /// ```
+    /// ```watt
     /// let a = Color.Rgb(3, 4, 5);
     /// let hex_code: dyn = match a {
     ///  Color.Hex(code) -> code,
@@ -253,7 +253,7 @@ pub enum Pattern {
     /// Represents bind pattern
     ///
     /// # Example
-    /// ```
+    /// ```watt
     /// let a = Option.None();
     /// match a {
     ///  Option.Some -> ...
@@ -268,7 +268,7 @@ pub enum Pattern {
     /// Represents wilcard pattern
     ///
     /// # Example
-    /// ```
+    /// ```watt
     /// let a = Option.None();
     /// match a {
     ///  Option.Some -> ...
@@ -284,7 +284,7 @@ pub enum Pattern {
     // Two patterns in one
     ///
     /// # Example 1
-    /// ```
+    /// ```watt
     /// enum Animal {
     ///    Bear,
     ///    Cat,
@@ -304,7 +304,7 @@ pub enum Pattern {
     /// ```
     ///
     /// # Example 2 (Important)
-    /// ```
+    /// ```watt
     /// enum Animal {
     ///    Bear,
     ///    Cat(food: int),
@@ -334,7 +334,7 @@ pub enum Pattern {
 pub struct Case {
     /// Case location
     ///
-    /// ```
+    /// ```watt
     /// match a {
     ///     Option.Some(value) -> {  < captures full case body
     ///     }                        < with provided case pattern.
@@ -344,6 +344,7 @@ pub struct Case {
     pub address: Address,
     /// Pattern
     ///
+    /// ```watt
     /// match a {
     ///     Option.Some(value) -> {
     ///     ^^^^^^^^^^^^^^^^^^
@@ -362,19 +363,19 @@ pub enum UseKind {
     /// Represents import of module as given name
     ///
     /// # Example
-    /// ```
+    /// ```watt
     /// use some/module as name
     /// ```
     AsName(EcoString),
     /// Represents import of module contents separated by commad
     ///
     /// # Example 1
-    /// ```
+    /// ```watt
     /// use some/module for Typ
     /// ```
     ///
     /// # Example 2
-    /// ```
+    /// ```watt
     /// use some/module for Typ, Ty2
     /// ```
     ForNames(Vec<EcoString>),
@@ -400,7 +401,7 @@ pub enum Range {
     /// If range excludes last value
     ///
     /// # Example
-    /// ```
+    /// ```watt
     /// 0..30
     /// ```
     ExcludeLast {
@@ -411,7 +412,7 @@ pub enum Range {
     /// If range includes last value
     ///
     /// # Example
-    /// ```
+    /// ```watt
     /// 0..=30
     /// ```
     IncludeLast {
@@ -488,6 +489,7 @@ pub enum Expression {
     },
     /// Represents if expression
     ///
+    /// ```watt
     /// if `cond` {
     ///     ...
     /// }
@@ -498,6 +500,7 @@ pub enum Expression {
     /// else {
     ///     ...
     /// }
+    /// ```
     If {
         location: Address,
         logical: Box<Expression>,
@@ -538,11 +541,13 @@ pub enum Expression {
     },
     /// Match expression
     ///
+    /// ```watt
     /// match ... {
     ///     ... -> ...,
     ///     ... -> ...,
     ///     _ -> ...
     /// }
+    /// ```
     ///
     Match {
         location: Address,
@@ -586,7 +591,9 @@ pub enum Either<A, B> {
 pub enum Statement {
     /// Definition statement
     ///
+    /// ```watt
     /// let `name` = `value`
+    /// ```
     ///
     VarDef {
         location: Address,
@@ -596,7 +603,9 @@ pub enum Statement {
     },
     /// Assignment statement
     ///
+    /// ```watt
     /// `name` = `value`
+    /// ```
     ///
     VarAssign {
         location: Address,
@@ -609,9 +618,11 @@ pub enum Statement {
     Expr(Expression),
     /// Represents loop
     ///
+    /// ```watt
     /// loop `cond` {
     ///     ...
     /// }
+    /// ```
     ///
     Loop {
         location: Address,
@@ -620,9 +631,11 @@ pub enum Statement {
     },
     /// Represents `for` loop
     ///
+    /// ```watt
     /// for `name` in `range` {
     ///     ...
     /// }
+    /// ```
     ///
     For {
         location: Address,
@@ -679,10 +692,9 @@ pub enum TypeDeclaration {
     /// Represents struct declaration
     ///
     /// `publicity` type ... {
-    ///     `publicity` let ... = ...
-    ///     `publicity` fn ... {
-    ///         ...
-    ///     }
+    ///     ...,
+    ///     ...,
+    ///     n
     /// }
     ///
     Struct {
@@ -695,7 +707,7 @@ pub enum TypeDeclaration {
     /// Represents enum declaration
     ///
     /// `publicity` enum ... {
-    ///     ...(),
+    ///     ...,
     ///     ...,
     ///     n
     /// }
