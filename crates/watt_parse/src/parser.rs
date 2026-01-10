@@ -167,6 +167,9 @@ impl<'file> Parser<'file> {
             } => {
                 self.check_value_const(value);
             }
+            Expression::Paren(expr) => {
+                self.check_value_const(expr);
+            }
         }
     }
 

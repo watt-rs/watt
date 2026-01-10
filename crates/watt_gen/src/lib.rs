@@ -304,6 +304,7 @@ pub fn gen_expression(expr: Expression) -> js::Tokens {
             Some(text) => quote!($("$$")todo($(text.as_str()))),
             None => quote!($("$$")todo()),
         },
+        Expression::Paren(expr) => quote!(($(gen_expression(*expr)))),
     }
 }
 
