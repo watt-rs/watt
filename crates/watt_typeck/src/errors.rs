@@ -1,22 +1,9 @@
 /// Imports
-use crate::typ::{
-    def::{ModuleDef, TypeDef},
-    res::Res,
-};
 use ecow::EcoString;
 use miette::{Diagnostic, NamedSource, SourceSpan};
 use std::sync::Arc;
 use thiserror::Error;
 use watt_ast::ast::{BinaryOp, UnaryOp};
-
-/// For errors
-/// todo: reimplement using derive.
-unsafe impl Send for Res {}
-unsafe impl Sync for Res {}
-unsafe impl Send for ModuleDef {}
-unsafe impl Sync for ModuleDef {}
-unsafe impl Send for TypeDef {}
-unsafe impl Sync for TypeDef {}
 
 /// Typechecking related
 #[derive(Debug, Error, Diagnostic)]
@@ -158,14 +145,14 @@ pub(crate) enum TypeckError {
         m: EcoString,
         field: EcoString,
     },
-    #[error("type `{def:?}` is private.")]
+    #[error("type `{def}` is private.")]
     #[diagnostic(code(typeck::type_is_private))]
     TypeIsPrivate {
         #[source_code]
         src: Arc<NamedSource<String>>,
         #[label("usage of this type is incorrect.")]
         span: SourceSpan,
-        def: TypeDef,
+        def: String,
     },
     #[error("module field `{name}` is private.")]
     #[diagnostic(code(typeck::module_field_is_private))]
@@ -311,7 +298,7 @@ pub(crate) enum TypeckError {
         code(typeck::types_recursion),
         help("types recursion is not supported.")
     )]
-    TypesRecursion {
+    RecursiveType {
         #[related]
         related: Vec<TypeckRelated>,
         t: String,

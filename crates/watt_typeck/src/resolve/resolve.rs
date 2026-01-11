@@ -255,11 +255,11 @@ impl ModuleResolver {
     /// to ensure correct scoping and resolution of identifiers.
     ///
     /// # Parameters
-    ///
+    /// 
     /// - `address: &Address`
     ///   The source code location of the identifier being resolved, used for
     ///   error reporting.
-    ///
+    /// 
     /// - `name: &EcoString`
     ///   The type name to resolve.
     ///
@@ -388,10 +388,10 @@ impl ModuleResolver {
     /// Imports specific names (definitions) from a module.
     ///
     /// # Parameters
-    /// * `icx: &mut InferCx` — Inference context used for pretty printing definitions.
-    /// * `address: &Address` — Source location for error reporting.
-    /// * `names: Vec<EcoString>` — Names of definitions to import from the module.
-    /// * `module: RcPtr<Module>` — The module to import from.
+    /// - `icx: &mut InferCx` — Inference context used for pretty printing definitions.
+    /// - `address: &Address` — Source location for error reporting.
+    /// - `names: Vec<EcoString>` — Names of definitions to import from the module.
+    /// - `module: RcPtr<Module>` — The module to import from.
     ///
     /// # Behavior
     /// For each name:

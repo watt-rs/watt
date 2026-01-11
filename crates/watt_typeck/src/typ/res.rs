@@ -52,16 +52,16 @@ impl Res {
     /// this function will raise a type checking error.
     ///
     /// # Arguments
-    /// * `icx: &mut InferCx` – Represents infrence context, used for pretty-printing.
-    /// * `address: &Address` – The source code location used for error reporting.
+    /// - `icx: &mut InferCx` – Represents infrence context, used for pretty-printing.
+    /// - `address: &Address` – The source code location used for error reporting.
     ///
     /// # Returns
-    /// * `Typ` – The concrete type resolved.
+    /// - `Typ` – The concrete type resolved.
     ///
-    /// # Panics / Errors
-    ///
-    /// Raises `TypeckError::UnexpectedResolution` if the resolution
-    /// is not a `Res::Value` or `Res::Const`.
+    /// # Errors
+    /// - [`TypeckError::UnexpectedResolution`]: if the resolution
+    ///   is not a `Res::Value` or `Res::Const`.
+    /// 
     pub fn unwrap_typ(self, icx: &mut InferCx, address: &Address) -> Typ {
         match self {
             Res::Value(t) => t,

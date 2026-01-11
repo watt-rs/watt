@@ -2,6 +2,7 @@
 use crate::{
     cx::module::ModuleCx,
     errors::{TypeckError, TypeckRelated},
+    pretty::Pretty,
     typ::{
         def::{ModuleDef, TypeDef},
         typ::{Enum, Function, GenericArgs, Parameter, PreludeType, Struct, Typ},
@@ -97,7 +98,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             Some(ModuleDef::Type(def)) => bail!(TypeckError::TypeIsPrivate {
                 src: self.module.source.clone(),
                 span: location.span.into(),
-                def: def.value.clone()
+                def: def.value.pretty(&mut self.icx)
             }),
             Some(ModuleDef::Const(_)) | Some(ModuleDef::Function(_)) => {
                 bail!(TypeckError::CouldNotUseValueAsType {

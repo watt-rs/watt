@@ -5,7 +5,7 @@ use thiserror::Error;
 
 /// Typeck warning
 #[derive(Debug, Error, Diagnostic)]
-pub enum TypeckWarning {
+pub(crate) enum TypeckWarning {
     #[error("non exhaustive expression.")]
     #[diagnostic(
         code(typeck::warn::non_exhaustive),

@@ -23,12 +23,10 @@ pub trait Pretty {
     /// using the provided inference context.
     ///
     /// # Parameters
-    ///
-    /// * `icx` - A mutable reference to the inference context (`InferCx`),
+    /// - `icx` - A mutable reference to the inference context (`InferCx`),
     ///   which may be used to resolve type information or other contextual details.
     ///
     /// # Returns
-    ///
-    /// A `String` representing the pretty-printed value.
+    /// - A `String` representing the pretty-printed value.
     fn pretty(&self, icx: &mut InferCx) -> String;
 }

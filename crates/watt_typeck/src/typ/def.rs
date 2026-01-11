@@ -40,6 +40,13 @@ pub enum ModuleDef {
 
 /// Pretty implementation for `ModuleDef`
 impl Pretty for ModuleDef {
+    /// Pretty prints module definitions
+    ///
+    /// # Parameters
+    /// - `icx: &mut InferCx`
+    ///   Inference context used
+    ///   to pretty print types
+    ///
     fn pretty(&self, icx: &mut InferCx) -> String {
         match self {
             ModuleDef::Type(ty) => ty.value.pretty(icx),
@@ -67,6 +74,13 @@ pub enum TypeDef {
 
 /// Pretty implementation for `TypeDef`
 impl Pretty for TypeDef {
+    /// Pretty prints type definition
+    ///
+    /// # Parameters
+    /// - `icx: &mut InferCx`
+    ///   Inference context used
+    ///   to pretty print types
+    ///
     fn pretty(&self, icx: &mut InferCx) -> String {
         match self {
             TypeDef::Enum(id) => format!("Enum({})", icx.tcx.enum_(*id).name),

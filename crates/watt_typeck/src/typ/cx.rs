@@ -211,7 +211,6 @@ impl<'tcx> InferCx<'tcx> {
     /// # Parameters
     /// - `id: Id<TyVar>`
     ///   Type variable id, with what we need to creates substitution
-    ///
     /// - `typ: Typ`
     ///   The type that we using to create substitution
     ///

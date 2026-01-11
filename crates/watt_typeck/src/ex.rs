@@ -12,10 +12,26 @@ use id_arena::Id;
 use watt_ast::ast::{Case, Pattern};
 use watt_common::{address::Address, bail, skip};
 
-/// Exhaustiveness check of pattern matching
+/// Context for exhaustiveness checking in pattern matching.
+///
+/// `ExMatchCx` is used by the compiler to analyze all possible cases
+/// when performing a `match` and to ensure that all possible variants
+/// of the `value` type are covered by the provided cases.
+///
+/// Lifetime parameters:
+/// - `'module_cx` — a reference to the module context where the check is performed.
+/// - `'pkg` — a reference to the package meta context (for access to types, modules, and dependencies).
+/// - `'cx` — root context lifetime.
+///
 pub struct ExMatchCx<'module_cx, 'pkg, 'cx> {
+    /// Reference to the module context where the match analysis occurs.
+    /// Allows access to functions, types, and other entities in the module.
     cx: &'module_cx mut ModuleCx<'pkg, 'cx>,
+
+    /// The type of the value being matched.
     value: Typ,
+
+    /// The list of match cases (`Case`) provided in the `match` expression.
     cases: Vec<Case>,
 }
 

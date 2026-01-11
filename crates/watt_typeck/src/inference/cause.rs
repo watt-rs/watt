@@ -102,7 +102,28 @@ pub enum Cause<'a> {
 
 /// Implementation of the cause
 impl<'a> Cause<'a> {
-    // Transform cause into `TypeckError`
+    /// Converts a `Cause` and a `CoercionError` into a `TypeckError`.
+    ///
+    /// This is used in the type-checking phase to generate detailed
+    /// error reports including the relevant source spans and the types involved.
+    ///
+    /// # Parameters
+    /// - `self` — the cause of the type error, e.g., function argument, assignment, pattern, etc.
+    /// - `error` — the specific coercion error that occurred (e.g., recursive types or mismatch).
+    /// - `p1` — the first type involved (expected type or one side of recursion).
+    /// - `p2` — the second type involved (actual type or other side of recursion).
+    ///
+    /// # Returns
+    /// A `TypeckError` containing detailed information about the error, including
+    /// related source spans and types, suitable for reporting to the user.
+    ///
+    /// # Behavior
+    /// - If the `CoercionError` is `RecursiveType`, the method generates
+    ///   a `TypeckError::RecursiveType` with type and source spab.
+    /// - If the `CoercionError` is `TypesMissmatch`, the method generates
+    ///   a `TypeckError::TypesMissmatch`, adjusting the related spans depending
+    ///   on the specific `Cause` variant (e.g., assignment, function return, pattern, branch).
+    ///
     pub(crate) fn into_typeck_error(
         self,
         error: CoercionError,
@@ -110,14 +131,14 @@ impl<'a> Cause<'a> {
         p2: String,
     ) -> TypeckError {
         match error {
-            CoercionError::TypesRecursion => match self {
+            CoercionError::RecursiveType => match self {
                 Cause::StructArgument(address)
                 | Cause::VariantArgument(address)
                 | Cause::FunctionArgument(address)
                 | Cause::Assignment(address)
                 | Cause::Return(address, _)
                 | Cause::Pattern(address, _)
-                | Cause::Branch(address, _) => bail!(TypeckError::TypesRecursion {
+                | Cause::Branch(address, _) => bail!(TypeckError::RecursiveType {
                     related: vec![TypeckRelated::Here {
                         src: address.source.clone(),
                         span: address.span.clone().into()

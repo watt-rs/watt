@@ -23,7 +23,7 @@ use watt_common::{bail, skip};
 #[derive(Debug, Clone)]
 pub enum CoercionError {
     /// Represents types recursion.
-    TypesRecursion,
+    RecursiveType,
     /// Represents types missmatch.
     TypesMissmatch,
 }
@@ -47,11 +47,16 @@ pub enum Coercion {
     Same(Vec<Typ>),
 }
 
-/// Solves a coercion, dispatching to `eq` or `same`.
+
+/// Solve a type coercion constraint.
+///
+/// Dispatches to `eq` for `Eq` constraints or `same` for `Same` constraints.
 ///
 /// # Arguments
-/// * `coercion` - the type constraint to solve
-///
+/// - `icx` — the inference context for substitutions and type state.
+/// - `cause` — the origin of the type error, used for reporting.
+/// - `coercion` — the type constraint to solve.
+/// 
 pub fn coerce(icx: &mut InferCx, cause: Cause, coercion: Coercion) {
     // Solving coercion
     match coercion.clone() {
@@ -60,7 +65,9 @@ pub fn coerce(icx: &mut InferCx, cause: Cause, coercion: Coercion) {
     }
 }
 
-/// Solves an `Eq(t1, t2)` coercion.
+/// Solve an `Eq(t1, t2)` coercion, unifying two types.
+///
+/// If unification fails, raises a `TypeckError` with context.
 #[instrument(skip(icx), level = "trace")]
 fn eq(icx: &mut InferCx, cause: &Cause, expected: Typ, got: Typ) {
     // Processing unification
@@ -71,8 +78,13 @@ fn eq(icx: &mut InferCx, cause: &Cause, expected: Typ, got: Typ) {
     }
 }
 
-/// Solves a `Same(items)` coercion,
-/// unifying all elements with the first one.
+/// Solve a `Same(items)` coercion, unifying all elements with the first type.
+///
+/// # Arguments
+/// - `icx` — the inference context.
+/// - `cause` — the cause for error reporting.
+/// - `items` — the list of types to unify.
+///
 #[instrument(skip(icx), level = "trace")]
 fn same(icx: &mut InferCx, cause: &Cause, mut items: Vec<Typ>) {
     // Retrieving first information
@@ -84,6 +96,7 @@ fn same(icx: &mut InferCx, cause: &Cause, mut items: Vec<Typ>) {
 }
 
 /// Core method to unify two types.
+/// Returns `Ok(())` if unification succeeds, otherwise a `CoercionError`.
 ///
 fn unify(icx: &mut InferCx, expected: Typ, got: Typ) -> Result<(), CoercionError> {
     // Applying substs
@@ -100,7 +113,7 @@ fn unify(icx: &mut InferCx, expected: Typ, got: Typ) -> Result<(), CoercionError
             }
             (Typ::Var(a), b) | (b, Typ::Var(a)) => {
                 if occurs(icx, *a, b) {
-                    Err(CoercionError::TypesRecursion)
+                    Err(CoercionError::RecursiveType)
                 } else {
                     icx.substitute(*a, b.clone());
                     Ok(())
@@ -147,14 +160,16 @@ fn unify(icx: &mut InferCx, expected: Typ, got: Typ) -> Result<(), CoercionError
     }
 }
 
-/// Occurs check — ensures that a type variable does not appear within itself.
+/// Occurs check — ensures a type variable does not appear within itself.
+///
+/// Prevents creation of infinite types.
 ///
 /// # Arguments
-/// * `own` — the type variable identifier
-/// * `t` — the type to check for occurrence
+/// - `own` — the type variable identifier to check.
+/// - `t` — the type in which to check for occurrence.
 ///
 /// # Returns
-/// `true` if the type variable occurs in itself (infinite type), otherwise `false`
+/// `true` if the type variable occurs in itself (infinite type), otherwise `false`.
 ///
 fn occurs(icx: &mut InferCx, own: Id<TyVar>, t: &Typ) -> bool {
     let t = icx.apply(t.clone());
