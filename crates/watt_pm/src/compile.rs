@@ -1,9 +1,9 @@
 /// Imports
 use crate::{
     config::{self, WattConfig},
-    dependencies::{self, PmPackage},
+    dependencies::{self, Package},
     errors::PackageError,
-    runtime::JsRuntime,
+    runtime::JsRuntime, url::path_to_pkg_name,
 };
 use camino::{Utf8Path, Utf8PathBuf};
 use console::style;
@@ -110,17 +110,6 @@ fn write_index(
     index_path
 }
 
-/// Path to package name
-///
-// ~/watt/test/ -> test
-// ~/watt/test/.cache/std -> std
-// ...
-pub fn path_to_pkg_name(path: &Utf8PathBuf) -> String {
-    match path.file_name() {
-        Some(file_name) => file_name.to_string(),
-        None => bail!(PackageError::FailedToGetProjectNameFromPath { path: path.clone() }),
-    }
-}
 
 /// Compiles project to js
 /// returns path to `index.js`
@@ -137,7 +126,7 @@ pub fn compile(path: Utf8PathBuf) -> Utf8PathBuf {
     println!("{} Resolving packages...", style("[🔍]").bold().cyan());
     let resolved = dependencies::solve(
         cache_path.clone(),
-        PmPackage::Local(name, path.clone()),
+        Package::Local(name, path.clone()),
         &config.pkg,
     );
     println!("{} Packages resolved.", style("[✓]").bold().cyan());
@@ -146,7 +135,7 @@ pub fn compile(path: Utf8PathBuf) -> Utf8PathBuf {
     let packages = {
         resolved.iter().map(|pkg| {
             // Package config
-            let config = config::retrieve_config(&pkg.path());
+            let config = config::retrieve_config(pkg.path());
             // Generating draft package
             DraftPackage {
                 path: pkg.path().clone(),

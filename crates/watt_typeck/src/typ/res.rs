@@ -61,7 +61,7 @@ impl Res {
     /// # Errors
     /// - [`TypeckError::UnexpectedResolution`]: if the resolution
     ///   is not a `Res::Value` or `Res::Const`.
-    /// 
+    ///
     pub fn unwrap_typ(self, icx: &mut InferCx, address: &Address) -> Typ {
         match self {
             Res::Value(t) => t,

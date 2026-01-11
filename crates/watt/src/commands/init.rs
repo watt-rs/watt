@@ -18,7 +18,7 @@ pub fn execute(pkg_ty: Option<PackageType>) {
 
     // Getting package type from string
     let pkg_ty = pkg_ty.unwrap_or(PackageType::App);
-    
+
     // Generating project
     generate::gen_project(cwd, pkg_ty);
 }

@@ -2,7 +2,10 @@
 use crate::{
     cx::module::ModuleCx,
     errors::{TypeckError, TypeckRelated},
-    inference::{cause::Cause, coercion::{self, Coercion}},
+    inference::{
+        cause::Cause,
+        coercion::{self, Coercion},
+    },
     pretty::Pretty,
     typ::{
         res::Res,

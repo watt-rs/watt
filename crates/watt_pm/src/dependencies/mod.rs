@@ -1,8 +1,8 @@
 /// Imports
 use crate::{
-    compile::path_to_pkg_name,
     config::{self, PackageConfig, PackageDependency, PackageType},
     errors::PackageError,
+    url::{path_to_pkg_name, url_to_pkg_name},
 };
 use camino::Utf8PathBuf;
 use console::style;
@@ -14,8 +14,8 @@ use url::Url;
 use watt_common::bail;
 
 /// Represents package
-#[derive(Clone, Eq, Hash, Ord, PartialOrd, Debug)]
-pub enum PmPackage {
+#[derive(Clone, PartialEq, Eq, Hash, Ord, PartialOrd, Debug)]
+pub enum Package {
     /// Represents local package with name and path
     Local(String, Utf8PathBuf),
     /// Represents git package with name and path
@@ -23,43 +23,31 @@ pub enum PmPackage {
 }
 
 /// Implementation
-impl PmPackage {
+impl Package {
     /// Retrieves package name
     pub fn name(&self) -> &String {
         match self {
-            PmPackage::Local(name, _) => name,
-            PmPackage::Git(name, _) => name,
+            Package::Local(name, _) => name,
+            Package::Git(name, _) => name,
         }
     }
 
     /// Retrieves package path
     pub fn path(&self) -> &Utf8PathBuf {
         match self {
-            PmPackage::Local(_, path) => path,
-            PmPackage::Git(_, path) => path,
-        }
-    }
-}
-
-/// PartialEq implementation
-impl PartialEq for PmPackage {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (
-                PmPackage::Local(n1, p1) | PmPackage::Git(n1, p1),
-                PmPackage::Local(n2, p2) | PmPackage::Git(n2, p2),
-            ) => n1 == n2 && p1 == p2,
+            Package::Local(_, path) => path,
+            Package::Git(_, path) => path,
         }
     }
 }
 
 /// Finds cycle in a graph
 fn find_cycle<'dep>(
-    origin: &'dep PmPackage,
-    parent: &'dep PmPackage,
-    graph: &petgraph::prelude::DiGraphMap<&'dep PmPackage, ()>,
+    origin: &'dep Package,
+    parent: &'dep Package,
+    graph: &petgraph::prelude::DiGraphMap<&'dep Package, ()>,
     path: &mut Vec<&'dep String>,
-    done: &mut HashSet<&'dep PmPackage>,
+    done: &mut HashSet<&'dep Package>,
 ) -> bool {
     done.insert(parent);
     for node in graph.neighbors_directed(parent, Direction::Outgoing) {
@@ -79,9 +67,9 @@ fn find_cycle<'dep>(
 }
 
 /// Toposorts dependencies graph
-fn toposort<'s>(deps: HashMap<&'s PmPackage, Vec<&'s PmPackage>>) -> Vec<&'s PmPackage> {
+fn toposort<'s>(deps: HashMap<&'s Package, Vec<&'s Package>>) -> Vec<&'s Package> {
     // Creating graph for toposorting
-    let mut deps_graph: DiGraphMap<&PmPackage, ()> =
+    let mut deps_graph: DiGraphMap<&Package, ()> =
         petgraph::prelude::DiGraphMap::with_capacity(deps.len(), deps.len() * 5);
 
     // Adding nodes
@@ -129,38 +117,13 @@ fn toposort<'s>(deps: HashMap<&'s PmPackage, Vec<&'s PmPackage>>) -> Vec<&'s PmP
     }
 }
 
-/// Url to package name
-///
-// https://github.com/watt-rs/std -> std
-// https://org.gittea.com/repo -> repo
-// ...
-pub fn url_to_pkg_name(url: &str) -> String {
-    match Url::parse(url) {
-        Ok(ok) => match ok
-            .path_segments()
-            .and_then(|mut segments| segments.next_back())
-        {
-            Some(segment) => match segment.strip_suffix(".git") {
-                Some(name) => name.to_string(),
-                None => segment.to_string(),
-            },
-            None => bail!(PackageError::InvalidUrl {
-                url: url.to_owned()
-            }),
-        },
-        Err(_) => bail!(PackageError::InvalidUrl {
-            url: url.to_owned()
-        }),
-    }
-}
-
 /// Download dependency to cache,
 /// If not already downloaded
 ///
 /// Returns path to package and
 /// package name
 ///
-pub fn download(url: &String, cache: Utf8PathBuf) -> PmPackage {
+pub fn download(url: &String, cache: Utf8PathBuf) -> Package {
     info!("Trying to download repository {url} to {cache}.");
     let package_name = url_to_pkg_name(url);
     let mut path = cache.clone();
@@ -176,7 +139,7 @@ pub fn download(url: &String, cache: Utf8PathBuf) -> PmPackage {
             style("[🔗]").bold().bright().green()
         );
         match Url::parse(url) {
-            Ok(_) => match Repository::clone(url, path.clone()) {
+            Ok(_) => match Repository::clone(url, &path) {
                 Err(_) => bail!(PackageError::FailedToCloneRepo { url: url.clone() }),
                 Ok(_) => {
                     info!("Repository from {url} download successfully.");
@@ -190,23 +153,24 @@ pub fn download(url: &String, cache: Utf8PathBuf) -> PmPackage {
         );
     }
     info!("Crawled name {package_name} from {url}.");
-    PmPackage::Git(package_name, path)
+    Package::Git(package_name, path)
 }
 
 /// Resolves packages,
-/// returns recursivly found hash map
+/// returns hash map of recursively solved modules.
 ///
-/// * cache -- .cache path
-/// * solved -- already solved packages
-/// * package -- package
-/// * config -- package config
+/// # Parameters
+/// - cache - `.cache` folder path
+/// - solved - already solved packages
+/// - package - package
+/// - config - package config
 ///
 fn resolve_packages<'solved>(
-    cache: Utf8PathBuf,
-    solved: &'solved mut HashMap<PmPackage, Vec<PmPackage>>,
-    package: PmPackage,
+    cache: &Utf8PathBuf,
+    solved: &'solved mut HashMap<Package, Vec<Package>>,
+    package: Package,
     config: &PackageConfig,
-) -> &'solved mut HashMap<PmPackage, Vec<PmPackage>> {
+) -> &'solved mut HashMap<Package, Vec<Package>> {
     // If already solved
     if solved.contains_key(&package) {
         solved
@@ -224,7 +188,7 @@ fn resolve_packages<'solved>(
                 PackageDependency::Local { path } => {
                     // Retrieving dependency config
                     let path = Utf8PathBuf::from(path);
-                    let pkg = PmPackage::Local(path_to_pkg_name(&path), path.clone());
+                    let pkg = Package::Local(path_to_pkg_name(&path), path.clone());
                     let pkg_config = config::retrieve_config(&path);
                     info!("+ Found local dependency {} of {pkg:?}", &package.name());
                     // Checking it's an `lib` pkg
@@ -238,11 +202,11 @@ fn resolve_packages<'solved>(
                                 }),
                             }
                             // Resolving dependency packages
-                            resolve_packages(cache.clone(), solved, pkg, &pkg_config.pkg);
+                            resolve_packages(cache, solved, pkg, &pkg_config.pkg);
                         }
                         PackageType::App => bail!(PackageError::UseOfAppPackageAsDependency {
                             name: pkg.name().clone(),
-                            path: path
+                            path
                         }),
                     }
                 }
@@ -250,20 +214,20 @@ fn resolve_packages<'solved>(
                     // Downloading dependency if not already downloaded
                     let pkg = download(dependency, cache.clone());
                     let path = pkg.path();
-                    let pkg_config = config::retrieve_config(&path);
+                    let pkg_config = config::retrieve_config(path);
                     info!("+ Found git dependency {} of {pkg:?}", &package.name());
                     // Checking it's an `lib` pkg
                     match pkg_config.pkg.pkg {
                         PackageType::Lib => {
                             // Adding dependency
-                            match solved.get_mut(&&package) {
+                            match solved.get_mut(&package) {
                                 Some(vector) => vector.push(pkg.clone()),
                                 None => bail!(PackageError::NoSolvedKeyFound {
                                     key: pkg.name().clone()
                                 }),
                             }
                             // Resolving dependency packages
-                            resolve_packages(cache.clone(), solved, pkg, &pkg_config.pkg);
+                            resolve_packages(cache, solved, pkg, &pkg_config.pkg);
                         }
                         PackageType::App => bail!(PackageError::UseOfAppPackageAsDependency {
                             name: pkg.name().clone(),
@@ -281,15 +245,15 @@ fn resolve_packages<'solved>(
 ///
 /// returns toposorted vector
 /// of packages
-pub fn solve(cache: Utf8PathBuf, pkg: PmPackage, config: &PackageConfig) -> Vec<PmPackage> {
+pub fn solve(cache: Utf8PathBuf, pkg: Package, config: &PackageConfig) -> Vec<Package> {
     // Solved packages
-    let packages = resolve_packages(cache, &mut HashMap::new(), pkg, config).to_owned();
+    let packages = resolve_packages(&cache, &mut HashMap::new(), pkg, config).to_owned();
     // Toposorting
     toposort(
         packages
             .iter()
             .map(|(k, v)| (k, v.iter().collect()))
-            .collect::<HashMap<&PmPackage, Vec<&PmPackage>>>(),
+            .collect::<HashMap<&Package, Vec<&Package>>>(),
     )
     .iter()
     .map(|s| (*s).clone())

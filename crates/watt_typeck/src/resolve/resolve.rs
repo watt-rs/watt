@@ -1,8 +1,14 @@
 /// Imports
 use crate::{
-    errors::TypeckError, pretty::Pretty, resolve::rib::{Rib, RibsStack}, typ::{
-        cx::InferCx, def::{ModuleDef, TypeDef}, res::Res, typ::{GenericArgs, Module, Typ}
-    }
+    errors::TypeckError,
+    pretty::Pretty,
+    resolve::rib::{Rib, RibsStack},
+    typ::{
+        cx::InferCx,
+        def::{ModuleDef, TypeDef},
+        res::Res,
+        typ::{GenericArgs, Module, Typ},
+    },
 };
 use ecow::EcoString;
 use std::collections::HashMap;
@@ -222,7 +228,7 @@ impl ModuleResolver {
                     ModuleDef::Type(ty) => Res::Custom(ty.value.clone()),
                     ModuleDef::Const(ty) => Res::Const(ty.value.clone()),
                     ModuleDef::Function(ty) => {
-                        Res::Value(Typ::Function(ty.value.clone(), GenericArgs::default()))
+                        Res::Value(Typ::Function(ty.value, GenericArgs::default()))
                     }
                 },
                 None => match self.imported_defs.get(name) {
@@ -231,7 +237,7 @@ impl ModuleResolver {
                         ModuleDef::Type(ty) => Res::Custom(ty.value.clone()),
                         ModuleDef::Const(ty) => Res::Const(ty.value.clone()),
                         ModuleDef::Function(ty) => {
-                            Res::Value(Typ::Function(ty.value.clone(), GenericArgs::default()))
+                            Res::Value(Typ::Function(ty.value, GenericArgs::default()))
                         }
                     },
                     None => match self.imported_modules.get(name) {
@@ -255,11 +261,11 @@ impl ModuleResolver {
     /// to ensure correct scoping and resolution of identifiers.
     ///
     /// # Parameters
-    /// 
+    ///
     /// - `address: &Address`
     ///   The source code location of the identifier being resolved, used for
     ///   error reporting.
-    /// 
+    ///
     /// - `name: &EcoString`
     ///   The type name to resolve.
     ///

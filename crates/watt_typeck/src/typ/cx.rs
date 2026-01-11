@@ -252,7 +252,7 @@ impl<'tcx> InferCx<'tcx> {
     ///
     /// `Typ::Generic(id)` → a fresh `Typ::Unbound(...)`
     ///
-    pub fn mk_fresh_generics<'a>(&'a mut self, generics: &[GenericParameter]) -> GenericArgs {
+    pub fn mk_fresh_generics(&mut self, generics: &[GenericParameter]) -> GenericArgs {
         FresheningCx::new(self).mk_generics(generics, IndexMap::new())
     }
 
@@ -260,8 +260,8 @@ impl<'tcx> InferCx<'tcx> {
     ///
     /// `Typ::Generic(id)` → a fresh `Typ::Unbound(...)`
     ///
-    pub fn mk_fresh_generics_m<'a>(
-        &'a mut self,
+    pub fn mk_fresh_generics_m(
+        &mut self,
         generics: &[GenericParameter],
         m: IndexMap<usize, Typ>,
     ) -> GenericArgs {

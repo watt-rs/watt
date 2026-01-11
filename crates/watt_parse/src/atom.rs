@@ -23,12 +23,12 @@ impl<'file> Parser<'file> {
         self.consume(open);
 
         if !self.check(close) {
-            loop{
+            loop {
                 items.push(parse_item(self));
                 if self.check(sep) {
                     self.consume(sep);
                     if self.check(close) {
-                        break
+                        break;
                     }
                 } else {
                     break;

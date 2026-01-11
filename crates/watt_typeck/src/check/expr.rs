@@ -474,7 +474,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                         match f.publicity {
                             // If constant is public, we resolved field
                             Publicity::Public => {
-                                Res::Value(Typ::Function(f.value.clone(), GenericArgs::default()))
+                                Res::Value(Typ::Function(f.value, GenericArgs::default()))
                             }
                             // Else, raising `module field is private`
                             _ => bail!(TypeckError::ModuleFieldIsPrivate {
@@ -619,7 +619,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 let enum_ = self.icx.tcx.enum_(*id);
                 let generics = enum_.generics.clone();
                 let name = enum_.name.clone();
-                let instantiated = Typ::Enum(id.clone(), self.icx.mk_fresh_generics(&generics));
+                let instantiated = Typ::Enum(*id, self.icx.mk_fresh_generics(&generics));
                 self.infer_enum_field_access(instantiated, name, field_location, field_name)
             }
             // Type field access

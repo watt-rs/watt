@@ -47,7 +47,6 @@ pub enum Coercion {
     Same(Vec<Typ>),
 }
 
-
 /// Solve a type coercion constraint.
 ///
 /// Dispatches to `eq` for `Eq` constraints or `same` for `Same` constraints.
@@ -56,7 +55,7 @@ pub enum Coercion {
 /// - `icx` — the inference context for substitutions and type state.
 /// - `cause` — the origin of the type error, used for reporting.
 /// - `coercion` — the type constraint to solve.
-/// 
+///
 pub fn coerce(icx: &mut InferCx, cause: Cause, coercion: Coercion) {
     // Solving coercion
     match coercion.clone() {

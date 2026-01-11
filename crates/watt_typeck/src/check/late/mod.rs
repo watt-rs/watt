@@ -6,7 +6,10 @@ mod types;
 use crate::{
     cx::module::ModuleCx,
     errors::TypeckError,
-    inference::{cause::Cause, coercion::{self, Coercion}},
+    inference::{
+        cause::Cause,
+        coercion::{self, Coercion},
+    },
     typ::{def::ModuleDef, typ::WithPublicity},
 };
 use ecow::EcoString;

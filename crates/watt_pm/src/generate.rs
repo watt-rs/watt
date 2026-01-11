@@ -1,7 +1,6 @@
 /// Imports
 use crate::{
-    compile::path_to_pkg_name,
-    config::{self, PackageType},
+    config::{self, PackageType}, url::path_to_pkg_name,
 };
 use camino::Utf8PathBuf;
 use watt_compile::io;
@@ -21,11 +20,14 @@ pub fn gen_project(path: Utf8PathBuf, ty: PackageType) {
 
             // Generating main.wt
             let lib_wt = src.join("main.wt");
-            io::write(lib_wt, String::from(
-r#"// `main.wt` is the main file of library project.
+            io::write(
+                lib_wt,
+                String::from(
+                    r#"// `main.wt` is the main file of library project.
 
-"#
-            ));
+"#,
+                ),
+            );
         }
         PackageType::App => {
             // Generating config
@@ -38,14 +40,17 @@ r#"// `main.wt` is the main file of library project.
 
             // Generating main.wt
             let main = src.join("main.wt");
-            io::write(main, String::from(
-r#"// `main.wt` is the starting point for your application.
+            io::write(
+                main,
+                String::from(
+                    r#"// `main.wt` is the starting point for your application.
 
 fn main() {
     // Your code goes here.
 }
-"#
-            ));
+"#,
+                ),
+            );
         }
     }
 }

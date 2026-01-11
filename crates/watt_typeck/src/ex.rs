@@ -63,7 +63,7 @@ impl<'module_cx, 'pkg, 'cx> ExMatchCx<'module_cx, 'pkg, 'cx> {
             //
             // So, checking for default patterns
             // `BindTo` and `Wildcard`
-            Typ::Enum(en, _) => ex.check_enum_variants_covered(en.clone()),
+            Typ::Enum(en, _) => ex.check_enum_variants_covered(*en),
             // All function values
             // cold not be covered,
             // becuase it's a ref type.

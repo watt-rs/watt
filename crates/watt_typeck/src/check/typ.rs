@@ -115,8 +115,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         };
 
         match &def.value {
-            TypeDef::Enum(en) => self.instantiate_enum_type(&location, en.clone(), generics),
-            TypeDef::Struct(st) => self.instantiate_struct_type(&location, st.clone(), generics),
+            TypeDef::Enum(en) => self.instantiate_enum_type(&location, *en, generics),
+            TypeDef::Struct(st) => self.instantiate_struct_type(&location, *st, generics),
         }
     }
 

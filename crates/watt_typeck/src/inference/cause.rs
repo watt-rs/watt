@@ -1,10 +1,9 @@
 /// Imports
-use watt_common::{address::Address, bail};
-
 use crate::{
     errors::{TypeckError, TypeckRelated},
     inference::coercion::CoercionError,
 };
+use watt_common::{address::Address, bail};
 
 /// A cause describing *why* a type constraint was introduced.
 ///
@@ -158,17 +157,17 @@ impl<'a> Cause<'a> {
                     expected: p1,
                     got: p2
                 }),
-                Cause::Return(body, ret) => {
+                Cause::Return(a1, a2) => {
                     bail!(TypeckError::TypesMissmatch {
                         related: vec![
                             TypeckRelated::ThisType {
-                                src: body.source.clone(),
-                                span: body.span.clone().into(),
+                                src: a1.source.clone(),
+                                span: a1.span.clone().into(),
                                 t: p1.clone()
                             },
                             TypeckRelated::ThisType {
-                                src: ret.source.clone(),
-                                span: ret.span.clone().into(),
+                                src: a2.source.clone(),
+                                span: a2.span.clone().into(),
                                 t: p2.clone()
                             }
                         ],
@@ -176,17 +175,17 @@ impl<'a> Cause<'a> {
                         got: p2
                     })
                 }
-                Cause::Pattern(matchable, pattern) => {
+                Cause::Pattern(a1, a2) => {
                     bail!(TypeckError::TypesMissmatch {
                         related: vec![
                             TypeckRelated::ThisType {
-                                src: matchable.source.clone(),
-                                span: matchable.span.clone().into(),
+                                src: a1.source.clone(),
+                                span: a1.span.clone().into(),
                                 t: p1.clone()
                             },
                             TypeckRelated::ThisType {
-                                src: pattern.source.clone(),
-                                span: pattern.span.clone().into(),
+                                src: a2.source.clone(),
+                                span: a2.span.clone().into(),
                                 t: p2.clone()
                             }
                         ],
@@ -194,17 +193,17 @@ impl<'a> Cause<'a> {
                         got: p2
                     })
                 }
-                Cause::Branch(match_, case) => {
+                Cause::Branch(a1, a2) => {
                     bail!(TypeckError::TypesMissmatch {
                         related: vec![
                             TypeckRelated::ThisType {
-                                src: match_.source.clone(),
-                                span: match_.span.clone().into(),
+                                src: a1.source.clone(),
+                                span: a1.span.clone().into(),
                                 t: p1.clone()
                             },
                             TypeckRelated::ThisType {
-                                src: case.source.clone(),
-                                span: case.span.clone().into(),
+                                src: a2.source.clone(),
+                                span: a2.span.clone().into(),
                                 t: p2.clone()
                             }
                         ],

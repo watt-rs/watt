@@ -8,7 +8,7 @@ use crate::typ::cx::InferCx;
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```example
 /// impl Pretty for Typ {
 ///     fn pretty(&self, icx: &mut InferCx) -> String {
 ///         // Generate a string representation of `self` using `icx`

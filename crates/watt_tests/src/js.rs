@@ -31,7 +31,7 @@ fn load_module(code: String, draft: &DraftPackage) -> ast::Module {
     let mut parser = Parser::new(tokens, &named_source);
     let ast = parser.parse();
     // Linting
-    let linter = LintCx::new(&draft, &ast);
+    let linter = LintCx::new(draft, &ast);
     linter.lint();
     // Done
     ast

@@ -56,7 +56,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // Inferencing fields
         let new_struct = Struct {
             location: location.clone(),
-            uid: uid,
+            uid,
             name: name.clone(),
             generics: generics.clone(),
             fields: fields
@@ -111,7 +111,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // Inferencing fields
         let new_enum = Enum {
             location: location.clone(),
-            uid: uid,
+            uid,
             name: name.clone(),
             generics: generics.clone(),
             variants: variants

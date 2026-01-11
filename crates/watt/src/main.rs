@@ -1,5 +1,4 @@
 /// CLI interface
-
 // Modules
 pub(crate) mod commands;
 pub(crate) mod errors;
@@ -37,16 +36,16 @@ enum SubCommand {
     Build,
     /// Creates new project
     New {
-    	name: String,
-    	
-    	#[arg(value_enum)]
+        name: String,
+
+        #[arg(value_enum)]
         package_type: Option<PackageType>,
     },
     /// Clears cache of packages
     Clean,
     /// Initializes new project in current folder
     Init {
-    	#[arg(value_enum)]
+        #[arg(value_enum)]
         package_type: Option<PackageType>,
     },
 }

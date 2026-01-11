@@ -132,8 +132,9 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
                     }
                     // multi-line comment
                     else if self.is_match('*') {
-                        while !(self.cursor.peek() == '*' && self.cursor.next() == '/')
-                            && !self.cursor.is_at_end()
+                        while !(self.cursor.peek() == '*'
+                            && self.cursor.next() == '/'
+                            && self.cursor.is_at_end())
                         {
                             if self.is_match('\n') {
                                 continue;

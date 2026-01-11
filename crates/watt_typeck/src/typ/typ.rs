@@ -532,7 +532,7 @@ impl Pretty for Typ {
         // Matching self
         match icx.apply(self.clone()) {
             Typ::Prelude(ty) => format!("{ty:?}"),
-            Typ::Struct(id, generic_args) if generic_args.subtitutions.len() > 0 => {
+            Typ::Struct(id, generic_args) if !generic_args.subtitutions.is_empty() => {
                 format!(
                     "{}[{}]",
                     icx.tcx.struct_(id).name.clone(),
@@ -548,7 +548,7 @@ impl Pretty for Typ {
             Typ::Struct(id, _) => {
                 format!("{}", icx.tcx.struct_(id).name.clone())
             }
-            Typ::Enum(id, generic_args) if generic_args.subtitutions.len() > 0 => {
+            Typ::Enum(id, generic_args) if !generic_args.subtitutions.is_empty() => {
                 format!(
                     "{}[{}]",
                     icx.tcx.enum_(id).name.clone(),
@@ -577,7 +577,7 @@ impl Pretty for Typ {
             }
             Typ::Var(id) => format!("?{}", id.index()),
             Typ::Generic(id) => format!("^{id}"),
-            Typ::Unit => format!("Unit"),
+            Typ::Unit => "Unit".to_string(),
         }
     }
 }

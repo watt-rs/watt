@@ -1,7 +1,10 @@
 /// Imports
 use crate::{
     cx::module::ModuleCx,
-    inference::{cause::Cause, coercion::{self, Coercion}},
+    inference::{
+        cause::Cause,
+        coercion::{self, Coercion},
+    },
     typ::{
         res::Res,
         typ::{Parameter, Typ},
@@ -34,7 +37,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// - Resolve the return type if annotated; otherwise assume `Unit`.
     /// - Resolve the types of all parameters, constructing a typed signature.
     /// - Publish the function signature into the module (so it is visible to
-    ///    recursive calls within its own body).
+    ///   recursive calls within its own body).
     /// - Create a new scope (rib) for local variables.
     /// - Insert parameters as locals into that scope.
     /// - Infer the function body (block or expression).
