@@ -1,7 +1,9 @@
 /// Imports
 use crate::{
     errors::TypeckError,
+    pretty::Pretty,
     typ::{
+        cx::InferCx,
         def::TypeDef,
         typ::{EnumVariant, Typ},
     },
@@ -50,26 +52,46 @@ impl Res {
     /// this function will raise a type checking error.
     ///
     /// # Arguments
-    ///
+    /// * `icx: &mut InferCx` – Represents infrence context, used for pretty-printing.
     /// * `address: &Address` – The source code location used for error reporting.
     ///
     /// # Returns
-    ///
     /// * `Typ` – The concrete type resolved.
     ///
     /// # Panics / Errors
     ///
     /// Raises `TypeckError::UnexpectedResolution` if the resolution
     /// is not a `Res::Value` or `Res::Const`.
-    pub fn unwrap_typ(self, address: &Address) -> Typ {
+    pub fn unwrap_typ(self, icx: &mut InferCx, address: &Address) -> Typ {
         match self {
             Res::Value(t) => t,
             Res::Const(t) => t,
             _ => bail!(TypeckError::UnexpectedResolution {
                 src: address.source.clone(),
                 span: address.clone().span.into(),
-                res: self
+                res: self.pretty(icx),
             }),
+        }
+    }
+}
+
+/// Pretty implementation
+impl Pretty for Res {
+    /// Pretty prints resolution
+    ///
+    /// # Parameters
+    /// - `icx: &mut InferCx`
+    ///   Inference context used
+    ///   to pretty print types
+    ///
+    fn pretty(&self, icx: &mut InferCx) -> String {
+        // Matching self
+        match self {
+            Res::Module(name) => format!("Module({name})"),
+            Res::Custom(def) => def.pretty(icx),
+            Res::Variant(typ, variant) => format!("Variant({}.{})", typ.pretty(icx), variant.name),
+            Res::Value(typ) => format!("Value({})", typ.pretty(icx)),
+            Res::Const(typ) => format!("Const({})", typ.pretty(icx)),
         }
     }
 }

@@ -6,7 +6,7 @@ mod types;
 use crate::{
     cx::module::ModuleCx,
     errors::TypeckError,
-    inference::coercion::{self, Coercion},
+    inference::{cause::Cause, coercion::{self, Coercion}},
     typ::{def::ModuleDef, typ::WithPublicity},
 };
 use ecow::EcoString;
@@ -55,16 +55,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         value: Expression,
     ) {
         // Const inference
-        let annotated_location = typ.location();
         let annotated = self.infer_type_annotation(typ);
-        let inferred_location = value.location();
         let inferred = self.infer_expr(value);
         coercion::coerce(
             &mut self.icx,
-            Coercion::Eq(
-                (annotated_location, annotated.clone()),
-                (inferred_location, inferred),
-            ),
+            Cause::Assignment(&location),
+            Coercion::Eq(annotated.clone(), inferred),
         );
 
         // Defining constant
@@ -122,7 +118,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 }
                 UseKind::ForNames(names) => {
                     self.resolver
-                        .import_for(&import.location, names, module.clone())
+                        .import_for(&mut self.icx, &import.location, names, module.clone())
                 }
             },
             None => bail!(TypeckError::ImportOfUnknownModule {

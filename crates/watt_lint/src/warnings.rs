@@ -6,9 +6,13 @@ use thiserror::Error;
 
 /// Lint warning
 #[derive(Debug, Error, Diagnostic)]
-pub enum LintWarning {
+pub(crate) enum LintWarning {
     #[error("block is empty.")]
-    #[diagnostic(code(lint::warn::block_is_empty), severity(warning))]
+    #[diagnostic(
+        code(lint::warn::block_is_empty),
+        severity(warning),
+        help("it's will be better to use `todo` or `todo as` here.")
+    )]
     EmptyBlock {
         #[source_code]
         src: Arc<NamedSource<String>>,
@@ -47,7 +51,7 @@ pub enum LintWarning {
         #[label("wrong variable name here...")]
         span: SourceSpan,
     },
-    #[error("too many parameters in \"{name}\"")]
+    #[error("too many parameters in the `{name}`")]
     #[diagnostic(code(lint::warn::too_many_params), severity(warning))]
     TooManyParams {
         #[source_code]
@@ -56,8 +60,8 @@ pub enum LintWarning {
         span: SourceSpan,
         name: EcoString,
     },
-    #[error("too many parameters")]
-    #[diagnostic(code(lint::warn::too_many_params_in_an_fb), severity(warning))]
+    #[error("too many parameters in the anonymous function.")]
+    #[diagnostic(code(lint::warn::too_many_params_in_an_fn), severity(warning))]
     TooManyParamsInAnFn {
         #[source_code]
         src: Arc<NamedSource<String>>,

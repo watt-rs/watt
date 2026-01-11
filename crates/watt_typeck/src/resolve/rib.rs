@@ -1,6 +1,7 @@
 /// Imports
 use crate::{
     errors::{TypeckError, TypeckRelated},
+    pretty::Pretty,
     typ::{cx::InferCx, typ::Typ},
 };
 use ecow::EcoString;
@@ -80,7 +81,8 @@ impl RibsStack {
                 } else {
                     bail!(TypeckError::VariableIsAlreadyDefined {
                         src: address.source.clone(),
-                        span: address.span.clone().into()
+                        span: address.span.clone().into(),
+                        name: name.clone()
                     })
                 }
             }

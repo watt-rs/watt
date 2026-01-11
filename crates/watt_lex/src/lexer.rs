@@ -63,7 +63,6 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
 
     /// Converts source code represented as `&'cursor [char]`
     /// To a `Vec<Token>` - tokens list.
-    #[allow(clippy::nonminimal_bool)]
     pub fn lex(mut self) -> Vec<Token> {
         if !self.tokens.is_empty() {
             bail!(LexError::TokensListsNotEmpty);
@@ -246,14 +245,13 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
 
     /// Scans string. Implies quote is already ate. Eats ending quote.
     fn scan_string(&mut self) -> Token {
-        // Start of span
         let span_start = self.cursor.current;
-        // String text
         let mut text: EcoString = EcoString::new();
 
         while self.cursor.peek() != '\"' {
             let ch = self.advance();
 
+            // String escaping
             if ch == '\\' && self.cursor.peek() == '\"' {
                 text.push(self.advance());
             } else {
@@ -280,9 +278,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
 
     /// Scans multiline string. Implies quote is already ate. Eats ending quote.
     fn scan_multiline_string(&mut self) -> Token {
-        // Start of span
         let span_start = self.cursor.current;
-        // String text
         let mut text: EcoString = EcoString::new();
 
         while self.cursor.peek() != '`' {
@@ -318,19 +314,20 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
     /// * `start`: starting char of token
     ///
     fn scan_number(&mut self, start: char) -> Token {
-        // Start of span
         let span_start = self.cursor.current - 1;
-        // Number text
         let mut text: EcoString = EcoString::from(start);
-        // If number is float
         let mut is_float: bool = false;
 
         while self.is_digit(self.cursor.peek()) || self.cursor.peek() == '.' {
             if self.cursor.peek() == '.' {
+                // Checking start of range
                 if self.cursor.next() == '.' {
                     break;
                 }
                 text.push(self.advance());
+
+                // If number is float already, so here's
+                // second dot in number what's incorrect.
                 if is_float {
                     bail!(LexError::InvalidNumber {
                         src: self.source.clone(),
@@ -359,11 +356,9 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
 
     /// Scans hexadecimal numbers `0x{pattern}`
     fn scan_hexadecimal_number(&mut self) -> Token {
-        // Start of span
         let span_start = self.cursor.current - 1;
         // Skip 'x'
         self.advance();
-        // Number text
         let mut text: EcoString = EcoString::from("0x");
 
         while self.cursor.peek().is_ascii_hexdigit() {
@@ -384,11 +379,9 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
 
     /// Scans octal numbers `0o{pattern}`
     fn scan_octal_number(&mut self) -> Token {
-        // Start of span
         let span_start = self.cursor.current - 1;
         // Skip 'o'
         self.advance();
-        // Number text
         let mut text: EcoString = EcoString::from("0o");
 
         while self.cursor.peek().is_digit(8) {
@@ -409,11 +402,9 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
 
     /// Scans binary numbers `0b{pattern}`
     fn scan_binary_number(&mut self) -> Token {
-        // Start of span
         let span_start = self.cursor.current - 1;
         // Skip 'b'
         self.advance();
-        // Number text
         let mut text: EcoString = EcoString::from("0b");
 
         while self.cursor.peek().is_digit(2) {
@@ -440,9 +431,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
     /// * `start`: starting char of token
     ///
     fn scan_id_or_keyword(&mut self, start: char) -> Token {
-        // Start of span
         let span_start = self.cursor.current - 1;
-        // Id/keyword text
         let mut text: EcoString = EcoString::from(start);
 
         while self.is_id(self.cursor.peek()) {
@@ -475,7 +464,6 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
 
     /// Checking current character is equal to `ch`
     /// If current character is equal to `ch` advances it
-    #[allow(clippy::wrong_self_convention)]
     fn is_match(&mut self, ch: char) -> bool {
         if !self.cursor.is_at_end() && self.cursor.char_at(0) == ch {
             self.advance();

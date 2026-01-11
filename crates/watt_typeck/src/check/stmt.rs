@@ -2,7 +2,8 @@
 use crate::{
     cx::module::ModuleCx,
     errors::{TypeckError, TypeckRelated},
-    inference::coercion::{self, Coercion},
+    inference::{cause::Cause, coercion::{self, Coercion}},
+    pretty::Pretty,
     typ::{
         res::Res,
         typ::{PreludeType, Typ},
@@ -179,17 +180,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         value: Expression,
         typ: Option<TypePath>,
     ) {
-        let value_location = value.location();
         let inferred_value = self.infer_expr(value);
         match typ {
             Some(annotated_path) => {
-                let annotated_location = annotated_path.location();
                 let annotated = self.infer_type_annotation(annotated_path);
-                let coercion = Coercion::Eq(
-                    (annotated_location, annotated.clone()),
-                    (value_location.clone(), self.icx.mk_fresh(inferred_value)),
-                );
-                coercion::coerce(&mut self.icx, coercion);
+                let coercion = Coercion::Eq(annotated.clone(), self.icx.mk_fresh(inferred_value));
+                coercion::coerce(&mut self.icx, Cause::Assignment(&location), coercion);
                 self.resolver
                     .define_local(&location, &name, annotated, false)
             }
@@ -220,13 +216,12 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 span: location.span.into(),
             })
         }
-        let value_location = value.location();
         let inferred_value = self.infer_expr(value);
         let coercion = Coercion::Eq(
-            (location.clone(), inferred_what.unwrap_typ(&location)),
-            (value_location, self.icx.mk_fresh(inferred_value)),
+            inferred_what.unwrap_typ(&mut self.icx, &location),
+            self.icx.mk_fresh(inferred_value),
         );
-        coercion::coerce(&mut self.icx, coercion);
+        coercion::coerce(&mut self.icx, Cause::Assignment(&location), coercion);
     }
 
     /// Infers the type of statement.
