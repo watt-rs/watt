@@ -3,7 +3,7 @@ use crate::{
     cx::module::ModuleCx,
     errors::{TypeckError, TypeckRelated},
     ex::ExMatchCx,
-    inference::coercion::{self, Coercion},
+    inference::coercion::{self, Cause, Coercion},
     typ::{
         def::{ModuleDef, TypeDef},
         res::Res,
@@ -713,7 +713,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     .for_each(|(p, a)| {
                         coercion::coerce(
                             &mut self.icx,
-                            Coercion::Eq((p.location, p.typ), (a.0, a.1)),
+                            Cause::StructArgument(&a.0),
+                            Coercion::Eq(p.typ, a.1),
                         );
                     });
 
@@ -738,7 +739,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     .for_each(|(p, a)| {
                         coercion::coerce(
                             &mut self.icx,
-                            Coercion::Eq((p.location, p.typ), (a.0, a.1)),
+                            Cause::FunctionArgument(&a.0),
+                            Coercion::Eq(p.typ, a.1),
                         );
                     });
 
@@ -747,7 +749,11 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             // Variant
             Res::Variant(en, variant) => {
                 variant.fields.iter().cloned().zip(args).for_each(|(p, a)| {
-                    coercion::coerce(&mut self.icx, Coercion::Eq((p.location, p.typ), (a.0, a.1)));
+                    coercion::coerce(
+                        &mut self.icx,
+                        Cause::VariantArgument(&a.0),
+                        Coercion::Eq(p.typ, a.1),
+                    );
                 });
 
                 Res::Value(en)
@@ -867,7 +873,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         };
         coercion::coerce(
             &mut self.icx,
-            Coercion::Eq((location, ret), (block_location, inferred_block)),
+            Cause::Return(&block_location, &location),
+            Coercion::Eq(inferred_block, ret),
         );
         self.resolver.pop_rib();
 
@@ -917,7 +924,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                         // Checking types equality
                         coercion::coerce(
                             &mut self.icx,
-                            Coercion::Eq((what_address, inferred_what), (address, en.clone())),
+                            Cause::Pattern(&what_address, &address),
+                            Coercion::Eq(inferred_what, en.clone()),
                         );
 
                         // If types equal, checking fields existence
@@ -955,7 +963,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 // Checking types equality
                 coercion::coerce(
                     &mut self.icx,
-                    Coercion::Eq((what_address, inferred_what), (address, typ)),
+                    Cause::Pattern(&what_address, &address),
+                    Coercion::Eq(inferred_what, typ.clone()),
                 );
             }
             Pattern::Float(address, _) => {
@@ -963,7 +972,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 // Checking types equality
                 coercion::coerce(
                     &mut self.icx,
-                    Coercion::Eq((what_address, inferred_what), (address, typ)),
+                    Cause::Pattern(&what_address, &address),
+                    Coercion::Eq(inferred_what, typ.clone()),
                 );
             }
             Pattern::String(address, _) => {
@@ -971,7 +981,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 // Checking types equality
                 coercion::coerce(
                     &mut self.icx,
-                    Coercion::Eq((what_address, inferred_what), (address, typ)),
+                    Cause::Pattern(&what_address, &address),
+                    Coercion::Eq(inferred_what, typ.clone()),
                 );
             }
             Pattern::Bool(address, _) => {
@@ -979,7 +990,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 // Checking types equality
                 coercion::coerce(
                     &mut self.icx,
-                    Coercion::Eq((what_address, inferred_what), (address, typ)),
+                    Cause::Pattern(&what_address, &address),
+                    Coercion::Eq(inferred_what, typ.clone()),
                 );
             }
             Pattern::Wildcard => skip!(),
@@ -992,7 +1004,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                         // Checking types equality
                         coercion::coerce(
                             &mut self.icx,
-                            Coercion::Eq((what_address, inferred_what), (address, en.clone())),
+                            Cause::Pattern(&what_address, &address),
+                            Coercion::Eq(inferred_what, en.clone()),
                         );
                     }
                     _ => bail!(TypeckError::WrongVariantPattern {
@@ -1064,13 +1077,19 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             // pattern scope end
             self.resolver.pop_rib();
         }
-        // solving type
-        let ty = to_unify.first().map_or(Typ::Unit, |it| it.1.clone());
-        coercion::coerce(&mut self.icx, Coercion::Same(to_unify));
+        // solving types
+        let fresh = Typ::Var(self.icx.fresh());
+        for branch in to_unify {
+            coercion::coerce(
+                &mut self.icx,
+                Cause::Branch(&location, &branch.0),
+                Coercion::Eq(fresh.clone(), branch.1),
+            );
+        }
         let checked = ExMatchCx::check(self, inferred_what, cases);
         // checking all cases covered
         if checked {
-            ty
+            self.icx.apply(fresh)
         } else {
             warn!(
                 self.package,
@@ -1164,12 +1183,19 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 }
             }
         }
-        let ty = to_unify.first().map_or(Typ::Unit, |it| it.1.clone());
         // checking else reached
         if else_reached {
-            coercion::coerce(&mut self.icx, Coercion::Same(to_unify));
-            ty
+            let fresh = Typ::Var(self.icx.fresh());
+            for branch in to_unify {
+                coercion::coerce(
+                    &mut self.icx,
+                    Cause::Branch(&location, &branch.0),
+                    Coercion::Eq(fresh.clone(), branch.1),
+                );
+            }
+            self.icx.apply(fresh)
         } else {
+            // todo: error
             Typ::Unit
         }
     }

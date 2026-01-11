@@ -1,7 +1,7 @@
 /// Imports
 use crate::{
     cx::module::ModuleCx,
-    inference::coercion::{self, Coercion},
+    inference::coercion::{self, Cause, Coercion},
     typ::{
         res::Res,
         typ::{Parameter, Typ},
@@ -78,7 +78,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         };
         coercion::coerce(
             &mut self.icx,
-            Coercion::Eq((location, ret), (block_location, inferred_block)),
+            Cause::Return(&block_location, &location),
+            Coercion::Eq(inferred_block, ret),
         );
         self.resolver.pop_rib();
 

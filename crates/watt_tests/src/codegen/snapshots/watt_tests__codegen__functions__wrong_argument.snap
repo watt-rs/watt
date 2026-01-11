@@ -1,0 +1,28 @@
+---
+source: crates/watt_tests/src/codegen/functions.rs
+expression: "\nfn sum(a: int, b: int): int {\n    a + b\n}\n\nfn main() {\n    sum(3, 4.5)\n}\n    "
+---
+Source code:
+
+fn sum(a: int, b: int): int {
+    a + b
+}
+
+fn main() {
+    sum(3, 4.5)
+}
+    
+
+Generation result:
+typeck::types_missmatch
+
+  × types missmatch. expected "Int", got "Float".
+
+Hint: 
+  💡 here...
+   ╭─[buggy:7:12]
+ 6 │ fn main() {
+ 7 │     sum(3, 4.5)
+   ·            ───
+ 8 │ }
+   ╰────
