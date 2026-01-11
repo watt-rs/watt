@@ -6,7 +6,7 @@ mod types;
 use crate::{
     cx::module::ModuleCx,
     errors::TypeckError,
-    inference::coercion::{self, Cause, Coercion},
+    inference::{cause::Cause, coercion::{self, Coercion}},
     typ::{def::ModuleDef, typ::WithPublicity},
 };
 use ecow::EcoString;
@@ -118,7 +118,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 }
                 UseKind::ForNames(names) => {
                     self.resolver
-                        .import_for(&import.location, names, module.clone())
+                        .import_for(&mut self.icx, &import.location, names, module.clone())
                 }
             },
             None => bail!(TypeckError::ImportOfUnknownModule {

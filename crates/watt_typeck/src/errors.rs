@@ -20,15 +20,7 @@ unsafe impl Sync for TypeDef {}
 
 /// Typechecking related
 #[derive(Debug, Error, Diagnostic)]
-pub enum TypeckRelated {
-    #[error("this...")]
-    #[diagnostic(severity(hint))]
-    This {
-        #[source_code]
-        src: Arc<NamedSource<String>>,
-        #[label()]
-        span: SourceSpan,
-    },
+pub(crate) enum TypeckRelated {
     #[error("here...")]
     #[diagnostic(severity(hint))]
     Here {
@@ -46,20 +38,12 @@ pub enum TypeckRelated {
         span: SourceSpan,
         t: String,
     },
-    #[error("with this.")]
-    #[diagnostic(severity(hint))]
-    WithThis {
-        #[source_code]
-        src: Arc<NamedSource<String>>,
-        #[label()]
-        span: SourceSpan,
-    },
 }
 
 /// Typechecking error
 #[derive(Debug, Error, Diagnostic)]
-pub enum TypeckError {
-    #[error("could not resolve {name}.")]
+pub(crate) enum TypeckError {
+    #[error("could not resolve `{name}`.")]
     #[diagnostic(
         code(typeck::could_not_resolve),
         help("check symbol/variable existence.")
@@ -67,7 +51,7 @@ pub enum TypeckError {
     CouldNotResolve {
         #[source_code]
         src: Arc<NamedSource<String>>,
-        #[label("this is not defined.")]
+        #[label("this is not defined in the current scope.")]
         span: SourceSpan,
         name: EcoString,
     },
@@ -79,7 +63,7 @@ pub enum TypeckError {
         #[label("this is unavailable.")]
         span: SourceSpan,
     },
-    #[error("could not use value {v} as type.")]
+    #[error("could not use value `{v}` as a type.")]
     #[diagnostic(code(typeck::could_not_use_value_as_type))]
     CouldNotUseValueAsType {
         #[source_code]
@@ -88,62 +72,63 @@ pub enum TypeckError {
         span: SourceSpan,
         v: EcoString,
     },
-    #[error("variable is already defined.")]
+    #[error("variable `{name}` is already defined.")]
     #[diagnostic(
         code(typeck::variable_is_already_defined),
-        help("you can not create two variables with same name.")
+        help("you can't declare two variables with the same name.")
     )]
     VariableIsAlreadyDefined {
         #[source_code]
         src: Arc<NamedSource<String>>,
         #[label("this variable is already defined.")]
         span: SourceSpan,
+        name: EcoString,
     },
-    #[error("invalid binary operation {op:?} with types {a:?} & {b:?}.")]
+    #[error("invalid binary operation `{op:?}` on types `{a}` & `{b}`.")]
     #[diagnostic(code(typeck::invalid_binary_op))]
     InvalidBinaryOp {
         #[source_code]
         src: Arc<NamedSource<String>>,
-        #[label("this is incorrect.")]
+        #[label("this binary operation is incorrect.")]
         span: SourceSpan,
         a: String,
         b: String,
         op: BinaryOp,
     },
-    #[error("could not use `as` with types {a:?} & {b:?}.")]
+    #[error("could not use `as` operator with `{a:?}` & `{b:?}`.")]
     #[diagnostic(
-        code(typeck::as_with_non_primitive),
+        code(typeck::as_with_non_primitives),
         help("only primitive types can be used with as operator.")
     )]
     InvalidAsOp {
         #[source_code]
         src: Arc<NamedSource<String>>,
-        #[label("this is incorrect.")]
+        #[label("this `as` operation is incorrect.")]
         span: SourceSpan,
         a: String,
         b: String,
     },
-    #[error("could not cast {a:?} to {b:?}.")]
+    #[error("could not cast `{a}` to `{b}`.")]
     #[diagnostic(code(typeck::could_not_cast))]
     CouldNotCast {
         #[source_code]
         src: Arc<NamedSource<String>>,
-        #[label("this is incorrect.")]
+        #[label("this `as` operation is incorrect.")]
         span: SourceSpan,
         a: String,
         b: String,
     },
-    #[error("invalid unary operation {op:?} with type {t:?}.")]
+    #[error("invalid unary operation `{op:?}` on type `{t}`.")]
     #[diagnostic(code(typeck::invalid_unary_op))]
     InvalidUnaryOp {
         #[source_code]
         src: Arc<NamedSource<String>>,
-        #[label("this is incorrect.")]
+        #[label("this unary operation is incorrect.")]
         span: SourceSpan,
         t: String,
         op: UnaryOp,
     },
-    #[error("field \"{field}\" is not defined in type \"{t}\".")]
+    #[error("field `{field}` is not defined in struct `{t}`.")]
     #[diagnostic(code(typeck::field_is_not_defined))]
     FieldIsNotDefined {
         #[source_code]
@@ -153,17 +138,17 @@ pub enum TypeckError {
         t: EcoString,
         field: EcoString,
     },
-    #[error("field \"{field}\" is not defined in {res:?}")]
+    #[error("field `{field}` is not defined in the enum `{t:?}`")]
     #[diagnostic(code(typeck::enum_variant_field_is_not_defined))]
     EnumVariantFieldIsNotDefined {
         #[source_code]
         src: Arc<NamedSource<String>>,
         #[label("this pattern isn't valid.")]
         span: SourceSpan,
-        res: Res,
+        t: String,
         field: EcoString,
     },
-    #[error("field \"{field}\" is not defined in module \"{m}\".")]
+    #[error("variable `{field}` is not defined in the module `{m}`.")]
     #[diagnostic(code(typeck::module_field_is_not_defined))]
     ModuleFieldIsNotDefined {
         #[source_code]
@@ -173,16 +158,16 @@ pub enum TypeckError {
         m: EcoString,
         field: EcoString,
     },
-    #[error("type \"{def:?}\" is private.")]
+    #[error("type `{def:?}` is private.")]
     #[diagnostic(code(typeck::type_is_private))]
     TypeIsPrivate {
         #[source_code]
         src: Arc<NamedSource<String>>,
-        #[label("this access is invalid.")]
+        #[label("usage of this type is incorrect.")]
         span: SourceSpan,
         def: TypeDef,
     },
-    #[error("module field \"{name}\" is private.")]
+    #[error("module field `{name}` is private.")]
     #[diagnostic(code(typeck::module_field_is_private))]
     ModuleFieldIsPrivate {
         #[source_code]
@@ -191,25 +176,25 @@ pub enum TypeckError {
         span: SourceSpan,
         name: EcoString,
     },
-    #[error("could not call {res:?}.")]
+    #[error("could not call `{t}`.")]
     #[diagnostic(code(typeck::could_not_call))]
     CouldNotCall {
         #[source_code]
         src: Arc<NamedSource<String>>,
-        #[label("this is incorrect.")]
+        #[label("this call operation is incorrect.")]
         span: SourceSpan,
-        res: Res,
+        t: String,
     },
-    #[error("could not resolve fields in {res:?}.")]
+    #[error("could not resolve fields in `{t}`.")]
     #[diagnostic(code(typeck::could_not_resolve_fileds_in))]
     CouldNotResolveFieldsIn {
         #[source_code]
         src: Arc<NamedSource<String>>,
         #[label("this is incorrect.")]
         span: SourceSpan,
-        res: Res,
+        t: String,
     },
-    #[error("type \"{t}\" is not defined.")]
+    #[error("type named `{t}` is not defined.")]
     #[diagnostic(code(typeck::type_is_not_defined))]
     TypeIsNotDefined {
         #[source_code]
@@ -218,32 +203,32 @@ pub enum TypeckError {
         span: SourceSpan,
         t: EcoString,
     },
-    #[error("module \"{m}\" is not defined.")]
+    #[error("module `{m}` is not defined.")]
     #[diagnostic(
         code(typeck::module_is_not_defined),
         help("please, file an issue on github."),
         url("https://github.com/watt-rs/watt")
     )]
     ModuleIsNotDefined { m: EcoString },
-    #[error("module \"{m}\" is unknown and can't be imported.")]
+    #[error("module `{m}` is unknown and can't be imported.")]
     #[diagnostic(code(typeck::import_of_unknown_module))]
     ImportOfUnknownModule {
         #[source_code]
         src: Arc<NamedSource<String>>,
-        #[label("this module is not unknown.")]
+        #[label("this module is unknown.")]
         span: SourceSpan,
         m: EcoString,
     },
-    #[error("type named \"{t}\" is already defined.")]
+    #[error("type named `{t}` is already defined.")]
     #[diagnostic(code(typeck::type_is_already_defined))]
     TypeIsAlreadyDefined {
         #[source_code]
         src: Arc<NamedSource<String>>,
-        #[label("new definition here.")]
+        #[label("redefinition occurs here.")]
         span: SourceSpan,
         t: EcoString,
     },
-    #[error("module \"{m}\" is already imported as \"{name}\".")]
+    #[error("module `{m}` is already imported as `{name}`.")]
     #[diagnostic(code(typeck::module_is_already_imported))]
     ModuleIsAlreadyImportedAs {
         #[source_code]
@@ -253,7 +238,7 @@ pub enum TypeckError {
         m: EcoString,
         name: EcoString,
     },
-    #[error("name \"{name}\" is already imported as {def:?}.")]
+    #[error("name `{name}` is already imported as `{def}`.")]
     #[diagnostic(code(typeck::def_is_already_imported))]
     DefIsAlreadyImported {
         #[source_code]
@@ -261,7 +246,7 @@ pub enum TypeckError {
         #[label("this name is already imported.")]
         span: SourceSpan,
         name: EcoString,
-        def: ModuleDef,
+        def: String,
     },
     #[error("expected a logical epxression in if.")]
     #[diagnostic(code(typeck::expected_logical_in_if))]
@@ -271,7 +256,7 @@ pub enum TypeckError {
         #[label("expected logical expression in if.")]
         span: SourceSpan,
     },
-    #[error("types missmatch. expected {expected:?}, got {got:?}.")]
+    #[error("types missmatch. expected `{expected}`, got `{got}`.")]
     #[diagnostic(code(typeck::types_missmatch))]
     TypesMissmatch {
         #[related]
@@ -279,42 +264,34 @@ pub enum TypeckError {
         expected: String,
         got: String,
     },
-    #[error("coult not unify {t1:?} and {t2:?}.")]
-    #[diagnostic(code(typeck::types_missmatch))]
-    CouldNotUnify {
-        #[related]
-        related: Vec<TypeckRelated>,
-        t1: String,
-        t2: String,
-    },
-    #[error("wrong unwrap pattern. expected variant of enum, got {got:?}")]
+    #[error("wrong unwrap pattern. expected variant of enum, got `{got}`")]
     #[diagnostic(code(typeck::wrong_unwrap_pattern))]
     WrongUnwrapPattern {
         #[source_code]
         src: Arc<NamedSource<String>>,
         #[label("this seems to be wrong.")]
         span: SourceSpan,
-        got: Res,
+        got: String,
     },
-    #[error("wrong variant pattern. expected variant of enum, got {got:?}")]
+    #[error("wrong variant pattern. expected variant of enum, got `{got}`")]
     #[diagnostic(code(typeck::wrong_variant_pattern))]
     WrongVariantPattern {
         #[source_code]
         src: Arc<NamedSource<String>>,
         #[label("this seems to be wrong.")]
         span: SourceSpan,
-        got: Res,
+        got: String,
     },
-    #[error("unexpected resolution {res:?}.")]
-    #[diagnostic(code(typeck::unexpected_resolution), help("can't use {res:?} here."))]
+    #[error("unexpected resolution `{res}`.")]
+    #[diagnostic(code(typeck::unexpected_resolution), help("can't use `{res}` here."))]
     UnexpectedResolution {
         #[source_code]
         src: Arc<NamedSource<String>>,
         #[label("this is unexpected.")]
         span: SourceSpan,
-        res: Res,
+        res: String,
     },
-    #[error("unexpected expr in resolution {expr:?}.")]
+    #[error("unexpected expr in resolution `{expr}`.")]
     #[diagnostic(
         code(typeck::unexpected_expr_in_resolution),
         help("please, file an issue on github."),
@@ -329,13 +306,15 @@ pub enum TypeckError {
         expected: usize,
         got: usize,
     },
-    #[error("found types recursion.")]
-    #[diagnostic(code(typeck::types_recursion))]
+    #[error("found recursive type `{t}`.")]
+    #[diagnostic(
+        code(typeck::types_recursion),
+        help("types recursion is not supported.")
+    )]
     TypesRecursion {
         #[related]
         related: Vec<TypeckRelated>,
-        t1: String,
-        t2: String,
+        t: String,
     },
 }
 

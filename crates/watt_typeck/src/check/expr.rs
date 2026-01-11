@@ -3,7 +3,11 @@ use crate::{
     cx::module::ModuleCx,
     errors::{TypeckError, TypeckRelated},
     ex::ExMatchCx,
-    inference::coercion::{self, Cause, Coercion},
+    inference::{
+        cause::Cause,
+        coercion::{self, Coercion},
+    },
+    pretty::Pretty,
     typ::{
         def::{ModuleDef, TypeDef},
         res::Res,
@@ -629,7 +633,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             _ => bail!(TypeckError::CouldNotResolveFieldsIn {
                 src: self.module.source.clone(),
                 span: field_location.span.into(),
-                res: container_inferred
+                t: container_inferred.pretty(&mut self.icx),
             }),
         }
     }
@@ -761,7 +765,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             _ => bail!(TypeckError::CouldNotCall {
                 src: self.module.source.clone(),
                 span: location.span.into(),
-                res: function
+                t: function.pretty(&mut self.icx),
             }),
         }
     }
@@ -945,7 +949,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                                 None => bail!(TypeckError::EnumVariantFieldIsNotDefined {
                                     src: self.module.source.clone(),
                                     span: field.0.span.into(),
-                                    res: res.clone(),
+                                    t: res.pretty(&mut self.icx),
                                     field: field.1
                                 }),
                             }
@@ -954,7 +958,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     _ => bail!(TypeckError::WrongUnwrapPattern {
                         src: self.module.source.clone(),
                         span: case.address.span.clone().into(),
-                        got: res
+                        got: res.pretty(&mut self.icx),
                     }),
                 }
             }
@@ -1011,7 +1015,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                     _ => bail!(TypeckError::WrongVariantPattern {
                         src: self.module.source.clone(),
                         span: case.address.span.clone().into(),
-                        got: res
+                        got: res.pretty(&mut self.icx),
                     }),
                 }
             }
@@ -1249,23 +1253,23 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 value,
                 op,
             } => self.infer_unary(location, op, *value),
-            Expression::PrefixVar { location, name } => {
-                self.infer_get(location.clone(), name).unwrap_typ(&location)
-            }
+            Expression::PrefixVar { location, name } => self
+                .infer_get(location.clone(), name)
+                .unwrap_typ(&mut self.icx, &location),
             Expression::SuffixVar {
                 location,
                 container,
                 name,
             } => self
                 .infer_field_access(location.clone(), *container, name)
-                .unwrap_typ(&location),
+                .unwrap_typ(&mut self.icx, &location),
             Expression::Call {
                 location,
                 what,
                 args,
             } => self
                 .infer_call(location.clone(), *what, args)
-                .unwrap_typ(&location),
+                .unwrap_typ(&mut self.icx, &location),
             Expression::Function {
                 location,
                 params,

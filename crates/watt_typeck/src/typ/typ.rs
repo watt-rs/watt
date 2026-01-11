@@ -1,5 +1,8 @@
 /// Imports
-use crate::typ::{cx::InferCx, def::ModuleDef};
+use crate::{
+    pretty::Pretty,
+    typ::{cx::InferCx, def::ModuleDef},
+};
 use ecow::EcoString;
 use id_arena::Id;
 use indexmap::IndexMap;
@@ -514,7 +517,10 @@ impl Typ {
             _ => Typ::Unit,
         }
     }
+}
 
+/// Pretty printing implementation
+impl Pretty for Typ {
     /// Pretty prints type
     ///
     /// # Parameters
@@ -522,11 +528,11 @@ impl Typ {
     ///   Inference context used
     ///   to get struct, enum or function info.
     ///
-    pub fn pretty(&self, icx: &mut InferCx) -> String {
+    fn pretty(&self, icx: &mut InferCx) -> String {
         // Matching self
         match icx.apply(self.clone()) {
             Typ::Prelude(ty) => format!("{ty:?}"),
-            Typ::Struct(id, generic_args) => {
+            Typ::Struct(id, generic_args) if generic_args.subtitutions.len() > 0 => {
                 format!(
                     "{}[{}]",
                     icx.tcx.struct_(id).name.clone(),
@@ -539,7 +545,10 @@ impl Typ {
                         .join(", ")
                 )
             }
-            Typ::Enum(id, generic_args) => {
+            Typ::Struct(id, _) => {
+                format!("{}", icx.tcx.struct_(id).name.clone())
+            }
+            Typ::Enum(id, generic_args) if generic_args.subtitutions.len() > 0 => {
                 format!(
                     "{}[{}]",
                     icx.tcx.enum_(id).name.clone(),
@@ -551,6 +560,9 @@ impl Typ {
                         .collect::<Vec<String>>()
                         .join(", ")
                 )
+            }
+            Typ::Enum(id, _) => {
+                format!("{}", icx.tcx.enum_(id).name.clone())
             }
             it @ Typ::Function(_, _) => {
                 format!(

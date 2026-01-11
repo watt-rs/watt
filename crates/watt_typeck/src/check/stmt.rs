@@ -2,7 +2,8 @@
 use crate::{
     cx::module::ModuleCx,
     errors::{TypeckError, TypeckRelated},
-    inference::coercion::{self, Cause, Coercion},
+    inference::{cause::Cause, coercion::{self, Coercion}},
+    pretty::Pretty,
     typ::{
         res::Res,
         typ::{PreludeType, Typ},
@@ -217,7 +218,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         }
         let inferred_value = self.infer_expr(value);
         let coercion = Coercion::Eq(
-            inferred_what.unwrap_typ(&location),
+            inferred_what.unwrap_typ(&mut self.icx, &location),
             self.icx.mk_fresh(inferred_value),
         );
         coercion::coerce(&mut self.icx, Cause::Assignment(&location), coercion);

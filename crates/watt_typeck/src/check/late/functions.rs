@@ -1,7 +1,7 @@
 /// Imports
 use crate::{
     cx::module::ModuleCx,
-    inference::coercion::{self, Cause, Coercion},
+    inference::{cause::Cause, coercion::{self, Coercion}},
     typ::{
         res::Res,
         typ::{Parameter, Typ},

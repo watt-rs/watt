@@ -1,5 +1,11 @@
 /// Imports
-use crate::typ::typ::{Enum, Function, Struct, Typ, WithPublicity};
+use crate::{
+    pretty::Pretty,
+    typ::{
+        cx::InferCx,
+        typ::{Enum, Function, Struct, Typ, WithPublicity},
+    },
+};
 use id_arena::Id;
 use std::fmt::Debug;
 
@@ -22,7 +28,7 @@ use std::fmt::Debug;
 /// - `Function(WithPublicity<Rc<Function>>)`
 ///   Represents a function.
 ///
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ModuleDef {
     /// User-defined type
     Type(WithPublicity<TypeDef>),
@@ -32,13 +38,13 @@ pub enum ModuleDef {
     Const(WithPublicity<Typ>),
 }
 
-/// Debug implementation
-impl Debug for ModuleDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+/// Pretty implementation for `ModuleDef`
+impl Pretty for ModuleDef {
+    fn pretty(&self, icx: &mut InferCx) -> String {
         match self {
-            ModuleDef::Type(ty) => write!(f, "Type({ty:?})"),
-            ModuleDef::Const(ty) => write!(f, "Const({ty:?})"),
-            ModuleDef::Function(ty) => write!(f, "Function({ty:?})"),
+            ModuleDef::Type(ty) => ty.value.pretty(icx),
+            ModuleDef::Function(f) => format!("Function({})", icx.tcx.function(f.value).name),
+            ModuleDef::Const(ty) => format!("Const({})", ty.value.pretty(icx)),
         }
     }
 }
@@ -57,6 +63,16 @@ impl Debug for ModuleDef {
 pub enum TypeDef {
     Enum(Id<Enum>),
     Struct(Id<Struct>),
+}
+
+/// Pretty implementation for `TypeDef`
+impl Pretty for TypeDef {
+    fn pretty(&self, icx: &mut InferCx) -> String {
+        match self {
+            TypeDef::Enum(id) => format!("Enum({})", icx.tcx.enum_(*id).name),
+            TypeDef::Struct(id) => format!("Struct({})", icx.tcx.struct_(*id).name),
+        }
+    }
 }
 
 /// Debug implementation

@@ -1,12 +1,8 @@
 /// Imports
 use crate::{
-    errors::TypeckError,
-    resolve::rib::{Rib, RibsStack},
-    typ::{
-        def::{ModuleDef, TypeDef},
-        res::Res,
-        typ::{GenericArgs, Module, Typ},
-    },
+    errors::TypeckError, pretty::Pretty, resolve::rib::{Rib, RibsStack}, typ::{
+        cx::InferCx, def::{ModuleDef, TypeDef}, res::Res, typ::{GenericArgs, Module, Typ}
+    }
 };
 use ecow::EcoString;
 use std::collections::HashMap;
@@ -111,6 +107,7 @@ impl ModuleResolver {
                         bail!(TypeckError::VariableIsAlreadyDefined {
                             src: address.source.clone(),
                             span: address.span.clone().into(),
+                            name: name.clone()
                         })
                     }
                 },
@@ -391,9 +388,10 @@ impl ModuleResolver {
     /// Imports specific names (definitions) from a module.
     ///
     /// # Parameters
-    /// - `address: &Address` — Source location for error reporting.
-    /// - `names: Vec<EcoString>` — Names of definitions to import from the module.
-    /// - `module: RcPtr<Module>` — The module to import from.
+    /// * `icx: &mut InferCx` — Inference context used for pretty printing definitions.
+    /// * `address: &Address` — Source location for error reporting.
+    /// * `names: Vec<EcoString>` — Names of definitions to import from the module.
+    /// * `module: RcPtr<Module>` — The module to import from.
     ///
     /// # Behavior
     /// For each name:
@@ -405,8 +403,14 @@ impl ModuleResolver {
     /// - `TypeckError::ModuleFieldIsNotDefined` if the name does not exist in the module.
     /// - `TypeckError::DefIsAlreadyImported` if the name has already been imported.
     ///
-    #[instrument(skip(address), level = "trace")]
-    pub fn import_for(&mut self, address: &Address, names: Vec<EcoString>, module: RcPtr<Module>) {
+    #[instrument(skip(icx, address), level = "trace")]
+    pub fn import_for(
+        &mut self,
+        icx: &mut InferCx,
+        address: &Address,
+        names: Vec<EcoString>,
+        module: RcPtr<Module>,
+    ) {
         for name in names {
             match module.fields.get(&name) {
                 Some(def) => match self.imported_defs.get(&name) {
@@ -414,7 +418,7 @@ impl ModuleResolver {
                         src: address.source.clone(),
                         span: address.span.clone().into(),
                         name: name.clone(),
-                        def: already.clone()
+                        def: already.pretty(icx),
                     }),
                     None => {
                         self.imported_defs.insert(name, def.clone());
