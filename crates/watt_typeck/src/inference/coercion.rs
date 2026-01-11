@@ -55,17 +55,17 @@ pub enum Coercion {
 pub fn coerce(icx: &mut InferCx, cause: Cause, coercion: Coercion) {
     // Solving coercion
     match coercion.clone() {
-        Coercion::Eq(t1, t2) => eq(icx, &cause, t1, t2),
+        Coercion::Eq(expected, got) => eq(icx, &cause, expected, got),
         Coercion::Same(items) => same(icx, &cause, items),
     }
 }
 
 /// Solves an `Eq(t1, t2)` coercion.
 #[instrument(skip(icx), level = "trace")]
-fn eq(icx: &mut InferCx, cause: &Cause, t1: Typ, t2: Typ) {
+fn eq(icx: &mut InferCx, cause: &Cause, expected: Typ, got: Typ) {
     // Processing unification
-    let (p1, p2) = (t1.pretty(icx), t2.pretty(icx));
-    match unify(icx, t1, t2) {
+    let (p1, p2) = (expected.pretty(icx), got.pretty(icx));
+    match unify(icx, expected, got) {
         Ok(_) => skip!(),
         Err(error) => bail!(cause.clone().into_typeck_error(error, p1, p2)),
     }
@@ -85,10 +85,10 @@ fn same(icx: &mut InferCx, cause: &Cause, mut items: Vec<Typ>) {
 
 /// Core method to unify two types.
 ///
-fn unify(icx: &mut InferCx, t1: Typ, t2: Typ) -> Result<(), CoercionError> {
+fn unify(icx: &mut InferCx, expected: Typ, got: Typ) -> Result<(), CoercionError> {
     // Applying substs
-    let t1 = icx.apply(t1);
-    let t2 = icx.apply(t2);
+    let t1 = icx.apply(expected);
+    let t2 = icx.apply(got);
     // Unifying
     if t1 != t2 {
         match (&t1, &t2) {

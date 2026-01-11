@@ -100,3 +100,21 @@ fn main() {
     "#
     )
 }
+
+// note: will report error.
+#[test]
+fn recursive_enums() {
+    assert_js!(
+        r#"
+enum Option[T] {
+    Some(value: T),
+    None
+}
+
+fn main() {
+    let a = Option.None();
+    a = Option.Some(a);
+}
+    "#
+    )
+}

@@ -1,0 +1,31 @@
+---
+source: crates/watt_tests/src/codegen/enums.rs
+expression: "\nenum Option[T] {\n    Some(value: T),\n    None\n}\n\nfn main() {\n    let a = Option.None();\n    a = Option.Some(a);\n}\n    "
+---
+Source code:
+
+enum Option[T] {
+    Some(value: T),
+    None
+}
+
+fn main() {
+    let a = Option.None();
+    a = Option.Some(a);
+}
+    
+
+Generation result:
+typeck::types_recursion
+
+  × found recursive type `Option[?0]`.
+  help: types recursion is not supported.
+
+Hint: 
+  💡 here...
+    ╭─[buggy:9:5]
+  8 │     let a = Option.None();
+  9 │     a = Option.Some(a);
+    ·     ──────────────────
+ 10 │ }
+    ╰────
