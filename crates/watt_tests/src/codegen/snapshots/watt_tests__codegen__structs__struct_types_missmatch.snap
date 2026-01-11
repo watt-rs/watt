@@ -1,0 +1,42 @@
+---
+source: crates/watt_tests/src/codegen/structs.rs
+expression: "\ntype A {\n    value: int\n}\n\ntype B {\n    value: int\n}\n\nfn main() {\n    let a = A(3);\n    a = B(4);\n}\n    "
+---
+Source code:
+
+type A {
+    value: int
+}
+
+type B {
+    value: int
+}
+
+fn main() {
+    let a = A(3);
+    a = B(4);
+}
+    
+
+Generation result:
+typeck::types_missmatch
+
+  × coult not unify "A[]" and "B[]".
+
+Hint: 
+  💡 this type is "A[]"
+    ╭─[buggy:12:5]
+ 11 │     let a = A(3);
+ 12 │     a = B(4);
+    ·     ────────
+ 13 │ }
+    ╰────
+
+Hint: 
+  💡 this type is "B[]"
+    ╭─[buggy:12:9]
+ 11 │     let a = A(3);
+ 12 │     a = B(4);
+    ·         ────
+ 13 │ }
+    ╰────

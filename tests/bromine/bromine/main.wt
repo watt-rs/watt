@@ -1,0 +1,8 @@
+use fluorine/main for sum
+
+extern fn println(text: int) = "console.log(text);"
+
+fn main() {
+    // Your code goes here.
+    println(sum(3, 4))
+}

@@ -86,3 +86,24 @@ fn main() {
     "#
     )
 }
+
+// note: will report error.
+#[test]
+fn struct_types_missmatch() {
+    assert_js!(
+        r#"
+type A {
+    value: int
+}
+
+type B {
+    value: int
+}
+
+fn main() {
+    let a = A(3);
+    a = B(4);
+}
+    "#
+    )
+}
