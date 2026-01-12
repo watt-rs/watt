@@ -12,7 +12,7 @@ pub fn gen_project(path: Utf8PathBuf, ty: PackageType) {
     match ty {
         PackageType::Lib => {
             // Generating config
-            config::generate(path.clone(), &name, ty, None);
+            config::generate(&path, &name, ty, None);
 
             // Generating src path
             let src = path.join(name);
@@ -22,17 +22,15 @@ pub fn gen_project(path: Utf8PathBuf, ty: PackageType) {
             let lib_wt = src.join("main.wt");
             io::write(
                 lib_wt,
-                String::from(
                     r#"// `main.wt` is the main file of library project.
 
 "#,
-                ),
             );
         }
         PackageType::App => {
             // Generating config
             let main = format!("{}/{}", name, "main");
-            config::generate(path.clone(), &name, ty, Some(main));
+            config::generate(&path, &name, ty, Some(main));
 
             // Generating src path
             let src = path.join(name);
@@ -42,14 +40,12 @@ pub fn gen_project(path: Utf8PathBuf, ty: PackageType) {
             let main = src.join("main.wt");
             io::write(
                 main,
-                String::from(
                     r#"// `main.wt` is the starting point for your application.
 
 fn main() {
     // Your code goes here.
 }
 "#,
-                ),
             );
         }
     }

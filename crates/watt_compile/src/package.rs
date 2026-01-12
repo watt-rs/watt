@@ -207,7 +207,7 @@ impl<'cx> PackageCompiler<'cx> {
         // Performing analyze
         info!("Analyzing modules...");
         let mut analyzed_modules = HashMap::new();
-        for name in sorted {
+        for name in sorted.into_iter() {
             info!("Analyzing module {name}");
             let module = loaded_modules.get(name).unwrap();
             let mut analyzer = ModuleCx::new(module, name, self.tcx, &self.package);
@@ -246,7 +246,7 @@ impl<'cx> PackageCompiler<'cx> {
                 }
             }
             // Creating file
-            io::write(target_path, module.1);
+            io::write(target_path, &module.1);
         }
 
         // Returning analyzed modules

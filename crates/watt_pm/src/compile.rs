@@ -102,7 +102,7 @@ fn write_index(
     index_path.push(Utf8Path::new("index.js"));
     io::write(
         index_path.clone(),
-        watt_gen::gen_index(main_module_name)
+        &watt_gen::gen_index(main_module_name)
             .to_file_string()
             .unwrap(),
     );
