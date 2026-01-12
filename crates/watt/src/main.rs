@@ -59,7 +59,7 @@ pub fn cli() {
         SubCommand::Run { runtime } => run::execute(runtime),
         SubCommand::Analyze => todo!(),
         SubCommand::Build => build::execute(),
-        SubCommand::New { name, package_type } => new::execute(&name, package_type),
+        SubCommand::New { name, package_type } => new::execute(name, package_type),
         SubCommand::Clean => todo!(),
         SubCommand::Init { package_type } => init::execute(package_type),
     }

@@ -42,7 +42,7 @@ impl<'out> ProjectCompiler<'out> {
         // Writing
         io::write(
             preludes_path,
-            watt_gen::gen_prelude().to_file_string().unwrap(),
+            &watt_gen::gen_prelude().to_file_string().unwrap(),
         );
     }
 

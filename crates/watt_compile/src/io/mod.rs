@@ -46,7 +46,7 @@ impl WattFile {
 /// Recursively collects all .watt files in directory
 pub fn collect_sources(path: &Utf8PathBuf) -> Vec<WattFile> {
     // Finding entries with .watt extension recursively
-    let entries = WalkDir::new(path.clone()).into_iter().filter_entry(|e| {
+    let entries = WalkDir::new(path).into_iter().filter_entry(|e| {
         let entry_path = e.path();
         if entry_path.is_file() {
             match entry_path.extension() {
@@ -113,12 +113,12 @@ pub fn module_name(root: &Utf8Path, file: &WattFile) -> EcoString {
 }
 
 /// Writes text to the file
-pub fn write(path: Utf8PathBuf, text: String) {
+pub fn write(path: Utf8PathBuf, text: &str) {
     // Creating file, if not exists
     match File::create(&path) {
         Ok(mut file) => {
             // Writing text
-            if file.write(&text.into_bytes()).is_err() {
+            if file.write(text.as_bytes()).is_err() {
                 bail!(IoError::FailedToWrite { path })
             } else {
                 info!("Wrote text to {path}")

@@ -80,9 +80,9 @@ pub fn retrieve_config(path: &Utf8PathBuf) -> WattConfig {
 
 /// Generates config
 /// saves into `watt.toml` file in `path`
-pub fn generate(path: Utf8PathBuf, name: &str, ty: PackageType, main: Option<String>) {
-    match locate(&path) {
-        Ok(_) => bail!(PackageError::FailedToGenConfig { path }),
+pub fn generate(path: &Utf8PathBuf, name: &str, ty: PackageType, main: Option<String>) {
+    match locate(path) {
+        Ok(_) => bail!(PackageError::FailedToGenConfig { path: path.into() }),
         Err(_) => {
             let config = WattConfig {
                 pkg: PackageConfig {
@@ -95,10 +95,10 @@ pub fn generate(path: Utf8PathBuf, name: &str, ty: PackageType, main: Option<Str
             };
             let serialized = match toml::to_string(&config) {
                 Ok(text) => text,
-                Err(_) => bail!(PackageError::FailedToSerializeConfig { path }),
+                Err(_) => bail!(PackageError::FailedToSerializeConfig { path: path.into() }),
             };
             let config_path = path.join("watt.toml");
-            io::write(config_path, serialized);
+            io::write(config_path, &serialized);
         }
     }
 }
