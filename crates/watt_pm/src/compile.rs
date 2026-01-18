@@ -164,6 +164,61 @@ pub fn compile(path: Utf8PathBuf) -> Utf8PathBuf {
     index_path
 }
 
+/// Compiles project to js
+/// returns path to `index.js`
+pub fn analyze(path: Utf8PathBuf) {
+    // Cache path
+    let mut cache_path = path.clone();
+    cache_path.push(".cache");
+
+    // Config
+    let config = config::retrieve_config(&path);
+    
+    // Retrieving project name
+    let name = path_to_pkg_name(&path);
+    info!("Crawled project name {name} from {path}.");
+    
+    // Getting toposorted packages
+    println!("{} Resolving packages...", style("[🔍]").bold().cyan());
+    let resolved = dependencies::solve(
+        cache_path.clone(),
+        Package::Local(name, path.clone()),
+        &config.pkg,
+    );
+    println!("{} Packages resolved.", style("[✓]").bold().cyan());
+    info!("Resolved packages: {resolved:?}");
+    
+    // Packages paths
+    let packages = {
+        resolved.iter().map(|pkg| {
+            // Package config
+            let config = config::retrieve_config(pkg.path());
+            // Generating draft package
+            DraftPackage {
+                path: pkg.path().clone(),
+                lints: DraftPackageLints {
+                    disabled: config.lints.disabled,
+                },
+            }
+        })
+    }
+    .collect();
+    
+    // Target path
+    let target_path = {
+        let mut target_path = Utf8PathBuf::new();
+        target_path.push(&path);
+        target_path.push("target");
+        target_path
+    };
+    
+    println!("{} Checking...", style("[🔍]").bold().yellow());
+    let mut project_compiler = ProjectCompiler::new(packages, &target_path);
+    project_compiler.analyze();
+
+    println!("{} Done.", style("[✓]").bold().yellow());
+}
+
 /// Runs project
 pub fn run(path: Utf8PathBuf, rt: JsRuntime) {
     // Compiling project

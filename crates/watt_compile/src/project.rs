@@ -73,4 +73,26 @@ impl<'out> ProjectCompiler<'out> {
         info!("Done");
         completed_packages
     }
+
+    /// Analyzes project
+    pub fn analyze(&mut self) {
+        info!("Analyzing project...");
+        // Context
+        let mut root_cx = RootCx::default();
+        // Types context
+        let mut tcx = TyCx::default();
+        // Compiling packages
+        for package in &self.packages {
+            PackageCompiler::new(
+                package.clone(),
+                self.outcome.clone(),
+                &mut root_cx,
+                &mut tcx,
+            )
+            .analyze();
+        }
+
+        // Done
+        info!("Done");
+    }
 }
