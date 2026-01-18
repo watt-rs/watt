@@ -18,14 +18,14 @@ fn main() {
 Generation result:
 typeck::types_recursion
 
-  × found recursive type `Option[?0]`.
+  x found recursive type `Option[?0]`.
   help: types recursion is not supported.
 
 Hint: 
-  💡 here...
-    ╭─[buggy:9:5]
-  8 │     let a = Option.None();
-  9 │     a = Option.Some(a);
-    ·     ──────────────────
- 10 │ }
-    ╰────
+  # here...
+    ,-[buggy:9:5]
+  8 |     let a = Option.None();
+  9 |     a = Option.Some(a);
+    :     ^^^^^^^^^^^^^^^^^^
+ 10 | }
+    `----

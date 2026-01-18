@@ -21,13 +21,13 @@ fn main() {
 Generation result:
 typeck::types_missmatch
 
-  × types missmatch. expected `A`, got `B`.
+  x types missmatch. expected `A`, got `B`.
 
 Hint: 
-  💡 here...
-    ╭─[buggy:12:5]
- 11 │     let a = A(3);
- 12 │     a = B(4);
-    ·     ────────
- 13 │ }
-    ╰────
+  # here...
+    ,-[buggy:12:5]
+ 11 |     let a = A(3);
+ 12 |     a = B(4);
+    :     ^^^^^^^^
+ 13 | }
+    `----

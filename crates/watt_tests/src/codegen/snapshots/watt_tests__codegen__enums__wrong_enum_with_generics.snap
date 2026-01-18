@@ -19,13 +19,13 @@ fn main() {
 Generation result:
 typeck::types_missmatch
 
-  × types missmatch. expected `Result[Float, Bool]`, got `Result[Int, Bool]`.
+  x types missmatch. expected `Result[Float, Bool]`, got `Result[Int, Bool]`.
 
 Hint: 
-  💡 here...
-    ╭─[buggy:10:5]
-  9 │     a = Result.Err(false);
- 10 │     let b: Result[float, bool] = a;
-    ·     ──────────────────────────────
- 11 │ }
-    ╰────
+  # here...
+    ,-[buggy:10:5]
+  9 |     a = Result.Err(false);
+ 10 |     let b: Result[float, bool] = a;
+    :     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 11 | }
+    `----
