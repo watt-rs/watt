@@ -90,6 +90,29 @@ fn area(s: Shape): float {
 }
 
 /*
+ * Enum variants with default case
+ */
+#[test]
+fn match_enum_with_lost_case_covered_by_default() {
+    assert_js!(
+        r#"
+enum Animal {
+    Dog,
+    Cat
+}
+
+fn test(): int {
+    let animal = Animal.Cat();
+    match animal {
+        Animal.Dog -> 1
+        _ -> 2
+    }
+}
+        "#
+    )
+}
+
+/*
  * Match with boolean patterns
  */
 #[test]

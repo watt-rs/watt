@@ -1,0 +1,34 @@
+---
+source: crates/watt_tests/src/codegen/simple.rs
+expression: "\ntype A123b123 {}\nfn test234_function1 {}\n    "
+---
+Source code:
+
+type A123b123 {}
+fn test234_function1 {}
+    
+
+Generation result:
+import {
+    $$match,
+    $$equals,
+    $$todo,
+    $$range,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "./prelude.js"
+
+export class $A123b123 {
+    constructor() {
+        this.$meta = "Type";
+        this.$type = "A123b123";
+    }
+}
+export function A123b123() {
+    return new $A123b123();
+}
+
+export function test234_function1() {}

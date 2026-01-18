@@ -151,3 +151,13 @@ fn main() {
         "#
     )
 }
+
+#[test]
+fn test_naming() {
+    assert_js!(
+        r#"
+type A123b123 {}
+fn test234_function1 {}
+    "#
+    )
+}

@@ -1,4 +1,2 @@
 /target
-/std
-/examples/flashlight/.cache
-/examples/traits/.cache
+/tests/benchmark

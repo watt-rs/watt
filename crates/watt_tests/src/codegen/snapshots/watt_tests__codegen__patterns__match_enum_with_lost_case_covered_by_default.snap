@@ -1,0 +1,60 @@
+---
+source: crates/watt_tests/src/codegen/patterns.rs
+expression: "\nenum Animal {\n    Dog,\n    Cat\n}\n\nfn test(): int {\n    let animal = Animal.Cat();\n    match animal {\n        Animal.Dog -> 1\n        _ -> 2\n    }\n}\n        "
+---
+Source code:
+
+enum Animal {
+    Dog,
+    Cat
+}
+
+fn test(): int {
+    let animal = Animal.Cat();
+    match animal {
+        Animal.Dog -> 1
+        _ -> 2
+    }
+}
+        
+
+Generation result:
+import {
+    $$match,
+    $$equals,
+    $$todo,
+    $$range,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "./prelude.js"
+
+export const Animal = {
+    Dog: () => ({
+        $meta: "Enum",
+        $enum: "Animal",
+        $variant: "Dog",
+    }),
+    Cat: () => ({
+        $meta: "Enum",
+        $enum: "Animal",
+        $variant: "Cat",
+    })
+};
+
+export function test() {
+    let animal = Animal.Cat()
+    return $$match(animal, [
+        new $$VariantPattern(
+            "Dog",
+            function() {
+                return 1
+            }
+        ),
+        new $$WildcardPattern(function() {
+            return 2
+        })
+    ])
+}
