@@ -527,10 +527,10 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // Finding field
         match ty
             .variants(&mut self.icx)
-            .iter()
+            .into_iter()
             .find(|f| f.name == field_name)
         {
-            Some(f) => Res::Variant(ty, f.clone()),
+            Some(f) => Res::Variant(ty, f),
             None => bail!(TypeckError::FieldIsNotDefined {
                 src: self.module.source.clone(),
                 span: field_location.span.into(),
@@ -697,8 +697,8 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     ) -> Res {
         let function = self.infer_resolution(what);
         let args = args
-            .iter()
-            .map(|a| (a.location(), self.infer_expr(a.clone())))
+            .into_iter()
+            .map(|a| (a.location(), self.infer_expr(a)))
             .collect::<Vec<(Address, Typ)>>();
 
         match function.clone() {
