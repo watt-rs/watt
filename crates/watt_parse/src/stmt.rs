@@ -171,6 +171,42 @@ impl<'file> Parser<'file> {
         }
     }
 
+    /// Is statement requires semicolon
+    fn statement_requires_semi(&self, stmt: &Statement) -> bool {
+        match stmt {
+            Statement::Loop { .. } => false,
+            Statement::For { .. } => false,
+            Statement::Expr(Expression::If { .. }) => false,
+            _ => true,
+        }
+    }
+
+    /// Identifier statement
+    fn id_stmt(&mut self) -> Statement {
+        // Point for the recover
+        let recover_point = self.current;
+        let start = self.peek().address.clone();
+
+        // Parsing variable
+        let variable = self.variable();
+        let end = self.peek().address.clone();
+
+        // Checking for assignment operators
+        match self.peek().tk_type {
+            // If found, parsing assignment
+            TokenKind::AddAssign
+            | TokenKind::DivAssign
+            | TokenKind::MulAssign
+            | TokenKind::SubAssign
+            | TokenKind::Assign => self.assignment(start + end, variable),
+            // If not, recovering to `recovert_point` and parsing expr-statement
+            _ => {
+                self.current = recover_point;
+                self.expr_statement()
+            }
+        }
+    }
+
     /// Statement parsing
     pub(crate) fn statement(&mut self) -> Statement {
         // Parsing statement
@@ -178,23 +214,7 @@ impl<'file> Parser<'file> {
             TokenKind::Loop => self.loop_stmt(),
             TokenKind::For => self.for_stmt(),
             TokenKind::Let => self.let_stmt(),
-            TokenKind::Id => {
-                let pos = self.current;
-                let start = self.peek().address.clone();
-                let variable = self.variable();
-                let end = self.peek().address.clone();
-                match self.peek().tk_type {
-                    TokenKind::AddAssign
-                    | TokenKind::DivAssign
-                    | TokenKind::MulAssign
-                    | TokenKind::SubAssign
-                    | TokenKind::Assign => self.assignment(start + end, variable),
-                    _ => {
-                        self.current = pos; // recovering to old position, if not an assignment
-                        self.expr_statement()
-                    }
-                }
-            }
+            TokenKind::Id => self.id_stmt(),
             _ => self.expr_statement(),
         };
         // If `;` presented
@@ -204,8 +224,9 @@ impl<'file> Parser<'file> {
         }
         // If not
         else {
-            // Checking for closing brace `}`
-            if self.check(TokenKind::Rbrace) {
+            // If here's closing brace of the block, or the statement
+            // does not need a semicolon, just returning it.
+            if self.check(TokenKind::Rbrace) | !self.statement_requires_semi(&stmt) {
                 stmt
             } else {
                 bail!(ParseError::ExpectedSemicolon {

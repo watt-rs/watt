@@ -1,0 +1,35 @@
+---
+source: crates/watt_tests/src/codegen/semi.rs
+expression: "\nfn a(): int {\n    loop true {\n\n    }\n    1 + 1\n}\n\nfn main() {}\n        "
+---
+Source code:
+
+fn a(): int {
+    loop true {
+
+    }
+    1 + 1
+}
+
+fn main() {}
+        
+
+Generation result:
+import {
+    $$match,
+    $$equals,
+    $$todo,
+    $$range,
+    $$EqPattern,
+    $$UnwrapPattern,
+    $$WildcardPattern,
+    $$BindPattern,
+    $$VariantPattern,
+} from "./prelude.js"
+
+export function a() {
+    while (true) {}
+    return 1 + 1
+}
+
+export function main() {}
