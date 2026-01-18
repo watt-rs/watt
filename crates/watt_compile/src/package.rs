@@ -69,7 +69,7 @@ impl<'cx> PackageCompiler<'cx> {
     }
 
     /// Loads module
-    fn load_module(&mut self, module_name: &EcoString, file: &WattFile) -> ast::Module {
+    fn load_module(&self, module_name: &EcoString, file: &WattFile) -> ast::Module {
         // Reading code
         let code = file.read();
         let code_chars: Vec<char> = code.chars().collect();
@@ -171,12 +171,7 @@ impl<'cx> PackageCompiler<'cx> {
         }
     }
 
-    /// Compiles package
-    /// returns analyzed modules
-    pub fn compile(&mut self) -> CompletedPackage {
-        info!("Compiling package: {}", self.package.draft.path);
-
-        // Collecting sources
+    fn load_modules(&self) -> HashMap<EcoString, ast::Module> {
         let mut loaded_modules = HashMap::new();
         for source in self.collect_sources() {
             let module_name = io::module_name(&self.package.draft.path, &source);
@@ -185,8 +180,10 @@ impl<'cx> PackageCompiler<'cx> {
             info!("Loaded module {source:?} with name {module_name:?}");
         }
 
-        // Building dependencies tree
-        info!("Building dependencies tree...");
+        loaded_modules
+    }
+
+    fn build_deptree<'mo>(&self, loaded_modules: &'mo HashMap<EcoString, ast::Module>) -> HashMap<&'mo EcoString, Vec<&'mo EcoString>> {
         let mut dep_tree: HashMap<&EcoString, Vec<&EcoString>> = HashMap::new();
         loaded_modules.iter().for_each(|(n, m)| {
             dep_tree.insert(
@@ -198,15 +195,13 @@ impl<'cx> PackageCompiler<'cx> {
                     .collect(),
             );
         });
-        info!("Found dependencies {dep_tree:#?}");
 
-        // Performing toposort
-        let sorted = self.toposort(dep_tree);
-        info!("Performed toposort {sorted:#?}");
+        dep_tree
+    }
 
-        // Performing analyze
-        info!("Analyzing modules...");
+    fn analyze_modules<'s>(&'s mut self, sorted: Vec<&EcoString>, loaded_modules: &'s HashMap<EcoString, ast::Module>) -> HashMap<EcoString, RcPtr<Module>> {
         let mut analyzed_modules = HashMap::new();
+
         for name in sorted.into_iter() {
             info!("Analyzing module {name}");
             let module = loaded_modules.get(name).unwrap();
@@ -218,6 +213,31 @@ impl<'cx> PackageCompiler<'cx> {
                 .insert(name.clone(), analyzed_module.clone());
             analyzed_modules.insert(name.clone(), analyzed_module);
         }
+
+        analyzed_modules
+    }
+
+    /// Compiles package
+    /// returns analyzed modules
+    pub fn compile(&mut self) -> CompletedPackage {
+        info!("Compiling package: {}", self.package.draft.path);
+
+        // Collecting sources
+        let loaded_modules = self.load_modules();
+
+        // Building dependencies tree
+        info!("Building dependencies tree...");
+
+        let dep_tree = self.build_deptree(&loaded_modules);
+        info!("Found dependencies {dep_tree:#?}");
+
+        // Performing toposort
+        let sorted = self.toposort(dep_tree);
+        info!("Performed toposort {sorted:#?}");
+
+        // Performing analyze
+        info!("Analyzing modules...");
+        let analyzed_modules = self.analyze_modules(sorted, &loaded_modules);
 
         // Performing codegen
         info!("Performing codegen...");
@@ -261,5 +281,26 @@ impl<'cx> PackageCompiler<'cx> {
                 })
                 .collect(),
         }
+    }
+
+    pub fn analyze(&mut self) {
+        info!("Analyzing package: {}", self.package.draft.path);
+
+        // Collecting sources
+        let loaded_modules = self.load_modules();
+
+        // Building dependencies tree
+        info!("Building dependencies tree...");
+
+        let dep_tree = self.build_deptree(&loaded_modules);
+        info!("Found dependencies {dep_tree:#?}");
+
+        // Performing toposort
+        let sorted = self.toposort(dep_tree);
+        info!("Performed toposort {sorted:#?}");
+
+        // Performing analyze
+        info!("Analyzing modules...");
+        self.analyze_modules(sorted, &loaded_modules);
     }
 }
