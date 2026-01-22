@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-insta = "1.46.0"
 watt_lex = { path = "../watt_lex" }
 watt_parse = { path = "../watt_parse" }
 watt_common = { path = "../watt_common" }
@@ -16,3 +15,6 @@ miette = { git = "https://github.com/watt-rs/miette.git", features = ["fancy"] }
 camino = "1.1.10"
 ecow = "0.2.6"
 regex = "1.12.2"
+
+[dev-dependencies]
+insta = "1.46.0"
