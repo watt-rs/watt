@@ -65,6 +65,21 @@ pub(crate) fn generate_js(code: &str) -> String {
     gen_module(&module_name, &module).to_file_string().unwrap()
 }
 
+/// Parses watt into ast
+#[allow(dead_code)]
+pub(crate) fn parse_into_ast(code: &str) -> ast::Module {
+    // Draft package
+    let draft_package = DraftPackage {
+        path: Utf8PathBuf::new(),
+        lints: DraftPackageLints {
+            disabled: Vec::new(),
+        },
+    };
+    // Loaded module
+    let module = load_module(code.to_string(), &draft_package);
+    module
+}
+
 /// Asserts javascript generation result.
 #[macro_export]
 macro_rules! assert_js {
@@ -82,7 +97,32 @@ macro_rules! assert_js {
                 format!("{}", panic_str)
             }
         };
-        let output = format!("Source code:\n{}\n\nGeneration result:\n{}", $src, compiled);
+        let output = format!("Source code:\n{}\n\nGeneration result:\n{compiled}", $src);
+        let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
+        let cleaned = re.replace_all(&output, "").to_string();
+        insta::assert_snapshot!(insta::internals::AutoName, cleaned, $src);
+    }};
+}
+
+/// Asserts AST parsing result.
+#[macro_export]
+macro_rules! assert_ast {
+    ($src:expr $(,)?) => {{
+        let ast =
+            match std::panic::catch_unwind(|| format!("{:#?}", $crate::js::parse_into_ast($src))) {
+                Ok(result) => result,
+                Err(err) => {
+                    let panic_str = if let Some(s) = err.downcast_ref::<&str>() {
+                        (*s).to_string()
+                    } else if let Some(s) = err.downcast_ref::<String>() {
+                        s.clone()
+                    } else {
+                        "<failed to retrieve panic message>".to_string()
+                    };
+                    format!("{}", panic_str)
+                }
+            };
+        let output = format!("Source code:\n{}\n\nAst:\n{ast}", $src);
         let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
         let cleaned = re.replace_all(&output, "").to_string();
         insta::assert_snapshot!(insta::internals::AutoName, cleaned, $src);

@@ -378,24 +378,41 @@ impl<'file> Parser<'file> {
         left
     }
 
-    /// Logical operations `and`, `or` parsing
-    fn logical_expr(&mut self) -> Expression {
+    /// Logical operation `and` parsing
+    fn logical_and_expr(&mut self) -> Expression {
         let mut start_location = self.peek().address.clone();
         let mut left = self.equality_expr();
 
-        while self.check(TokenKind::And) || self.check(TokenKind::Or) {
-            let op = self.advance().clone();
+        while self.check(TokenKind::And) {
+            self.bump();
             let right = self.equality_expr();
             let end_location = self.previous().address.clone();
             left = Expression::Bin {
                 location: start_location + end_location,
                 left: Box::new(left),
                 right: Box::new(right),
-                op: match op.tk_type {
-                    TokenKind::And => BinaryOp::And,
-                    TokenKind::Or => BinaryOp::Or,
-                    _ => unreachable!(),
-                },
+                op: BinaryOp::And,
+            };
+            start_location = self.peek().address.clone();
+        }
+
+        left
+    }
+
+    /// Logical operation `or` parsing
+    fn logical_or_expr(&mut self) -> Expression {
+        let mut start_location = self.peek().address.clone();
+        let mut left = self.logical_and_expr();
+
+        while self.check(TokenKind::Or) {
+            self.bump();
+            let right = self.logical_and_expr();
+            let end_location = self.previous().address.clone();
+            left = Expression::Bin {
+                location: start_location + end_location,
+                left: Box::new(left),
+                right: Box::new(right),
+                op: BinaryOp::Or,
             };
             start_location = self.peek().address.clone();
         }
@@ -406,10 +423,10 @@ impl<'file> Parser<'file> {
     /// Cast operation `as` parsing
     fn as_expr(&mut self) -> Expression {
         let start_location = self.peek().address.clone();
-        let mut left = self.logical_expr();
+        let mut left = self.logical_or_expr();
 
         if self.check(TokenKind::As) {
-            self.consume(TokenKind::As);
+            self.bump();
             let right = self.type_annotation();
             let end_location = self.previous().address.clone();
             left = Expression::As {
