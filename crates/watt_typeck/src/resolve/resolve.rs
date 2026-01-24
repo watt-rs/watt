@@ -1,5 +1,6 @@
 /// Imports
 use crate::{
+    cx::root::RootCx,
     errors::TypeckError,
     pretty::Pretty,
     resolve::rib::{Rib, RibsStack},
@@ -11,9 +12,10 @@ use crate::{
     },
 };
 use ecow::EcoString;
+use id_arena::Id;
 use std::collections::HashMap;
 use tracing::instrument;
-use watt_common::{address::Address, bail, rc_ptr::RcPtr};
+use watt_common::{address::Address, bail};
 
 /// Resolves names and types within a module.
 ///
@@ -47,7 +49,7 @@ pub struct ModuleResolver {
     /// Module definitions
     module_defs: HashMap<EcoString, ModuleDef>,
     /// Imported modules
-    pub imported_modules: HashMap<EcoString, RcPtr<Module>>,
+    pub imported_modules: HashMap<EcoString, Id<Module>>,
     /// Imported definitions
     pub imported_defs: HashMap<EcoString, ModuleDef>,
 }
@@ -292,9 +294,9 @@ impl ModuleResolver {
     /// # Errors
     /// - Raises `TypeckError::ModuleIsNotDefined` if the module is not imported.
     ///
-    pub fn resolve_module(&self, name: &EcoString) -> &Module {
+    pub fn resolve_module<'a>(&self, cx: &'a RootCx, name: &EcoString) -> &'a Module {
         match self.imported_modules.get(name) {
-            Some(m) => m,
+            Some(id) => cx.module(*id),
             None => bail!(TypeckError::ModuleIsNotDefined { m: name.clone() }),
         }
     }
@@ -340,13 +342,19 @@ impl ModuleResolver {
     /// # Errors
     /// - Raises `TypeckError::ModuleIsAlreadyImportedAs` if the alias is already used.
     ///
-    #[instrument(skip(address), level = "trace")]
-    pub fn import_as(&mut self, address: &Address, name: EcoString, module: RcPtr<Module>) {
+    #[instrument(skip(address, cx), level = "trace")]
+    pub fn import_as(
+        &mut self,
+        cx: &RootCx,
+        address: &Address,
+        name: EcoString,
+        module: Id<Module>,
+    ) {
         match self.imported_modules.get(&name) {
             Some(module) => bail!(TypeckError::ModuleIsAlreadyImportedAs {
                 src: address.source.clone(),
                 span: address.span.clone().into(),
-                m: module.name.clone(),
+                m: cx.module(*module).name.clone(),
                 name: name.clone()
             }),
             None => self.imported_modules.insert(name, module),
@@ -371,14 +379,16 @@ impl ModuleResolver {
     /// - `TypeckError::ModuleFieldIsNotDefined` if the name does not exist in the module.
     /// - `TypeckError::DefIsAlreadyImported` if the name has already been imported.
     ///
-    #[instrument(skip(icx, address), level = "trace")]
+    #[instrument(skip(icx, rcx, address), level = "trace")]
     pub fn import_for(
         &mut self,
+        rcx: &RootCx,
         icx: &mut InferCx,
         address: &Address,
         names: Vec<EcoString>,
-        module: RcPtr<Module>,
+        module: Id<Module>,
     ) {
+        let module = rcx.module(module);
         for name in names {
             match module.fields.get(&name) {
                 Some(def) => match self.imported_defs.get(&name) {

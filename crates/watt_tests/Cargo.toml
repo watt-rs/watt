@@ -15,6 +15,7 @@ miette = { git = "https://github.com/watt-rs/miette.git", features = ["fancy"] }
 camino = "1.1.10"
 ecow = "0.2.6"
 regex = "1.12.2"
+id-arena = "2.2.1"
 
 [dev-dependencies]
 insta = "1.46.0"

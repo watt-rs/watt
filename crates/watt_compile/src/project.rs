@@ -1,26 +1,24 @@
 /// Imports
 use crate::{
     io,
-    package::{CompletedPackage, PackageCompiler},
+    package::{CompiledPackage, PackageCompiler},
 };
 use camino::Utf8PathBuf;
-use ecow::EcoString;
-use std::collections::HashMap;
 use tracing::info;
-use watt_common::{package::DraftPackage, rc_ptr::RcPtr};
-use watt_typeck::{
-    cx::root::RootCx,
-    typ::{cx::TyCx, typ::Module},
-};
+use watt_common::package::DraftPackage;
+use watt_typeck::{cx::root::RootCx, typ::cx::TyCx};
+
+/// Built type
+pub type Built = Vec<CompiledPackage>;
 
 /// Project compiler
 pub struct ProjectCompiler<'out> {
+    /// Root context
+    pub rcx: RootCx,
     /// Sources
     pub packages: Vec<DraftPackage>,
     /// Outcome
     pub outcome: &'out Utf8PathBuf,
-    /// Completed modules map
-    pub modules: HashMap<EcoString, RcPtr<Module>>,
 }
 
 /// Project compiler implementation
@@ -28,9 +26,9 @@ impl<'out> ProjectCompiler<'out> {
     /// Creates new project compiler
     pub fn new(packages: Vec<DraftPackage>, outcome: &'out Utf8PathBuf) -> Self {
         Self {
+            rcx: RootCx::default(),
             packages,
             outcome,
-            modules: HashMap::new(),
         }
     }
 
@@ -47,21 +45,19 @@ impl<'out> ProjectCompiler<'out> {
     }
 
     /// Compiles project
-    pub fn compile(&mut self) -> Vec<CompletedPackage> {
+    pub fn compile(&mut self) -> Built {
         // Compiling
         info!("Compiling project...");
-        // Context
-        let mut root_cx = RootCx::default();
         // Types context
         let mut tcx = TyCx::default();
         // Compiling packages
-        let mut completed_packages = Vec::new();
+        let mut compiled_packages = Vec::new();
         for package in &self.packages {
-            completed_packages.push(
+            compiled_packages.push(
                 PackageCompiler::new(
                     package.clone(),
                     self.outcome.clone(),
-                    &mut root_cx,
+                    &mut self.rcx,
                     &mut tcx,
                 )
                 .compile(),
@@ -71,7 +67,7 @@ impl<'out> ProjectCompiler<'out> {
         self.write_prelude();
         // Done, returning result
         info!("Done");
-        completed_packages
+        compiled_packages
     }
 
     /// Analyzes project

@@ -91,7 +91,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         name: EcoString,
         generics: Vec<TypePath>,
     ) -> Typ {
-        let m = self.resolver.resolve_module(&module);
+        let m = self.resolver.resolve_module(self.package.root, &module);
 
         let def = match m.fields.get(&name) {
             Some(ModuleDef::Type(def)) if def.publicity != Publicity::Private => def.clone(),

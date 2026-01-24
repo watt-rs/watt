@@ -5,6 +5,7 @@ use crate::{
 };
 use camino::{Utf8Path, Utf8PathBuf};
 use ecow::EcoString;
+use id_arena::Id;
 use miette::NamedSource;
 use petgraph::{Direction, prelude::DiGraphMap};
 use std::{
@@ -14,7 +15,7 @@ use std::{
 };
 use tracing::{error, info};
 use watt_ast::ast::{self};
-use watt_common::{bail, package::DraftPackage, rc_ptr::RcPtr};
+use watt_common::{bail, package::DraftPackage};
 use watt_gen::gen_module;
 use watt_lex::lexer::Lexer;
 use watt_lint::lint::LintCx;
@@ -24,22 +25,22 @@ use watt_typeck::{
     typ::{cx::TyCx, typ::Module},
 };
 
-/// Completed module
-pub struct CompletedModule {
+/// Compiled module
+pub struct CompiledModule {
     /// Name
     pub name: EcoString,
     /// Analyzed
-    pub analyzed: RcPtr<Module>,
+    pub analyzed: Id<Module>,
     /// Generated
     pub generated: Utf8PathBuf,
 }
 
-/// Completed package
-pub struct CompletedPackage {
+/// Compiled package
+pub struct CompiledPackage {
     /// Path to package
     pub path: Utf8PathBuf,
     /// Completed modules
-    pub modules: Vec<CompletedModule>,
+    pub modules: Vec<CompiledModule>,
 }
 
 /// Package compiler
@@ -183,7 +184,10 @@ impl<'cx> PackageCompiler<'cx> {
         loaded_modules
     }
 
-    fn build_deptree<'mo>(&self, loaded_modules: &'mo HashMap<EcoString, ast::Module>) -> HashMap<&'mo EcoString, Vec<&'mo EcoString>> {
+    fn build_deptree<'mo>(
+        &self,
+        loaded_modules: &'mo HashMap<EcoString, ast::Module>,
+    ) -> HashMap<&'mo EcoString, Vec<&'mo EcoString>> {
         let mut dep_tree: HashMap<&EcoString, Vec<&EcoString>> = HashMap::new();
         loaded_modules.iter().for_each(|(n, m)| {
             dep_tree.insert(
@@ -199,19 +203,19 @@ impl<'cx> PackageCompiler<'cx> {
         dep_tree
     }
 
-    fn analyze_modules<'s>(&'s mut self, sorted: Vec<&EcoString>, loaded_modules: &'s HashMap<EcoString, ast::Module>) -> HashMap<EcoString, RcPtr<Module>> {
-        let mut analyzed_modules = HashMap::new();
+    fn analyze_modules<'s>(
+        &'s mut self,
+        sorted: Vec<&EcoString>,
+        loaded_modules: &'s HashMap<EcoString, ast::Module>,
+    ) -> Vec<Id<Module>> {
+        let mut analyzed_modules = Vec::new();
 
         for name in sorted.into_iter() {
             info!("Analyzing module {name}");
             let module = loaded_modules.get(name).unwrap();
             let mut analyzer = ModuleCx::new(module, name, self.tcx, &self.package);
-            let analyzed_module = RcPtr::new(analyzer.analyze());
-            self.package
-                .root
-                .modules
-                .insert(name.clone(), analyzed_module.clone());
-            analyzed_modules.insert(name.clone(), analyzed_module);
+            let analyzed_module = self.package.root.insert_module(analyzer.analyze());
+            analyzed_modules.push(analyzed_module);
         }
 
         analyzed_modules
@@ -219,7 +223,7 @@ impl<'cx> PackageCompiler<'cx> {
 
     /// Compiles package
     /// returns analyzed modules
-    pub fn compile(&mut self) -> CompletedPackage {
+    pub fn compile(&mut self) -> CompiledPackage {
         info!("Compiling package: {}", self.package.draft.path);
 
         // Collecting sources
@@ -242,12 +246,16 @@ impl<'cx> PackageCompiler<'cx> {
         // Performing codegen
         info!("Performing codegen...");
         let mut generated_modules = HashMap::new();
-        for module in analyzed_modules.iter() {
-            info!("Performing codegen for {}", module.0);
-            let generated = gen_module(module.0, loaded_modules.get(module.0).unwrap())
+        for id in &analyzed_modules {
+            // Retrieving module
+            let module = self.package.root.module(*id);
+
+            // Performing code generation
+            info!("Performing codegen for {}", module.name);
+            let generated = gen_module(&module.name, loaded_modules.get(&module.name).unwrap())
                 .to_file_string()
                 .unwrap();
-            generated_modules.insert(module.0.clone(), generated);
+            generated_modules.insert(module.name.clone(), generated);
         }
 
         // Writing outcome
@@ -270,14 +278,19 @@ impl<'cx> PackageCompiler<'cx> {
         }
 
         // Returning analyzed modules
-        CompletedPackage {
+        CompiledPackage {
             path: self.package.draft.path.clone(),
             modules: analyzed_modules
                 .into_iter()
-                .map(|(name, module)| CompletedModule {
-                    name: name.clone(),
-                    analyzed: module,
-                    generated: completed_modules.get(&name).unwrap().clone(),
+                .map(|id| {
+                    // Retrieving module
+                    let module = self.package.root.module(id);
+                    // Completed module
+                    CompiledModule {
+                        name: module.name.clone(),
+                        analyzed: id,
+                        generated: completed_modules.get(&module.name).unwrap().clone(),
+                    }
                 })
                 .collect(),
         }

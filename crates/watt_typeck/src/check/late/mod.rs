@@ -112,16 +112,19 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
     /// - [`TypeckError::ImportOfUnknownModule`]: if module doesn't exist.
     ///
     pub fn perform_import(&mut self, import: Dependency) {
-        match self.package.root.modules.get(&import.path.module) {
+        match self.package.root.query_module(&import.path.module) {
             Some(module) => match import.kind {
                 UseKind::AsName(name) => {
                     self.resolver
-                        .import_as(&import.location, name, module.clone())
+                        .import_as(self.package.root, &import.location, name, module)
                 }
-                UseKind::ForNames(names) => {
-                    self.resolver
-                        .import_for(&mut self.icx, &import.location, names, module.clone())
-                }
+                UseKind::ForNames(names) => self.resolver.import_for(
+                    self.package.root,
+                    &mut self.icx,
+                    &import.location,
+                    names,
+                    module,
+                ),
             },
             None => bail!(TypeckError::ImportOfUnknownModule {
                 src: self.module.source.clone(),

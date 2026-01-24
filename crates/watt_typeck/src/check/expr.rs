@@ -442,7 +442,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // Getting module
         match self.resolver.imported_modules.get(&field_module) {
             // Getting module
-            Some(module) => match module.fields.get(&field_name) {
+            Some(module) => match self.package.root.module(*module).fields.get(&field_name) {
                 // If field exists
                 // checking its publicity
                 Some(def) => match def {
