@@ -19,7 +19,6 @@ use watt_compile::{
     io,
     project::{Built, ProjectCompiler},
 };
-use watt_typeck::cx::root::RootCx;
 
 /// Runs using runtime
 fn run_by_rt(index: Utf8PathBuf, rt: JsRuntime) {
@@ -61,9 +60,13 @@ fn run_by_rt(index: Utf8PathBuf, rt: JsRuntime) {
 
 /// Check for the main function
 /// existence and correctness in the module
-fn check_for_main_fn(rcx: &RootCx, built: &Built, project_path: &Utf8PathBuf, config: &WattConfig) {
+fn check_for_main_fn(built: &Built, project_path: &Utf8PathBuf, config: &WattConfig) {
     // Retrieving main package from completed packages
-    let main_package = match built.iter().find(|package| &package.path == project_path) {
+    let main_package = match built
+        .compiled
+        .iter()
+        .find(|package| &package.path == project_path)
+    {
         Some(package) => package,
         None => bail!(PackageError::NoMainPackageFound {
             path: project_path.clone()
@@ -92,7 +95,12 @@ fn check_for_main_fn(rcx: &RootCx, built: &Built, project_path: &Utf8PathBuf, co
     };
 
     // Checking for main function
-    if !rcx.module(main_module.analyzed).fields.contains_key("main") {
+    if !built
+        .rcx
+        .module(main_module.analyzed)
+        .fields
+        .contains_key("main")
+    {
         bail!(PackageError::NoMainFnFound {
             module: main_module_name.clone()
         });
@@ -175,7 +183,7 @@ pub fn compile(path: Utf8PathBuf) -> Utf8PathBuf {
     let mut pcx = ProjectCompiler::new(packages, &target_path);
     let built = pcx.compile();
     // Checking for main function
-    check_for_main_fn(&pcx.rcx, &built, &path, &config);
+    check_for_main_fn(&built, &path, &config);
     // Writing `index.js`
     let index_path = write_index(path, &target_path, &config);
     // Done
