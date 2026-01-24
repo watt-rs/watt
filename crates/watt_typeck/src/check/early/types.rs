@@ -52,7 +52,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 publicity,
                 value: TypeDef::Struct(id),
             }),
-            false,
         );
     }
 
@@ -94,7 +93,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 publicity,
                 value: TypeDef::Enum(id),
             }),
-            false,
         );
     }
 

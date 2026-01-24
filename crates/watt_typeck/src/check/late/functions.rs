@@ -71,7 +71,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // defining params in new scope
         params.iter().for_each(|p| {
             self.resolver
-                .define_local(&location, &p.name, p.typ.clone(), false)
+                .define_local(&location, &p.name, p.typ.clone())
         });
 
         // inferring body

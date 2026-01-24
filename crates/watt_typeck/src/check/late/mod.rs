@@ -74,7 +74,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 publicity,
                 value: annotated,
             }),
-            false,
         );
     }
 

@@ -868,7 +868,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         // defining params in new scope
         params
             .into_iter()
-            .for_each(|p| self.resolver.define_local(&location, &p.0, p.1.typ, false));
+            .for_each(|p| self.resolver.define_local(&location, &p.0, p.1.typ));
 
         // inferring body
         let (block_location, inferred_block) = match body {
@@ -944,7 +944,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                                     &case.address,
                                     &it.name,
                                     it.typ.clone(),
-                                    false,
                                 ),
                                 None => bail!(TypeckError::EnumVariantFieldIsNotDefined {
                                     src: self.module.source.clone(),
@@ -1021,7 +1020,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
             }
             Pattern::BindTo(address, name) => {
                 self.resolver
-                    .define_local(&address, &name, inferred_what.clone(), false);
+                    .define_local(&address, &name, inferred_what.clone());
             }
             Pattern::Or(pat1, pat2) => {
                 self.analyze_pattern(what_address.clone(), inferred_what.clone(), case, &pat1);

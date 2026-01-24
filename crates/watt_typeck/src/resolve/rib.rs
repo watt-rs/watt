@@ -66,17 +66,14 @@ impl RibsStack {
     /// - `address`: The source location of the variable, used for error reporting.
     /// - `name`: The variable name.
     /// - `typ`: The type of the variable.
-    /// - `redefine`: If true, overwrite any existing variable in the current scope.
     ///
     /// # Behavior
-    /// - If `redefine` is false and the variable already exists in the current scope,
-    ///   raises `TypeckError::VariableIsAlreadyDefined`.
     /// - Otherwise, inserts or overwrites the variable in the current scope.
     ///
-    pub fn define(&mut self, address: &Address, name: &EcoString, typ: Typ, redefine: bool) {
+    pub fn define(&mut self, address: &Address, name: &EcoString, typ: Typ) {
         match self.stack.last_mut() {
             Some(env) => {
-                if redefine || !env.contains_key(name) {
+                if !env.contains_key(name) {
                     env.insert(name.clone(), typ);
                 } else {
                     bail!(TypeckError::VariableIsAlreadyDefined {
@@ -87,47 +84,6 @@ impl RibsStack {
                 }
             }
             None => todo!("No active scope to define variable"),
-        }
-    }
-
-    /// Redefines a variable in the current scope with type checking.
-    ///
-    /// # Parameters
-    /// - `address`: Source location of the variable.
-    /// - `name`: The variable name.
-    /// - `variable`: The new type of the variable.
-    ///
-    /// # Behavior
-    /// - If the variable exists, checks that the new type equals the existing type.
-    ///   If not, raises `TypeckError::TypesMissmatch`.
-    /// - If the variable does not exist, inserts it into the current scope.
-    ///
-    pub fn redefine(
-        &mut self,
-        icx: &mut InferCx,
-        address: &Address,
-        name: &EcoString,
-        variable: Typ,
-    ) {
-        match self.stack.last_mut() {
-            Some(env) => match env.get(name) {
-                Some(def) => {
-                    if def != &variable {
-                        bail!(TypeckError::TypesMissmatch {
-                            related: vec![TypeckRelated::Here {
-                                src: address.source.clone(),
-                                span: address.span.clone().into()
-                            }],
-                            expected: def.pretty(icx),
-                            got: variable.pretty(icx)
-                        })
-                    }
-                }
-                None => {
-                    env.insert(name.clone(), variable);
-                }
-            },
-            None => todo!("No active scope to redefine variable"),
         }
     }
 

@@ -63,7 +63,6 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 publicity,
                 value: id,
             }),
-            false,
         );
     }
 

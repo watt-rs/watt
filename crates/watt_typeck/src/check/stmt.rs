@@ -152,7 +152,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
         self.resolver.push_rib();
         // defining variable for iterations
         self.resolver
-            .define_local(&location, &name, Typ::Prelude(PreludeType::Int), false);
+            .define_local(&location, &name, Typ::Prelude(PreludeType::Int));
         // analyzing range
         self.analyze_range(range);
         // inferring block
@@ -189,15 +189,11 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 let annotated = self.infer_type_annotation(annotated_path);
                 let coercion = Coercion::Eq(annotated.clone(), self.icx.mk_fresh(inferred_value));
                 coercion::coerce(&mut self.icx, Cause::Assignment(&location), coercion);
-                self.resolver
-                    .define_local(&location, &name, annotated, false)
+                self.resolver.define_local(&location, &name, annotated)
             }
-            None => self.resolver.define_local(
-                &location,
-                &name,
-                self.icx.mk_fresh(inferred_value),
-                false,
-            ),
+            None => self
+                .resolver
+                .define_local(&location, &name, self.icx.mk_fresh(inferred_value)),
         }
     }
 
