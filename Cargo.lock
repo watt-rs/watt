@@ -1301,6 +1301,7 @@ version = "0.1.0"
 dependencies = [
  "camino",
  "ecow",
+ "id-arena",
  "miette",
  "petgraph",
  "thiserror",
@@ -1386,6 +1387,7 @@ dependencies = [
  "watt_common",
  "watt_compile",
  "watt_gen",
+ "watt_typeck",
 ]
 
 [[package]]
@@ -1394,6 +1396,7 @@ version = "0.1.0"
 dependencies = [
  "camino",
  "ecow",
+ "id-arena",
  "insta",
  "miette",
  "regex",

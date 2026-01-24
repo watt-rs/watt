@@ -1,17 +1,27 @@
 /// Imports
 use crate::{
     io,
-    package::{CompletedPackage, PackageCompiler},
+    package::{CompiledPackage, PackageCompiler},
 };
 use camino::Utf8PathBuf;
-use ecow::EcoString;
-use std::collections::HashMap;
 use tracing::info;
-use watt_common::{package::DraftPackage, rc_ptr::RcPtr};
-use watt_typeck::{
-    cx::root::RootCx,
-    typ::{cx::TyCx, typ::Module},
-};
+use watt_common::package::DraftPackage;
+use watt_typeck::{cx::root::RootCx, typ::cx::TyCx};
+
+/// Build represents final compilation output,
+/// that contains context to access modules by its IDs
+/// and vector of `CompiledPackage`, packages,
+pub struct Built {
+    pub rcx: RootCx,
+    pub compiled: Vec<CompiledPackage>,
+}
+
+/// Implementation
+impl Built {
+    pub fn new(rcx: RootCx, compiled: Vec<CompiledPackage>) -> Built {
+        Built { rcx, compiled }
+    }
+}
 
 /// Project compiler
 pub struct ProjectCompiler<'out> {
@@ -19,19 +29,13 @@ pub struct ProjectCompiler<'out> {
     pub packages: Vec<DraftPackage>,
     /// Outcome
     pub outcome: &'out Utf8PathBuf,
-    /// Completed modules map
-    pub modules: HashMap<EcoString, RcPtr<Module>>,
 }
 
 /// Project compiler implementation
 impl<'out> ProjectCompiler<'out> {
     /// Creates new project compiler
     pub fn new(packages: Vec<DraftPackage>, outcome: &'out Utf8PathBuf) -> Self {
-        Self {
-            packages,
-            outcome,
-            modules: HashMap::new(),
-        }
+        Self { packages, outcome }
     }
 
     /// Writes `prelude.js`
@@ -47,51 +51,40 @@ impl<'out> ProjectCompiler<'out> {
     }
 
     /// Compiles project
-    pub fn compile(&mut self) -> Vec<CompletedPackage> {
+    pub fn compile(&mut self) -> Built {
         // Compiling
         info!("Compiling project...");
         // Context
-        let mut root_cx = RootCx::default();
+        let mut rcx = RootCx::default();
         // Types context
         let mut tcx = TyCx::default();
         // Compiling packages
-        let mut completed_packages = Vec::new();
+        let mut compiled_packages = Vec::new();
         for package in &self.packages {
-            completed_packages.push(
-                PackageCompiler::new(
-                    package.clone(),
-                    self.outcome.clone(),
-                    &mut root_cx,
-                    &mut tcx,
-                )
-                .compile(),
+            compiled_packages.push(
+                PackageCompiler::new(package.clone(), self.outcome.clone(), &mut rcx, &mut tcx)
+                    .compile(),
             );
         }
         // Writing prelude
         self.write_prelude();
         // Done, returning result
         info!("Done");
-        completed_packages
+        Built::new(rcx, compiled_packages)
     }
 
     /// Analyzes project
     pub fn analyze(&mut self) {
         info!("Analyzing project...");
         // Context
-        let mut root_cx = RootCx::default();
+        let mut rcx = RootCx::default();
         // Types context
         let mut tcx = TyCx::default();
         // Compiling packages
         for package in &self.packages {
-            PackageCompiler::new(
-                package.clone(),
-                self.outcome.clone(),
-                &mut root_cx,
-                &mut tcx,
-            )
-            .analyze();
+            PackageCompiler::new(package.clone(), self.outcome.clone(), &mut rcx, &mut tcx)
+                .analyze();
         }
-
         // Done
         info!("Done");
     }

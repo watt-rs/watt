@@ -1,8 +1,9 @@
 /// Imports
 use camino::Utf8PathBuf;
 use ecow::EcoString;
+use id_arena::Arena;
 use miette::NamedSource;
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 use watt_ast::ast;
 use watt_common::package::{DraftPackage, DraftPackageLints};
 use watt_gen::gen_module;
@@ -53,7 +54,7 @@ pub(crate) fn generate_js(code: &str) -> String {
     // Typechecking
     let mut tcx = TyCx::default();
     let mut root_cx = RootCx {
-        modules: HashMap::new(),
+        modules: Arena::default(),
     };
     let package_cx = PackageCx {
         draft: draft_package,

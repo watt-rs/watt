@@ -19,8 +19,7 @@ pub fn init() {
         .with_target(false)
         .with_level(true)
         .with_line_number(true)
-        .pretty()
-        .compact();
+        .pretty();
 
     tracing_subscriber::registry()
         .with(filter)

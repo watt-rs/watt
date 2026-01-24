@@ -15,7 +15,10 @@ use watt_common::{
     package::{DraftPackage, DraftPackageLints},
     skip,
 };
-use watt_compile::{io, package::CompletedPackage, project::ProjectCompiler};
+use watt_compile::{
+    io,
+    project::{Built, ProjectCompiler},
+};
 
 /// Runs using runtime
 fn run_by_rt(index: Utf8PathBuf, rt: JsRuntime) {
@@ -55,27 +58,27 @@ fn run_by_rt(index: Utf8PathBuf, rt: JsRuntime) {
     }
 }
 
-/// Writes `index.js`
-/// returns path to it
-fn write_index(
-    completed_packages: &[CompletedPackage],
-    project_path: Utf8PathBuf,
-    target_path: &Utf8PathBuf,
-    config: &WattConfig,
-) -> Utf8PathBuf {
+/// Check for the main function
+/// existence and correctness in the module
+fn check_for_main_fn(built: &Built, project_path: &Utf8PathBuf, config: &WattConfig) {
     // Retrieving main package from completed packages
-    let main_package = match completed_packages
+    let main_package = match built
+        .compiled
         .iter()
-        .find(|package| package.path == project_path)
+        .find(|package| &package.path == project_path)
     {
         Some(package) => package,
-        None => bail!(PackageError::NoMainPackageFound { path: project_path }),
+        None => bail!(PackageError::NoMainPackageFound {
+            path: project_path.clone()
+        }),
     };
 
     // Retrieving main module name from config
     let main_module_name = match &config.pkg.main {
         Some(m) => m.clone(),
-        None => bail!(PackageError::NoMainModuleFoundSpecified { path: project_path }),
+        None => bail!(PackageError::NoMainModuleFoundSpecified {
+            path: project_path.clone()
+        }),
     };
 
     // Retrieving main module with $main_module_name
@@ -92,11 +95,30 @@ fn write_index(
     };
 
     // Checking for main function
-    if !main_module.analyzed.fields.contains_key("main") {
+    if !built
+        .rcx
+        .module(main_module.analyzed)
+        .fields
+        .contains_key("main")
+    {
         bail!(PackageError::NoMainFnFound {
             module: main_module_name.clone()
         });
     }
+}
+
+/// Writes `index.js`
+/// returns path to it
+fn write_index(
+    project_path: Utf8PathBuf,
+    target_path: &Utf8PathBuf,
+    config: &WattConfig,
+) -> Utf8PathBuf {
+    // Retrieving main module name from config
+    let main_module_name = match &config.pkg.main {
+        Some(m) => m.clone(),
+        None => bail!(PackageError::NoMainModuleFoundSpecified { path: project_path }),
+    };
 
     // Generating `index.js`
     let mut index_path = Utf8PathBuf::from(target_path);
@@ -158,10 +180,12 @@ pub fn compile(path: Utf8PathBuf) -> Utf8PathBuf {
     };
     // Compiling
     println!("{} Compiling...", style("[🚚]").bold().yellow());
-    let mut project_compiler = ProjectCompiler::new(packages, &target_path);
-    let completed_packages = project_compiler.compile();
+    let mut pcx = ProjectCompiler::new(packages, &target_path);
+    let built = pcx.compile();
+    // Checking for main function
+    check_for_main_fn(&built, &path, &config);
     // Writing `index.js`
-    let index_path = write_index(&completed_packages, path, &target_path, &config);
+    let index_path = write_index(path, &target_path, &config);
     // Done
     println!("{} Done.", style("[✓]").bold().yellow());
     index_path
