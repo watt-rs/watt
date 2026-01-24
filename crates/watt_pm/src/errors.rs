@@ -7,23 +7,23 @@ use thiserror::Error;
 /// Package error
 #[derive(Debug, Error, Diagnostic)]
 pub enum PackageError {
-    #[error("failed to parse \"watt.toml\" at \"{path}\"")]
+    #[error("failed to parse `watt.toml` at `{path}`")]
     #[diagnostic(code(pkg::failed_to_parse_config))]
     FailedToParseConfig { path: Utf8PathBuf },
-    #[error("failed to find \"watt.toml\" at \"{path}\"")]
+    #[error("failed to find `watt.toml` at `{path}`")]
     #[diagnostic(code(pkg::failed_to_find_config))]
     FailedToFindConfig { path: Utf8PathBuf },
-    #[error("failed to generate \"watt.toml\" at \"{path}\". file already exists.")]
+    #[error("failed to generate `watt.toml` at `{path}`. file already exists.")]
     #[diagnostic(code(pkg::failed_to_gen_config))]
     FailedToGenConfig { path: Utf8PathBuf },
-    #[error("failed to serialize config.")]
+    #[error("failed to serialize config located at `{path}`.")]
     #[diagnostic(
         code(pkg::failed_to_serialize_config),
         help("please, file an issue on github."),
         url("https://github.com/watt-rs/watt")
     )]
     FailedToSerializeConfig { path: Utf8PathBuf },
-    #[error("found an dependencies cycle \"{a}\" <> \"{b}\".")]
+    #[error("found an dependencies cycle `{a}` <> `{b}`.")]
     #[diagnostic(code(pkg::found_import_cycle))]
     FoundDependenciesCycle { a: String, b: String },
     #[error("import cycle path has wrong length {len}.")]

@@ -1,5 +1,5 @@
-use ecow::EcoString;
 /// Imports
+use ecow::EcoString;
 use miette::{Diagnostic, NamedSource, SourceSpan};
 use std::sync::Arc;
 use thiserror::Error;

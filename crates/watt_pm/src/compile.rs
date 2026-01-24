@@ -3,7 +3,8 @@ use crate::{
     config::{self, WattConfig},
     dependencies::{self, Package},
     errors::PackageError,
-    runtime::JsRuntime, url::path_to_pkg_name,
+    runtime::JsRuntime,
+    url::path_to_pkg_name,
 };
 use camino::{Utf8Path, Utf8PathBuf};
 use console::style;
@@ -110,7 +111,6 @@ fn write_index(
     index_path
 }
 
-
 /// Compiles project to js
 /// returns path to `index.js`
 pub fn compile(path: Utf8PathBuf) -> Utf8PathBuf {
@@ -126,19 +126,22 @@ pub fn compile(path: Utf8PathBuf) -> Utf8PathBuf {
     println!("{} Resolving packages...", style("[🔍]").bold().cyan());
     let resolved = dependencies::solve(
         cache_path.clone(),
-        Package::Local(name, path.clone()),
+        Package {
+            name: name,
+            path: path.clone(),
+        },
         &config.pkg,
     );
     println!("{} Packages resolved.", style("[✓]").bold().cyan());
     info!("Resolved packages: {resolved:?}");
     // Packages paths
     let packages = {
-        resolved.iter().map(|pkg| {
+        resolved.into_iter().map(|pkg| {
             // Package config
-            let config = config::retrieve_config(pkg.path());
+            let config = config::retrieve_config(&pkg.path);
             // Generating draft package
             DraftPackage {
-                path: pkg.path().clone(),
+                path: pkg.path,
                 lints: DraftPackageLints {
                     disabled: config.lints.disabled,
                 },
@@ -173,29 +176,32 @@ pub fn analyze(path: Utf8PathBuf) {
 
     // Config
     let config = config::retrieve_config(&path);
-    
+
     // Retrieving project name
     let name = path_to_pkg_name(&path);
     info!("Crawled project name {name} from {path}.");
-    
+
     // Getting toposorted packages
     println!("{} Resolving packages...", style("[🔍]").bold().cyan());
     let resolved = dependencies::solve(
         cache_path.clone(),
-        Package::Local(name, path.clone()),
+        Package {
+            name: name,
+            path: path.clone(),
+        },
         &config.pkg,
     );
     println!("{} Packages resolved.", style("[✓]").bold().cyan());
     info!("Resolved packages: {resolved:?}");
-    
+
     // Packages paths
     let packages = {
-        resolved.iter().map(|pkg| {
+        resolved.into_iter().map(|pkg| {
             // Package config
-            let config = config::retrieve_config(pkg.path());
+            let config = config::retrieve_config(&pkg.path);
             // Generating draft package
             DraftPackage {
-                path: pkg.path().clone(),
+                path: pkg.path,
                 lints: DraftPackageLints {
                     disabled: config.lints.disabled,
                 },
@@ -203,7 +209,7 @@ pub fn analyze(path: Utf8PathBuf) {
         })
     }
     .collect();
-    
+
     // Target path
     let target_path = {
         let mut target_path = Utf8PathBuf::new();
@@ -211,7 +217,7 @@ pub fn analyze(path: Utf8PathBuf) {
         target_path.push("target");
         target_path
     };
-    
+
     println!("{} Checking...", style("[🔍]").bold().yellow());
     let mut project_compiler = ProjectCompiler::new(packages, &target_path);
     project_compiler.analyze();

@@ -15,30 +15,11 @@ use watt_common::bail;
 
 /// Represents package
 #[derive(Clone, PartialEq, Eq, Hash, Ord, PartialOrd, Debug)]
-pub enum Package {
-    /// Represents local package with name and path
-    Local(String, Utf8PathBuf),
-    /// Represents git package with name and path
-    Git(String, Utf8PathBuf),
-}
-
-/// Implementation
-impl Package {
-    /// Retrieves package name
-    pub fn name(&self) -> &String {
-        match self {
-            Package::Local(name, _) => name,
-            Package::Git(name, _) => name,
-        }
-    }
-
-    /// Retrieves package path
-    pub fn path(&self) -> &Utf8PathBuf {
-        match self {
-            Package::Local(_, path) => path,
-            Package::Git(_, path) => path,
-        }
-    }
+pub struct Package {
+    /// Package name
+    pub name: String,
+    /// Package path
+    pub path: Utf8PathBuf,
 }
 
 /// Finds cycle in a graph
@@ -52,14 +33,14 @@ fn find_cycle<'dep>(
     done.insert(parent);
     for node in graph.neighbors_directed(parent, Direction::Outgoing) {
         if node == origin {
-            path.push(node.name());
+            path.push(&node.name);
             return true;
         }
         if done.contains(&node) {
             continue;
         }
         if find_cycle(origin, node, graph, path, done) {
-            path.push(node.name());
+            path.push(&node.name);
             return true;
         }
     }
@@ -153,7 +134,10 @@ pub fn download(url: &String, cache: Utf8PathBuf) -> Package {
         );
     }
     info!("Crawled name {package_name} from {url}.");
-    Package::Git(package_name, path)
+    Package {
+        name: package_name,
+        path,
+    }
 }
 
 /// Resolves packages,
@@ -188,24 +172,25 @@ fn resolve_packages<'solved>(
                 PackageDependency::Local { path } => {
                     // Retrieving dependency config
                     let path = Utf8PathBuf::from(path);
-                    let pkg = Package::Local(path_to_pkg_name(&path), path.clone());
+                    let pkg = Package {
+                        name: path_to_pkg_name(&path),
+                        path: path.clone(),
+                    };
                     let pkg_config = config::retrieve_config(&path);
-                    info!("+ Found local dependency {} of {pkg:?}", &package.name());
+                    info!("+ Found local dependency {} of {pkg:?}", &package.name);
                     // Checking it's an `lib` pkg
                     match pkg_config.pkg.pkg {
                         PackageType::Lib => {
                             // Adding dependency
                             match solved.get_mut(&package) {
                                 Some(vector) => vector.push(pkg.clone()),
-                                None => bail!(PackageError::NoSolvedKeyFound {
-                                    key: pkg.name().clone()
-                                }),
+                                None => bail!(PackageError::NoSolvedKeyFound { key: pkg.name }),
                             }
                             // Resolving dependency packages
                             resolve_packages(cache, solved, pkg, &pkg_config.pkg);
                         }
                         PackageType::App => bail!(PackageError::UseOfAppPackageAsDependency {
-                            name: pkg.name().clone(),
+                            name: pkg.name,
                             path
                         }),
                     }
@@ -213,24 +198,22 @@ fn resolve_packages<'solved>(
                 PackageDependency::Git(dependency) => {
                     // Downloading dependency if not already downloaded
                     let pkg = download(dependency, cache.clone());
-                    let path = pkg.path();
+                    let path = &pkg.path;
                     let pkg_config = config::retrieve_config(path);
-                    info!("+ Found git dependency {} of {pkg:?}", &package.name());
+                    info!("+ Found git dependency {} of {pkg:?}", &package.name);
                     // Checking it's an `lib` pkg
                     match pkg_config.pkg.pkg {
                         PackageType::Lib => {
                             // Adding dependency
                             match solved.get_mut(&package) {
                                 Some(vector) => vector.push(pkg.clone()),
-                                None => bail!(PackageError::NoSolvedKeyFound {
-                                    key: pkg.name().clone()
-                                }),
+                                None => bail!(PackageError::NoSolvedKeyFound { key: pkg.name }),
                             }
                             // Resolving dependency packages
                             resolve_packages(cache, solved, pkg, &pkg_config.pkg);
                         }
                         PackageType::App => bail!(PackageError::UseOfAppPackageAsDependency {
-                            name: pkg.name().clone(),
+                            name: pkg.name,
                             path: path.clone()
                         }),
                     }

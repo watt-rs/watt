@@ -1,9 +1,5 @@
 /// Imports
-use crate::{
-    errors::{TypeckError, TypeckRelated},
-    pretty::Pretty,
-    typ::{cx::InferCx, typ::Typ},
-};
+use crate::{errors::TypeckError, typ::typ::Typ};
 use ecow::EcoString;
 use std::collections::HashMap;
 use watt_common::{address::Address, bail};
