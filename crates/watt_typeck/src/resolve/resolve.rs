@@ -34,7 +34,7 @@ use watt_common::{address::Address, bail};
 ///   The definitions present directly in the module, keyed by their names.
 ///   This includes user-defined types (`Type`) and constants (`Const`).
 ///
-/// - `imported_modules: HashMap<EcoString, RcPtr<Module>>`
+/// - `imported_modules: HashMap<EcoString, Id<Module>>`
 ///   Modules that have been imported into the current module.
 ///   Allows resolution of identifiers that are qualified with module paths.
 ///
@@ -337,7 +337,7 @@ impl ModuleResolver {
     /// # Parameters
     /// - `address: &Address` — The source location for error reporting.
     /// - `name: EcoString` — The alias under which the module should be imported.
-    /// - `module: RcPtr<Module>` — The module to import.
+    /// - `module: Id<Module>` — The module to import.
     ///
     /// # Errors
     /// - Raises `TypeckError::ModuleIsAlreadyImportedAs` if the alias is already used.
@@ -367,7 +367,7 @@ impl ModuleResolver {
     /// - `icx: &mut InferCx` — Inference context used for pretty printing definitions.
     /// - `address: &Address` — Source location for error reporting.
     /// - `names: Vec<EcoString>` — Names of definitions to import from the module.
-    /// - `module: RcPtr<Module>` — The module to import from.
+    /// - `module: Id<Module>` — The module to import from.
     ///
     /// # Behavior
     /// For each name:
