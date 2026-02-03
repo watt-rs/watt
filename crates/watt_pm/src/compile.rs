@@ -147,7 +147,7 @@ pub fn compile(path: Utf8PathBuf) -> Utf8PathBuf {
     // Getting toposorted packages
     println!("{} Resolving packages...", style("[🔍]").bold().cyan());
     let resolved = dependencies::solve(
-        cache_path.clone(),
+        cache_path,
         Package {
             name: name,
             path: path.clone(),
