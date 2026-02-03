@@ -7,9 +7,9 @@ use thiserror::Error;
 /// Package error
 #[derive(Debug, Error, Diagnostic)]
 pub enum PackageError {
-    #[error("failed to parse `watt.toml` at `{path}`")]
+    #[error("failed to parse `watt.toml` at `{path}`\n\n{reason}")]
     #[diagnostic(code(pkg::failed_to_parse_config))]
-    FailedToParseConfig { path: Utf8PathBuf },
+    FailedToParseConfig { path: Utf8PathBuf, reason: toml::de::Error },
     #[error("failed to find `watt.toml` at `{path}`")]
     #[diagnostic(code(pkg::failed_to_find_config))]
     FailedToFindConfig { path: Utf8PathBuf },

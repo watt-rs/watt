@@ -17,7 +17,7 @@ pub enum PackageType {
 }
 
 /// Package dependency
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum PackageDependency {
     /// Local dependency
@@ -54,7 +54,7 @@ pub struct WattConfig {
 pub fn parse(path: &Utf8PathBuf, text: String) -> WattConfig {
     match toml::from_str(&text) {
         Ok(cfg) => cfg,
-        Err(_) => bail!(PackageError::FailedToParseConfig { path: path.clone() }),
+        Err(e) => bail!(PackageError::FailedToParseConfig { path: path.clone(), reason: e }),
     }
 }
 
