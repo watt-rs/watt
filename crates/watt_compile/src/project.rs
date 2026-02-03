@@ -45,7 +45,7 @@ impl<'out> ProjectCompiler<'out> {
         preludes_path.push("prelude.js");
         // Writing
         io::write(
-            preludes_path,
+            &preludes_path,
             &watt_gen::gen_prelude().to_file_string().unwrap(),
         );
     }

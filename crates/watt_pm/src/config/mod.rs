@@ -17,7 +17,7 @@ pub enum PackageType {
 }
 
 /// Package dependency
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum PackageDependency {
     /// Local dependency
@@ -54,7 +54,7 @@ pub struct WattConfig {
 pub fn parse(path: &Utf8PathBuf, text: String) -> WattConfig {
     match toml::from_str(&text) {
         Ok(cfg) => cfg,
-        Err(_) => bail!(PackageError::FailedToParseConfig { path: path.clone() }),
+        Err(e) => bail!(PackageError::FailedToParseConfig { path: path.clone(), reason: e }),
     }
 }
 
@@ -93,12 +93,14 @@ pub fn generate(path: &Utf8PathBuf, name: &str, ty: PackageType, main: Option<St
                 },
                 lints: LintsConfig { disabled: vec![] },
             };
+            
             let serialized = match toml::to_string(&config) {
                 Ok(text) => text,
                 Err(_) => bail!(PackageError::FailedToSerializeConfig { path: path.into() }),
             };
+
             let config_path = path.join("watt.toml");
-            io::write(config_path, &serialized);
+            io::write(&config_path, &serialized);
         }
     }
 }
