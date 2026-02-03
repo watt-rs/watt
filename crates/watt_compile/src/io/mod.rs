@@ -38,8 +38,8 @@ impl WattFile {
     }
 
     /// Gets path clone
-    pub fn path(&self) -> Utf8PathBuf {
-        self.path.clone()
+    pub fn path(&self) -> &Utf8PathBuf {
+        &self.path
     }
 }
 
@@ -97,7 +97,7 @@ pub fn module_name(root: &Utf8Path, file: &WattFile) -> EcoString {
     let mut module_path = match file.path().strip_prefix(root) {
         Ok(ok) => ok.to_path_buf(),
         Err(_) => bail!(IoError::FailedToStripPrefix {
-            path: file.path(),
+            path: file.path().clone(),
             root: root.to_path_buf()
         }),
     };
@@ -113,19 +113,19 @@ pub fn module_name(root: &Utf8Path, file: &WattFile) -> EcoString {
 }
 
 /// Writes text to the file
-pub fn write(path: Utf8PathBuf, text: &str) {
+pub fn write(path: &Utf8PathBuf, text: &str) {
     // Creating file, if not exists
-    match File::create(&path) {
+    match File::create(path) {
         Ok(mut file) => {
             // Writing text
             if file.write(text.as_bytes()).is_err() {
-                bail!(IoError::FailedToWrite { path })
+                bail!(IoError::FailedToWrite { path: path.clone() })
             } else {
                 info!("Wrote text to {path}")
             }
         }
         Err(_) => {
-            bail!(IoError::FailedToWrite { path })
+            bail!(IoError::FailedToWrite { path: path.clone() })
         }
     }
 }

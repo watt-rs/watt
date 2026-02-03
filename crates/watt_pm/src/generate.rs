@@ -21,7 +21,7 @@ pub fn gen_project(path: Utf8PathBuf, ty: PackageType) {
             // Generating main.wt
             let lib_wt = src.join("main.wt");
             io::write(
-                lib_wt,
+                &lib_wt,
                     r#"// `main.wt` is the main file of library project.
 
 "#,
@@ -39,7 +39,7 @@ pub fn gen_project(path: Utf8PathBuf, ty: PackageType) {
             // Generating main.wt
             let main = src.join("main.wt");
             io::write(
-                main,
+                &main,
                     r#"// `main.wt` is the starting point for your application.
 
 fn main() {
