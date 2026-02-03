@@ -484,19 +484,19 @@ impl<'file> Parser<'file> {
 
     /// Pattern parsing
     fn pattern(&mut self) -> Pattern {
-        // Parsing single pattern
+        // parsing single pattern
         let pattern =
-            // If string presented
+            // if string presented
             if self.check(TokenKind::Text) {
                 let tk = self.advance().clone();
                 Pattern::String(tk.address, tk.value)
             }
-            // If bool presented
+            // if bool presented
             else if self.check(TokenKind::Bool) {
                 let tk = self.advance().clone();
                 Pattern::Bool(tk.address, tk.value)
             }
-            // If number presented
+            // if number presented
             else if self.check(TokenKind::Number) {
                 let tk = self.advance().clone();
                 if tk.value.contains(".") {
@@ -505,50 +505,48 @@ impl<'file> Parser<'file> {
                     Pattern::Int(tk.address, tk.value)
                 }
             }
-            // If wildcard presented
+            // if wildcard presented
             else if self.check(TokenKind::Wildcard) {
                 self.advance();
                 Pattern::Wildcard
             }
-            // If identifier presented
+            // if identifier presented
             else {
-                // Start span
+                // span start
                 let span_start = self.peek().address.clone();
-                // If dot presented -> enum patterns
+                // if dot presented -> enum patterns
                 if self.check_next(TokenKind::Dot) {
-                    // Parsing variant pattern prefix
+                    // parsing variant pattern prefix
                     let value = self.variant_pattern_prefix();
-                    // Checking for unwrap of enum
+                    // checking for unwrap of enum
                     if self.check(TokenKind::Lparen) {
-                        // Fields
+                        // parsing fields
                         let fields = self.sep_by(TokenKind::Lparen, TokenKind::Rparen, TokenKind::Comma, |s| {
                             let tk = s.consume(TokenKind::Id);
                             (tk.address.clone(), tk.value.clone())
                         });
-                        // End span
                         let span_end = self.peek().address.clone();
-                        // As result, enum unwrap pattern
+                        // as result, enum unwrap pattern
                         Pattern::Unwrap { address: span_start + span_end, en: value, fields }
                     }
-                    // If no unwrap, returning just as value
+                    // if no unwrap, returning just as value
                     else {
-                        // End span
                         let span_end = self.peek().address.clone();
-                        // As result, enum variant pattern
+                        // as result, enum variant pattern
                         Pattern::Variant(span_start + span_end, value)
                     }
                 }
-                // If not -> bind pattern
+                // if not -> bind pattern
                 else {
                     Pattern::BindTo(span_start, self.consume(TokenKind::Id).value.clone())
                 }
             };
-        // Checking if more patterns presented
+        // cecking if more patterns presented
         if self.check(TokenKind::Bar) {
-            // Parsing `or` pattern
+            // parsing `or` pattern
             self.consume(TokenKind::Bar);
 
-            // Left and right pattern
+            // left and right pattern
             let a = Box::new(pattern);
             let b = Box::new(self.pattern());
 
@@ -558,22 +556,22 @@ impl<'file> Parser<'file> {
         }
     }
 
-    /// Pattern match parsing
+    /// pattern match parsing
     fn pattern_matching(&mut self) -> Expression {
-        // Start address
-        let start_address = self.peek().address.clone();
+        // span start
+        let span_start = self.peek().address.clone();
 
         // `match value { patterns, ... }`
         self.consume(TokenKind::Match);
         let value = self.expr();
 
-        // Cases
+        // parsing cases
         self.consume(TokenKind::Lbrace);
         let mut cases = Vec::new();
         while !self.check(TokenKind::Rbrace) {
-            // Start address of case
+            // start address of case
             let span_start = self.peek().address.clone();
-            // Pattern of case
+            // pattern of case
             let pattern = self.pattern();
             // -> { body, ... }
             self.consume(TokenKind::Arrow);
@@ -592,11 +590,11 @@ impl<'file> Parser<'file> {
         }
         self.consume(TokenKind::Rbrace);
 
-        // End address
-        let end_address = self.previous().address.clone();
+        // span end
+        let span_end = self.previous().address.clone();
 
         Expression::Match {
-            location: start_address + end_address,
+            location: span_start + span_end,
             value: Box::new(value),
             cases,
         }

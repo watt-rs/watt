@@ -130,6 +130,8 @@ impl<'file> Parser<'file> {
         let name = self.consume(TokenKind::Id).value.clone();
         self.consume(TokenKind::In);
         let range = Box::new(self.range());
+
+        // body parsing
         let body = self.block_or_expr();
         let span_end = self.previous().address.clone();
 
@@ -163,23 +165,23 @@ impl<'file> Parser<'file> {
 
     /// Identifier statement
     fn id_stmt(&mut self) -> Statement {
-        // Point for the recover
+        // point for the recover
         let recover_point = self.current;
         let start = self.peek().address.clone();
 
-        // Parsing variable
+        // parsing variable
         let variable = self.variable();
         let end = self.peek().address.clone();
 
-        // Checking for assignment operators
+        // checking for assignment operators
         match self.peek().tk_type {
-            // If found, parsing assignment
+            // if found, parsing assignment
             TokenKind::AddAssign
             | TokenKind::DivAssign
             | TokenKind::MulAssign
             | TokenKind::SubAssign
             | TokenKind::Assign => self.assignment(start + end, variable),
-            // If not, recovering to `recovert_point` and parsing expr-statement
+            // if not, recovering to `recovert_point` and parsing expr-statement
             _ => {
                 self.current = recover_point;
                 self.expr_statement()
@@ -189,7 +191,7 @@ impl<'file> Parser<'file> {
 
     /// Statement parsing
     pub(crate) fn statement(&mut self) -> Statement {
-        // Parsing statement
+        // parsing statement
         let stmt = match self.peek().tk_type {
             TokenKind::Loop => self.loop_stmt(),
             TokenKind::For => self.for_stmt(),
@@ -197,14 +199,14 @@ impl<'file> Parser<'file> {
             TokenKind::Id => self.id_stmt(),
             _ => self.expr_statement(),
         };
-        // If `;` presented
+        // if `;` presented
         if self.check(TokenKind::Semicolon) {
             self.advance();
             stmt
         }
-        // If not
+        // if not
         else {
-            // If here's closing brace of the block, or the statement
+            // if here's closing brace of the block, or the statement
             // does not need a semicolon, just returning it.
             if self.check(TokenKind::Rbrace) | !self.statement_requires_semi(&stmt) {
                 stmt
