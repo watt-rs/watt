@@ -1,5 +1,6 @@
 /// Imports
 use crate::{errors::ParseError, parser::Parser};
+use miette::SourceSpan;
 use watt_ast::ast::{BinaryOp, Case, Either, ElseBranch, Expression, Parameter, Pattern, UnaryOp};
 use watt_common::bail;
 use watt_lex::tokens::TokenKind;
@@ -199,7 +200,7 @@ impl<'file> Parser<'file> {
     }
 
     /// Primary expr parsing
-    fn primary_expr(&mut self) -> Expression {
+    fn primary_expr(&mut self, previous_token_span: SourceSpan) -> Expression {
         match self.peek().tk_type {
             TokenKind::Id => self.variable(),
             TokenKind::Number => {
@@ -241,6 +242,7 @@ impl<'file> Parser<'file> {
                 bail!(ParseError::UnexpectedExpressionToken {
                     src: token.address.source,
                     span: token.address.span.into(),
+                    previous_token_span,
                     unexpected: token.value
                 });
             }
@@ -259,10 +261,10 @@ impl<'file> Parser<'file> {
                     TokenKind::Bang => UnaryOp::Bang,
                     _ => unreachable!(),
                 },
-                value: Box::new(self.primary_expr()),
+                value: Box::new(self.primary_expr(self.previous().address.span.clone().into())),
             }
         } else {
-            self.primary_expr()
+            self.primary_expr(self.previous().address.span.clone().into())
         }
     }
 
