@@ -79,7 +79,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
                 }
                 '&' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenKind::AndEq, "&=");
+                        self.add_tk(TokenKind::AndAssign, "&=");
                     } else if self.is_match('&') {
                         self.add_tk(TokenKind::And, "&&");
                     } else {
@@ -88,7 +88,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
                 }
                 '|' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenKind::OrEq, "|=");
+                        self.add_tk(TokenKind::OrAssign, "|=");
                     } else if self.is_match('|') {
                         self.add_tk(TokenKind::Or, "||");
                     } else {
@@ -97,7 +97,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
                 }
                 '^' => {
                     if self.is_match('=') {
-                        self.add_tk(TokenKind::XorEq, "^=");
+                        self.add_tk(TokenKind::XorAssign, "^=");
                     } else {
                         self.add_tk(TokenKind::Caret, "^");
                     }
