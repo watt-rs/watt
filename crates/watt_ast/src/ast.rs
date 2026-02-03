@@ -559,7 +559,10 @@ pub enum Expression {
     /// ```watt
     /// (...)
     /// ```
-    Paren(Box<Expression>),
+    Paren {
+        location: Address,
+        expr: Box<Expression>,
+    },
 }
 
 /// Implementation
@@ -581,7 +584,7 @@ impl Expression {
             Expression::Call { location, .. } => location.clone(),
             Expression::Function { location, .. } => location.clone(),
             Expression::Match { location, .. } => location.clone(),
-            Expression::Paren(expr) => expr.location(),
+            Expression::Paren { location, .. } => location.clone(),
         }
     }
 }

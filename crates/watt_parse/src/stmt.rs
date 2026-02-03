@@ -6,6 +6,28 @@ use watt_lex::tokens::TokenKind;
 
 /// Implementation of statements parsing
 impl<'file> Parser<'file> {
+    /// Packs compound assignment
+    fn compound_assignment(
+        &mut self,
+        op: BinaryOp,
+        address: Address,
+        variable: Expression,
+    ) -> Statement {
+        let span_start = variable.location();
+        let expr = Box::new(self.expr());
+        let span_end = self.previous().address.clone();
+        Statement::VarAssign {
+            location: address + span_end.clone(),
+            what: variable.clone(),
+            value: Expression::Bin {
+                location: span_start + span_end,
+                left: Box::new(variable),
+                right: expr,
+                op,
+            },
+        }
+    }
+
     /// Assignment parsing
     fn assignment(&mut self, address: Address, variable: Expression) -> Statement {
         match variable {
@@ -17,74 +39,35 @@ impl<'file> Parser<'file> {
                 let op = self.advance().clone();
                 match op.tk_type {
                     TokenKind::Assign => {
-                        let start_address = variable.location();
+                        let span_start = variable.location();
                         let expr = self.expr();
-                        let end_address = self.previous().address.clone();
+                        let span_end = self.previous().address.clone();
                         Statement::VarAssign {
-                            location: start_address + end_address,
+                            location: span_start + span_end,
                             what: variable,
                             value: expr,
                         }
                     }
                     TokenKind::AddAssign => {
-                        let start_address = variable.location();
-                        let expr = Box::new(self.expr());
-                        let end_address = self.previous().address.clone();
-                        Statement::VarAssign {
-                            location: address.clone() + end_address.clone(),
-                            what: variable.clone(),
-                            value: Expression::Bin {
-                                location: start_address + end_address,
-                                left: Box::new(variable),
-                                right: expr,
-                                op: BinaryOp::Add,
-                            },
-                        }
+                        self.compound_assignment(BinaryOp::Add, address, variable)
                     }
                     TokenKind::SubAssign => {
-                        let start_address = variable.location();
-                        let expr = Box::new(self.expr());
-                        let end_address = self.previous().address.clone();
-                        Statement::VarAssign {
-                            location: address + end_address.clone(),
-                            what: variable.clone(),
-                            value: Expression::Bin {
-                                location: start_address + end_address,
-                                left: Box::new(variable),
-                                right: expr,
-                                op: BinaryOp::Sub,
-                            },
-                        }
+                        self.compound_assignment(BinaryOp::Sub, address, variable)
                     }
                     TokenKind::MulAssign => {
-                        let start_address = variable.location();
-                        let expr = Box::new(self.expr());
-                        let end_address = self.previous().address.clone();
-                        Statement::VarAssign {
-                            location: address + end_address.clone(),
-                            what: variable.clone(),
-                            value: Expression::Bin {
-                                location: start_address + end_address,
-                                left: Box::new(variable),
-                                right: expr,
-                                op: BinaryOp::Mul,
-                            },
-                        }
+                        self.compound_assignment(BinaryOp::Mul, address, variable)
                     }
                     TokenKind::DivAssign => {
-                        let start_address = variable.location();
-                        let expr = Box::new(self.expr());
-                        let end_address = self.previous().address.clone();
-                        Statement::VarAssign {
-                            location: address + end_address.clone(),
-                            what: variable.clone(),
-                            value: Expression::Bin {
-                                location: start_address + end_address,
-                                left: Box::new(variable),
-                                right: expr,
-                                op: BinaryOp::Div,
-                            },
-                        }
+                        self.compound_assignment(BinaryOp::Div, address, variable)
+                    }
+                    TokenKind::AndAssign => {
+                        self.compound_assignment(BinaryOp::And, address, variable)
+                    }
+                    TokenKind::OrAssign => {
+                        self.compound_assignment(BinaryOp::Or, address, variable)
+                    }
+                    TokenKind::XorAssign => {
+                        self.compound_assignment(BinaryOp::Xor, address, variable)
                     }
                     _ => bail!(ParseError::InvalidAssignmentOperator {
                         src: address.source,
@@ -98,11 +81,8 @@ impl<'file> Parser<'file> {
 
     /// Let statement parsing
     fn let_stmt(&mut self) -> Statement {
-        // start address
-        let start_address = self.peek().address.clone();
-
         // `let $id`
-        self.consume(TokenKind::Let);
+        let span_start = self.consume(TokenKind::Let).address.clone();
         let name = self.consume(TokenKind::Id).clone();
 
         // if type specified
@@ -118,12 +98,10 @@ impl<'file> Parser<'file> {
         // `= $value`
         self.consume(TokenKind::Assign);
         let value = self.expr();
-
-        // end address
-        let end_address = self.previous().address.clone();
+        let span_end = self.previous().address.clone();
 
         Statement::VarDef {
-            location: start_address + end_address,
+            location: span_start + span_end,
             name: name.value,
             typ,
             value,
@@ -147,6 +125,8 @@ impl<'file> Parser<'file> {
     /// For statement parsing
     fn for_stmt(&mut self) -> Statement {
         let span_start = self.consume(TokenKind::For).address.clone();
+
+        // `$id in $range`
         let name = self.consume(TokenKind::Id).value.clone();
         self.consume(TokenKind::In);
         let range = Box::new(self.range());

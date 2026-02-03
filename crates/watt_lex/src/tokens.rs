@@ -22,9 +22,9 @@ pub enum TokenKind {
     SubAssign, // -=
     MulAssign, // *-
     DivAssign, // /=
-    AndEq,     // &=
-    OrEq,      // |=
-    XorEq,     // ^=
+    AndAssign, // &=
+    OrAssign,  // |=
+    XorAssign, // ^=
     Lparen,    // (
     Rparen,    // )
     Lbrace,    // {

@@ -28,7 +28,7 @@ Module {
                 params: [],
                 body: Left(
                     Block {
-                        location: Address(17..44),
+                        location: Address(12..46),
                         body: [
                             Expr(
                                 If {
@@ -63,7 +63,7 @@ Module {
                                     },
                                     body: Left(
                                         Block {
-                                            location: Address(44..38),
+                                            location: Address(38..44),
                                             body: [],
                                         },
                                     ),
