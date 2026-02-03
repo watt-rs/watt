@@ -8,6 +8,7 @@ use ecow::EcoString;
 use id_arena::Id;
 use miette::NamedSource;
 use petgraph::{Direction, prelude::DiGraphMap};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
     collections::{HashMap, HashSet},
     fs,
@@ -173,15 +174,15 @@ impl<'cx> PackageCompiler<'cx> {
     }
 
     fn load_modules(&self) -> HashMap<EcoString, ast::Module> {
-        let mut loaded_modules = HashMap::new();
-        for source in self.collect_sources() {
-            let module_name = io::module_name(&self.package.draft.path, &source);
-            let module = self.load_module(&module_name, &source);
-            loaded_modules.insert(module_name.clone(), module);
-            info!("Loaded module {source:?} with name {module_name:?}");
-        }
-
-        loaded_modules
+        self.collect_sources()
+            .par_iter()
+            .map(|source| {
+                let module_name = io::module_name(&self.package.draft.path, &source);
+                let module = self.load_module(&module_name, &source);
+                info!("Loaded module {source:?} with name {module_name:?}");
+                (module_name, module)
+            })
+            .collect()
     }
 
     fn build_deptree<'mo>(
@@ -221,12 +222,36 @@ impl<'cx> PackageCompiler<'cx> {
         analyzed_modules
     }
 
+    fn generate_modules(
+        &mut self,
+        analyzed_modules: &Vec<Id<Module>>,
+        loaded_modules: &HashMap<EcoString, ast::Module>,
+    ) -> HashMap<EcoString, String> {
+        analyzed_modules
+            .par_iter()
+            .map(|id| {
+                // Retrieving module
+                let module = self.package.root.module(*id);
+
+                // Performing code generation
+                info!("Performing codegen for {}", module.name);
+                let generated = gen_module(&module.name, loaded_modules.get(&module.name).unwrap())
+                    .to_file_string()
+                    .unwrap();
+
+                // Done
+                (module.name.clone(), generated)
+            })
+            .collect()
+    }
+
     /// Compiles package
     /// returns analyzed modules
     pub fn compile(&mut self) -> CompiledPackage {
         info!("Compiling package: {}", self.package.draft.path);
 
         // Collecting sources
+        info!("Loading modules in parallel...");
         let loaded_modules = self.load_modules();
 
         // Building dependencies tree
@@ -244,19 +269,8 @@ impl<'cx> PackageCompiler<'cx> {
         let analyzed_modules = self.analyze_modules(sorted, &loaded_modules);
 
         // Performing codegen
-        info!("Performing codegen...");
-        let mut generated_modules = HashMap::new();
-        for id in &analyzed_modules {
-            // Retrieving module
-            let module = self.package.root.module(*id);
-
-            // Performing code generation
-            info!("Performing codegen for {}", module.name);
-            let generated = gen_module(&module.name, loaded_modules.get(&module.name).unwrap())
-                .to_file_string()
-                .unwrap();
-            generated_modules.insert(module.name.clone(), generated);
-        }
+        info!("Performing codegen in parallel...");
+        let generated_modules = self.generate_modules(&analyzed_modules, &loaded_modules);
 
         // Writing outcome
         info!("Writing outcome...");

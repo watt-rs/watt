@@ -132,19 +132,17 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
                     }
                     // multi-line comment
                     else if self.is_match('*') {
-                        while !(self.cursor.peek() == '*'
-                            && self.cursor.next() == '/'
-                            && self.cursor.is_at_end())
-                        {
-                            if self.is_match('\n') {
+                        while !self.cursor.is_at_end() {
+                            if self.is_match('*') {
+                                if self.is_match('/') {
+                                    break;
+                                }
+                            } else if self.is_match('\n') {
                                 continue;
+                            } else {
+                                self.advance();
                             }
-                            self.advance();
                         }
-                        // *
-                        self.advance();
-                        // /
-                        self.advance();
                     } else {
                         self.add_tk(TokenKind::Slash, "/");
                     }
