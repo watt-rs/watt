@@ -124,7 +124,7 @@ fn write_index(
     let mut index_path = Utf8PathBuf::from(target_path);
     index_path.push(Utf8Path::new("index.js"));
     io::write(
-        index_path.clone(),
+        &index_path,
         &watt_gen::gen_index(main_module_name)
             .to_file_string()
             .unwrap(),
