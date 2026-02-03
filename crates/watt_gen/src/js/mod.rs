@@ -4,6 +4,7 @@ use ecow::EcoString;
 use genco::{
     lang::{JavaScript, js},
     quote,
+    tokens::quoted,
 };
 use watt_ast::ast::{Block, Either, Expression, Pattern};
 
@@ -105,7 +106,7 @@ impl GenCx<JavaScript> for JsGenCx {
     /// Generates string pattern
     fn gen_string_pattern(&self, val: EcoString, body: Either<Block, Expression>) -> js::Tokens {
         quote!(
-            new $("$$")EqPattern($(val.as_str()), function() {
+            new $("$$")EqPattern($(quoted(val.as_str())), function() {
                 $(match body {
                     Either::Left(block) => $(self.gen_block_expr(block)),
                     Either::Right(expr) => return $(self.gen_expr(expr))
@@ -126,7 +127,7 @@ impl GenCx<JavaScript> for JsGenCx {
             Pattern::Int(_, lit) | Pattern::Float(_, lit) | Pattern::Bool(_, lit) => {
                 self.gen_literal_pattern(lit, body)
             }
-            Pattern::String(address, eco_string) => todo!(),
+            Pattern::String(_, lit) => self.gen_string_pattern(lit, body),
             Pattern::BindTo(address, eco_string) => todo!(),
             Pattern::Wildcard => todo!(),
             Pattern::Or(pattern, pattern1) => todo!(),

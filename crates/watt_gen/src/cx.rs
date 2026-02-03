@@ -17,6 +17,17 @@ pub trait GenCx<T: genco::lang::Lang> {
     /// Generates literal pattern
     fn gen_literal_pattern(&self, lit: EcoString, body: Either<Block, Expression>) -> Tokens<T>;
 
+    /// Generates string pattern
+    fn gen_string_pattern(&self, lit: EcoString, body: Either<Block, Expression>) -> Tokens<T>;
+
+    /// Generates unwrap pattern
+    fn gen_unwrap_pattern(
+        &self,
+        en: Expression,
+        fields: Vec<(Address, EcoString)>,
+        body: Either<Block, Expression>,
+    ) -> Tokens<T>;
+
     /// Generates pattern
     fn gen_pattern(&self, pattern: Pattern, body: Either<Block, Expression>) -> Tokens<T>;
 
