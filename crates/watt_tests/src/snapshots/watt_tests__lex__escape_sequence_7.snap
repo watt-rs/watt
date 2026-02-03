@@ -1,0 +1,21 @@
+---
+source: crates/watt_tests/src/lex.rs
+expression: "\n\"\\U{00C10011}\"\n        "
+---
+Source code:
+
+"\U{00C10011}"
+        
+
+Tokens:
+lex::invalid_escape_sequence
+
+  × invalid escape sequence.
+   ╭─[buggy:2:3]
+ 1 │ 
+ 2 │ "\U{00C10011}"
+   ·   ─────┬─────
+   ·        ╰── this escape sequence isn't valid.
+ 3 │         
+   ╰────
+  help: failed to convert `unciode char` into `u32`.

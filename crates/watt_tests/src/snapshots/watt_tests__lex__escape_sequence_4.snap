@@ -1,0 +1,21 @@
+---
+source: crates/watt_tests/src/lex.rs
+expression: "\n\"\\u{00C1\"\n        "
+---
+Source code:
+
+"\u{00C1"
+        
+
+Tokens:
+lex::invalid_escape_sequence
+
+  × invalid escape sequence.
+   ╭─[buggy:2:3]
+ 1 │ 
+ 2 │ "\u{00C1"
+   ·   ───┬──
+   ·      ╰── this escape sequence isn't valid.
+ 3 │         
+   ╰────
+  help: expected unicode codepoint end `}`.

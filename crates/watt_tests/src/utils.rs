@@ -7,7 +7,7 @@ use std::sync::Arc;
 use watt_ast::ast;
 use watt_common::package::{DraftPackage, DraftPackageLints};
 use watt_gen::gen_module;
-use watt_lex::lexer::Lexer;
+use watt_lex::{lexer::Lexer, tokens::Token};
 use watt_lint::lint::LintCx;
 use watt_parse::parser::Parser;
 use watt_typeck::{
@@ -66,6 +66,21 @@ pub(crate) fn generate_js(code: &str) -> String {
     gen_module(&module_name, &module).to_file_string().unwrap()
 }
 
+/// Parses watt into tokens list
+#[allow(dead_code)]
+pub(crate) fn lex_into_tokens(code: &str) -> Vec<Token> {
+    // Reading code
+    let code_chars: Vec<char> = code.chars().collect();
+    // Creating named source for miette
+    let named_source = Arc::new(NamedSource::<String>::new(
+        TEST_MODULE_NAME,
+        code.to_string(),
+    ));
+    // Lexing
+    let lexer = Lexer::new(&code_chars, &named_source);
+    lexer.lex()
+}
+
 /// Parses watt into ast
 #[allow(dead_code)]
 pub(crate) fn parse_into_ast(code: &str) -> ast::Module {
@@ -85,7 +100,7 @@ pub(crate) fn parse_into_ast(code: &str) -> ast::Module {
 #[macro_export]
 macro_rules! assert_js {
     ($src:expr $(,)?) => {{
-        let compiled = match std::panic::catch_unwind(|| $crate::js::generate_js($src)) {
+        let compiled = match std::panic::catch_unwind(|| $crate::utils::generate_js($src)) {
             Ok(result) => result,
             Err(err) => {
                 let panic_str = if let Some(s) = err.downcast_ref::<&str>() {
@@ -109,21 +124,48 @@ macro_rules! assert_js {
 #[macro_export]
 macro_rules! assert_ast {
     ($src:expr $(,)?) => {{
-        let ast =
-            match std::panic::catch_unwind(|| format!("{:#?}", $crate::js::parse_into_ast($src))) {
-                Ok(result) => result,
-                Err(err) => {
-                    let panic_str = if let Some(s) = err.downcast_ref::<&str>() {
-                        (*s).to_string()
-                    } else if let Some(s) = err.downcast_ref::<String>() {
-                        s.clone()
-                    } else {
-                        "<failed to retrieve panic message>".to_string()
-                    };
-                    format!("{}", panic_str)
-                }
-            };
+        let ast = match std::panic::catch_unwind(|| {
+            format!("{:#?}", $crate::utils::parse_into_ast($src))
+        }) {
+            Ok(result) => result,
+            Err(err) => {
+                let panic_str = if let Some(s) = err.downcast_ref::<&str>() {
+                    (*s).to_string()
+                } else if let Some(s) = err.downcast_ref::<String>() {
+                    s.clone()
+                } else {
+                    "<failed to retrieve panic message>".to_string()
+                };
+                format!("{}", panic_str)
+            }
+        };
         let output = format!("Source code:\n{}\n\nAst:\n{ast}", $src);
+        let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
+        let cleaned = re.replace_all(&output, "").to_string();
+        insta::assert_snapshot!(insta::internals::AutoName, cleaned, $src);
+    }};
+}
+
+/// Asserts lexing result.
+#[macro_export]
+macro_rules! assert_tokens {
+    ($src:expr $(,)?) => {{
+        let tokens = match std::panic::catch_unwind(|| {
+            format!("{:#?}", $crate::utils::lex_into_tokens($src))
+        }) {
+            Ok(result) => result,
+            Err(err) => {
+                let panic_str = if let Some(s) = err.downcast_ref::<&str>() {
+                    (*s).to_string()
+                } else if let Some(s) = err.downcast_ref::<String>() {
+                    s.clone()
+                } else {
+                    "<failed to retrieve panic message>".to_string()
+                };
+                format!("{}", panic_str)
+            }
+        };
+        let output = format!("Source code:\n{}\n\nTokens:\n{tokens}", $src);
         let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
         let cleaned = re.replace_all(&output, "").to_string();
         insta::assert_snapshot!(insta::internals::AutoName, cleaned, $src);

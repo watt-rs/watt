@@ -195,11 +195,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
                         self.add_tk(TokenKind::Assign, "=");
                     }
                 }
-                '\r' => skip!(),
-                '\t' => skip!(),
-                '\0' => skip!(),
-                ' ' => skip!(),
-                '\n' => skip!(),
+                '\r' | '\t' | '\0' | ' ' | '\n' => skip!(),
                 '\"' => {
                     let tk = self.scan_string();
                     self.tokens.push(tk)
@@ -244,6 +240,116 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
         self.tokens
     }
 
+    /// Scans unicode codepoint.
+    fn scan_unicode_codepoint(&mut self, small: bool) -> char {
+        // Escape sequence start, bumping back to the `u` or `U`
+        let span_start = self.cursor.current - 1;
+        let hex_digits_amount = if small { 4 } else { 8 };
+
+        if !self.is_match('{') {
+            bail!(LexError::InvalidEscapeSequence {
+                src: self.source.clone(),
+                span: (span_start..self.cursor.current).into(),
+                cause: "expected unicode codepoint start `{`."
+            })
+        }
+        let mut buffer = EcoString::new();
+        for _ in 0..hex_digits_amount {
+            let ch = self.advance();
+            if !ch.is_ascii_hexdigit() {
+                bail!(LexError::InvalidEscapeSequence {
+                    src: self.source.clone(),
+                    span: (span_start..self.cursor.current).into(),
+                    cause: "expected hex digit."
+                })
+            }
+            buffer.push(ch);
+        }
+        if !self.is_match('}') {
+            bail!(LexError::InvalidEscapeSequence {
+                src: self.source.clone(),
+                span: (span_start..self.cursor.current).into(),
+                cause: "expected unicode codepoint end `}`."
+            })
+        }
+        let result = match char::from_u32(u32::from_str_radix(&buffer, 16).expect("Invalid hex")) {
+            Some(c) => c,
+            None => {
+                bail!(LexError::InvalidEscapeSequence {
+                    src: self.source.clone(),
+                    span: (span_start..self.cursor.current).into(),
+                    cause: "failed to convert `unciode char` into `u32`."
+                })
+            }
+        };
+        result
+    }
+
+    /// Scans byte codepoint.
+    fn scan_byte_codepoint(&mut self) -> char {
+        // Escape sequence start, bumping back to the `x`
+        let span_start = self.cursor.current - 1;
+
+        if !self.is_match('{') {
+            bail!(LexError::InvalidEscapeSequence {
+                src: self.source.clone(),
+                span: (span_start..self.cursor.current).into(),
+                cause: "expected byte codepoint start `{`."
+            })
+        }
+        let mut buffer = EcoString::new();
+        for _ in 0..2 {
+            let ch = self.advance();
+            if !ch.is_ascii_hexdigit() {
+                bail!(LexError::InvalidEscapeSequence {
+                    src: self.source.clone(),
+                    span: (span_start..self.cursor.current).into(),
+                    cause: "expected hex digit."
+                })
+            }
+            buffer.push(ch);
+        }
+        if !self.is_match('}') {
+            bail!(LexError::InvalidEscapeSequence {
+                src: self.source.clone(),
+                span: (span_start..self.cursor.current).into(),
+                cause: "expected byte codepoint end `}`."
+            })
+        }
+        let result = match char::from_u32(u32::from_str_radix(&buffer, 16).expect("Invalid hex")) {
+            Some(c) => c,
+            None => {
+                bail!(LexError::InvalidEscapeSequence {
+                    src: self.source.clone(),
+                    span: (span_start..self.cursor.current).into(),
+                    cause: "failed to convert `unciode char` into `u32`."
+                })
+            }
+        };
+        result
+    }
+
+    /// Scans escape sequence.
+    fn scan_escape_sequence(&mut self) -> char {
+        // Checking character kind.
+        let ch = self.advance();
+
+        match ch {
+            'n' => '\n',
+            'r' => '\r',
+            '"' => '"',
+            '`' => '`',
+            '\\' => '\\',
+            'u' => self.scan_unicode_codepoint(true),
+            'U' => self.scan_unicode_codepoint(false),
+            'x' => self.scan_byte_codepoint(),
+            _ => bail!(LexError::UnknownEscapeSequence {
+                src: self.source.clone(),
+                span: (self.cursor.current - 1..self.cursor.current).into(),
+            }),
+        }
+    }
+
     /// Scans string. Implies quote is already ate. Eats ending quote.
     fn scan_string(&mut self) -> Token {
         let span_start = self.cursor.current;
@@ -253,8 +359,8 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
             let ch = self.advance();
 
             // String escaping
-            if ch == '\\' && self.cursor.peek() == '\"' {
-                text.push(self.advance());
+            if ch == '\\' {
+                text.push(self.scan_escape_sequence());
             } else {
                 text.push(ch);
             }
@@ -285,8 +391,8 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
         while self.cursor.peek() != '`' {
             let ch = self.advance();
 
-            if ch == '\\' && self.cursor.peek() == '`' {
-                text.push(self.advance());
+            if ch == '\\' {
+                text.push(self.scan_escape_sequence());
             } else {
                 text.push(ch);
             }
@@ -457,13 +563,13 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
         }
     }
 
-    /// Eats character from cursor and returns it,
-    /// adding 1 to `column` and `cursor.current`
+    /// Eats character from cursor and returns it.
+    /// Adds 1 to `column` and `cursor.current`
     fn advance(&mut self) -> char {
         self.cursor.bump()
     }
 
-    /// Checking current character is equal to `ch`
+    /// Checks current character is equal to `ch`.
     /// If current character is equal to `ch` advances it
     fn is_match(&mut self, ch: char) -> bool {
         if !self.cursor.is_at_end() && self.cursor.char_at(0) == ch {

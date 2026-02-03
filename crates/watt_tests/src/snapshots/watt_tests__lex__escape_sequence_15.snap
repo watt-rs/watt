@@ -1,0 +1,19 @@
+---
+source: crates/watt_tests/src/lex.rs
+expression: "\n\"\"\"\n        "
+---
+Source code:
+
+"""
+        
+
+Tokens:
+lex::unclosed_string_quotes
+
+  × unclosed string quotes.
+   ╭─[buggy:2:4]
+ 1 │     
+ 2 │ ╭─▶ """
+ 3 │ ├─▶         
+   · ╰──── no ending quote specified.
+   ╰────

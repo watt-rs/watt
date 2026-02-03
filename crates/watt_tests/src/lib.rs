@@ -1,2 +1,4 @@
+mod ast;
 mod codegen;
-mod js;
+mod lex;
+mod utils;

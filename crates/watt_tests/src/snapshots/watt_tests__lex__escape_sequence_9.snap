@@ -1,0 +1,17 @@
+---
+source: crates/watt_tests/src/lex.rs
+expression: "\n\"\\x{FF}\"\n        "
+---
+Source code:
+
+"\x{FF}"
+        
+
+Tokens:
+[
+    Token {
+        tk_type: Text,
+        value: "ÿ",
+        address: Address(2..9),
+    },
+]

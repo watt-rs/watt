@@ -1,0 +1,80 @@
+---
+source: crates/watt_tests/src/ast.rs
+expression: "\nfn main() {\n    if a && b || c && d {\n    }\n}\n        "
+---
+Source code:
+
+fn main() {
+    if a && b || c && d {
+    }
+}
+        
+
+Ast:
+Module {
+    source: NamedSource {
+        name: "buggy",
+        source: "<redacted>",
+        language: None,
+    ,
+    dependencies: [],
+    declarations: [
+        Fn(
+            Function {
+                location: Address(1..46),
+                publicity: Private,
+                name: "main",
+                generics: [],
+                params: [],
+                body: Left(
+                    Block {
+                        location: Address(17..44),
+                        body: [
+                            Expr(
+                                If {
+                                    location: Address(17..44),
+                                    logical: Bin {
+                                        location: Address(20..36),
+                                        left: Bin {
+                                            location: Address(20..26),
+                                            left: PrefixVar {
+                                                location: Address(20..21),
+                                                name: "a",
+                                            },
+                                            right: PrefixVar {
+                                                location: Address(25..26),
+                                                name: "b",
+                                            },
+                                            op: And,
+                                        },
+                                        right: Bin {
+                                            location: Address(30..36),
+                                            left: PrefixVar {
+                                                location: Address(30..31),
+                                                name: "c",
+                                            },
+                                            right: PrefixVar {
+                                                location: Address(35..36),
+                                                name: "d",
+                                            },
+                                            op: And,
+                                        },
+                                        op: Or,
+                                    },
+                                    body: Left(
+                                        Block {
+                                            location: Address(44..38),
+                                            body: [],
+                                        },
+                                    ),
+                                    else_branches: [],
+                                },
+                            ),
+                        ],
+                    },
+                ),
+                typ: None,
+            },
+        ),
+    ],
+}

@@ -1,0 +1,21 @@
+---
+source: crates/watt_tests/src/lex.rs
+expression: "\n\"\\x{\"\n        "
+---
+Source code:
+
+"\x{"
+        
+
+Tokens:
+lex::invalid_escape_sequence
+
+  × invalid escape sequence.
+   ╭─[buggy:2:3]
+ 1 │ 
+ 2 │ "\x{"
+   ·   ─┬─
+   ·    ╰── this escape sequence isn't valid.
+ 3 │         
+   ╰────
+  help: expected hex digit.

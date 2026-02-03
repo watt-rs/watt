@@ -1,0 +1,17 @@
+---
+source: crates/watt_tests/src/lex.rs
+expression: "\n\"\\x{7F}\"\n        "
+---
+Source code:
+
+"\x{7F}"
+        
+
+Tokens:
+[
+    Token {
+        tk_type: Text,
+        value: "\u{7f}",
+        address: Address(2..9),
+    },
+]

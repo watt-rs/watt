@@ -1,0 +1,23 @@
+---
+source: crates/watt_tests/src/lex.rs
+expression: "\n\"\\u{00C0}\"\n\"\\U{0001F600}\"\n        "
+---
+Source code:
+
+"\u{00C0}"
+"\U{0001F600}"
+        
+
+Tokens:
+[
+    Token {
+        tk_type: Text,
+        value: "À",
+        address: Address(2..11),
+    },
+    Token {
+        tk_type: Text,
+        value: "😀",
+        address: Address(13..26),
+    },
+]

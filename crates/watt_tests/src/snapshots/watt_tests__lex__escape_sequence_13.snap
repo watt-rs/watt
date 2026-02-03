@@ -1,0 +1,47 @@
+---
+source: crates/watt_tests/src/lex.rs
+expression: "\n\"\\\\n\"\n\"\\\\x\"\n\"\\\\u\"\n\"\\\\t\"\n\"\\\\r\"\n\"\\\\U\"\n        "
+---
+Source code:
+
+"\\n"
+"\\x"
+"\\u"
+"\\t"
+"\\r"
+"\\U"
+        
+
+Tokens:
+[
+    Token {
+        tk_type: Text,
+        value: "\\n",
+        address: Address(2..6),
+    },
+    Token {
+        tk_type: Text,
+        value: "\\x",
+        address: Address(8..12),
+    },
+    Token {
+        tk_type: Text,
+        value: "\\u",
+        address: Address(14..18),
+    },
+    Token {
+        tk_type: Text,
+        value: "\\t",
+        address: Address(20..24),
+    },
+    Token {
+        tk_type: Text,
+        value: "\\r",
+        address: Address(26..30),
+    },
+    Token {
+        tk_type: Text,
+        value: "\\U",
+        address: Address(32..36),
+    },
+]
