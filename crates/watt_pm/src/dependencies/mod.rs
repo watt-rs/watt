@@ -9,7 +9,7 @@ use console::style;
 use git2::Repository;
 use petgraph::{Direction, prelude::DiGraphMap};
 use std::collections::{HashMap, HashSet};
-use tracing::info;
+use tracing::{debug, info};
 use url::Url;
 use watt_common::bail;
 
@@ -162,6 +162,8 @@ fn resolve_packages<'solved>(
     // If not
     else {
         info!("Resolving packages that {package:?} depends on.");
+        debug!("Dependencies: {:?}", &config.dependencies);
+        
         // Inserting vector
         solved.insert(package.clone(), Vec::new());
         // Dependencies
