@@ -9,7 +9,7 @@ impl<'file> Parser<'file> {
     /// Anonymous fn expr
     fn anonymous_fn_expr(&mut self) -> Expression {
         // start span `fn (): ... {}`
-        let span_start = self.peek().address.clone();
+        let start_location = self.peek().address.clone();
         self.consume(TokenKind::Fn);
 
         // params
@@ -30,13 +30,13 @@ impl<'file> Parser<'file> {
             None
         };
         // end span `fn (): ... {}`
-        let span_end = self.previous().address.clone();
+        let end_location = self.previous().address.clone();
 
         // body
         let body = self.block_or_box_expr();
 
         Expression::Function {
-            location: span_start + span_end,
+            location: start_location + end_location,
             params,
             body,
             typ,
@@ -45,25 +45,25 @@ impl<'file> Parser<'file> {
 
     /// Else parsing
     fn else_branch(&mut self) -> ElseBranch {
-        let span_start = self.consume(TokenKind::Else).address.clone();
+        let start_location = self.consume(TokenKind::Else).address.clone();
         let body = self.block_or_expr();
-        let span_end = self.previous().address.clone();
+        let end_location = self.previous().address.clone();
 
         ElseBranch::Else {
-            location: span_start + span_end,
+            location: start_location + end_location,
             body,
         }
     }
 
     /// Elif parsing
     fn elif_branch(&mut self) -> ElseBranch {
-        let span_start = self.consume(TokenKind::Elif).address.clone();
+        let start_location = self.consume(TokenKind::Elif).address.clone();
         let logical = self.expr();
         let body = self.block_or_expr();
-        let span_end = self.previous().address.clone();
+        let end_location = self.previous().address.clone();
 
         ElseBranch::Elif {
-            location: span_start + span_end,
+            location: start_location + end_location,
             logical,
             body,
         }
@@ -71,10 +71,10 @@ impl<'file> Parser<'file> {
 
     /// If expression parsing
     fn if_expr(&mut self) -> Expression {
-        let span_start = self.consume(TokenKind::If).address.clone();
+        let start_location = self.consume(TokenKind::If).address.clone();
         let logical = self.expr();
         let body = self.block_or_box_expr();
-        let span_end = self.previous().address.clone();
+        let end_location = self.previous().address.clone();
         let mut else_branches = Vec::new();
 
         // elif parsing
@@ -88,7 +88,7 @@ impl<'file> Parser<'file> {
         }
 
         Expression::If {
-            location: span_start + span_end,
+            location: start_location + end_location,
             logical: Box::new(logical),
             body,
             else_branches,
@@ -261,7 +261,7 @@ impl<'file> Parser<'file> {
 
     /// Binary operations `*`, `/`, `%`, `^`, `&`, `|` parsing
     fn multiplicative_expr(&mut self) -> Expression {
-        let mut start_location = self.peek().address.clone();
+        let start_location = self.peek().address.clone();
         let mut left = self.unary_expr();
 
         while self.check(TokenKind::Star)
@@ -276,7 +276,7 @@ impl<'file> Parser<'file> {
             let right = self.unary_expr();
             let end_location = self.previous().address.clone();
             left = Expression::Bin {
-                location: start_location + end_location,
+                location: start_location.clone() + end_location,
                 left: Box::new(left),
                 right: Box::new(right),
                 op: match op.tk_type {
@@ -288,7 +288,6 @@ impl<'file> Parser<'file> {
                     _ => unreachable!(),
                 },
             };
-            start_location = self.previous().address.clone();
         }
 
         left
@@ -296,7 +295,7 @@ impl<'file> Parser<'file> {
 
     /// Binary operations `+`, `-`, '<>' parsing
     fn additive_expr(&mut self) -> Expression {
-        let mut start_location = self.peek().address.clone();
+        let start_location = self.peek().address.clone();
         let mut left = self.multiplicative_expr();
 
         while self.check(TokenKind::Plus)
@@ -308,7 +307,7 @@ impl<'file> Parser<'file> {
             let right = self.multiplicative_expr();
             let end_location = self.previous().address.clone();
             left = Expression::Bin {
-                location: start_location + end_location,
+                location: start_location.clone() + end_location,
                 left: Box::new(left),
                 right: Box::new(right),
                 op: match op.tk_type {
@@ -318,7 +317,6 @@ impl<'file> Parser<'file> {
                     _ => unreachable!(),
                 },
             };
-            start_location = self.previous().address.clone();
         }
 
         left
@@ -380,7 +378,7 @@ impl<'file> Parser<'file> {
 
     /// Logical operation `and` parsing
     fn logical_and_expr(&mut self) -> Expression {
-        let mut start_location = self.peek().address.clone();
+        let start_location = self.peek().address.clone();
         let mut left = self.equality_expr();
 
         while self.check(TokenKind::And) {
@@ -388,12 +386,11 @@ impl<'file> Parser<'file> {
             let right = self.equality_expr();
             let end_location = self.previous().address.clone();
             left = Expression::Bin {
-                location: start_location + end_location,
+                location: start_location.clone() + end_location,
                 left: Box::new(left),
                 right: Box::new(right),
                 op: BinaryOp::And,
             };
-            start_location = self.peek().address.clone();
         }
 
         left
@@ -401,7 +398,7 @@ impl<'file> Parser<'file> {
 
     /// Logical operation `or` parsing
     fn logical_or_expr(&mut self) -> Expression {
-        let mut start_location = self.peek().address.clone();
+        let start_location = self.peek().address.clone();
         let mut left = self.logical_and_expr();
 
         while self.check(TokenKind::Or) {
@@ -409,12 +406,11 @@ impl<'file> Parser<'file> {
             let right = self.logical_and_expr();
             let end_location = self.previous().address.clone();
             left = Expression::Bin {
-                location: start_location + end_location,
+                location: start_location.clone() + end_location,
                 left: Box::new(left),
                 right: Box::new(right),
                 op: BinaryOp::Or,
             };
-            start_location = self.peek().address.clone();
         }
 
         left
@@ -506,7 +502,7 @@ impl<'file> Parser<'file> {
             // If identifier presented
             else {
                 // Start span
-                let span_start = self.peek().address.clone();
+                let start_location = self.peek().address.clone();
                 // If dot presented -> enum patterns
                 if self.check_next(TokenKind::Dot) {
                     // Parsing variant pattern prefix
@@ -519,21 +515,21 @@ impl<'file> Parser<'file> {
                             (tk.address.clone(), tk.value.clone())
                         });
                         // End span
-                        let span_end = self.peek().address.clone();
+                        let end_location = self.peek().address.clone();
                         // As result, enum unwrap pattern
-                        Pattern::Unwrap { address: span_start + span_end, en: value, fields }
+                        Pattern::Unwrap { address: start_location + end_location, en: value, fields }
                     }
                     // If no unwrap, returning just as value
                     else {
                         // End span
-                        let span_end = self.peek().address.clone();
+                        let end_location = self.peek().address.clone();
                         // As result, enum variant pattern
-                        Pattern::Variant(span_start + span_end, value)
+                        Pattern::Variant(start_location + end_location, value)
                     }
                 }
                 // If not -> bind pattern
                 else {
-                    Pattern::BindTo(span_start, self.consume(TokenKind::Id).value.clone())
+                    Pattern::BindTo(start_location, self.consume(TokenKind::Id).value.clone())
                 }
             };
         // Checking if more patterns presented
@@ -565,7 +561,7 @@ impl<'file> Parser<'file> {
         let mut cases = Vec::new();
         while !self.check(TokenKind::Rbrace) {
             // Start address of case
-            let span_start = self.peek().address.clone();
+            let start_location = self.peek().address.clone();
             // Pattern of case
             let pattern = self.pattern();
             // -> { body, ... }
@@ -576,9 +572,9 @@ impl<'file> Parser<'file> {
                 Either::Right(self.expr())
             };
             // End address of case
-            let span_end = self.previous().address.clone();
+            let end_location = self.previous().address.clone();
             cases.push(Case {
-                address: span_start + span_end,
+                address: start_location + end_location,
                 pattern,
                 body,
             });

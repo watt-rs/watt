@@ -243,13 +243,13 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
     /// Scans unicode codepoint.
     fn scan_unicode_codepoint(&mut self, small: bool) -> char {
         // Escape sequence start, bumping back to the `u` or `U`
-        let span_start = self.cursor.current - 1;
+        let start_location = self.cursor.current - 1;
         let hex_digits_amount = if small { 4 } else { 8 };
 
         if !self.is_match('{') {
             bail!(LexError::InvalidEscapeSequence {
                 src: self.source.clone(),
-                span: (span_start..self.cursor.current).into(),
+                span: (start_location..self.cursor.current).into(),
                 cause: "expected unicode codepoint start `{`."
             })
         }
@@ -259,7 +259,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
             if !ch.is_ascii_hexdigit() {
                 bail!(LexError::InvalidEscapeSequence {
                     src: self.source.clone(),
-                    span: (span_start..self.cursor.current).into(),
+                    span: (start_location..self.cursor.current).into(),
                     cause: "expected hex digit."
                 })
             }
@@ -268,7 +268,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
         if !self.is_match('}') {
             bail!(LexError::InvalidEscapeSequence {
                 src: self.source.clone(),
-                span: (span_start..self.cursor.current).into(),
+                span: (start_location..self.cursor.current).into(),
                 cause: "expected unicode codepoint end `}`."
             })
         }
@@ -277,7 +277,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
             None => {
                 bail!(LexError::InvalidEscapeSequence {
                     src: self.source.clone(),
-                    span: (span_start..self.cursor.current).into(),
+                    span: (start_location..self.cursor.current).into(),
                     cause: "failed to convert `unciode char` into `u32`."
                 })
             }
@@ -288,12 +288,12 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
     /// Scans byte codepoint.
     fn scan_byte_codepoint(&mut self) -> char {
         // Escape sequence start, bumping back to the `x`
-        let span_start = self.cursor.current - 1;
+        let start_location = self.cursor.current - 1;
 
         if !self.is_match('{') {
             bail!(LexError::InvalidEscapeSequence {
                 src: self.source.clone(),
-                span: (span_start..self.cursor.current).into(),
+                span: (start_location..self.cursor.current).into(),
                 cause: "expected byte codepoint start `{`."
             })
         }
@@ -303,7 +303,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
             if !ch.is_ascii_hexdigit() {
                 bail!(LexError::InvalidEscapeSequence {
                     src: self.source.clone(),
-                    span: (span_start..self.cursor.current).into(),
+                    span: (start_location..self.cursor.current).into(),
                     cause: "expected hex digit."
                 })
             }
@@ -312,7 +312,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
         if !self.is_match('}') {
             bail!(LexError::InvalidEscapeSequence {
                 src: self.source.clone(),
-                span: (span_start..self.cursor.current).into(),
+                span: (start_location..self.cursor.current).into(),
                 cause: "expected byte codepoint end `}`."
             })
         }
@@ -321,7 +321,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
             None => {
                 bail!(LexError::InvalidEscapeSequence {
                     src: self.source.clone(),
-                    span: (span_start..self.cursor.current).into(),
+                    span: (start_location..self.cursor.current).into(),
                     cause: "failed to convert `unciode char` into `u32`."
                 })
             }
@@ -352,7 +352,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
 
     /// Scans string. Implies quote is already ate. Eats ending quote.
     fn scan_string(&mut self) -> Token {
-        let span_start = self.cursor.current;
+        let start_location = self.cursor.current;
         let mut text: EcoString = EcoString::new();
 
         while self.cursor.peek() != '\"' {
@@ -368,24 +368,24 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
             if self.cursor.is_at_end() || self.is_match('\n') {
                 bail!(LexError::UnclosedStringQuotes {
                     src: self.source.clone(),
-                    span: (span_start..self.cursor.current).into(),
+                    span: (start_location..self.cursor.current).into(),
                 })
             }
         }
 
         self.advance();
-        let span_end = self.cursor.current;
+        let end_location = self.cursor.current;
 
         Token {
             tk_type: TokenKind::Text,
             value: text,
-            address: Address::span(self.source.clone(), span_start..span_end),
+            address: Address::span(self.source.clone(), start_location..end_location),
         }
     }
 
     /// Scans multiline string. Implies quote is already ate. Eats ending quote.
     fn scan_multiline_string(&mut self) -> Token {
-        let span_start = self.cursor.current;
+        let start_location = self.cursor.current;
         let mut text: EcoString = EcoString::new();
 
         while self.cursor.peek() != '`' {
@@ -400,18 +400,18 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
             if self.cursor.is_at_end() {
                 bail!(LexError::UnclosedStringQuotes {
                     src: self.source.clone(),
-                    span: (span_start..self.cursor.current).into(),
+                    span: (start_location..self.cursor.current).into(),
                 })
             }
         }
 
         self.advance();
-        let span_end = self.cursor.current;
+        let end_location = self.cursor.current;
 
         Token {
             tk_type: TokenKind::Text,
             value: text,
-            address: Address::span(self.source.clone(), span_start..span_end),
+            address: Address::span(self.source.clone(), start_location..end_location),
         }
     }
 
@@ -421,7 +421,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
     /// * `start`: starting char of token
     ///
     fn scan_number(&mut self, start: char) -> Token {
-        let span_start = self.cursor.current - 1;
+        let start_location = self.cursor.current - 1;
         let mut text: EcoString = EcoString::from(start);
         let mut is_float: bool = false;
 
@@ -438,7 +438,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
                 if is_float {
                     bail!(LexError::InvalidNumber {
                         src: self.source.clone(),
-                        span: (span_start..self.cursor.current + 1).into(),
+                        span: (start_location..self.cursor.current + 1).into(),
                         number: text
                     })
                 }
@@ -452,18 +452,18 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
             }
         }
 
-        let span_end = self.cursor.current;
+        let end_location = self.cursor.current;
 
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::span(self.source.clone(), span_start..span_end),
+            address: Address::span(self.source.clone(), start_location..end_location),
         }
     }
 
     /// Scans hexadecimal numbers `0x{pattern}`
     fn scan_hexadecimal_number(&mut self) -> Token {
-        let span_start = self.cursor.current - 1;
+        let start_location = self.cursor.current - 1;
         // Skip 'x'
         self.advance();
         let mut text: EcoString = EcoString::from("0x");
@@ -475,18 +475,18 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
             }
         }
 
-        let span_end = self.cursor.current;
+        let end_location = self.cursor.current;
 
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::span(self.source.clone(), span_start..span_end),
+            address: Address::span(self.source.clone(), start_location..end_location),
         }
     }
 
     /// Scans octal numbers `0o{pattern}`
     fn scan_octal_number(&mut self) -> Token {
-        let span_start = self.cursor.current - 1;
+        let start_location = self.cursor.current - 1;
         // Skip 'o'
         self.advance();
         let mut text: EcoString = EcoString::from("0o");
@@ -498,18 +498,18 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
             }
         }
 
-        let span_end = self.cursor.current;
+        let end_location = self.cursor.current;
 
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::span(self.source.clone(), span_start..span_end),
+            address: Address::span(self.source.clone(), start_location..end_location),
         }
     }
 
     /// Scans binary numbers `0b{pattern}`
     fn scan_binary_number(&mut self) -> Token {
-        let span_start = self.cursor.current - 1;
+        let start_location = self.cursor.current - 1;
         // Skip 'b'
         self.advance();
         let mut text: EcoString = EcoString::from("0b");
@@ -521,12 +521,12 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
             }
         }
 
-        let span_end = self.cursor.current;
+        let end_location = self.cursor.current;
 
         Token {
             tk_type: TokenKind::Number,
             value: text,
-            address: Address::span(self.source.clone(), span_start..span_end),
+            address: Address::span(self.source.clone(), start_location..end_location),
         }
     }
 
@@ -538,7 +538,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
     /// * `start`: starting char of token
     ///
     fn scan_id_or_keyword(&mut self, start: char) -> Token {
-        let span_start = self.cursor.current - 1;
+        let start_location = self.cursor.current - 1;
         let mut text: EcoString = EcoString::from(start);
 
         while self.is_id(self.cursor.peek()) {
@@ -554,12 +554,12 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
             .cloned()
             .unwrap_or(TokenKind::Id);
 
-        let span_end = self.cursor.current;
+        let end_location = self.cursor.current;
 
         Token {
             tk_type,
             value: text,
-            address: Address::span(self.source.clone(), span_start..span_end),
+            address: Address::span(self.source.clone(), start_location..end_location),
         }
     }
 

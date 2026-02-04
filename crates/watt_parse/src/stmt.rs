@@ -132,13 +132,13 @@ impl<'file> Parser<'file> {
 
     /// Loop statement parsing
     fn loop_stmt(&mut self) -> Statement {
-        let span_start = self.consume(TokenKind::Loop).address.clone();
+        let start_location = self.consume(TokenKind::Loop).address.clone();
         let logical = self.expr();
         let body = self.block_or_expr();
-        let span_end = self.previous().address.clone();
+        let end_location = self.previous().address.clone();
 
         Statement::Loop {
-            location: span_start + span_end,
+            location: start_location + end_location,
             logical,
             body,
         }
@@ -146,15 +146,15 @@ impl<'file> Parser<'file> {
 
     /// For statement parsing
     fn for_stmt(&mut self) -> Statement {
-        let span_start = self.consume(TokenKind::For).address.clone();
+        let start_location = self.consume(TokenKind::For).address.clone();
         let name = self.consume(TokenKind::Id).value.clone();
         self.consume(TokenKind::In);
         let range = Box::new(self.range());
         let body = self.block_or_expr();
-        let span_end = self.previous().address.clone();
+        let end_location = self.previous().address.clone();
 
         Statement::For {
-            location: span_start + span_end,
+            location: start_location + end_location,
             name,
             range,
             body,
