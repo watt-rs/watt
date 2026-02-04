@@ -281,7 +281,7 @@ impl<'file> Parser<'file> {
             let op = self.peek().clone();
             self.bump();
             let right = self.unary_expr();
-            let span_end = self.previous().address.clone();
+            let end_location = self.previous().address.clone();
             left = Expression::Bin {
                 location: start_location.clone() + end_location,
                 left: Box::new(left),
@@ -312,7 +312,7 @@ impl<'file> Parser<'file> {
             let op = self.peek().clone();
             self.bump();
             let right = self.multiplicative_expr();
-            let span_end = self.previous().address.clone();
+            let end_location = self.previous().address.clone();
             left = Expression::Bin {
                 location: start_location.clone() + end_location,
                 left: Box::new(left),
@@ -361,15 +361,15 @@ impl<'file> Parser<'file> {
 
     /// Equality operations `==`, `!=` parsing
     fn equality_expr(&mut self) -> Expression {
-        let span_start = self.peek().address.clone();
+        let start_location = self.peek().address.clone();
         let mut left = self.compare_expr();
 
         if self.check(TokenKind::Eq) || self.check(TokenKind::NotEq) {
             let op = self.advance().clone();
             let right = self.compare_expr();
-            let span_end = self.previous().address.clone();
+            let end_location = self.previous().address.clone();
             left = Expression::Bin {
-                location: span_start + span_end,
+                location: start_location + end_location,
                 left: Box::new(left),
                 right: Box::new(right),
                 op: match op.tk_type {
@@ -385,31 +385,19 @@ impl<'file> Parser<'file> {
 
     /// Logical operation `and` parsing
     fn logical_and_expr(&mut self) -> Expression {
-<<<<<<< HEAD
         let start_location = self.peek().address.clone();
-=======
-        let mut span_start = self.peek().address.clone();
->>>>>>> 63af0c0e0b31b814982f899b30b6f4ba2d767eee
         let mut left = self.equality_expr();
 
         while self.check(TokenKind::And) {
             self.bump();
             let right = self.equality_expr();
-            let span_end = self.previous().address.clone();
+            let end_location = self.previous().address.clone();
             left = Expression::Bin {
-<<<<<<< HEAD
                 location: start_location.clone() + end_location,
-=======
-                location: span_start + span_end,
->>>>>>> 63af0c0e0b31b814982f899b30b6f4ba2d767eee
                 left: Box::new(left),
                 right: Box::new(right),
                 op: BinaryOp::And,
             };
-<<<<<<< HEAD
-=======
-            span_start = self.peek().address.clone();
->>>>>>> 63af0c0e0b31b814982f899b30b6f4ba2d767eee
         }
 
         left
@@ -417,31 +405,19 @@ impl<'file> Parser<'file> {
 
     /// Logical operation `or` parsing
     fn logical_or_expr(&mut self) -> Expression {
-<<<<<<< HEAD
         let start_location = self.peek().address.clone();
-=======
-        let mut span_start = self.peek().address.clone();
->>>>>>> 63af0c0e0b31b814982f899b30b6f4ba2d767eee
         let mut left = self.logical_and_expr();
 
         while self.check(TokenKind::Or) {
             self.bump();
             let right = self.logical_and_expr();
-            let span_end = self.previous().address.clone();
+            let end_location = self.previous().address.clone();
             left = Expression::Bin {
-<<<<<<< HEAD
                 location: start_location.clone() + end_location,
-=======
-                location: span_start + span_end,
->>>>>>> 63af0c0e0b31b814982f899b30b6f4ba2d767eee
                 left: Box::new(left),
                 right: Box::new(right),
                 op: BinaryOp::Or,
             };
-<<<<<<< HEAD
-=======
-            span_start = self.peek().address.clone();
->>>>>>> 63af0c0e0b31b814982f899b30b6f4ba2d767eee
         }
 
         left
@@ -532,15 +508,9 @@ impl<'file> Parser<'file> {
             }
             // if identifier presented
             else {
-<<<<<<< HEAD
                 // Start span
                 let start_location = self.peek().address.clone();
                 // If dot presented -> enum patterns
-=======
-                // span start
-                let span_start = self.peek().address.clone();
-                // if dot presented -> enum patterns
->>>>>>> 63af0c0e0b31b814982f899b30b6f4ba2d767eee
                 if self.check_next(TokenKind::Dot) {
                     // parsing variant pattern prefix
                     let value = self.variant_pattern_prefix();
@@ -551,29 +521,17 @@ impl<'file> Parser<'file> {
                             let tk = s.consume(TokenKind::Id);
                             (tk.address.clone(), tk.value.clone())
                         });
-<<<<<<< HEAD
                         // End span
                         let end_location = self.peek().address.clone();
                         // As result, enum unwrap pattern
                         Pattern::Unwrap { address: start_location + end_location, en: value, fields }
-=======
-                        let span_end = self.peek().address.clone();
-                        // as result, enum unwrap pattern
-                        Pattern::Unwrap { address: span_start + span_end, en: value, fields }
->>>>>>> 63af0c0e0b31b814982f899b30b6f4ba2d767eee
                     }
                     // if no unwrap, returning just as value
                     else {
-<<<<<<< HEAD
                         // End span
                         let end_location = self.peek().address.clone();
                         // As result, enum variant pattern
                         Pattern::Variant(start_location + end_location, value)
-=======
-                        let span_end = self.peek().address.clone();
-                        // as result, enum variant pattern
-                        Pattern::Variant(span_start + span_end, value)
->>>>>>> 63af0c0e0b31b814982f899b30b6f4ba2d767eee
                     }
                 }
                 // if not -> bind pattern
@@ -609,15 +567,9 @@ impl<'file> Parser<'file> {
         self.consume(TokenKind::Lbrace);
         let mut cases = Vec::new();
         while !self.check(TokenKind::Rbrace) {
-<<<<<<< HEAD
             // Start address of case
             let start_location = self.peek().address.clone();
             // Pattern of case
-=======
-            // start address of case
-            let span_start = self.peek().address.clone();
-            // pattern of case
->>>>>>> 63af0c0e0b31b814982f899b30b6f4ba2d767eee
             let pattern = self.pattern();
             // -> { body, ... }
             self.consume(TokenKind::Arrow);
