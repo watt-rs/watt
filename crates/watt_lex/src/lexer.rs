@@ -68,7 +68,6 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
             bail!(LexError::TokensListsNotEmpty);
         }
         while !self.cursor.is_at_end() {
-            let character_position = self.cursor.current;
             let ch = self.advance();
             match ch {
                 '+' => {
@@ -231,7 +230,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
                     else {
                         bail!(LexError::UnexpectedCharacter {
                             src: self.source.clone(),
-                            span: character_position.into(),
+                            span: (self.cursor.current - 1).into(),
                             ch
                         })
                     }
