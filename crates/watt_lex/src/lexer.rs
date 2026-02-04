@@ -230,7 +230,7 @@ impl<'source, 'cursor> Lexer<'source, 'cursor> {
                     else {
                         bail!(LexError::UnexpectedCharacter {
                             src: self.source.clone(),
-                            span: self.cursor.current.into(),
+                            span: (self.cursor.current - 1).into(),
                             ch
                         })
                     }
