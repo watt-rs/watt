@@ -7,12 +7,13 @@ use watt_lex::tokens::TokenKind;
 /// Implementation of epxression parsing
 impl<'file> Parser<'file> {
     /// Anonymous fn expr
+    /// TODO: rework syntax
     fn anonymous_fn_expr(&mut self) -> Expression {
         // start span `fn (): ... {}`
         let start_location = self.peek().address.clone();
         self.consume(TokenKind::Fn);
 
-        // params
+        // parameters
         let mut params: Vec<Parameter> = Vec::new();
         if self.check(TokenKind::Lparen) {
             params = self.parameters();
@@ -29,6 +30,7 @@ impl<'file> Parser<'file> {
         else {
             None
         };
+
         // end span `fn (): ... {}`
         let end_location = self.previous().address.clone();
 
@@ -97,10 +99,8 @@ impl<'file> Parser<'file> {
 
     /// Variable parsing
     pub(crate) fn variable(&mut self) -> Expression {
-        // start address `id...`
-        let start_address = self.peek().address.clone();
-
-        // variable
+        // parsing base identifier
+        let span_start = self.peek().address.clone();
         let variable = self.consume(TokenKind::Id).clone();
 
         // result node
@@ -125,9 +125,9 @@ impl<'file> Parser<'file> {
             // checking for call
             if self.check(TokenKind::Lparen) {
                 let args = self.args();
-                let end_address = self.previous().address.clone();
+                let span_end = self.previous().address.clone();
                 result = Expression::Call {
-                    location: start_address.clone() + end_address,
+                    location: span_start.clone() + span_end,
                     what: Box::new(result),
                     args,
                 };
@@ -143,29 +143,34 @@ impl<'file> Parser<'file> {
     #[inline]
     fn grouping_expr(&mut self) -> Expression {
         // `($expr)`
-        self.consume(TokenKind::Lparen);
+        let span_start = self.consume(TokenKind::Lparen).address.clone();
         let expr = self.expr();
         self.consume(TokenKind::Rparen);
+        let span_end = self.previous().address.clone();
 
-        Expression::Paren(Box::new(expr))
+        Expression::Paren {
+            location: span_start + span_end,
+            expr: Box::new(expr),
+        }
     }
 
     /// Todo expr `todo`
     #[inline]
     fn todo_expr(&mut self) -> Expression {
-        let start_location = self.peek().address.clone();
-        self.consume(TokenKind::Todo);
+        let span_start = self.consume(TokenKind::Todo).address.clone();
         if self.check(TokenKind::As) {
             self.advance();
-            let end_location = self.peek().address.clone();
+            let text = self.consume(TokenKind::Text).value.clone();
+            let span_end = self.peek().address.clone();
             Expression::Todo {
-                location: start_location + end_location,
-                text: Some(self.consume(TokenKind::Text).value.clone()),
+                location: span_start + span_end,
+                text: Some(text),
             }
         } else {
             self.advance();
+            let span_end = self.peek().address.clone();
             Expression::Todo {
-                location: start_location,
+                location: span_start + span_end,
                 text: None,
             }
         }
@@ -174,18 +179,20 @@ impl<'file> Parser<'file> {
     /// Panic expr `panic`
     #[inline]
     fn panic_expr(&mut self) -> Expression {
-        let start_location = self.peek().address.clone();
-        self.consume(TokenKind::Panic);
+        let span_start = self.consume(TokenKind::Panic).address.clone();
         if self.check(TokenKind::As) {
             self.advance();
-            let end_location = self.peek().address.clone();
+            let text = self.consume(TokenKind::Text).value.clone();
+            let span_end = self.peek().address.clone();
             Expression::Panic {
-                location: start_location + end_location,
-                text: Some(self.consume(TokenKind::Text).value.clone()),
+                location: span_start + span_end,
+                text: Some(text),
             }
         } else {
+            self.advance();
+            let span_end = self.peek().address.clone();
             Expression::Panic {
-                location: start_location,
+                location: span_start + span_end,
                 text: None,
             }
         }
@@ -274,7 +281,7 @@ impl<'file> Parser<'file> {
             let op = self.peek().clone();
             self.bump();
             let right = self.unary_expr();
-            let end_location = self.previous().address.clone();
+            let span_end = self.previous().address.clone();
             left = Expression::Bin {
                 location: start_location.clone() + end_location,
                 left: Box::new(left),
@@ -305,7 +312,7 @@ impl<'file> Parser<'file> {
             let op = self.peek().clone();
             self.bump();
             let right = self.multiplicative_expr();
-            let end_location = self.previous().address.clone();
+            let span_end = self.previous().address.clone();
             left = Expression::Bin {
                 location: start_location.clone() + end_location,
                 left: Box::new(left),
@@ -324,7 +331,7 @@ impl<'file> Parser<'file> {
 
     /// Compare operations `<`, `>`, `<=`, `>=` parsing
     fn compare_expr(&mut self) -> Expression {
-        let start_location = self.peek().address.clone();
+        let span_start = self.peek().address.clone();
         let mut left = self.additive_expr();
 
         if self.check(TokenKind::Greater)
@@ -334,9 +341,9 @@ impl<'file> Parser<'file> {
         {
             let op = self.advance().clone();
             let right = self.additive_expr();
-            let end_location = self.previous().address.clone();
+            let span_end = self.previous().address.clone();
             left = Expression::Bin {
-                location: start_location + end_location,
+                location: span_start + span_end,
                 left: Box::new(left),
                 right: Box::new(right),
                 op: match op.tk_type {
@@ -354,15 +361,15 @@ impl<'file> Parser<'file> {
 
     /// Equality operations `==`, `!=` parsing
     fn equality_expr(&mut self) -> Expression {
-        let start_location = self.peek().address.clone();
+        let span_start = self.peek().address.clone();
         let mut left = self.compare_expr();
 
         if self.check(TokenKind::Eq) || self.check(TokenKind::NotEq) {
             let op = self.advance().clone();
             let right = self.compare_expr();
-            let end_location = self.previous().address.clone();
+            let span_end = self.previous().address.clone();
             left = Expression::Bin {
-                location: start_location + end_location,
+                location: span_start + span_end,
                 left: Box::new(left),
                 right: Box::new(right),
                 op: match op.tk_type {
@@ -378,19 +385,31 @@ impl<'file> Parser<'file> {
 
     /// Logical operation `and` parsing
     fn logical_and_expr(&mut self) -> Expression {
+<<<<<<< HEAD
         let start_location = self.peek().address.clone();
+=======
+        let mut span_start = self.peek().address.clone();
+>>>>>>> 63af0c0e0b31b814982f899b30b6f4ba2d767eee
         let mut left = self.equality_expr();
 
         while self.check(TokenKind::And) {
             self.bump();
             let right = self.equality_expr();
-            let end_location = self.previous().address.clone();
+            let span_end = self.previous().address.clone();
             left = Expression::Bin {
+<<<<<<< HEAD
                 location: start_location.clone() + end_location,
+=======
+                location: span_start + span_end,
+>>>>>>> 63af0c0e0b31b814982f899b30b6f4ba2d767eee
                 left: Box::new(left),
                 right: Box::new(right),
                 op: BinaryOp::And,
             };
+<<<<<<< HEAD
+=======
+            span_start = self.peek().address.clone();
+>>>>>>> 63af0c0e0b31b814982f899b30b6f4ba2d767eee
         }
 
         left
@@ -398,19 +417,31 @@ impl<'file> Parser<'file> {
 
     /// Logical operation `or` parsing
     fn logical_or_expr(&mut self) -> Expression {
+<<<<<<< HEAD
         let start_location = self.peek().address.clone();
+=======
+        let mut span_start = self.peek().address.clone();
+>>>>>>> 63af0c0e0b31b814982f899b30b6f4ba2d767eee
         let mut left = self.logical_and_expr();
 
         while self.check(TokenKind::Or) {
             self.bump();
             let right = self.logical_and_expr();
-            let end_location = self.previous().address.clone();
+            let span_end = self.previous().address.clone();
             left = Expression::Bin {
+<<<<<<< HEAD
                 location: start_location.clone() + end_location,
+=======
+                location: span_start + span_end,
+>>>>>>> 63af0c0e0b31b814982f899b30b6f4ba2d767eee
                 left: Box::new(left),
                 right: Box::new(right),
                 op: BinaryOp::Or,
             };
+<<<<<<< HEAD
+=======
+            span_start = self.peek().address.clone();
+>>>>>>> 63af0c0e0b31b814982f899b30b6f4ba2d767eee
         }
 
         left
@@ -418,15 +449,15 @@ impl<'file> Parser<'file> {
 
     /// Cast operation `as` parsing
     fn as_expr(&mut self) -> Expression {
-        let start_location = self.peek().address.clone();
+        let span_start = self.peek().address.clone();
         let mut left = self.logical_or_expr();
 
         if self.check(TokenKind::As) {
             self.bump();
             let right = self.type_annotation();
-            let end_location = self.previous().address.clone();
+            let span_end = self.previous().address.clone();
             left = Expression::As {
-                location: start_location + end_location,
+                location: span_start + span_end,
                 value: Box::new(left),
                 typ: right,
             };
@@ -473,19 +504,19 @@ impl<'file> Parser<'file> {
 
     /// Pattern parsing
     fn pattern(&mut self) -> Pattern {
-        // Parsing single pattern
+        // parsing single pattern
         let pattern =
-            // If string presented
+            // if string presented
             if self.check(TokenKind::Text) {
                 let tk = self.advance().clone();
                 Pattern::String(tk.address, tk.value)
             }
-            // If bool presented
+            // if bool presented
             else if self.check(TokenKind::Bool) {
                 let tk = self.advance().clone();
                 Pattern::Bool(tk.address, tk.value)
             }
-            // If number presented
+            // if number presented
             else if self.check(TokenKind::Number) {
                 let tk = self.advance().clone();
                 if tk.value.contains(".") {
@@ -494,50 +525,68 @@ impl<'file> Parser<'file> {
                     Pattern::Int(tk.address, tk.value)
                 }
             }
-            // If wildcard presented
+            // if wildcard presented
             else if self.check(TokenKind::Wildcard) {
                 self.advance();
                 Pattern::Wildcard
             }
-            // If identifier presented
+            // if identifier presented
             else {
+<<<<<<< HEAD
                 // Start span
                 let start_location = self.peek().address.clone();
                 // If dot presented -> enum patterns
+=======
+                // span start
+                let span_start = self.peek().address.clone();
+                // if dot presented -> enum patterns
+>>>>>>> 63af0c0e0b31b814982f899b30b6f4ba2d767eee
                 if self.check_next(TokenKind::Dot) {
-                    // Parsing variant pattern prefix
+                    // parsing variant pattern prefix
                     let value = self.variant_pattern_prefix();
-                    // Checking for unwrap of enum
+                    // checking for unwrap of enum
                     if self.check(TokenKind::Lparen) {
-                        // Fields
+                        // parsing fields
                         let fields = self.sep_by(TokenKind::Lparen, TokenKind::Rparen, TokenKind::Comma, |s| {
                             let tk = s.consume(TokenKind::Id);
                             (tk.address.clone(), tk.value.clone())
                         });
+<<<<<<< HEAD
                         // End span
                         let end_location = self.peek().address.clone();
                         // As result, enum unwrap pattern
                         Pattern::Unwrap { address: start_location + end_location, en: value, fields }
+=======
+                        let span_end = self.peek().address.clone();
+                        // as result, enum unwrap pattern
+                        Pattern::Unwrap { address: span_start + span_end, en: value, fields }
+>>>>>>> 63af0c0e0b31b814982f899b30b6f4ba2d767eee
                     }
-                    // If no unwrap, returning just as value
+                    // if no unwrap, returning just as value
                     else {
+<<<<<<< HEAD
                         // End span
                         let end_location = self.peek().address.clone();
                         // As result, enum variant pattern
                         Pattern::Variant(start_location + end_location, value)
+=======
+                        let span_end = self.peek().address.clone();
+                        // as result, enum variant pattern
+                        Pattern::Variant(span_start + span_end, value)
+>>>>>>> 63af0c0e0b31b814982f899b30b6f4ba2d767eee
                     }
                 }
-                // If not -> bind pattern
+                // if not -> bind pattern
                 else {
                     Pattern::BindTo(start_location, self.consume(TokenKind::Id).value.clone())
                 }
             };
-        // Checking if more patterns presented
+        // cecking if more patterns presented
         if self.check(TokenKind::Bar) {
-            // Parsing `or` pattern
+            // parsing `or` pattern
             self.consume(TokenKind::Bar);
 
-            // Left and right pattern
+            // left and right pattern
             let a = Box::new(pattern);
             let b = Box::new(self.pattern());
 
@@ -547,22 +596,28 @@ impl<'file> Parser<'file> {
         }
     }
 
-    /// Pattern match parsing
+    /// pattern match parsing
     fn pattern_matching(&mut self) -> Expression {
-        // Start address
-        let start_address = self.peek().address.clone();
+        // span start
+        let span_start = self.peek().address.clone();
 
         // `match value { patterns, ... }`
         self.consume(TokenKind::Match);
         let value = self.expr();
 
-        // Cases
+        // parsing cases
         self.consume(TokenKind::Lbrace);
         let mut cases = Vec::new();
         while !self.check(TokenKind::Rbrace) {
+<<<<<<< HEAD
             // Start address of case
             let start_location = self.peek().address.clone();
             // Pattern of case
+=======
+            // start address of case
+            let span_start = self.peek().address.clone();
+            // pattern of case
+>>>>>>> 63af0c0e0b31b814982f899b30b6f4ba2d767eee
             let pattern = self.pattern();
             // -> { body, ... }
             self.consume(TokenKind::Arrow);
@@ -581,11 +636,11 @@ impl<'file> Parser<'file> {
         }
         self.consume(TokenKind::Rbrace);
 
-        // End address
-        let end_address = self.previous().address.clone();
+        // span end
+        let span_end = self.previous().address.clone();
 
         Expression::Match {
-            location: start_address + end_address,
+            location: span_start + span_end,
             value: Box::new(value),
             cases,
         }

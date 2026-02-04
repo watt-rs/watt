@@ -57,16 +57,16 @@ impl<'file> Parser<'file> {
         // parsing statement before reaching
         // end of file, or a `}`
         let mut nodes: Vec<Statement> = Vec::new();
-        let start_location = self.peek().address.clone();
+        let span_start = self.peek().address.clone();
         self.consume(TokenKind::Lbrace);
         while !self.check(TokenKind::Rbrace) {
             nodes.push(self.statement());
         }
         self.consume(TokenKind::Rbrace);
-        let end_location = self.previous().address.clone();
+        let span_end = self.previous().address.clone();
 
         Block {
-            location: start_location + end_location,
+            location: span_start + span_end,
             body: nodes,
         }
     }
@@ -75,20 +75,9 @@ impl<'file> Parser<'file> {
     pub(crate) fn block_or_expr(&mut self) -> Either<Block, Expression> {
         // if lbrace passed
         if self.check(TokenKind::Lbrace) {
-            // parsing statement before reaching
-            // end of file, or a `}`
-            let mut nodes: Vec<Statement> = Vec::new();
-            self.consume(TokenKind::Lbrace);
-            let start_location = self.peek().address.clone();
-            while !self.check(TokenKind::Rbrace) {
-                nodes.push(self.statement());
-            }
-            let end_location = self.previous().address.clone();
-            self.consume(TokenKind::Rbrace);
-            Either::Left(Block {
-                location: start_location + end_location,
-                body: nodes,
-            })
+            // parsing block
+            let block = self.block();
+            Either::Left(block)
         } else {
             // `=`
             self.consume(TokenKind::Assign);
@@ -99,27 +88,9 @@ impl<'file> Parser<'file> {
 
     /// Block or box expr parsing
     pub(crate) fn block_or_box_expr(&mut self) -> Either<Block, Box<Expression>> {
-        // if lbrace passed
-        if self.check(TokenKind::Lbrace) {
-            // parsing statement before reaching
-            // end of file, or a `}`
-            let mut nodes: Vec<Statement> = Vec::new();
-            self.consume(TokenKind::Lbrace);
-            let start_location = self.peek().address.clone();
-            while !self.check(TokenKind::Rbrace) {
-                nodes.push(self.statement());
-            }
-            let end_location = self.previous().address.clone();
-            self.consume(TokenKind::Rbrace);
-            Either::Left(Block {
-                location: start_location + end_location,
-                body: nodes,
-            })
-        } else {
-            // `=`
-            self.consume(TokenKind::Assign);
-            // parsing single expression
-            Either::Right(Box::new(self.expr()))
+        match self.block_or_expr() {
+            Either::Left(it) => Either::Left(it),
+            Either::Right(it) => Either::Right(Box::new(it)),
         }
     }
 
@@ -146,28 +117,15 @@ impl<'file> Parser<'file> {
             | Expression::String { location, .. }
             | Expression::Bool { location, .. } => skip!(),
             // `binary`, `as` and `unary` operations need to be checked.
-            Expression::Bin {
-                location,
-                left,
-                right,
-                op,
-            } => {
+            Expression::Bin { left, right, .. } => {
                 self.check_value_const(left);
                 self.check_value_const(right);
             }
-            Expression::As {
-                location,
-                value,
-                typ,
-            } => self.check_value_const(value),
-            Expression::Unary {
-                location,
-                value,
-                op,
-            } => {
+            Expression::As { value, .. } => self.check_value_const(value),
+            Expression::Unary { value, .. } => {
                 self.check_value_const(value);
             }
-            Expression::Paren(expr) => {
+            Expression::Paren { expr, .. } => {
                 self.check_value_const(expr);
             }
         }
@@ -191,21 +149,17 @@ impl<'file> Parser<'file> {
     /// Consumes token by kind, if expected kind doesn't equal
     /// current token kind - raises error.
     pub(crate) fn consume(&mut self, tk_type: TokenKind) -> &Token {
-        match self.tokens.get(self.current as usize) {
-            Some(tk) => {
-                self.current += 1;
-                if tk.tk_type == tk_type {
-                    tk
-                } else {
-                    bail!(ParseError::UnexpectedToken {
-                        src: self.source.clone(),
-                        span: tk.address.clone().span.into(),
-                        unexpected: tk.value.clone(),
-                        expected: tk_type
-                    })
-                }
-            }
-            None => bail!(ParseError::UnexpectedEof),
+        self.bump();
+        let tk = self.previous();
+        if tk.tk_type == tk_type {
+            tk
+        } else {
+            bail!(ParseError::UnexpectedToken {
+                src: self.source.clone(),
+                span: tk.address.clone().span.into(),
+                unexpected: tk.value.clone(),
+                expected: tk_type
+            })
         }
     }
 
@@ -230,7 +184,7 @@ impl<'file> Parser<'file> {
         }
     }
 
-    /// Peeks current token, if eof raises error
+    /// Peeks current token, if `eof` raises error
     pub(crate) fn peek(&self) -> &Token {
         match self.tokens.get(self.current as usize) {
             Some(tk) => tk,
@@ -238,7 +192,7 @@ impl<'file> Parser<'file> {
         }
     }
 
-    /// Peeks previous token, if eof raises error
+    /// Peeks previous token, if `eof` raises error
     pub(crate) fn previous(&self) -> &Token {
         match self.tokens.get((self.current - 1) as usize) {
             Some(tk) => tk,

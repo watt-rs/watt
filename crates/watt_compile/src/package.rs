@@ -265,6 +265,7 @@ impl<'cx> PackageCompiler<'cx> {
             // Target path
             let mut target_path = self.outcome.clone();
             target_path.push(Utf8Path::new(&format!("{}.js", &module.0)));
+            
             completed_modules.insert(module.0, target_path.clone());
             // Creating directory
             if let Some(path) = target_path.parent() {
@@ -274,7 +275,7 @@ impl<'cx> PackageCompiler<'cx> {
                 }
             }
             // Creating file
-            io::write(target_path, &module.1);
+            io::write(&target_path, &module.1);
         }
 
         // Returning analyzed modules

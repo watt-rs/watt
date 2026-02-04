@@ -1287,7 +1287,7 @@ impl<'pkg, 'cx> ModuleCx<'pkg, 'cx> {
                 body,
                 else_branches,
             } => self.infer_if(location, *logical, body, else_branches),
-            Expression::Paren(expr) => self.infer_expr(*expr),
+            Expression::Paren { expr, .. } => self.infer_expr(*expr),
         };
         // Applying substs
         self.icx.apply(result)
