@@ -58,6 +58,8 @@ pub(crate) enum ParseError {
     UnexpectedExpressionToken {
         #[source_code]
         src: Arc<NamedSource<String>>,
+        #[label("a part of this expression.")]
+        previous_token_span: SourceSpan,
         #[label("this can not be represented as expression.")]
         span: SourceSpan,
         unexpected: EcoString,
