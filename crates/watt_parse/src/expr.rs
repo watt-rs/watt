@@ -200,7 +200,7 @@ impl<'file> Parser<'file> {
     }
 
     /// Primary expr parsing
-    fn primary_expr(&mut self, previous_token_span: SourceSpan) -> Expression {
+    fn primary_expr(&mut self) -> Expression {
         match self.peek().tk_type {
             TokenKind::Id => self.variable(),
             TokenKind::Number => {
@@ -242,7 +242,7 @@ impl<'file> Parser<'file> {
                 bail!(ParseError::UnexpectedExpressionToken {
                     src: token.address.source,
                     span: token.address.span.into(),
-                    previous_token_span,
+                    previous_token_span: self.previous().address.span.clone().into(),
                     unexpected: token.value
                 });
             }
@@ -261,10 +261,10 @@ impl<'file> Parser<'file> {
                     TokenKind::Bang => UnaryOp::Bang,
                     _ => unreachable!(),
                 },
-                value: Box::new(self.primary_expr(self.previous().address.span.clone().into())),
+                value: Box::new(self.unary_expr()),
             }
         } else {
-            self.primary_expr(self.previous().address.span.clone().into())
+            self.primary_expr()
         }
     }
 
