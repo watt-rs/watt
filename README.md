@@ -1,87 +1,40 @@
-💡 Watt is a friendly, robust typed, functional programming language written in Rust, designed to bring the convenience of functional programming to the web.
+💡 Watt is an experimental, friendly, robust programming language written in Rust, designed to bring the convenience of functional programming to the web.
 
-⚡ Features:
+#### ⚡ Features:
 1. No null values, no exceptions.
-2. Clear error messages. 
+2. Clear error messages.
 3. A practical type system.
-4. Simple and easy-to-use pattern matching.
 
-⚠️ Watt is highly WIP!
+> [!IMPORTANT]
+> ⚠️ Watt is unstable and highly WIP.
 
-🦣 ADT:
+☄️ Hello, world!
 ```
-enum Iceberg {
-    Large(size: float, mammoth: Mammoth),
-    Small(size: float)
-}
+use std/io as io
 
-type Mammoth {
-    age: int,
-    name: String
+fn main() {
+    io.println("Hello, world!");
+}
+```
+
+🦎 Optional mutability:
+```
+fn some() {
+    let x = 1;
+    x = 1; // Error
+
+    let mut y = 1;
+    y = 2; // Ok
 }
 ```
 
 🦖 Logical expressions:
 ```
-type Rex {
-    age: int
-}
-
-fn is_ancient(m: Rex): bool {
+fn is_ancient(age: real): bool {
     if m.age > 10000 {
         true
     } else {
         false
-    }
-}
-```
-
-🦜 Loops:
-```
-use std/io as io
-
-type Parrot {
-    name: string
-}
-
-fn repeat(p: Parrot) {
-    for i in 0..3 {
-        io.println(p.name <> " says: hello!");
-    }
-}
-```
-
-🐍 Enums and pattern matching:
-```
-enum Snake {
-    Python(length: int),
-    Boa(length: int)
-}
-
-fn description(s: Snake): string =
-    match s {
-        Snake.Python(length) -> "Python, length " <> length
-        Snake.Boa(length)    -> "Boa, length " <> length
-    }
-```
-
-🔦 More loops example:
-```
-use std/io as io
-
-type Flashlight {
-    power: int
-}
-
-fn shine(f: Flashlight) {
-    loop {
-        if f.power == 0 {
-            io.println("The light went out");
-            return;
-        }
-
-        io.println("Light power: " <> f.power);
-        f.power = f.power - 1;
     }
 }
 ```
@@ -107,17 +60,15 @@ type Unicorn {
 }
 
 fn race(u: Unicorn) {
-    for i in 0..10 {
-        if i * u.speed > 25 {
-            io.println(u.name <> " is winning!");
-        }
+    if u.speed > 25 {
+        io.println(u.name <> " is winning!");
     }
 }
 ```
 
 🦕 Constants:
 ```
-const MAX_SPEED: float = 50
+const MAX_SPEED: int = 50
 
 type Dinosaur {
     name: string,
@@ -138,24 +89,6 @@ fn main() {
 
     check_speed(t)
     check_speed(tr)
-}
-```
-
-🧭 Panic & todo.
-```
-type Explorer { name: string, fossils: int }
-
-fn explore(e: Explorer) {
-    if e.fossils == 0 { panic "No fossils!" }
-    elif e.fossils < 0 { panic }
-    elif e.fossils < 5 { todo as "Find more fossils" }
-    else { io.println(e.name <> " found many fossils!") }
-}
-
-fn main() {
-    explore(Explorer("Bob", 0))
-    explore(Explorer("Alice", 3))
-    explore(Explorer("Carol", 7))
 }
 ```
 
