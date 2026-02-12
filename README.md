@@ -15,7 +15,6 @@ fn main() {
 1. No null values, no exceptions.
 2. Clear error messages.
 3. A practical type system.
-__
 
 🦎 Optional mutability:
 ```
