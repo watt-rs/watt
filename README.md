@@ -3,9 +3,6 @@
 
 💡 **Watt** is an experimental, friendly, robust programming language written in Rust, designed to bring the convenience of functional programming to the web.
 
-__
-
-☄️ Hello, world!
 ```
 use std/io as io
 
@@ -13,7 +10,6 @@ fn main() {
     io.println("Hello, world!");
 }
 ```
-__
 
 ⚡ Features:
 1. No null values, no exceptions.
