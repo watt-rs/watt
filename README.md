@@ -1,13 +1,5 @@
 💡 Watt is an experimental, friendly, robust programming language written in Rust, designed to bring the convenience of functional programming to the web.
 
-#### ⚡ Features:
-1. No null values, no exceptions.
-2. Clear error messages.
-3. A practical type system.
-
-> [!IMPORTANT]
-> ⚠️ Watt is unstable and highly WIP.
-
 ☄️ Hello, world!
 ```
 use std/io as io
@@ -16,6 +8,14 @@ fn main() {
     io.println("Hello, world!");
 }
 ```
+
+> [!IMPORTANT]
+> ⚠️ Watt is unstable and highly WIP.
+
+⚡ Features:
+1. No null values, no exceptions.
+2. Clear error messages.
+3. A practical type system.
 
 🦎 Optional mutability:
 ```
