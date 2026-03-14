@@ -9,7 +9,7 @@ fn main() {
 }
 ```
 
-⚡ Features:
+#### ⚡ Features:
 1. No null values, no exceptions.
 2. Clear error messages.
 3. Robust type system.
