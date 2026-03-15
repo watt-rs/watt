@@ -14,3 +14,4 @@ miette = { git = "https://github.com/watt-rs/miette.git", features = ["fancy"] }
 thiserror = "2.0.18"
 walkdir = "2.5.0"
 petgraph = "0.8.3"
+rayon = "1.11.0"

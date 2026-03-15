@@ -6,6 +6,7 @@ mod io;
 use camino::Utf8PathBuf;
 use miette::NamedSource;
 use petgraph::{Direction, prelude::DiGraphMap};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -48,7 +49,7 @@ impl Orchestrator {
     }
 
     /// Loads module and parses it
-    fn load_module(&mut self, path: Utf8PathBuf) -> (String, item::Module) {
+    fn load_module(&self, path: Utf8PathBuf) -> (String, item::Module) {
         // Reading module info
         info!("loading module `{path}`");
         let name = io::module_name(&self.config.income, &path);
@@ -68,14 +69,11 @@ impl Orchestrator {
     /// Loads modules from directory
     fn load_modules(&mut self) -> HashMap<String, item::Module> {
         info!("loading modules from `{}`", self.config.income);
-        let mut loaded_modules = HashMap::new();
 
-        for path in io::collect_sources(&self.config.income) {
-            let (name, module) = self.load_module(path);
-            loaded_modules.insert(name, module);
-        }
-
-        loaded_modules
+        io::collect_sources(&self.config.income)
+            .into_par_iter()
+            .map(|path| self.load_module(path))
+            .collect()
     }
 
     // Builds dependencies tree
