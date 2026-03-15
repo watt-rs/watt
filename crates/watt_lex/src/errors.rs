@@ -1,52 +1,40 @@
 /// Imports
-use ecow::EcoString;
 use miette::{Diagnostic, NamedSource, SourceSpan};
 use std::sync::Arc;
 use thiserror::Error;
 
-/// Lex errors with `thiserror`
-#[derive(Debug, Error, Diagnostic)]
+/// Defines lexer error
+#[derive(Error, Diagnostic, Debug)]
 pub enum LexError<'a> {
-    #[error("unexpected character \"{ch}\".")]
+    /// Unexpected char
+    #[error("unexpected character `{ch}`.")]
     #[diagnostic(code(lex::unexpected_char))]
-    UnexpectedCharacter {
+    UnexpectedChar {
+        ch: char,
         #[source_code]
         src: Arc<NamedSource<String>>,
-        #[label("this character isn't expected here.")]
+        #[label("try to remove this character.")]
         span: SourceSpan,
-        ch: char,
     },
-    #[error("unclosed string quotes.")]
+    /// Unclosed string quotes
+    #[error("found unclosed string quotes.")]
     #[diagnostic(code(lex::unclosed_string_quotes))]
     UnclosedStringQuotes {
         #[source_code]
         src: Arc<NamedSource<String>>,
-        #[label("no ending quote specified.")]
+        #[label("close string quotes by appending missed quote `\"`.")]
         span: SourceSpan,
     },
-    #[error("number `{number}` isn't valid.")]
-    #[diagnostic(code(lex::invalid_number))]
-    InvalidNumber {
+    /// Invalid float
+    #[error("invalid float number.")]
+    #[diagnostic(code(lex::invalid_float_number), severity(bug))]
+    InvalidFloat {
         #[source_code]
         src: Arc<NamedSource<String>>,
-        #[label("this number isn't valid.")]
+        #[label("this float number seems to be invalid.")]
         span: SourceSpan,
-        number: EcoString,
     },
-    #[error("tokens len isn't empty.")]
-    #[diagnostic(
-        code(lex::tokens_list_is_not_empty),
-        help("please, file an issue on github."),
-        url("https://github.com/watt-rs/watt")
-    )]
-    TokensListsNotEmpty,
-    #[error("not a file provided.")]
-    #[diagnostic(
-        code(lex::not_a_file_provided),
-        help("please, file an issue on github."),
-        url("https://github.com/watt-rs/watt")
-    )]
-    NotAFileProvided,
+    /// Invalid escape sequence
     #[error("invalid escape sequence.")]
     #[diagnostic(code(lex::invalid_escape_sequence), help("{cause}"))]
     InvalidEscapeSequence {
@@ -56,6 +44,7 @@ pub enum LexError<'a> {
         span: SourceSpan,
         cause: &'a str,
     },
+    /// Unknown escape sequence
     #[error("unknown escape sequence.")]
     #[diagnostic(code(lex::unknown_escape_sequence))]
     UnknownEscapeSequence {

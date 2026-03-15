@@ -4,13 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-clap = { version = "4.5.1", features = ["derive"] }
-watt_common = { path = "../watt_common" }
-watt_compile = { path = "../watt_compile" }
-camino = "1.1.10"
-thiserror = "2.0.12"
-miette = { git = "https://github.com/watt-rs/miette.git", features = ["fancy"] }
-ecow = "0.2.6"
-watt_pm = { path = "../watt_pm" }
+watt_orchestra = { path = "../watt_orchestra" }
+camino = "1.2.2"
 tracing = "0.1.44"
-tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }

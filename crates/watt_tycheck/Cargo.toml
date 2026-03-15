@@ -1,5 +1,5 @@
 [package]
-name = "watt_parse"
+name = "watt_tycheck"
 version = "0.1.0"
 edition = "2024"
 
@@ -7,5 +7,3 @@ edition = "2024"
 watt_macros = { path = "../watt_macros" }
 watt_ast = { path = "../watt_ast" }
 watt_lex = { path = "../watt_lex" }
-thiserror = "2.0.12"
-miette = { git = "https://github.com/watt-rs/miette.git", features = ["fancy"] }

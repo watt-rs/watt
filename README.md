@@ -9,6 +9,21 @@ fn main() {
 }
 ```
 
+```
+enum Size {
+  Small,
+  Big,
+  Large
+}
+
+struct House {
+  address: string,
+  number: int,
+  street: string,
+  size: Size
+}
+```
+
 #### ⚡ Features:
 1. No null values, no exceptions.
 2. Clear error messages.

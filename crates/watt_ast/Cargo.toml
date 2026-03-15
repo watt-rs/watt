@@ -5,6 +5,4 @@ edition = "2024"
 
 [dependencies]
 watt_lex = { path = "../watt_lex" }
-watt_common = { path = "../watt_common" }
-ecow = "0.2.6"
 miette = { git = "https://github.com/watt-rs/miette.git", features = ["fancy"] }

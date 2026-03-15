@@ -2,14 +2,8 @@
 members = [
     "crates/watt_lex",
     "crates/watt_ast",
-    "crates/watt_common",
     "crates/watt_parse",
-    "crates/watt",
-    "crates/watt_compile",
-    "crates/watt_pm",
-    "crates/watt_gen",
-    "crates/watt_lint",
-    "crates/watt_tests"
+    "crates/watt_macros", "crates/watt", "crates/watt_orchestra", "crates/watt_tycheck",
 ]
 resolver = "3"
 doctest = false

@@ -1,5 +1,0 @@
-extern fn println(text: string) = "console.log(text);"
-
-fn main() {
-    println("Hello, world!");
-}

@@ -1,11 +1,16 @@
 [package]
-name = "watt_parse"
+name = "watt_orchestra"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-watt_macros = { path = "../watt_macros" }
-watt_ast = { path = "../watt_ast" }
+camino = "1.2.2"
 watt_lex = { path = "../watt_lex" }
-thiserror = "2.0.12"
+watt_macros = { path = "../watt_macros" }
+watt_parse = { path = "../watt_parse" }
+watt_ast = { path = "../watt_ast" }
+tracing = "0.1.44"
 miette = { git = "https://github.com/watt-rs/miette.git", features = ["fancy"] }
+thiserror = "2.0.18"
+walkdir = "2.5.0"
+petgraph = "0.8.3"
