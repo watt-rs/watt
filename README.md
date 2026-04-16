@@ -1,4 +1,4 @@
-#### 🍹 **Watt** 
+#### 🧵 **Loom** 
 ... is an experimental, friendly, robust programming language written in Rust, designed to bring the convenience of functional programming to the web.
 
 ```
