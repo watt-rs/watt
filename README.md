@@ -1,6 +1,3 @@
-<p align="center">
- <img src="logo.png" width=200></img>
-</p>
 
 ### 💡 Watt
 ... is a friendly, robust and type-safe functional programming language for the Web.
